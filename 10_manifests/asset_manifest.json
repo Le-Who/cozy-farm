@@ -1,0 +1,58 @@
+{
+  "packageName": "cozy_farm_full_production_package",
+  "version": "2026-05-24",
+  "primaryTarget": {
+    "path": "01_primary_target/main_gameplay_reference_cozy_smooth.png",
+    "role": "Main production target screenshot. Use as source of truth for final visual direction."
+  },
+  "inputReferences": [
+    {
+      "path": "02_user_input_references/current_game_antireference_dirty_pixel.png",
+      "role": "Anti-reference: current game state with dirty/pixel-noisy visuals. Do not use as target style."
+    },
+    {
+      "path": "02_user_input_references/user_style_reference_asset_richness.png",
+      "role": "User-provided inspiration for asset richness, modular island density, and crop variety."
+    },
+    {
+      "path": "02_user_input_references/user_style_reference_soft_ui_scene.png",
+      "role": "User-provided inspiration for softer smoother cozy style and UI placement."
+    }
+  ],
+  "generatedReferences": [
+    {
+      "path": "03_generated_reference_boards/modular_asset_and_crop_stage_reference.png",
+      "role": "Reference for modular buildings, props, trees, chickens, crop bed modules, and crop growth stages."
+    },
+    {
+      "path": "03_generated_reference_boards/hud_ui_style_reference_board.png",
+      "role": "Reference-only UI/HUD style board. Contains sample text and numbers, so do not use directly as production sprite."
+    }
+  ],
+  "textureReferences": [
+    {
+      "path": "04_texture_references/cozy_smooth_texture_atlas_reference_6x5.png",
+      "role": "Smooth cozy texture direction, 6x5 grid, 30 material/crop tiles. Slice or regenerate clean production textures from this direction."
+    }
+  ],
+  "productionBlankUIAssets": {
+    "path": "05_ui_production_blank_assets/",
+    "role": "Blank UI sheets from previous cleanup pass. Prefer these for production UI slicing because they avoid baked-in text/values."
+  },
+  "referenceOnlyAssets": {
+    "path": "06_ui_reference_only/",
+    "role": "Do not use in production; retained only to show what to avoid."
+  },
+  "docs": [
+    "README_RU.md",
+    "08_docs/ASSET_USAGE_GUIDE_RU.md",
+    "08_docs/QA_CHECKLIST_RU.md",
+    "09_prompts/PRODUCTION_PROMPT_SEQUENCE_RU.md",
+    "09_prompts/MASTER_FINAL_PROMPT_RU.txt"
+  ],
+  "scripts": [
+    "11_scripts/slice_texture_atlas.py",
+    "11_scripts/slice_ui_connected_components.py",
+    "11_scripts/verify_assets.py"
+  ]
+}

@@ -1,0 +1,24 @@
+# Asset verification report
+
+- `01_primary_target/main_gameplay_reference_cozy_smooth.png` — 1672×941, mode=RGB, alpha=False
+- `02_user_input_references/current_game_antireference_dirty_pixel.png` — 1911×906, mode=RGBA, alpha=True
+- `02_user_input_references/user_style_reference_asset_richness.png` — 1254×1254, mode=RGBA, alpha=True
+- `02_user_input_references/user_style_reference_soft_ui_scene.png` — 1536×1024, mode=RGBA, alpha=True
+- `03_generated_reference_boards/hud_ui_style_reference_board.png` — 1448×1086, mode=RGB, alpha=False
+- `03_generated_reference_boards/modular_asset_and_crop_stage_reference.png` — 1254×1254, mode=RGB, alpha=False
+- `04_texture_references/cozy_smooth_texture_atlas_reference_6x5.png` — 1254×1254, mode=RGB, alpha=False
+- `05_ui_production_blank_assets/hud_icon_sheet_alpha.png` — 1254×1254, mode=RGBA, alpha=True
+- `05_ui_production_blank_assets/hud_icon_sheet_raw_rgb.png` — 1254×1254, mode=RGB, alpha=False
+- `05_ui_production_blank_assets/hud_inventory_frame_kit_blank_alpha.png` — 1448×1086, mode=RGBA, alpha=True
+- `05_ui_production_blank_assets/hud_inventory_frame_kit_blank_raw_rgb.png` — 1448×1086, mode=RGB, alpha=False
+- `05_ui_production_blank_assets/hud_panel_kit_blank_alpha.png` — 1448×1086, mode=RGBA, alpha=True
+- `05_ui_production_blank_assets/hud_panel_kit_blank_raw_rgb.png` — 1448×1086, mode=RGB, alpha=False
+- `05_ui_production_blank_assets/hud_primitives_blank_alpha.png` — 1448×1086, mode=RGBA, alpha=True
+- `05_ui_production_blank_assets/hud_primitives_blank_raw_rgb.png` — 1448×1086, mode=RGB, alpha=False
+- `06_ui_reference_only/old_buttons_controls_has_baked_icons_raw.png` — 1448×1086, mode=RGB, alpha=False
+- `06_ui_reference_only/old_hud_panels_has_baked_icons_E_X_lines_raw.png` — 1448×1086, mode=RGB, alpha=False
+- `06_ui_reference_only/old_inventory_slots_has_number_99_raw.png` — 1448×1086, mode=RGB, alpha=False
+- `06_ui_reference_only/old_meters_has_numbers_and_filled_bars_raw.png` — 1448×1086, mode=RGB, alpha=False
+- `06_ui_reference_only/old_prompts_has_WASD_text_raw.png` — 1448×1086, mode=RGB, alpha=False
+- `07_legacy_previous_package/old_reference_gameplay_not_final.png` — 1672×941, mode=RGB, alpha=False
+- `07_legacy_previous_package/old_texture_atlas_not_final.png` — 1254×1254, mode=RGB, alpha=False
