@@ -1,0 +1,4 @@
+.honey-cookery[data-stage="shape"] .cookery-view,.honey-cookery[data-stage="bake-ready"] .cookery-view{cursor:grab}
+.honey-cookery[data-stage="baking"] .cookery-view{cursor:wait}
+.honey-cookery[data-stage="baking"] .cookery-progress i{background:#d99848}
+.honey-cookery .cookery-rotate{touch-action:none}

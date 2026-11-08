@@ -1,0 +1,112 @@
+[
+  {
+    "asset": "cove-terrain",
+    "actual": [
+      1613,
+      975
+    ],
+    "frames": 1,
+    "frameAspect": 1.6543589743589744,
+    "drawAspect": 1.6543589743589742,
+    "error": 2.220446049250313e-16
+  },
+  {
+    "asset": "cove-minnow",
+    "actual": [
+      2048,
+      512
+    ],
+    "frames": 4,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  },
+  {
+    "asset": "cove-egret",
+    "actual": [
+      2048,
+      512
+    ],
+    "frames": 4,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  },
+  {
+    "asset": "cove-kelp-right",
+    "actual": [
+      512,
+      512
+    ],
+    "frames": 1,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  },
+  {
+    "asset": "cove-kelp-left",
+    "actual": [
+      512,
+      512
+    ],
+    "frames": 1,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  },
+  {
+    "asset": "cove-meadow",
+    "actual": [
+      512,
+      512
+    ],
+    "frames": 1,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  },
+  {
+    "asset": "cove-rock",
+    "actual": [
+      512,
+      512
+    ],
+    "frames": 1,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  },
+  {
+    "asset": "cove-refuge",
+    "actual": [
+      512,
+      512
+    ],
+    "frames": 1,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  },
+  {
+    "asset": "cove-perch",
+    "actual": [
+      512,
+      512
+    ],
+    "frames": 1,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  },
+  {
+    "asset": "shore-crab",
+    "actual": [
+      128,
+      128
+    ],
+    "frames": 1,
+    "frameAspect": 1.0,
+    "drawAspect": 1.0,
+    "error": 0.0
+  }
+]

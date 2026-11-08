@@ -7,6 +7,7 @@ export type FishingLoot =
   | { kind: 'junk'; item: 'boot' | 'weed' | 'rock' };
 export type FishingCatch = {
   id: number; x: number; depth: number; direction: number; rare: boolean;
+  swimSpeed?: number;
   loot?: FishingLoot;
   dart?: { phase: 'warning' | 'lunging' | 'cooldown'; remaining: number; offset: number; distance: number };
 };
@@ -14,37 +15,51 @@ export type FishingModel = {
   phase: FishingPhase; x: number; targetX: number; depth: number; deepest: number;
   contacts: number; immunity: number; capacity: number; resilience: number; time: number; ascentSpeed: number;
   fish: FishingCatch[]; caught: number[]; flash: number; nextDartAt: number; steeringLimit: number;
+  habitat?: FishingHabitat;
 };
 export const fishingDepth = 30;
 export const fishingHalfWidth = 4.8;
 
 /** Depth is measured in simulation units: four displayed metres per unit. */
-export function fishingLootAtDepth(depth: number, roll: number, common: 'perch' | 'seaBass' = 'perch'): FishingLoot {
+export function fishingLootAtDepth(depth: number, roll: number, common: 'perch' | 'seaBass' = 'perch', habitat?: FishingHabitat): FishingLoot {
   const deep = Math.max(0, Math.min(1, depth / fishingDepth));
   const junkChance=.3-deep*.26;
   const shellChance=.1;
   if (roll < junkChance) return { kind: 'junk', item: deep < .35 ? 'weed' : deep < .7 ? 'boot' : 'rock' };
   if (roll < junkChance+shellChance) return { kind: 'shell', variant: deep > .7 && roll < junkChance+.04 ? 'moon' : 'regular' };
-  if (deep >= .62 && roll > 1 - (deep - .55) * .8) return {
+  if (deep >= .62 && roll > 1 - (deep - .55) * .8 * (habitat?.rareWeight ?? 1)) return {
     kind: 'fish', species: deep > .84 ? 'lanternfish' : 'moonfish', variant: 'rare',
   };
   return { kind: 'fish', species: common, variant: 'regular' };
 }
 
-export function createFishingModel(capacity: number, resilience = 2, seed = 1, common: 'perch' | 'seaBass' = 'perch'): FishingModel {
-  let state = seed >>> 0;
+export function createFishingModel(capacity: number, resilience = 2, seed = 1, common: 'perch' | 'seaBass' = 'perch', habitat?: FishingHabitat): FishingModel {
+  let state = (seed ^ (habitat ? Math.imul(habitat.revision, 0x9e3779b1) : 0)) >>> 0;
   const random = () => { state = (state * 1664525 + 1013904223) >>> 0; return state / 4294967296; };
   const fish = Array.from({ length: 18 }, (_, id): FishingCatch => {
-    const depth = 3 + id / 18 * 25 + random() * .5;
-    const loot = fishingLootAtDepth(depth, random(), common);
-    return { id, x: (random() - .5) * 8.6, depth, direction: random() > .5 ? 1 : -1,
-      rare: loot.kind === 'fish' && loot.variant === 'rare', loot };
+    const nursery = habitat?.profile === 'nursery';
+    const depth = habitat ? nursery ? 3 + Math.floor(id / 3) * 3.7 + id % 3 * .48 + random() * .2
+      : 5 + id / 18 * 24.2 + random() * .5 : 3 + id / 18 * 25 + random() * .5;
+    const regional = habitat ? random() < habitat.perchWeight ? 'perch' : 'seaBass' : common;
+    const loot = fishingLootAtDepth(depth, random(), regional, habitat);
+    const x = (random() - .5) * 8.6, direction = random() > .5 ? 1 : -1;
+    const fish: FishingCatch = { id, x, depth, direction, rare: loot.kind === 'fish' && loot.variant === 'rare', loot };
+    if (habitat && loot.kind === 'fish') {
+      const side = (nursery ? Math.floor(id / 3) : id) % 2 ? -1 : 1;
+      fish.x = side * (nursery ? 1.5 + id % 3 * .2 : 3.2 + random() * .7);
+      fish.direction = -side;
+      fish.swimSpeed = nursery ? .075 + habitat.current * .08 + id % 3 * .003
+        : .22 + habitat.current * .18 + id % 4 * .022;
+    }
+    return fish;
   });
   return {
     phase: 'ready', x: 0, targetX: 0, depth: 0, deepest: 0, contacts: 0, immunity: 0,
     capacity: Math.min(12, Math.max(1, Math.round(Number.isFinite(capacity) ? capacity : 2))),
-    resilience: Math.min(4, Math.max(1, Math.round(Number.isFinite(resilience) ? resilience : 2))),
-    time: 0, ascentSpeed: fishingDepth / 9, caught: [], flash: 0, fish, nextDartAt: 1.4, steeringLimit: fishingHalfWidth,
+    resilience: Math.min(5, Math.max(1, Math.round(Number.isFinite(resilience) ? resilience : 2))),
+    time: 0, ascentSpeed: fishingDepth / 9, caught: [], flash: 0, fish,
+    nextDartAt: habitat?.profile === 'nursery' ? 2.4 : 1.4, steeringLimit: fishingHalfWidth,
+    ...(habitat ? { habitat: { ...habitat } } : {}),
   };
 }
 
@@ -59,7 +74,7 @@ export function reelFishing(model: FishingModel): void {
 export function fishPosition(fish: FishingCatch, time: number): number {
   if (fish.loot && fish.loot.kind !== 'fish') return fish.x;
   const width = 15;
-  const forward = fish.x + fish.direction * time * (.16 + fish.id % 4 * .02);
+  const forward = fish.x + fish.direction * time * (fish.swimSpeed ?? (.16 + fish.id % 4 * .02));
   return ((forward + width / 2) % width + width) % width - width / 2 + (fish.dart?.offset ?? 0);
 }
 
@@ -136,9 +151,10 @@ function stepDarts(model: FishingModel, dt: number): void {
     && Math.abs(fishPosition(fish, model.time) - model.x) < 2.2
     && Math.sign(model.x - fishPosition(fish, model.time)) === fish.direction);
   if (!candidate) return;
-  candidate.dart = { phase: 'warning', remaining: .8, offset: 0,
-    distance: candidate.direction * Math.min(1.2, Math.abs(model.x - fishPosition(candidate, model.time))) };
-  model.nextDartAt = model.time + 4.5;
+  const shelter = model.habitat?.shelter ?? 0;
+  candidate.dart = { phase: 'warning', remaining: .8 + shelter * .35, offset: 0,
+    distance: candidate.direction * Math.min(1.2, Math.abs(model.x - fishPosition(candidate, model.time))) * (1 - shelter * .2) };
+  model.nextDartAt = model.time + 4.5 + shelter * 1.5;
 }
 
 /** A bounded simulation step prevents background tabs skipping collision/capture windows. */
@@ -186,3 +202,6 @@ export function stepFishing(model: FishingModel, elapsed: number): void {
     if (model.depth <= 0) model.phase = 'done';
   }
 }
+import type { CoveFishingHabitat } from './shoreline.ts';
+
+export type FishingHabitat = CoveFishingHabitat;

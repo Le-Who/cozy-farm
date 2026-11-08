@@ -3,11 +3,11 @@ export type Trait = typeof traitIds[number];
 export type Weather = 'sun' | 'rain' | 'snow' | 'rainbow' | 'stars';
 
 export const weatherNames: Record<Weather, string> = {
-  sun: 'Clear', rain: 'Rain', snow: 'Snow', rainbow: 'Rainbow', stars: 'Starlight',
+  sun: 'Ясно', rain: 'Дождь', snow: 'Снег', rainbow: 'Радуга', stars: 'Звёздное небо',
 };
 
 export const traitNames: Record<Trait, string> = {
-  dew: 'Dewkissed', frost: 'Frosted', rainbow: 'Rainbow', star: 'Star-touched',
+  dew: 'Росистый', frost: 'Морозный', rainbow: 'Радужный', star: 'Звёздный',
 };
 
 const exposures: Record<Exclude<Weather, 'sun'>, { trait: Trait; chance: number }> = {

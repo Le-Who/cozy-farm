@@ -7,7 +7,7 @@ test('typed catches award species and shells once while junk earns no fish or da
   const farm = createFarm();
   const first = beginFishingTrip(farm); assert.ok(first.token);
   const result = finishFishingTrip(farm, first.token, [{ kind: 'fish', species: 'moonfish', variant: 'rare' }, { kind: 'shell', variant: 'moon' }]);
-  assert.ok(result.ok); assert.match(result.message, /moonfish/);
+  assert.ok(result.ok); assert.match(result.message, /лунная рыба/);
   assert.equal(farm.fish.moonfish, 1); assert.equal(farm.fish.perch, 0);
   assert.equal(farm.shells.moon, 1); assert.ok(farm.shellDiscoveries.includes('moon'));
   assert.equal(farm.fishCaughtToday.home, 1); assert.ok(farm.bayDiscoveries.includes('moonfish'));
@@ -17,7 +17,7 @@ test('typed catches award species and shells once while junk earns no fish or da
   assert.deepEqual(farm, awarded);
   const junk = beginFishingTrip(farm); assert.ok(junk.token);
   const cleanup = finishFishingTrip(farm, junk.token, [{ kind: 'junk', item: 'boot' }, { kind: 'junk', item: 'weed' }]);
-  assert.match(cleanup.message, /litter/);
+  assert.match(cleanup.message, /мусора/);
   assert.equal(farm.fishCaughtToday.home, 1); assert.equal(farm.fish.perch, 0);
   assert.ok(restoreFarm(JSON.parse(JSON.stringify(farm))));
 });

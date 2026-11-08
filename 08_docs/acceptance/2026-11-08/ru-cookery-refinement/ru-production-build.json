@@ -1,0 +1,28 @@
+{
+  "builtAt": "2026-11-08",
+  "tests": {
+    "passed": 253,
+    "failed": 0
+  },
+  "sourceAudit": {
+    "files": 65,
+    "untranslated": 0
+  },
+  "assets": [
+    {
+      "path": "game/dist/assets/index-Bmp-vlhA.js",
+      "bytes": 1049101,
+      "sha256": "f40174910840813b2813e1810b460aef4791e852c7d915ed988bb5c524590ff0"
+    },
+    {
+      "path": "game/dist/assets/index-B43Bk1UC.css",
+      "bytes": 69677,
+      "sha256": "d29882d24c7bc4772d8ce9e030795f194eeeb00447002472412077742fb3fb22"
+    },
+    {
+      "path": "game/dist/assets/workshop-cut-worker-CccrLeeP.js",
+      "bytes": 121854,
+      "sha256": "8d4ba22a26b0f1139f2b8d59548d478bf9169f928daaa28854ed22b98299a36b"
+    }
+  ]
+}

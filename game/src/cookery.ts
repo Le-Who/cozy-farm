@@ -1,17 +1,24 @@
 import * as THREE from 'three'
+import { createFruitLanding, createViscousFollower, stepFruitLanding, stepSpring, stepViscousFollower, type FruitLanding, type ViscousFollower } from './food-motion'
 import {
   beginCookeryStroke, cancelCookery, completeCookery, cookeryParticle, cookeryProgress,
   cookeryViewport, createCookeryModel, endCookeryStroke, fillCookeryJar, inCookerySurface,
   moveCookeryStroke, placeCookeryFruit, rotateCookeryFruit, STIR_REQUIRED,
-  type CookeryKind, type CookeryPoint,
+  choosePreserveProcessing, type CookeryKind, type CookeryPoint,
 } from './cookery-model'
+import { createHoneyCookery } from './honey-cookery'
+import type { HoneyFamily } from './honey-cookery-model'
+import type { CookeryResult, SignatureProcessing } from './culinary'
+import { signatureProcessingDefinitions } from './culinary'
 import './cookery.css'
 
 export type CookeryRecipe = {
-  id: string; name: string; kind: CookeryKind; icon?: string;
+  id: string; name: string; kind: CookeryKind | HoneyFamily; icon?: string; signature?: boolean; processing?: SignatureProcessing;
   ingredients?: readonly { name: string; icon?: string; count?: number }[];
+  fruitOptions?: readonly { id: string; name: string; art?: string; color?: string }[];
+  selectedFruit?: readonly { id: string; quantity: number; trait?: string }[];
 }
-export type CookeryOptions = { recipe: CookeryRecipe; onComplete: () => boolean; onCancel: () => void }
+export type CookeryOptions = { recipe: CookeryRecipe; onComplete: (result: CookeryResult) => boolean; onCancel: () => void }
 type Ellipse = { cx: number; cy: number; rx: number; ry: number }
 type Asset = { url: string; width: number; height: number; innerRimEllipse?: Ellipse; mixSurfaceEllipse?: Ellipse; foregroundUrl?: string }
 type Rect = { x: number; y: number; width: number; height: number }
@@ -21,7 +28,20 @@ type Fleck = { x: number; y: number; size: number; rotation: number }
 
 /** Inventory stays in the parent. One scene owns one uncommitted recipe. */
 export function createCookery(host: HTMLElement, options: CookeryOptions): { destroy(): void } {
-  const model = createCookeryModel(options.recipe.kind)
+  if (options.recipe.kind !== 'preserves' && options.recipe.kind !== 'decorate') return createHoneyCookery(host, options)
+  const model = createCookeryModel(options.recipe.kind, options.recipe.processing)
+  const fruitMix = options.recipe.selectedFruit?.length ? options.recipe.selectedFruit.flatMap(value => Array.from({ length: Math.max(1, Math.min(3, value.quantity)) }, () => value.id))
+    : options.recipe.id === 'orchardPreserves' ? ['apple', 'pear'] : ['apple']
+  const fruitId = (id: number) => fruitMix[id % fruitMix.length]
+  const berryMix = fruitMix.filter(id => ['strawberry', 'blueberry', 'raspberry'].includes(id))
+  const tartBase = berryMix.length === fruitMix.length && new Set(berryMix).size === 1 ? `tart-${berryMix[0]}` : 'tart'
+  const fruitTint = new THREE.Color(berryMix.includes('blueberry') ? '#7460a3' : berryMix.includes('raspberry') ? '#c33c66' : '#d94c42')
+  const fruitAsset = (id: number) => {
+    const requested = options.recipe.fruitOptions?.find(value => value.id === fruitId(id))?.art
+    if (model.kind === 'preserves' && requested === 'apple-slice') return 'apple-piece'
+    return requested ?? (fruitId(id) === 'apple' ? model.kind === 'decorate' ? 'apple-slice' : 'apple-piece' : fruitId(id) === 'pear' ? 'pear-piece' : fruitId(id) === 'peach' ? 'peach-slice' : fruitId(id))
+  }
+  const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle))
   const abort = new AbortController(), signal = abort.signal
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL
@@ -31,15 +51,17 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   root.className = 'cookery-game'
   root.dataset.kind = model.kind
   root.setAttribute('aria-label', options.recipe.name)
-  root.innerHTML = `<div class="cookery-view" tabindex="0" role="application" aria-label="Kitchen worktop" aria-describedby="cookery-instructions">
+  root.innerHTML = `<div class="cookery-view" tabindex="0" role="application" aria-label="Кухонный стол" aria-describedby="cookery-instructions">
     <div class="cookery-heading"><span class="cookery-recipe-name"></span><div class="cookery-ingredients"></div></div>
-    <button type="button" class="cookery-close" aria-label="Return to kitchen">×</button>
+    <button type="button" class="cookery-close" aria-label="На кухню">×</button>
     <div class="cookery-source-cue" aria-hidden="true"></div><div class="cookery-tool-cue" aria-hidden="true"></div>
-    <div class="cookery-caption"><p class="cookery-hint"></p><div class="cookery-progress" role="progressbar" aria-label="Preparation" aria-valuemin="0" aria-valuemax="100"><i></i></div></div>
-    <button type="button" class="cookery-finish" hidden><span>Finish</span></button>
-    <div class="cookery-render-status" role="status">Opening the kitchen…</div>
+    <div class="cookery-caption"><p class="cookery-hint"></p><div class="cookery-progress" role="progressbar" aria-label="Приготовление" aria-valuemin="0" aria-valuemax="100"><i></i></div></div>
+    <button type="button" class="cookery-finish" hidden><span>Готово</span></button>
+    <button type="button" class="cookery-rotate" aria-label="Повернуть выбранный фрукт" title="Потяните, чтобы повернуть · колёсико · Q / E" hidden>↻</button>
+    <div class="cookery-processing" role="group" aria-label="Густота конфитюра" hidden><button type="button" data-processing="chunky">С кусочками</button><button type="button" data-processing="bright">Свежее</button><button type="button" data-processing="silky">Нежное</button></div>
+    <div class="cookery-render-status" role="status">Открываем кухню…</div>
     <div class="cookery-keyboard-cursor" hidden aria-hidden="true"></div>
-    </div><p id="cookery-instructions" class="cookery-sr-only">Drag fruit from the dish onto the work surface. Pick up the spoon to stir, or the sugar shaker to dust the pastry. Keyboard: F selects the next fruit, S picks up the spoon or shaker. Arrow keys move it; Space picks up or puts down. Q and E rotate a placed slice. Escape returns to the kitchen. Enter finishes a prepared recipe.</p><p class="cookery-live cookery-sr-only" aria-live="polite" aria-atomic="true"></p>`
+    </div><p id="cookery-instructions" class="cookery-sr-only">Переносите фрукты с тарелки. Ложкой перемешивайте конфитюр, сахарницей посыпайте тарт. Клавиатура: F — следующий фрукт, S — ложка или сахарница, стрелки — перемещение, пробел — взять или положить, Q и E — поворот дольки, Esc — на кухню, Enter — завершить готовое блюдо.</p><p class="cookery-live cookery-sr-only" aria-live="polite" aria-atomic="true"></p>`
   host.append(root)
   const view = root.querySelector<HTMLElement>('.cookery-view')!
   const status = root.querySelector<HTMLElement>('.cookery-render-status')!
@@ -47,6 +69,9 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   const live = root.querySelector<HTMLElement>('.cookery-live')!
   const finish = root.querySelector<HTMLButtonElement>('.cookery-finish')!
   const close = root.querySelector<HTMLButtonElement>('.cookery-close')!
+  const rotateHandle = root.querySelector<HTMLButtonElement>('.cookery-rotate')!
+  const processingControls = root.querySelector<HTMLElement>('.cookery-processing')!
+  let dragAngle = 0
   const progress = root.querySelector<HTMLElement>('.cookery-progress')!
   const progressFill = progress.querySelector<HTMLElement>('i')!
   const sourceCue = root.querySelector<HTMLElement>('.cookery-source-cue')!
@@ -71,6 +96,9 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   let surface: Ellipse = { cx: 0, cy: 0, rx: 1, ry: 1 }
   let jarFill = 0, pour = 0, flowPhase = 0, flowVelocity = 0, flowTarget = 0, fruitTurn = 0, fruitTurnTarget = 0
   let lastStirAt = 0, lastStirPoint: CookeryPoint | null = null
+  const heldFruit = createViscousFollower(), landings = new Map<number, { body: FruitLanding; follow: ViscousFollower }>()
+  const toolReturns=new Map<string,{x:{value:number;velocity:number};y:{value:number;velocity:number};width:{value:number;velocity:number};angle:{value:number;velocity:number};target:{x:number;y:number;width:number;angle:number}}>()
+  let physicallySettled = true
   const brush = new THREE.Vector2(), brushTarget = new THREE.Vector2()
   const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(0, 1, 0, 1, .1, 200)
   camera.position.z = 100
@@ -96,7 +124,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     renderer = makeRenderer()
     view.prepend(renderer.domElement)
   } catch {
-    status.textContent = 'The kitchen view could not open. Return to the kitchen and try again.'
+    status.textContent = 'Не удалось открыть стол. Вернитесь на кухню и попробуйте снова.'
     return { destroy() { destroyed = true; abort.abort(); plane.dispose(); root.remove(); previousFocus?.focus({ preventScroll: true }) } }
   }
 
@@ -181,10 +209,10 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     locate(jar, width * (portrait ? .83 : .86), height * (portrait ? .75 : compact ? .65 : .77), Math.min(width * (portrait ? .28 : .18), height * .29))
     jar.mesh.visible = model.kind === 'preserves'
     const spoon = artwork.get('spoon')!
-    if (drag?.kind !== 'spoon') locate(spoon, width * (portrait ? .70 : .81), height * (portrait ? .84 : compact ? .61 : .58), Math.min(width * (portrait ? .29 : .21), height * .36), -.25)
+    if (drag?.kind !== 'spoon') restTool('spoon',width * (portrait ? .70 : .81), height * (portrait ? .84 : compact ? .61 : .58), Math.min(width * (portrait ? .29 : .21), height * .36), -.25)
     spoon.mesh.visible = model.kind === 'preserves'
     const shaker = artwork.get('shaker')!
-    if (drag?.kind !== 'shaker') locate(shaker, width * (portrait ? .86 : .85), height * (portrait ? .35 : compact ? .60 : .60), Math.min(width * (portrait ? .25 : .15), height * .32))
+    if (drag?.kind !== 'shaker') restTool('shaker',width * (portrait ? .86 : .85), height * (portrait ? .35 : compact ? .60 : .60), Math.min(width * (portrait ? .25 : .15), height * .32),0)
     shaker.mesh.visible = model.kind === 'decorate'
     for (const art of artwork.values()) if (art.shadow) art.shadow.visible = art.mesh.visible
     if (liquid) { liquid.position.set(surface.cx, surface.cy, 4); liquid.scale.set(surface.rx, -surface.ry, 1) }
@@ -194,13 +222,14 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     sourceCue.style.left = `${dish.rect.x + dish.rect.width * .5}px`; sourceCue.style.top = `${dish.rect.y + dish.rect.height * .5}px`
     updateToolCue(); updateCursor()
   }
+  function restTool(key:string,x:number,y:number,size:number,rotation:number){const art=artwork.get(key)!,motion=toolReturns.get(key);if(motion){motion.target={x,y,width:size,angle:motion.angle.value+normalizeAngle(rotation-motion.angle.value)};locate(art,motion.x.value,motion.y.value,motion.width.value,motion.angle.value)}else locate(art,x,y,size,rotation)}
   function sourcePoint(id: number): CookeryPoint {
     const dish = artwork.get('dish')!, r = dish.rect
     const row = Math.floor(id / 3) % 2, column = id % 3
     return { x: r.x + r.width * (.28 + column * .21), y: r.y + r.height * (.46 + row * .13) }
   }
   function positionFruit() {
-    const stirred = Math.min(1, model.stirred / STIR_REQUIRED)
+    const stirred = Math.min(1, model.stirred / model.stirRequired) * (model.processing === 'chunky' ? .45 : model.processing === 'bright' ? .8 : 1)
     fruitArt.forEach((art, id) => {
       const fruit = model.fruit.find(value => value.id === id), held = drag?.kind === 'fruit' && drag.id === id
       if (held) return
@@ -212,6 +241,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
           x = Math.cos(angle) * radius; y = Math.sin(angle) * radius
         }
         locate(art, surface.cx + x * surface.rx, surface.cy + y * surface.ry, surface.rx * (model.kind === 'preserves' ? .47 * (1 - stirred * .38) : .65), fruit.angle + (model.kind === 'preserves' ? fruitTurn * .55 : 0))
+        const impact = landings.get(id); if (impact) { art.mesh.position.x = impact.follow.x; art.mesh.position.y = impact.follow.y - impact.body.height * surface.ry; art.mesh.scale.x *= 1 + Math.max(0,-impact.body.velocity) * .025; art.mesh.scale.y *= 1 - Math.max(0,-impact.body.velocity) * .018; art.mesh.rotation.z += impact.body.velocity * .025 }
         art.mesh.material.opacity = model.kind === 'preserves' ? 1 - stirred * .18 : 1
         if (model.kind === 'preserves') art.mesh.material.color.setRGB(1, 1 - stirred * .035, 1 - stirred * .09)
         art.mesh.position.z = model.kind === 'preserves' ? 5 : 5 + id * .01; art.mesh.renderOrder = art.mesh.position.z
@@ -221,6 +251,14 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         art.mesh.material.opacity = 1; art.mesh.position.z = 9 + id * .01; art.mesh.renderOrder = art.mesh.position.z
       }
     })
+    positionRotateHandle()
+  }
+  function positionRotateHandle() {
+    const fruit = model.fruit.find(value => value.id === selectedFruit), art = fruitArt.get(selectedFruit)
+    rotateHandle.hidden = model.kind !== 'decorate' || !fruit || !art || ['finished', 'committing', 'cancelled'].includes(model.stage)
+    if (rotateHandle.hidden || !art) return
+    rotateHandle.style.left = `${Math.max(4, Math.min(width - 48, art.rect.x + art.rect.width - 6))}px`
+    rotateHandle.style.top = `${Math.max(75, Math.min(height - 100, art.rect.y - 30))}px`
   }
   function normalized(point: CookeryPoint): CookeryPoint { return { x: (point.x - surface.cx) / surface.rx, y: (point.y - surface.cy) / surface.ry } }
   function pixel(point: CookeryPoint): CookeryPoint { return { x: surface.cx + point.x * surface.rx, y: surface.cy + point.y * surface.ry } }
@@ -230,7 +268,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (!drag) return
     if (drag.kind === 'fruit') {
       const art = fruitArt.get(drag.id)!
-      locate(art, point.x, point.y - 9, surface.rx * (model.kind === 'preserves' ? .48 : .65), model.fruit.find(value => value.id === (drag as { id: number }).id)?.angle ?? 0)
+      locate(art, heldFruit.x, heldFruit.y - (reduced.matches?2:9), surface.rx * (model.kind === 'preserves' ? .48 : .65), dragAngle)
       art.mesh.position.z = 18; art.mesh.renderOrder = 18; art.mesh.material.opacity = 1
     } else {
       const art = artwork.get(drag.kind)!
@@ -262,30 +300,69 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     const changed = renderedStage !== model.stage
     renderedStage = model.stage
     const messages: Record<string, string> = {
-      fruit: model.kind === 'preserves' ? 'Drop the fruit into the copper pot' : 'Arrange fruit just as you like',
-      stir: 'Pick up the spoon and stir in circles', fill: 'Scoop from the pot into the jar',
-      sprinkle: 'Sweep the sugar over your pastry', ready: '',
-      committing: 'Serving…', finished: '', cancelled: '',
+      fruit: model.kind === 'preserves' ? 'Добавьте фрукты в кастрюлю' : 'Разложите фрукты по своему вкусу',
+      stir: 'Возьмите ложку и перемешайте', fill: 'Переложите конфитюр ложкой в банку',
+      sprinkle: 'Посыпьте тарт сахаром', ready: '',
+      committing: 'Подаём…', finished: '', cancelled: '',
     }
     hint.textContent = messages[model.stage] ?? ''
-    if (changed) announce(model.stage === 'ready' ? 'Recipe prepared. Finish when you are happy with it.' : hint.textContent)
+    if (changed) announce(model.stage === 'ready' ? 'Всё готово. Можно подавать.' : hint.textContent)
     const value = Math.round(cookeryProgress(model) * 100)
     progress.setAttribute('aria-valuenow', String(value)); progressFill.style.width = `${value}%`
     progress.hidden = model.stage === 'ready' || model.stage === 'finished'
-    finish.hidden = model.stage !== 'ready' && model.stage !== 'finished'; finish.disabled = contextLost || !loaded
-    finish.querySelector('span')!.textContent = model.stage === 'finished' ? 'Return to kitchen' : model.kind === 'preserves' ? 'Jar' : 'Finish'
+    finish.hidden = model.stage !== 'ready' && model.stage !== 'finished'; finish.disabled = contextLost || !loaded || !physicallySettled || !!drag
+    finish.querySelector('span')!.textContent = model.stage === 'finished' ? 'На кухню' : 'Готово'
     sourceCue.hidden = model.stage !== 'fruit' || !!drag
     updateToolCue()
+    processingControls.hidden = !options.recipe.signature || model.kind !== 'preserves' || model.stage !== 'fruit'
+    processingControls.querySelectorAll<HTMLButtonElement>('button').forEach(button => { button.setAttribute('aria-pressed', String(button.dataset.processing === model.processing)); button.title = signatureProcessingDefinitions[button.dataset.processing as SignatureProcessing].use })
+    positionRotateHandle()
   }
   function doFinish() {
-    if (contextLost || destroyed || !loaded) return
+    if (contextLost || destroyed || !loaded || !physicallySettled || drag) return
     if (model.stage === 'finished') { options.onCancel(); return }
     try {
-      if (!completeCookery(model, options.onComplete) && model.stage === 'ready') announce('The ingredients are no longer available. Return to the kitchen to choose a recipe.')
-    } catch { announce('The recipe could not be saved. You can try finishing again.') }
+      const result: CookeryResult = { family: model.kind, processing: model.kind === 'preserves' ? model.processing : options.recipe.processing ?? 'chunky',
+        fruit: model.fruit.map(fruit => ({ ingredientId: fruitId(fruit.id), x: fruit.x, y: fruit.y, angle: normalizeAngle(fruit.angle) })),
+        steps: model.kind === 'preserves' ? ['add-fruit', `stir-${model.processing}`, 'fill-jar'] : ['arrange-fruit', 'dust-sugar'],
+        ...(model.kind === 'preserves' ? { baking: { method: 'stovetop' as const, finish: 'set' as const, seconds: Math.min(1800, elapsed) } } : {}) }
+      if (!completeCookery(model, () => options.onComplete(result)) && model.stage === 'ready') announce('Не хватает ингредиентов. Выберите другой рецепт на кухне.')
+    } catch { announce('Не удалось сохранить блюдо. Попробуйте ещё раз.') }
     sync()
   }
   finish.addEventListener('click', doFinish, { signal })
+  processingControls.addEventListener('click', event => {
+    const value = (event.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.processing
+    if (value === 'bright' || value === 'chunky' || value === 'silky') { choosePreserveProcessing(model, value); sync() }
+  }, { signal })
+  function rotateSelection(angle: number) {
+    if (model.kind !== 'decorate' || selectedFruit < 0) return
+    if (drag?.kind === 'fruit' && drag.id === selectedFruit) { dragAngle = normalizeAngle(angle); moveHeld(cursor) }
+    else if (rotateCookeryFruit(model, selectedFruit, normalizeAngle(angle))) positionFruit()
+  }
+  let handleGrip: { id: number; bearing: number; angle: number; moved: boolean } | null = null
+  rotateHandle.addEventListener('pointerdown', event => {
+    const art = fruitArt.get(selectedFruit), fruit = model.fruit.find(value => value.id === selectedFruit)
+    if (!art || !fruit) return
+    event.preventDefault(); event.stopPropagation(); const bounds = view.getBoundingClientRect()
+    handleGrip = { id: event.pointerId, bearing: Math.atan2(event.clientY - bounds.top - art.mesh.position.y, event.clientX - bounds.left - art.mesh.position.x), angle: fruit.angle, moved: false }
+    rotateHandle.setPointerCapture(event.pointerId)
+  }, { signal })
+  rotateHandle.addEventListener('pointermove', event => {
+    if (!handleGrip || handleGrip.id !== event.pointerId) return
+    const art = fruitArt.get(selectedFruit)!, bounds = view.getBoundingClientRect()
+    const bearing = Math.atan2(event.clientY - bounds.top - art.mesh.position.y, event.clientX - bounds.left - art.mesh.position.x)
+    const change = normalizeAngle(bearing - handleGrip.bearing); if (Math.abs(change) > .03) handleGrip.moved = true
+    rotateSelection(handleGrip.angle + change)
+  }, { signal })
+  const releaseHandle = () => { if (handleGrip && !handleGrip.moved) { const fruit = model.fruit.find(value => value.id === selectedFruit); if (fruit) rotateSelection(fruit.angle + Math.PI / 12) }; handleGrip = null }
+  rotateHandle.addEventListener('pointerup', releaseHandle, { signal }); rotateHandle.addEventListener('pointercancel', () => { handleGrip = null }, { signal })
+  rotateHandle.addEventListener('click', event => { if (event.detail === 0) { const fruit = model.fruit.find(value => value.id === selectedFruit); if (fruit) rotateSelection(fruit.angle + Math.PI / 12) } }, { signal })
+  view.addEventListener('wheel', event => {
+    const fruit = model.fruit.find(value => value.id === selectedFruit)
+    if (model.kind !== 'decorate' || !fruit || ['finished', 'cancelled'].includes(model.stage)) return
+    event.preventDefault(); rotateSelection(fruit.angle + Math.sign(event.deltaY) * .13)
+  }, { signal, passive: false })
 
   function start(point: CookeryPoint) {
     if (!loaded || contextLost || destroyed || ['committing', 'finished', 'cancelled'].includes(model.stage)) return
@@ -297,13 +374,13 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         if (!art.mesh.visible || !contains(art, point, 6)) continue
         const placed = model.fruit.some(fruit => fruit.id === id)
         if (placed && Math.hypot((point.x - (art.rect.x + art.rect.width / 2)) / (art.rect.width / 2), (point.y - (art.rect.y + art.rect.height / 2)) / (art.rect.height / 2)) > 1.1) continue
-        drag = { kind: 'fruit', id, source: !placed }; selectedFruit = id; moveHeld(point); sync(); return
+        drag = { kind: 'fruit', id, source: !placed }; landings.delete(id); heldFruit.x = point.x; heldFruit.y = point.y; heldFruit.vx = heldFruit.vy = 0; selectedFruit = id; dragAngle = model.fruit.find(value => value.id === id)?.angle ?? 0; moveHeld(point); sync(); return
       }
     }
     if (model.kind === 'preserves' && ['stir', 'fill'].includes(model.stage) && (contains(artwork.get('spoon')!, point, 8) || inCookerySurface(normalized(point)))) {
       drag = { kind: 'spoon', loaded: model.stage === 'fill' && inCookerySurface(normalized(point)) }
     } else if (model.kind === 'decorate' && ['sprinkle', 'ready'].includes(model.stage) && contains(artwork.get('shaker')!, point, 8)) drag = { kind: 'shaker' }
-    if (drag) { beginCookeryStroke(model, normalized(point)); moveHeld(point); sync() }
+    if (drag) { toolReturns.delete(drag.kind); beginCookeryStroke(model, normalized(point)); moveHeld(point); sync() }
   }
   function emitDust(from: CookeryPoint, to: CookeryPoint) {
     const distance = Math.hypot(to.x - from.x, to.y - from.y), count = Math.max(1, Math.ceil(distance * 80))
@@ -335,7 +412,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         if (inCookerySurface(normalizedPoint, .85)) { drag.loaded = true; pour = 0 }
         if (drag.loaded && contains(artwork.get('jar')!, point, 0)) {
           fillCookeryJar(model); drag.loaded = false; pour = 1
-          announce(model.scoops >= 3 ? 'The jar is full. Your preserves are ready.' : 'A spoonful in the jar')
+          announce(model.scoops >= 3 ? 'Банка полна. Конфитюр готов.' : 'Ложка конфитюра в банке')
         }
       }
     } else if (drag.kind === 'shaker' && ['sprinkle', 'ready'].includes(model.stage)) {
@@ -350,30 +427,50 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   }
   function release() {
     if (!drag) return
+    if(drag.kind!=='fruit'){const art=artwork.get(drag.kind)!;toolReturns.set(drag.kind,{x:{value:art.mesh.position.x,velocity:0},y:{value:art.mesh.position.y,velocity:0},width:{value:art.rect.width,velocity:0},angle:{value:art.mesh.rotation.z,velocity:0},target:{x:art.mesh.position.x,y:art.mesh.position.y,width:art.rect.width,angle:art.mesh.rotation.z}})}
     if (drag.kind === 'fruit') {
-      if (placeCookeryFruit(model, drag.id, normalized(cursor))) announce(model.kind === 'preserves' ? 'Fruit added to the pot' : 'Fruit arranged on the pastry')
+      if (placeCookeryFruit(model, drag.id, normalized(cursor))) { landings.set(drag.id, { body: createFruitLanding((reduced.matches?2:9)/surface.ry,0), follow: {...heldFruit} }); rotateCookeryFruit(model, drag.id, dragAngle); announce(model.kind === 'preserves' ? 'Фрукт в кастрюле' : 'Фрукт на тарте') }
     }
     drag = null; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync()
   }
   function eventPoint(event: PointerEvent): CookeryPoint { const bounds = view.getBoundingClientRect(); return { x: event.clientX - bounds.left, y: event.clientY - bounds.top } }
+  const touches = new Map<number, CookeryPoint>()
+  let twist: { bearing: number; angle: number } | null = null, twistedGesture = false
+  function updateTwist() {
+    if (touches.size < 2 || drag?.kind !== 'fruit') return
+    const [a, b] = [...touches.values()], bearing = Math.atan2(b.y - a.y, b.x - a.x)
+    if (!twist) twist = { bearing, angle: dragAngle }
+    twistedGesture = true
+    rotateSelection(twist.angle + normalizeAngle(bearing - twist.bearing)); moveHeld({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
+  }
   view.addEventListener('pointerdown', event => {
-    if ((event.target as HTMLElement).closest('button') || pointerId !== null || event.button !== 0) return
+    if ((event.target as HTMLElement).closest('button') || event.button !== 0) return
+    if (event.pointerType === 'touch' && model.kind === 'decorate') {
+      if (!touches.size) twistedGesture = false
+      touches.set(event.pointerId, eventPoint(event)); view.setPointerCapture(event.pointerId)
+      if (touches.size > 1) { updateTwist(); return }
+    }
+    if (pointerId !== null) return
     keyboard = false; pointerId = event.pointerId; view.setPointerCapture(event.pointerId); view.focus({ preventScroll: true }); start(eventPoint(event)); updateCursor()
   }, { signal })
   view.addEventListener('pointermove', event => {
+    if (touches.has(event.pointerId)) { touches.set(event.pointerId, eventPoint(event)); if (touches.size > 1) { updateTwist(); return } }
     if (pointerId !== event.pointerId) return
     const samples = event.getCoalescedEvents?.()
     for (const sample of samples?.length ? samples : [event]) move(eventPoint(sample))
   }, { signal })
-  view.addEventListener('pointerup', event => { if (event.pointerId === pointerId) { move(eventPoint(event)); release(); pointerId = null; if (view.hasPointerCapture(event.pointerId)) view.releasePointerCapture(event.pointerId) } }, { signal })
-  const abandon = () => { drag = null; pointerId = null; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync() }
-  view.addEventListener('pointercancel', abandon, { signal }); view.addEventListener('lostpointercapture', () => { if (pointerId !== null) abandon() }, { signal })
+  view.addEventListener('pointerup', event => {
+    if (touches.has(event.pointerId)) { touches.delete(event.pointerId); twist = null; if (touches.size) { pointerId = touches.keys().next().value!; return } }
+    if (event.pointerId === pointerId) { if (!twistedGesture) move(eventPoint(event)); release(); pointerId = null; twistedGesture = false; if (view.hasPointerCapture(event.pointerId)) view.releasePointerCapture(event.pointerId) }
+  }, { signal })
+  const abandon = () => { drag = null; pointerId = null; touches.clear(); twist = null; twistedGesture = false; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync() }
+  view.addEventListener('pointercancel', abandon, { signal }); view.addEventListener('lostpointercapture', event => { if (pointerId === event.pointerId && touches.size <= 1) abandon() }, { signal })
   window.addEventListener('blur', abandon, { signal })
   view.addEventListener('keydown', event => {
     if ((event.target as HTMLElement).closest('button')) return
     if (event.key === 'Escape') { event.preventDefault(); cancel(); return }
     if (!loaded || contextLost) return
-    const key = event.key.toLowerCase()
+    const key = /^Key[FSQE]$/.test(event.code) ? event.code.slice(3).toLowerCase() : event.key.toLowerCase()
     if (key === 'enter') { event.preventDefault(); doFinish(); return }
     if (!['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'f', 's', 'q', 'e'].includes(key)) return
     event.preventDefault(); keyboard = true
@@ -409,21 +506,23 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (!response.ok) throw new Error('Kitchen art unavailable')
     const manifest = await response.json() as { items: Record<string, Asset> }
     const preserveNames = ['syrup-surface', 'jam-surface', 'jar-full']
-    const names = ['room', 'room-portrait', 'pot', 'tart', 'jar', 'spoon', 'shaker', 'dish', 'apple-slice', 'apple-piece', 'pear-piece', ...(model.kind === 'preserves' ? preserveNames : [])]
+    const fruitNames = [...new Set(Array.from({ length: model.kind === 'decorate' ? 12 : model.fruitRequired }, (_, id) => fruitAsset(id)))]
+    const names = ['room', 'room-portrait', 'pot', 'tart', 'jar', 'spoon', 'shaker', 'dish', ...fruitNames, ...(model.kind === 'preserves' ? preserveNames : [])]
     const assets = await Promise.all(names.map(async name => {
-      const asset = manifest.items[name]
+      const asset = name === 'jar-full' && berryMix.length && manifest.items['berry-jar-full'] ? manifest.items['berry-jar-full']
+        : name === 'tart' && manifest.items[tartBase] ? manifest.items[tartBase] : manifest.items[name]
       if (!asset) throw new Error(`Missing kitchen art: ${name}`)
       return { name, asset, texture: await loadTexture(resolveUrl(asset.url)) }
     }))
     if (destroyed) return
     for (const { name, asset, texture } of assets) {
-      if (name === 'apple-slice' || name === 'apple-piece' || name === 'pear-piece' || preserveNames.includes(name)) continue
+      if (fruitNames.includes(name) || preserveNames.includes(name)) continue
       const z = name.startsWith('room') ? -10 : name === 'pot' || name === 'tart' ? 3 : name === 'dish' ? 8 : name === 'jar' ? 8 : 15
       addArt(name, asset, texture, z)
     }
     artwork.get(model.kind === 'preserves' ? 'tart' : 'pot')!.mesh.visible = false
     for (let id = 0; id < (model.kind === 'decorate' ? 12 : model.fruitRequired); id++) {
-      const name = model.kind === 'decorate' ? 'apple-slice' : options.recipe.id === 'orchardPreserves' && id % 2 ? 'pear-piece' : 'apple-piece'
+      const name = fruitAsset(id)
       const value = assets.find(asset => asset.name === name)!
       fruitArt.set(id, addArt(`fruit-${id}`, value.asset, value.texture, 9))
     }
@@ -436,10 +535,10 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (model.kind === 'preserves') {
       const syrupMap = assets.find(value => value.name === 'syrup-surface')!.texture, jamMap = assets.find(value => value.name === 'jam-surface')!.texture
       const vertexShader = `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`
-      const skin = `uniform sampler2D syrupMap;uniform sampler2D jamMap;uniform float cooked;varying vec2 vUv;
-        vec4 preserves(vec2 uv){return mix(texture2D(syrupMap,clamp(uv,.025,.975)),texture2D(jamMap,clamp(uv,.025,.975)),smoothstep(.08,.92,cooked));}`
+      const skin = `uniform sampler2D syrupMap;uniform sampler2D jamMap;uniform float cooked;uniform vec3 fruitTint;uniform float tintStrength;varying vec2 vUv;
+        vec4 preserves(vec2 uv){vec4 art=mix(texture2D(syrupMap,clamp(uv,.025,.975)),texture2D(jamMap,clamp(uv,.025,.975)),smoothstep(.08,.92,cooked));float light=dot(art.rgb,vec3(.2126,.7152,.0722));vec3 fruit=fruitTint*(.5+light*1.7);fruit=mix(fruit,art.rgb,smoothstep(.55,.9,light));art.rgb=mix(art.rgb,fruit,tintStrength);return art;}`
       const liquidMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 0 }, brush: { value: brush }, flow: { value: 0 }, phase: { value: 0 }, contact: { value: 0 } },
+        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 0 }, fruitTint: { value: fruitTint }, tintStrength: { value: berryMix.length ? .88 : 0 }, brush: { value: brush }, flow: { value: 0 }, phase: { value: 0 }, contact: { value: 0 } },
         vertexShader,
         fragmentShader: `${skin}uniform vec2 brush;uniform float flow;uniform float phase;uniform float contact;
           void main(){vec2 p=vUv*2.-1.;float r=length(p);if(r>.995)discard;
@@ -452,13 +551,13 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         }` })
       materials.add(liquidMaterial); liquid = new THREE.Mesh(liquidGeometry, liquidMaterial); liquid.renderOrder = 4; scene.add(liquid)
       const spoonfulMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 1 } }, vertexShader,
+        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 1 }, fruitTint: { value: fruitTint }, tintStrength: { value: berryMix.length ? .88 : 0 } }, vertexShader,
         fragmentShader: `${skin}void main(){vec2 p=vUv*2.-1.;float r=length(p);if(r>.99)discard;vec4 glaze=preserves(.5+(vUv-.5)*.45);gl_FragColor=vec4(glaze.rgb*(1.-pow(r,3.)*.16),1.-smoothstep(.88,.99,r));
         #include <colorspace_fragment>
         }` })
       materials.add(spoonfulMaterial); spoonful = new THREE.Mesh(liquidGeometry, spoonfulMaterial); spoonful.renderOrder = 21; spoonful.visible = false; scene.add(spoonful)
       const streamMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 1 }, amount: { value: 0 }, phase: { value: 0 } }, vertexShader,
+        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 1 }, fruitTint: { value: fruitTint }, tintStrength: { value: berryMix.length ? .88 : 0 }, amount: { value: 0 }, phase: { value: 0 } }, vertexShader,
         fragmentShader: `${skin}uniform float amount;uniform float phase;void main(){float x=abs(vUv.x-.5)*2.;float width=.34+sin(vUv.y*11.+phase*2.)*.055+pow(1.-vUv.y,3.)*.15;
         float edge=1.-smoothstep(width-.12,width,x);vec4 glaze=preserves(vec2(.46+vUv.x*.09,.48+sin(vUv.y*2.-phase*.75)*.11));
         gl_FragColor=vec4(glaze.rgb,edge*smoothstep(0.,.12,vUv.y)*min(1.,amount*3.));
@@ -466,8 +565,8 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         }` })
       materials.add(streamMaterial); pourStream = new THREE.Mesh(plane, streamMaterial); pourStream.renderOrder = 21; pourStream.visible = false; scene.add(pourStream)
       const jarMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-        uniforms: { filledJar: { value: assets.find(value => value.name === 'jar-full')!.texture }, fill: { value: 0 } }, vertexShader,
-        fragmentShader: `uniform sampler2D filledJar;uniform float fill;varying vec2 vUv;void main(){if(fill<.005)discard;vec4 jar=texture2D(filledJar,vUv);float level=mix(.14,.78,fill);float reveal=1.-smoothstep(level-.008,level+.008,vUv.y);gl_FragColor=vec4(jar.rgb,jar.a*reveal);
+        uniforms: { filledJar: { value: assets.find(value => value.name === 'jar-full')!.texture }, fill: { value: 0 }, fruitTint: { value: fruitTint }, tintStrength: { value: berryMix.length ? .72 : 0 } }, vertexShader,
+        fragmentShader: `uniform sampler2D filledJar;uniform float fill;uniform vec3 fruitTint;uniform float tintStrength;varying vec2 vUv;void main(){if(fill<.005)discard;vec4 jar=texture2D(filledJar,vUv);float light=dot(jar.rgb,vec3(.2126,.7152,.0722));vec3 fruit=fruitTint*(.5+light*1.7);jar.rgb=mix(jar.rgb,mix(fruit,jar.rgb,smoothstep(.55,.9,light)),tintStrength);float level=mix(.14,.78,fill);float reveal=1.-smoothstep(level-.008,level+.008,vUv.y);gl_FragColor=vec4(jar.rgb,jar.a*reveal);
         #include <colorspace_fragment>
         }` })
       materials.add(jarMaterial); jarLiquid = new THREE.Mesh(plane, jarMaterial); jarLiquid.renderOrder = 8.5; scene.add(jarLiquid)
@@ -485,20 +584,27 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   const eventCanvas = renderer.domElement
   eventCanvas.addEventListener('webglcontextlost', event => {
     event.preventDefault(); contextLost = true; abandon(); cancelAnimationFrame(frame)
-    status.hidden = false; status.textContent = 'The kitchen view is paused. Restoring your work…'; finish.disabled = true
+    status.hidden = false; status.textContent = 'Восстанавливаем кухонный стол…'; finish.disabled = true
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose()); renderer.dispose()
   }, { signal })
   eventCanvas.addEventListener('webglcontextrestored', () => {
     if (destroyed) return
-    try { renderer = makeRenderer(eventCanvas) } catch { status.textContent = 'The kitchen view could not restore. Return to the kitchen and try again.'; return }
+    try { renderer = makeRenderer(eventCanvas) } catch { status.textContent = 'Не удалось восстановить стол. Вернитесь на кухню и попробуйте снова.'; return }
     textures.forEach(value => { value.needsUpdate = true })
-    contextLost = false; status.hidden = loaded; if (!loaded) status.textContent = 'Opening the kitchen…'
+    contextLost = false; status.hidden = loaded; if (!loaded) status.textContent = 'Открываем кухню…'
     lastTime = performance.now(); updateSugar(); resize(); sync(); frame = requestAnimationFrame(animate)
   }, { signal })
   function animate(now: number) {
     if (destroyed || contextLost) return
     if (renderer.getPixelRatio() !== Math.min(window.devicePixelRatio || 1, 2)) resize()
     const dt = Math.min(.04, Math.max(0, (now - lastTime) / 1000)); lastTime = now; elapsed += dt
+    physicallySettled = !drag&&toolReturns.size===0
+    for(const[key,motion]of toolReturns){for(const axis of ['x','y','width','angle'] as const)stepSpring(motion[axis],motion.target[axis],dt,{frequency:5,damping:.85});if(Math.hypot(motion.x.velocity,motion.y.velocity,motion.width.velocity)<.25&&Math.abs(motion.angle.velocity)<.01&&Math.hypot(motion.x.value-motion.target.x,motion.y.value-motion.target.y)<.25)toolReturns.delete(key)}
+    if(loaded&&toolReturns.size)layoutArt()
+    if (drag?.kind === 'fruit') { stepViscousFollower(heldFruit,cursor.x,cursor.y,dt,26);moveHeld(cursor) }
+    for (const [id, impact] of landings) { const fruit=model.fruit.find(value=>value.id===id); if (!fruit) continue;let point={x:fruit.x,y:fruit.y};if(model.kind==='preserves'){const cooked=Math.min(1,model.stirred/model.stirRequired)*(model.processing==='chunky'?.45:model.processing==='bright'?.8:1),turn=Math.atan2(fruit.y,fruit.x)+fruitTurn,radius=Math.hypot(fruit.x,fruit.y)*(1-cooked*.12);point={x:Math.cos(turn)*radius,y:Math.sin(turn)*radius}}const target=pixel(point);stepViscousFollower(impact.follow,target.x,target.y,dt,24);stepFruitLanding(impact.body,dt);const settled=impact.body.settled&&Math.hypot(impact.follow.vx,impact.follow.vy)<.2;physicallySettled=physicallySettled&&settled;if(settled&&Math.hypot(impact.follow.x-target.x,impact.follow.y-target.y)<.02)landings.delete(id) }
+    if (loaded) positionFruit()
+    if (finish.disabled !== (contextLost || !loaded || !physicallySettled || !!drag)) sync()
     const stirring = drag?.kind === 'spoon' && model.stage === 'stir' && now - lastStirAt < 140
     const flowGoal = stirring ? flowTarget : 0
     flowVelocity += (flowGoal - flowVelocity) * (1 - Math.exp(-dt * (stirring ? 5 : 2.7)))
@@ -506,7 +612,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     fruitTurn += (fruitTurnTarget - fruitTurn) * (reduced.matches ? 1 : 1 - Math.exp(-dt * 5))
     brush.lerp(brushTarget, 1 - Math.exp(-dt * 8))
     if (liquid) {
-      liquid.material.uniforms.cooked.value = model.stirred / STIR_REQUIRED
+      liquid.material.uniforms.cooked.value = Math.min(1, model.stirred / model.stirRequired) * (model.processing === 'chunky' ? .45 : model.processing === 'bright' ? .8 : 1)
       liquid.material.uniforms.flow.value = reduced.matches ? 0 : -flowVelocity
       liquid.material.uniforms.phase.value = reduced.matches ? 0 : -flowPhase
       liquid.material.uniforms.contact.value = stirring ? 1 : 0
@@ -529,7 +635,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   resize(); sync()
   void loadArt().catch(error => {
     if (destroyed || error instanceof DOMException && error.name === 'AbortError') return
-    status.hidden = false; status.textContent = 'The kitchen artwork could not open. Return to the kitchen and try again.'
+    status.hidden = false; status.textContent = 'Не удалось загрузить кухню. Вернитесь и попробуйте снова.'
   })
   frame = requestAnimationFrame(animate)
   return { destroy() {

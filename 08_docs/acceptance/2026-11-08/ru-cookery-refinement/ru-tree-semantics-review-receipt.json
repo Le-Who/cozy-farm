@@ -1,0 +1,98 @@
+{
+  "tree_panels": {
+    "checks": [
+      {
+        "label": "market-trees",
+        "width": 390,
+        "height": 844,
+        "heading": "Рынок",
+        "labels": [
+          "Саженец яблони",
+          "Саженец груши",
+          "Саженец персика"
+        ],
+        "horizontal": false,
+        "clipped": [],
+        "language": []
+      },
+      {
+        "label": "empty-tree-slot",
+        "width": 390,
+        "height": 844,
+        "heading": "Посадить дерево",
+        "labels": [
+          "Яблоня",
+          "Посадить",
+          "Грушевое дерево",
+          "Посадить",
+          "Персиковое дерево",
+          "Купить и посадить 13"
+        ],
+        "horizontal": false,
+        "clipped": [],
+        "language": []
+      },
+      {
+        "label": "market-trees",
+        "width": 568,
+        "height": 320,
+        "heading": "Рынок",
+        "labels": [
+          "Саженец яблони",
+          "Саженец груши",
+          "Саженец персика"
+        ],
+        "horizontal": false,
+        "clipped": [],
+        "language": []
+      },
+      {
+        "label": "empty-tree-slot",
+        "width": 568,
+        "height": 320,
+        "heading": "Посадить дерево",
+        "labels": [
+          "Яблоня",
+          "Посадить",
+          "Грушевое дерево",
+          "Посадить",
+          "Персиковое дерево",
+          "Купить и посадить 13"
+        ],
+        "horizontal": false,
+        "clipped": [],
+        "language": []
+      },
+      {
+        "label": "planted-tree",
+        "width": 568,
+        "height": 320,
+        "heading": "Грушевое дерево",
+        "labels": [],
+        "horizontal": false,
+        "clipped": [],
+        "language": []
+      }
+    ],
+    "toasts": {
+      "purchase": "Куплен саженец груши.",
+      "planting": "Посажен саженец груши."
+    },
+    "transactions": {
+      "purchaseCoins": 11,
+      "plantingCoins": 0
+    },
+    "sourceEdits": false
+  },
+  "world_tooltip": {
+    "label": "Остров. Яблоня · Собрать плоды. Выберите другое место стрелками и нажмите Enter для действия.",
+    "duplicateCopy": false
+  },
+  "sourceAudit": {
+    "files": 65,
+    "untranslatedStrings": 0
+  },
+  "productionValidation": "Still prepared, not executed; waiting for root final-build confirmation.",
+  "sourceEdits": false,
+  "buildPerformed": false
+}

@@ -1,0 +1,79 @@
+{
+  "baselineCommit": "3cbefcea7b66c57e36568aee6a2d8553c06a8f15",
+  "scope": "Local working changes, not a published Git revision",
+  "release": {
+    "url": "http://127.0.0.1:5264/",
+    "javascript": "index-DX-47Kkv.js",
+    "css": "index-BTW5JQR_.css",
+    "worker": "workshop-cut-worker-CccrLeeP.js",
+    "tests": {"total": 234, "passed": 234, "failed": 0},
+    "typecheck": "PASS",
+    "build": "PASS",
+    "cookeryManifestActualFileSizes": {"checked": 38, "mismatches": 0},
+    "buildWarning": "Vite main chunk exceeds 500 kB: 1010.48 kB, 292.09 kB gzip"
+  },
+  "mainApplicationReceipts": [
+    {
+      "bundle": "index-zvbs654r.js",
+      "case": "Honey biscuits: actual grip, sustained pressure and long pull, bake, actual UV glaze, Finish",
+      "inventoryDelta": {"honeyBiscuits": 1, "honey": -1, "wheat": -2, "eggs": -1},
+      "duplicateCommit": false,
+      "errors": [],
+      "recording": "production-biscuit-physical-motion.webm"
+    },
+    {
+      "bundle": "index-zvbs654r.js",
+      "case": "Pear: two direct body cuts, closed halves, physical serving, real spout stream, actual flesh coating, Finish",
+      "inventoryDelta": {"honeyPear": 1, "honey": -1, "pear": -2, "seaSalt": -1},
+      "errors": [],
+      "longTasksDuringInteraction": [],
+      "recording": "production-pear-physical-flow.webm"
+    },
+    {
+      "bundle": "index-zvbs654r.js",
+      "case": "Three Cape recipes entered through ordinary Explore/Kitchen menus at 390x844 and 568x320",
+      "cases": 6,
+      "horizontalOverflow": 0,
+      "closeControlClipped": false,
+      "errors": []
+    },
+    {
+      "bundle": "index-zvbs654r.js",
+      "case": "Recipe repeat from Grove, native Return Home, preserved ingredients, name and Silky processing, cancel",
+      "recipe": "Silken Bay",
+      "ingredients": ["Blueberry", "Pear"],
+      "processingPreserved": true,
+      "errors": []
+    },
+    {
+      "bundle": "index-zvbs654r.js",
+      "case": "Saved tart uses actual cooked fruit assets; categorized market and purchase toast",
+      "thumbnailsLoaded": true,
+      "seedCards": 10,
+      "dialogYShift": 0,
+      "dialogHeightShift": 0,
+      "buttonYShift": 0,
+      "horizontalOverflow": 0,
+      "errors": []
+    },
+    {
+      "bundle": "index-DX-47Kkv.js",
+      "case": "Final ordinary Home apple jam: fruit, real circular stirring, three jar transfers, Finish and repeated Enter",
+      "inventoryDelta": {"appleJam": 1, "apple": -2},
+      "duplicateCommit": false,
+      "errors": []
+    }
+  ],
+  "additionalMainChecks": {
+    "finishedPear390x844And568x320": "Action bounds and rendered text fit",
+    "cancelAfterRealPartialPearCut": "Saved farm byte-identical",
+    "advancedFixtures": "Validated saves with explicit stocks and unlocked content; not fresh progression claims",
+    "freshProgression": "Only berries-fresh-native-qa.json is the separate completely fresh berry progression"
+  },
+  "sourceEvidence": {
+    "rendererLedger": "cooking-physical-final-ledger.json",
+    "rendererHashesVerifiedAgainstReleaseSources": true,
+    "movieAudit": "production-physical-movie-audit.json"
+  },
+  "limitations": ["Touch is native Chromium CDP input, not a physical handset", "Canvas recordings show the rendered scene and exclude DOM HUD"]
+}

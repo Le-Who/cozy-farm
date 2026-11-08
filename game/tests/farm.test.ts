@@ -353,10 +353,10 @@ test('older farm saves gain the expansion without losing farming progress', () =
 test('market deliveries keep unfinished orders across nights and pay exactly once', () => {
   const farm = createFarm();
   const order = () => getMarketOrders(farm).find(({ lane }) => lane === 'garden')!;
-  assert.equal(order().name, 'Garden basket');
+  assert.equal(order().name, 'Огородная корзина');
   assert.equal(deliverMarketOrder(farm, 'garden').ok, false);
   endDay(farm);
-  assert.equal(order().name, 'Garden basket');
+  assert.equal(order().name, 'Огородная корзина');
 
   workBed(farm, 2);
   workBed(farm, 3);
@@ -377,7 +377,7 @@ test('market deliveries keep unfinished orders across nights and pay exactly onc
   assert.equal(deliverMarketOrder(saved, 'garden').ok, false);
   assert.deepEqual(saved, beforeRepeat);
   endDay(saved);
-  assert.equal(getMarketOrders(saved).find(({ lane }) => lane === 'garden')?.name, 'Root box');
+  assert.equal(getMarketOrders(saved).find(({ lane }) => lane === 'garden')?.name, 'Ящик корнеплодов');
 });
 
 test('Grove orders use island goods and unlock the final meal after the kitchen upgrade', () => {
@@ -438,7 +438,7 @@ test('the orchard kitchen unlocks jam and its own market orders', () => {
   assert.equal(kitchen(), undefined);
   assert.equal(cookDish(farm, 'appleJam').ok, false);
   assert.equal(upgradeBuilding(farm, 'farmhouse').ok, true);
-  assert.equal(kitchen()?.name, 'Jam & grain');
+  assert.equal(kitchen()?.name, 'Варенье и зерно');
   assert.equal(cookDish(farm, 'appleJam').ok, true);
   assert.equal(farm.fruit.apple, 0);
   assert.equal(kitchen()?.status, 'ready');
@@ -506,5 +506,5 @@ test('earlier market saves retain their delivered orders and building upgrades',
   assert.equal(restored.dishes.appleJam, 0);
   assert.equal(restored.dishes.orchardTart, 1);
   assert.equal(getMarketOrders(restored).find(({ lane }) => lane === 'garden')?.status, 'delivered');
-  assert.equal(getMarketOrders(restored).find(({ lane }) => lane === 'coop')?.name, 'Morning hamper');
+  assert.equal(getMarketOrders(restored).find(({ lane }) => lane === 'coop')?.name, 'Утренняя корзина');
 });

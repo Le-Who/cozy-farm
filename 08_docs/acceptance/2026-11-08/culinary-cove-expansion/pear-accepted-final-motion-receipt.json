@@ -1,0 +1,69 @@
+{
+  "file": "pear-accepted-final-physical-flow.webm",
+  "duration": 36.604,
+  "transport": "fully buffered Blob; actual presentation timestamps recorded after seek/resume",
+  "maxPresentationAdvance": 0.3643636363636382,
+  "uniqueFrames": 12,
+  "samples": [
+    {
+      "requested": 0.12,
+      "decoded": 0.137,
+      "hash": "1f681544"
+    },
+    {
+      "requested": 3.4094545454545453,
+      "decoded": 3.436,
+      "hash": "e18cb88d"
+    },
+    {
+      "requested": 6.6989090909090905,
+      "decoded": 7.053,
+      "hash": "6d9328f5"
+    },
+    {
+      "requested": 9.988363636363635,
+      "decoded": 9.997,
+      "hash": "60f5b31e"
+    },
+    {
+      "requested": 13.27781818181818,
+      "decoded": 13.303,
+      "hash": "218cc825"
+    },
+    {
+      "requested": 16.567272727272726,
+      "decoded": 16.572,
+      "hash": "82ded407"
+    },
+    {
+      "requested": 19.856727272727273,
+      "decoded": 19.926,
+      "hash": "12bad31f"
+    },
+    {
+      "requested": 23.146181818181816,
+      "decoded": 23.169,
+      "hash": "8f3b957"
+    },
+    {
+      "requested": 26.435636363636362,
+      "decoded": 26.8,
+      "hash": "640c0878"
+    },
+    {
+      "requested": 29.725090909090905,
+      "decoded": 29.738,
+      "hash": "ba9adc73"
+    },
+    {
+      "requested": 33.01454545454545,
+      "decoded": 33.035,
+      "hash": "ac31a76e"
+    },
+    {
+      "requested": 36.303999999999995,
+      "decoded": 36.306,
+      "hash": "def8d351"
+    }
+  ]
+}

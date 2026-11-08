@@ -1,0 +1,168 @@
+{
+  "file": "ru-production-pear-flow.webm",
+  "fileSha256": "0c8a9e69c655213bc4d1cc8fb53efdc921e38dce9a3c980ab281713e5c7ccad5",
+  "duration": 24.055,
+  "width": 1180,
+  "height": 820,
+  "uniformSamples": [
+    {
+      "requested": 0.1,
+      "decoded": 0.069
+    },
+    {
+      "requested": 2.255,
+      "decoded": 2.235
+    },
+    {
+      "requested": 4.409999999999999,
+      "decoded": 4.376
+    },
+    {
+      "requested": 6.5649999999999995,
+      "decoded": 6.546
+    },
+    {
+      "requested": 8.719999999999999,
+      "decoded": 8.687
+    },
+    {
+      "requested": 10.874999999999998,
+      "decoded": 10.867
+    },
+    {
+      "requested": 13.03,
+      "decoded": 13.018
+    },
+    {
+      "requested": 15.185,
+      "decoded": 15.18
+    },
+    {
+      "requested": 17.34,
+      "decoded": 17.336
+    },
+    {
+      "requested": 19.494999999999997,
+      "decoded": 19.45
+    },
+    {
+      "requested": 21.65,
+      "decoded": 21.628
+    },
+    {
+      "requested": 23.805,
+      "decoded": 23.775
+    }
+  ],
+  "denseSamples": [
+    {
+      "requested": 3.0671999999955295,
+      "decoded": 3.08,
+      "sha256": "eebf338ab8f80300a11a8fa0b39aadd05e40604102980dd194d0591c63f65188",
+      "changedStrandPixels": 0,
+      "meanStrandDelta": 0
+    },
+    {
+      "requested": 3.1005333333288627,
+      "decoded": 3.111,
+      "sha256": "753612b08f7cab526bb33f1038ddb790554244a3a6caa396fa6b6ba9943800fa",
+      "changedStrandPixels": 297,
+      "meanStrandDelta": 5.71207264957265
+    },
+    {
+      "requested": 3.1338666666621964,
+      "decoded": 3.141,
+      "sha256": "dd63842ca134b41ad478f4b22c09d9966f07998f2560b87d959959c17babca0a",
+      "changedStrandPixels": 827,
+      "meanStrandDelta": 18.302350427350426
+    },
+    {
+      "requested": 3.1671999999955296,
+      "decoded": 3.18,
+      "sha256": "3b69bf504dfc8bb52588c62afe72a211e211b72bcb16b0052b5676d5a3d8556c",
+      "changedStrandPixels": 1031,
+      "meanStrandDelta": 14.082621082621083
+    },
+    {
+      "requested": 3.200533333328863,
+      "decoded": 3.22,
+      "sha256": "e5269acf05a7fefafce9026d8cbc3ae34b3f50af8336757836c7b3b6a47ce47e",
+      "changedStrandPixels": 1297,
+      "meanStrandDelta": 17.3125
+    },
+    {
+      "requested": 3.233866666662196,
+      "decoded": 3.249,
+      "sha256": "950e27e72f6447a063509dbe6877920b94db7bcdbb51f8e00335081ff85fa8d2",
+      "changedStrandPixels": 1243,
+      "meanStrandDelta": 11.060363247863247
+    },
+    {
+      "requested": 3.2671999999955297,
+      "decoded": 3.276,
+      "sha256": "b6d7e69a4d5956deae66a0696708fc720c2ee6207eb0c30e3a0933b18216be2a",
+      "changedStrandPixels": 796,
+      "meanStrandDelta": 4.8381410256410255
+    },
+    {
+      "requested": 3.300533333328863,
+      "decoded": 3.307,
+      "sha256": "05e4ebaf73ef11f6adfb9ebc8e41d3d02dfaa8b0cc2152e2b12212e4a64f83ce",
+      "changedStrandPixels": 859,
+      "meanStrandDelta": 5.55519943019943
+    },
+    {
+      "requested": 3.333866666662196,
+      "decoded": 3.345,
+      "sha256": "8ca1c6ae138693ea77174bc36bcdbe9286e3e892afc3c46b8f2723684de577e6",
+      "changedStrandPixels": 726,
+      "meanStrandDelta": 3.951923076923077
+    },
+    {
+      "requested": 3.3671999999955293,
+      "decoded": 3.376,
+      "sha256": "011af82294843f26d44fece90514535321b7f4f58f7061775bd7b6d522164e1e",
+      "changedStrandPixels": 514,
+      "meanStrandDelta": 2.8100071225071224
+    },
+    {
+      "requested": 3.400533333328863,
+      "decoded": 3.413,
+      "sha256": "743c6825434a8d7e0bb6e0ffe2ca58a956777ec2c06f839cfce01bd512e8a294",
+      "changedStrandPixels": 1031,
+      "meanStrandDelta": 3.6684472934472936
+    },
+    {
+      "requested": 3.433866666662196,
+      "decoded": 3.441,
+      "sha256": "9b12b5060eabbfc8a928ec11b29f7bcf5c47f99e8e809fd2f06b7ce1455e324c",
+      "changedStrandPixels": 370,
+      "meanStrandDelta": 1.5771011396011396
+    },
+    {
+      "requested": 3.4671999999955294,
+      "decoded": 3.474,
+      "sha256": "c33155b9e5650ba336a1d737d4c553af7a6a1e30b456c74f629bcaef8f7791f5",
+      "changedStrandPixels": 483,
+      "meanStrandDelta": 2.2706552706552707
+    },
+    {
+      "requested": 3.500533333328863,
+      "decoded": 3.514,
+      "sha256": "6c7253318987da7668cc062492a93e37b673dbacaa5d4f460ebff32b5021b578",
+      "changedStrandPixels": 538,
+      "meanStrandDelta": 2.456908831908832
+    },
+    {
+      "requested": 3.5338666666621963,
+      "decoded": 3.541,
+      "sha256": "848033a881fdca3c623cd32cc7db016704be0f6d8c2d83c99667b05a7913fb00",
+      "changedStrandPixels": 704,
+      "meanStrandDelta": 2.7061965811965814
+    }
+  ],
+  "uniqueStrandFrames": 15,
+  "maxPresentationGap": 0.040000000000000036,
+  "maxDecodedOffset": 0.01946666667113739,
+  "transport": "fully buffered Blob; fresh continuous playback from zero, no dense seeking; 15 consecutive presented stationary strand frames"
+}

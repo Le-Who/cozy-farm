@@ -21,6 +21,7 @@ export type SpriteOptions = {
   footY?: number;
   layer?: number;
   lift?: number;
+  edgeFade?: { left?: number; top?: number; right?: number; bottom?: number };
 };
 type Shape = 'ellipse' | 'outline' | 'ripple' | 'shade' | 'diamond' | 'panel' | 'plot';
 
@@ -46,6 +47,7 @@ const fragmentShader = `
   uniform vec4 uRect;
   uniform vec3 uColor;
   uniform float uOpacity;
+  uniform vec4 uEdgeFade;
   uniform int uMode;
   void main() {
     vec4 color = vec4(uColor, uOpacity);
@@ -53,6 +55,10 @@ const fragmentShader = `
       vec4 art = texture2D(uMap, uRect.xy + vUv * uRect.zw);
       if (uMode == 0) color.rgb *= art.rgb;
       color.a *= art.a;
+      if (uEdgeFade.x > 0.0) color.a *= smoothstep(0.0, uEdgeFade.x, vUv.x);
+      if (uEdgeFade.y > 0.0) color.a *= smoothstep(0.0, uEdgeFade.y, 1.0 - vUv.y);
+      if (uEdgeFade.z > 0.0) color.a *= smoothstep(0.0, uEdgeFade.z, 1.0 - vUv.x);
+      if (uEdgeFade.w > 0.0) color.a *= smoothstep(0.0, uEdgeFade.w, vUv.y);
       if (uMode == 1) color.a *= mix(1.0, 0.45, vUv.y);
     } else {
       vec2 p = (vUv - 0.5) * 2.0;
@@ -141,7 +147,7 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
         vertexShader, fragmentShader, transparent: true, toneMapped: false, side: DoubleSide, forceSinglePass: true,
         uniforms: {
           uMap: { value: null }, uRect: { value: new Vector4() },
-          uColor: { value: new Color() }, uOpacity: { value: 1 }, uMode: { value: 0 },
+          uColor: { value: new Color() }, uOpacity: { value: 1 }, uMode: { value: 0 }, uEdgeFade: { value: new Vector4() },
         },
       });
       node = new Mesh(unitPlane, material);
@@ -212,6 +218,7 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       Math.max(0, src.w - 1) / sourceWidth, Math.max(0, src.h - 1) / sourceHeight,
     );
     uniforms.uMode.value = shadow ? 1 : 0;
+    uniforms.uEdgeFade.value.set(options.edgeFade?.left ?? 0, options.edgeFade?.top ?? 0, options.edgeFade?.right ?? 0, options.edgeFade?.bottom ?? 0);
     uniforms.uColor.value.copy(ink(shadow ? '#595842' : '#ffffff').rgb);
     const lift = options.lift ?? 0;
     uniforms.uOpacity.value = (options.opacity ?? 1) * (shadow ? 0.17 / (1 + lift * 0.033) : 1);
@@ -245,16 +252,14 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
     const uniforms = node.material.uniforms;
     const tint = ink(color);
     uniforms.uMode.value = modes[kind];
+    uniforms.uEdgeFade.value.set(0, 0, 0, 0);
     uniforms.uColor.value.copy(tint.rgb);
     uniforms.uOpacity.value = opacity * tint.alpha;
     billboard(node.matrix, x, y, footY, w * 2, h * 2, 0.5, 0.5, angle, 0, false);
     node.matrixWorldNeedsUpdate = true;
   }
 
-  return {
-    water, sprite, shape, overlay, decals,
-    get available() { return available; },
-    resize(width: number, height: number, dpr: number, scale: number, center: { x: number; y: number }) {
+  function setView(width: number, height: number, scale: number, center: { x: number; y: number }) {
       view = { ...center, w: width / scale, h: height / scale };
       camera.left = -width / (scale * 2);
       camera.right = -camera.left;
@@ -264,6 +269,13 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       camera.position.set(center.x, distance * sin, z + distance * cos);
       camera.lookAt(center.x, 0, z);
       camera.updateProjectionMatrix();
+  }
+
+  return {
+    water, sprite, shape, overlay, decals, setView,
+    get available() { return available; },
+    resize(width: number, height: number, dpr: number, scale: number, center: { x: number; y: number }) {
+      setView(width, height, scale, center);
       renderer?.setDrawingBufferSize(width, height, Math.min(dpr, 1.7, Math.sqrt(2_400_000 / (width * height))));
       water.resize(width, height);
     },
@@ -272,9 +284,9 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       bobber.visible = false;
       line.visible = false;
     },
-    plate(image: HTMLImageElement, bounds: Box, patch = false, opacity = 1) {
+    plate(image: HTMLImageElement, bounds: Box, patch = false, opacity = 1, edgeFade?: SpriteOptions['edgeFade']) {
       sprite(image, { x: 0, y: 0, w: image.naturalWidth, h: image.naturalHeight },
-        bounds.x + bounds.w / 2, bounds.y, bounds.w, bounds.h, { baseline: 0, layer: background + Number(patch), opacity });
+        bounds.x + bounds.w / 2, bounds.y, bounds.w, bounds.h, { baseline: 0, layer: background + Number(patch), opacity, edgeFade });
     },
     occluder(image: HTMLImageElement, bounds: Box & { footY: number }) {
       sprite(image, { x: 0, y: 0, w: image.naturalWidth, h: image.naturalHeight },

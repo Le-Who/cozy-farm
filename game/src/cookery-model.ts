@@ -1,4 +1,5 @@
 export type CookeryKind = 'preserves' | 'decorate'
+export type PreserveProcessing = 'bright' | 'silky' | 'chunky'
 export type CookeryPoint = { x: number; y: number }
 export type CookeryStage = 'fruit' | 'stir' | 'fill' | 'sprinkle' | 'ready' | 'committing' | 'finished' | 'cancelled'
 export type CookeryFruit = CookeryPoint & { id: number; angle: number }
@@ -6,6 +7,7 @@ export type CookeryModel = {
   kind: CookeryKind; stage: CookeryStage; fruit: CookeryFruit[]; fruitRequired: number;
   stirred: number; stirSectors: Set<number>; scoops: number; sprinkled: Set<number>;
   sprinkleTravel: number; last: CookeryPoint | null; particleSerial: number;
+  processing: PreserveProcessing; stirRequired: number;
 }
 export const STIR_REQUIRED = Math.PI * 5
 export const SCOOPS_REQUIRED = 3
@@ -15,10 +17,15 @@ export const SPRINKLE_TARGETS: readonly CookeryPoint[] = Array.from({ length: 25
   return { x: Math.cos(index / count * Math.PI * 2) * ring, y: Math.sin(index / count * Math.PI * 2) * ring }
 })
 
-export function createCookeryModel(kind: CookeryKind): CookeryModel {
+export function createCookeryModel(kind: CookeryKind, processing: PreserveProcessing = 'bright'): CookeryModel {
   return { kind, stage: 'fruit', fruit: [], fruitRequired: kind === 'preserves' ? 5 : 3,
     stirred: 0, stirSectors: new Set(), scoops: 0, sprinkled: new Set(), sprinkleTravel: 0,
-    last: null, particleSerial: 0 }
+    last: null, particleSerial: 0, processing, stirRequired: processing === 'chunky' ? Math.PI * 2.1 : processing === 'silky' ? Math.PI * 9 : STIR_REQUIRED }
+}
+export function choosePreserveProcessing(model: CookeryModel, processing: PreserveProcessing): boolean {
+  if (model.kind !== 'preserves' || model.stage !== 'fruit') return false
+  model.processing = processing; model.stirRequired = processing === 'chunky' ? Math.PI * 2.1 : processing === 'silky' ? Math.PI * 9 : STIR_REQUIRED
+  return true
 }
 export const inCookerySurface = (point: CookeryPoint, radius = .91) => Number.isFinite(point.x) && Number.isFinite(point.y) && Math.hypot(point.x, point.y) <= radius
 
@@ -63,13 +70,13 @@ export function moveCookeryStroke(model: CookeryModel, point: CookeryPoint): num
     if (Math.hypot(point.x, point.y) < .2 || Math.hypot(previous.x, previous.y) < .2) return 0
     const angle = Math.atan2(point.y, point.x), oldAngle = Math.atan2(previous.y, previous.x)
     const turn = Math.atan2(Math.sin(angle - oldAngle), Math.cos(angle - oldAngle))
-    model.stirred = Math.min(STIR_REQUIRED, model.stirred + Math.abs(turn))
+    model.stirred = Math.min(model.stirRequired, model.stirred + Math.abs(turn))
     const samples = Math.max(1, Math.ceil(Math.abs(turn) / .12))
     for (let i = 0; i <= samples; i++) {
       const sectorAngle = oldAngle + turn * i / samples
       model.stirSectors.add(Math.floor(((sectorAngle + Math.PI * 4) % (Math.PI * 2)) / (Math.PI * 2) * 16))
     }
-    if (model.stirred >= STIR_REQUIRED && model.stirSectors.size >= 14) { model.stage = 'fill'; model.last = null }
+    if (model.stirred >= model.stirRequired && model.stirSectors.size >= 14) { model.stage = 'fill'; model.last = null }
   } else {
     model.sprinkleTravel += distance
     SPRINKLE_TARGETS.forEach((target, i) => { if (segmentDistance(target, previous, point) < .23) model.sprinkled.add(i) })
@@ -88,7 +95,7 @@ export function fillCookeryJar(model: CookeryModel): boolean {
 
 export function cookeryProgress(model: CookeryModel): number {
   if (model.stage === 'fruit') return model.fruit.length / model.fruitRequired
-  if (model.stage === 'stir') return Math.min(model.stirred / STIR_REQUIRED, model.stirSectors.size / 14)
+  if (model.stage === 'stir') return Math.min(model.stirred / model.stirRequired, model.stirSectors.size / 14)
   if (model.stage === 'fill') return model.scoops / SCOOPS_REQUIRED
   if (model.stage === 'sprinkle') return Math.min(model.sprinkled.size / 20, model.sprinkleTravel / 5, 1)
   return model.stage === 'ready' || model.stage === 'finished' ? 1 : 0

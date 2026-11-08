@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { castFishing, createFishingModel, fishPosition, reelFishing, stepFishing, fishingLootAtDepth, fishingCatchMouth, fishingCatchScale } from '../src/fishing-model.ts';
+import { createShoreline, covePresets, getCoveEcology, settleCove } from '../src/shoreline.ts';
 
 test('fishing catches only on ascent and never duplicates or exceeds capacity', () => {
   const model = createFishingModel(1);
@@ -31,6 +32,16 @@ test('two fish contacts reverse the descent and a finished cast stays finished',
   stepFishing(model, 10);
   assert.equal(model.phase, 'done');
   assert.equal(model.depth, 0);
+});
+
+test('Finn’s preferred tasting gives a scouted trip its real fifth contact', () => {
+  const model = createFishingModel(3, 5);
+  model.fish = [{ id: 0, x: 0, direction: 1, depth: .2, rare: false }];
+  castFishing(model);
+  for (let i = 0; i < 4; i++) { model.immunity = 0; stepFishing(model, .01); }
+  assert.equal(model.contacts, 4); assert.equal(model.phase, 'descending');
+  model.immunity = 0; stepFishing(model, .01);
+  assert.equal(model.contacts, 5); assert.equal(model.phase, 'ascending');
 });
 
 test('the rear body misses while the front body catches', () => {
@@ -245,6 +256,22 @@ test('little fish warn before a forward dart and steering away avoids the contac
   assert.ok(model.nextDartAt >= 4.5);
 });
 
+test('settled refuge stones give fish a gentler, longer telegraphed dart', () => {
+  const run = (refuge: 'sand' | 'stones') => {
+    const ecology = getCoveEcology(settleCove({ ...createShoreline(), pending: { ...covePresets.channel, refuge } }, 2), 2);
+    const model = createFishingModel(2, 2, 1, 'seaBass', ecology.fishing);
+    model.fish = [{ id: 0, x: -1.4, depth: 3.2, direction: 1, rare: false,
+      loot: { kind: 'fish', species: 'perch', variant: 'regular' } }];
+    model.nextDartAt = 0; castFishing(model); stepFishing(model, .01);
+    assert.equal(model.fish[0].dart?.phase, 'warning');
+    return { dart: model.fish[0].dart!, next: model.nextDartAt };
+  };
+  const sand = run('sand'), stones = run('stones');
+  assert.ok(stones.dart.remaining > sand.dart.remaining);
+  assert.ok(stones.dart.distance < sand.dart.distance);
+  assert.ok(stones.next > sand.next);
+});
+
 test('new species capture at their illustrated mouth in either direction', () => {
   for (const species of ['moonfish', 'lanternfish'] as const) for (const direction of [-1, 1]) {
     const model = createFishingModel(1);
@@ -257,4 +284,42 @@ test('new species capture at their illustrated mouth in either direction', () =>
     stepFishing(model, .01);
     assert.deepEqual(model.caught, [0]);
   }
+});
+
+test('settled cove configurations create distinct useful fishing fields without changing legacy casts', () => {
+  const habitat = (profile: keyof typeof covePresets) => getCoveEcology(settleCove({ ...createShoreline(), pending: { ...covePresets[profile] }, changedOn: 1 }, 2), 2).fishing;
+  const nursery = habitat('nursery'), channel = habitat('channel');
+  const sample = (config: typeof nursery) => {
+    let depth = 0, speed = 0, fish = 0, rare = 0, seaBass = 0, common = 0;
+    for (let seed = 1; seed <= 100; seed++) {
+      const model = createFishingModel(2, 2, seed, 'seaBass', config);
+      assert.deepEqual(model, createFishingModel(2, 2, seed, 'seaBass', config));
+      for (const entry of model.fish) {
+        if (entry.loot?.kind !== 'fish') continue;
+        fish++; depth += entry.depth; speed += entry.swimSpeed!;
+        if (entry.rare) rare++;
+        else { common++; if (entry.loot.species === 'seaBass') seaBass++; }
+        assert.equal(Math.sign(fishPosition(entry, 2) - fishPosition(entry, 1)), entry.direction, 'habitat fish face their actual travel');
+      }
+    }
+    return { depth: depth / fish, speed: speed / fish, rare, seaBass: seaBass / common };
+  };
+  const easy = sample(nursery), deep = sample(channel);
+  assert.ok(easy.depth < deep.depth - 2, 'nursery schools gather in reachable shallows');
+  assert.ok(easy.speed < deep.speed / 2, 'nursery fish are easier to follow');
+  assert.ok(easy.seaBass > deep.seaBass + .1, 'kelp provides reliable kitchen fish');
+  assert.ok(deep.rare > easy.rare * 2, 'open current rewards deeper rare-fish exploration');
+  assert.deepEqual(createFishingModel(2, 2, 44, 'seaBass'), createFishingModel(2, 2, 44, 'seaBass', undefined));
+});
+
+test('an active fishing field keeps its tide snapshot when future habitat choices change', () => {
+  const settled = settleCove({ ...createShoreline(), pending: { ...covePresets.nursery }, changedOn: 1 }, 2);
+  const snapshot = getCoveEcology(settled, 2).fishing;
+  const model = createFishingModel(2, 2, 99, 'seaBass', snapshot);
+  const field = structuredClone(model.fish), current = snapshot.current;
+  snapshot.current = 1; snapshot.perchWeight = .99;
+  assert.equal(model.habitat?.current, current);
+  assert.deepEqual(model.fish, field);
+  const waiting = { ...settled, pending: { ...covePresets.channel }, changedOn: 2 };
+  assert.deepEqual(getCoveEcology(waiting, 2).fishing, getCoveEcology(settled, 2).fishing, 'queued choices cannot reroll fish before the tide');
 });

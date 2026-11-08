@@ -4,8 +4,8 @@ export const shellIds = ['regular', 'moon'] as const;
 export type ShellId = typeof shellIds[number];
 export const shellSpotCount = 3;
 export const shellDefinitions = {
-  regular: { name: 'Seashell', icon: 'ui-shell', price: 3, luminous: false },
-  moon: { name: 'Moon shell', icon: 'ui-moon-shell', price: 12, luminous: true },
+  regular: { name: 'Ракушка', icon: 'ui-shell', price: 3, luminous: false },
+  moon: { name: 'Лунная ракушка', icon: 'ui-moon-shell', price: 12, luminous: true },
 };
 
 export function isLunarTide(day: number): boolean {

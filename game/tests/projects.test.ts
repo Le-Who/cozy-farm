@@ -70,7 +70,7 @@ test('harbor orders hold a partial cargo across travel, mornings, and reloads', 
     assert.deepEqual(restoreFarm(JSON.parse(JSON.stringify(farm)))?.orders.harbor, { completed: 1, deliveredOn: farm.day });
     assert.equal(sail(farm, 'home').ok, true);
     assert.equal(endDay(farm).ok, true);
-    assert.equal(getHarborOrder(farm)?.name, 'Saltwind parcel');
+    assert.equal(getHarborOrder(farm)?.name, 'Посылка из Солёной рощи');
     assert.ok(getHarborOrder(farm)?.items.every(({ delivered }) => delivered === 0));
     assert.equal(restoreFarm({ ...farm, harborSupplies: { 'fish:seaBass': 1 } }), undefined);
     assert.equal(restoreFarm({ ...farm, harborSupplies: { seaSalt: 2, [`dishes:${dish}`]: 1 } }), undefined);

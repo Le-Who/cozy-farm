@@ -7,7 +7,6 @@ import {
 } from './farm.ts';
 import { hasShoal, getShoalFindAt } from './shoal.ts';
 import { shellSpotCount } from './tide.ts';
-import { traitNames } from './climate.ts';
 
 export type Requirement = { kind: 'stock'; item: StockItem }
   | { kind: 'building'; building: BuildingId }
@@ -31,11 +30,11 @@ function safe(task: DiscoveryTask): RequirementHint {
 
 function access(farm: FarmState, destination: IslandId): RequirementHint {
   if (canSailTo(farm, destination)) return route('sail', destination);
-  if (!farm.boatOwned) return farm.coins < boatPrice ? {...safe(getCoinGuidance(farm, boatPrice, 'a wooden boat')),notice:`A boat costs ${boatPrice} coins. Sell a harvest at the market.`}
+  if (!farm.boatOwned) return farm.coins < boatPrice ? {...safe(getCoinGuidance(farm, boatPrice, 'деревянная лодка')),notice:`Лодка стоит ${boatPrice} монет. Продайте урожай на рынке.`}
     : atHome(farm, route('focus-place', 'boat'));
   const next = getIslandJourneys(farm).find(journey => journey.id === destination)?.nextAction;
   if (next?.target === 'upgrades') return route('show-upgrade',destination==='cape'?'farmhouse':buildingIds.find(building=>farm.buildingLevels[building]<2) ?? 'farmhouse');
-  if (next?.target === 'visit-rest') return atHome(farm, { ...route('focus-place', 'farmhouse'), notice: 'The next delivery arrives tomorrow.' });
+  if (next?.target === 'visit-rest') return atHome(farm, { ...route('focus-place', 'farmhouse'), notice: 'Следующая поставка будет завтра.' });
   return next ? { action: next } : route('open-panel', 'boat');
 }
 
@@ -46,27 +45,27 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
       || item.kind === 'dishes' && dishDefinitions[item.item].capeLevel ? 'cape' : undefined;
   if (destination && !canSailTo(farm, destination)) return access(farm, destination);
   const tomorrow = (notice: string) => atHome(farm,{...route('focus-place','farmhouse'),notice});
-  if (item.kind === 'fish' && !getFishAction({...farm,island:item.item==='perch'?'home':'grove'}).available) return tomorrow('These fishing waters renew tomorrow.');
-  if (item.kind === 'seaSalt' && farm.saltGatheredToday) return tomorrow('The salt flats renew tomorrow.');
-  if ((item.kind === 'honey' || item.kind === 'windHoney' || item.kind === 'beeswax') && farm.capeHoneyOn === farm.day) return tomorrow('The hive fills again tomorrow.');
+  if (item.kind === 'fish' && !getFishAction({...farm,island:item.item==='perch'?'home':'grove'}).available) return tomorrow('Рыба вернётся в эти воды завтра.');
+  if (item.kind === 'seaSalt' && farm.saltGatheredToday) return tomorrow('Соль появится на солончаках завтра.');
+  if ((item.kind === 'honey' || item.kind === 'windHoney' || item.kind === 'beeswax') && farm.capeHoneyOn === farm.day) return tomorrow('Улей снова наполнится завтра.');
   if (item.kind === 'fruit') {
     const orchard = farm.trees[item.item==='pear'?'grove':'home'].filter(tree=>tree?.tree===item.item);
-    if (orchard.length && orchard.every(tree=>tree!.fruitReady===0)) return tomorrow('The orchard needs another morning before fruit can be picked.');
+    if (orchard.length && orchard.every(tree=>tree!.fruitReady===0)) return tomorrow('Новые плоды в саду созреют следующим утром.');
   }
   if (item.kind === 'shells' || item.kind === 'shoalFinds') {
     if (farm.island !== 'grove') return route('sail', 'grove');
-    if (item.kind === 'shoalFinds' && !hasShoal(farm)) return {...stock(farm,{kind:'shells',item:farm.shellDiscoveries.includes('regular')?'moon':'regular',quantity:1}),notice:'Discover both shell varieties to reveal Moonpool Shoal.'};
+    if (item.kind === 'shoalFinds' && !hasShoal(farm)) return {...stock(farm,{kind:'shells',item:farm.shellDiscoveries.includes('regular')?'moon':'regular',quantity:1}),notice:'Найдите оба вида ракушек, чтобы открыть Лунную отмель.'};
     if (item.kind === 'shoalFinds' && getShoalFindAt(farm,item.item)) return route('focus-shoal',item.item);
     const spot = Array.from({length:shellSpotCount},(_,index)=>index).find(index=>getShellAt(farm,index)===(item.kind==='shells'?item.item:'regular'));
     if (spot !== undefined) return route('focus-shell',String(spot));
-    return {...route('focus-place','harbor'),notice:item.kind === 'shells' && item.item === 'moon' ? 'Glowing shells may appear along this shore during a lunar tide.' : 'Shore finds renew on a new day; moon pearls need a lunar tide.'};
+    return {...route('focus-place','harbor'),notice:item.kind === 'shells' && item.item === 'moon' ? 'Светящиеся ракушки могут появиться на этом берегу при лунном приливе.' : 'Новые находки появляются каждый день, а лунный жемчуг — при лунном приливе.'};
   }
   if (item.kind === 'variants') {
     const base: StockItem = item.item === 'egg' ? {kind:'eggs',quantity:item.quantity}
       : item.item === 'apple' || item.item === 'pear' || item.item === 'peach' ? {kind:'fruit',item:item.item,quantity:item.quantity}
       : {kind:'produce',item:item.item,quantity:item.quantity};
     const hint = stock(farm, base);
-    return {...hint, notice: `${traitNames[item.trait]} varieties may appear under the matching sky.`};
+    return {...hint, notice: `Редкие разновидности появляются при подходящей погоде.`};
   }
   if (item.kind === 'dishes') {
     const recipe = dishDefinitions[item.item];
@@ -80,12 +79,12 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
   if (item.kind === 'eggCrates') {
     if (farm.coopSpecialization !== 'packing') return atHome(farm, route('show-upgrade','coop'));
     if (farm.eggs >= eggsPerCrate) return atHome(farm, route('visit-coop'));
-    return safe(getSupplyGuidance(farm,{kind:'eggs',quantity:eggsPerCrate},'an egg crate'));
+    return safe(getSupplyGuidance(farm,{kind:'eggs',quantity:eggsPerCrate},'ящик яиц'));
   }
   if (item.kind === 'eggBaskets' && farm.buildingLevels.coop < 2) return atHome(farm, route('show-upgrade','coop'));
   if (item.kind === 'handmade' && !isProjectComplete(farm,'fair') && !farm.village.built) return getRequirementHint(farm,{kind:'journey',island:'village',id:'fair'});
-  if (item.kind === 'windHoney') return {...safe(getSupplyGuidance(farm,item,'this requirement')),notice:'Wind honey is collected during Honey Wind.'};
-  return safe(getSupplyGuidance(farm,item,'this requirement'));
+  if (item.kind === 'windHoney') return {...safe(getSupplyGuidance(farm,item,'нужные припасы')),notice:'Мёд ветров собирают при Медовом ветре.'};
+  return safe(getSupplyGuidance(farm,item,'нужные припасы'));
 }
 
 /** Read-only wayfinding. Following a condition never purchases, harvests, rests or delivers. */
@@ -98,7 +97,7 @@ export function getRequirementHint(farm: FarmState, requirement: Requirement): R
   if (id === 'specialization') return atHome(farm,route('show-upgrade','farmhouse'));
   const building = buildingIds.find(building => id === `building-${building}`);
   if (building) return getRequirementHint(farm,{kind:'building',building});
-  if (id === 'village-coins') return safe(getCoinGuidance(farm,getVillageProject(farm).coins,'Lavender Harbour'));
+  if (id === 'village-coins') return safe(getCoinGuidance(farm,getVillageProject(farm).coins,'Лавандовая гавань'));
   if (id.startsWith('supply-')) {
     const supply = getVillageProject(farm).items.find(({item}) => `supply-${item.kind}` === id);
     if (supply) return ingredientCount(farm,supply.item) >= supply.item.quantity-supply.delivered
@@ -110,7 +109,7 @@ export function getRequirementHint(farm: FarmState, requirement: Requirement): R
   }
   if (id === 'visitors' && isProjectComplete(farm,'fair')) {
     return atHome(farm,getFairGuest(farm)?.served
-      ? {...route('focus-place','farmhouse'),notice:'Another fair visitor arrives tomorrow.'} : route('visit-guest'));
+      ? {...route('focus-place','farmhouse'),notice:'Следующий гость ярмарки придёт завтра.'} : route('visit-guest'));
   }
   if (id === 'pier' && farm.boatOwned) return farm.island === 'grove' ? route('project-dock') : route('sail','grove');
   return access(farm,requirement.island);

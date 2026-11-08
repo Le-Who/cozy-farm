@@ -1,0 +1,871 @@
+{
+  "createdUtc": "2026-11-08T19:51:23.283222+00:00",
+  "baseCommit": "3cbefce",
+  "sourceFrozen": true,
+  "sourceSha256": {
+    "game/src/honey-cookery.ts": "f073121750d8d20a910087f4c4cc3830fed487b573e98ba4e97f5c97088ab2cc",
+    "game/src/honey-pear-view.ts": "3b83c36a71de61d30d27e3c4a9690f3b16ed70d3c1da022708e3a5326971119f",
+    "game/src/honey-stream.ts": "28640725b0ae0fb8210ad5c348acba50cb0806ccb3b074218da4c9867dd090c3",
+    "game/src/honey-cookery-model.ts": "03102319fcb36fb47ee7036a33151d8cfa06b305756031a8b95431408c87d0cc",
+    "game/src/honey-cookery.css": "80ceec94c506f82d36c21fa65c909ce685510d69537ca477d6a469dbb635bb21",
+    "game/tests/honey-cookery.test.ts": "aa0cc7a8a6df196ad5c9383d02de3d8380e6bed91560ad7f1fe2017850223586",
+    "game/tests/honey-stream.test.ts": "2993a836988a94b2f7a19205dbc73754eade96361e9831ff356791c65ac85c00"
+  },
+  "scope": "Standalone native honey-cookery verification; FarmState stock debits belong to root production gate.",
+  "rootCauses": [
+    "Stream time unused by geometry/material.",
+    "Half matrixWorld updated before final platter correction; native hit missed rendered caps while held.",
+    "Opacity strokes had no retained fluid or relaxation.",
+    "Parfait filled layers used different bowl registration from empty glass."
+  ],
+  "nativeMissBeforeFix": {
+    "contact": [
+      496.88336,
+      578.61096
+    ],
+    "view": [
+      1180,
+      820
+    ],
+    "hit": false
+  },
+  "baselineVideo": "production-pear-physical-flow.webm",
+  "tests": {
+    "honeyPassed": 23,
+    "honeyFailed": 0,
+    "typecheck": "npx tsc --noEmit passed",
+    "rootFullSuiteReported": "253/253 passed"
+  },
+  "desktop": {
+    "stage": "finished",
+    "commits": 1,
+    "stationaryStart": 0.23979999999701976,
+    "stationarySeconds": 0.8,
+    "denseStart": 0.5197999999970198,
+    "frameCount": 1558,
+    "frameMs": {
+      "median": 13.900000000001455,
+      "p95": 20.900000000001455,
+      "p99": 27.5,
+      "max": 28.200000000000728
+    },
+    "rasterFlood": false,
+    "viewport": [
+      1440,
+      900
+    ]
+  },
+  "touch": [
+    {
+      "stage": "finished",
+      "commits": 1,
+      "stationaryStart": 0.391,
+      "stationarySeconds": 0.8,
+      "denseStart": 0.671,
+      "frameCount": 1221,
+      "frameMs": {
+        "median": 13.900000000001455,
+        "p95": 20.900000000001455,
+        "p99": 27.599999999998545,
+        "max": 34.599999999998545
+      },
+      "rasterFlood": false,
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "stage": "finished",
+      "commits": 1,
+      "stationaryStart": 0.43439999999850987,
+      "stationarySeconds": 0.8,
+      "denseStart": 0.7143999999985099,
+      "frameCount": 1357,
+      "frameMs": {
+        "median": 13.800000000000182,
+        "p95": 20.899999999997817,
+        "p99": 21,
+        "max": 27.799999999999272
+      },
+      "rasterFlood": false,
+      "viewport": [
+        568,
+        320
+      ]
+    }
+  ],
+  "otherFamilies": {
+    "biscuits": {
+      "stage": "finished"
+    },
+    "cakeParfait": [
+      {
+        "family": "honeyCake",
+        "result": {
+          "family": "honeyCake",
+          "fruit": [],
+          "steps": [
+            "mix-batter",
+            "bake-golden",
+            "pour-honey"
+          ],
+          "baking": {
+            "method": "oven",
+            "finish": "golden",
+            "seconds": 2.4
+          }
+        }
+      },
+      {
+        "family": "windParfait",
+        "result": {
+          "family": "windParfait",
+          "fruit": [
+            {
+              "ingredientId": "peach",
+              "x": -0.38000003159101464,
+              "y": 0.19999958350962788,
+              "angle": 0
+            },
+            {
+              "ingredientId": "peach",
+              "x": 5.594894923022237e-08,
+              "y": -6.1383992871001605e-09,
+              "angle": 0
+            },
+            {
+              "ingredientId": "peach",
+              "x": 0.3800000036165402,
+              "y": -0.19999959578642645,
+              "angle": 0
+            }
+          ],
+          "steps": [
+            "layer-custard",
+            "layer-fruit",
+            "pour-honey"
+          ],
+          "baking": {
+            "method": "chilled",
+            "finish": "set",
+            "seconds": 0
+          }
+        }
+      }
+    ],
+    "completion": "Each flow asserted exactly1 callback; pears also repeated Enter after finish."
+  },
+  "compactDprGlCancellation": [
+    {
+      "family": "honeyPear",
+      "stage": "cut",
+      "progress": "0",
+      "ratios": [
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            548,
+            300
+          ],
+          "dpr": 1
+        },
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            685,
+            375
+          ],
+          "dpr": 1.25
+        },
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            1096,
+            600
+          ],
+          "dpr": 2
+        }
+      ],
+      "recovered": true,
+      "cancelCommits": 0
+    },
+    {
+      "family": "honeyBiscuits",
+      "stage": "shape",
+      "progress": "0",
+      "ratios": [
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            548,
+            300
+          ],
+          "dpr": 1
+        },
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            685,
+            375
+          ],
+          "dpr": 1.25
+        },
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            1096,
+            600
+          ],
+          "dpr": 2
+        }
+      ],
+      "recovered": true,
+      "cancelCommits": 0
+    },
+    {
+      "family": "honeyCake",
+      "stage": "mix",
+      "progress": "0",
+      "ratios": [
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            548,
+            300
+          ],
+          "dpr": 1
+        },
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            685,
+            375
+          ],
+          "dpr": 1.25
+        },
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            1096,
+            600
+          ],
+          "dpr": 2
+        }
+      ],
+      "recovered": true,
+      "cancelCommits": 0
+    },
+    {
+      "family": "windParfait",
+      "stage": "custard",
+      "progress": "0",
+      "ratios": [
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            548,
+            300
+          ],
+          "dpr": 1
+        },
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            685,
+            375
+          ],
+          "dpr": 1.25
+        },
+        {
+          "css": [
+            548,
+            300
+          ],
+          "buffer": [
+            1096,
+            600
+          ],
+          "dpr": 2
+        }
+      ],
+      "recovered": true,
+      "cancelCommits": 0
+    }
+  ],
+  "filledPearRecovery": {
+    "viewport": [
+      568,
+      320
+    ],
+    "DPR": [
+      1,
+      1.25,
+      2
+    ],
+    "stage": "finished",
+    "commits": 1,
+    "preserved": true,
+    "reducedMotionAfterOrientationChange": true,
+    "screenshots": [
+      "honey-rework-filled-GL-568.png",
+      "honey-rework-filled-reduced-390.png"
+    ]
+  },
+  "decoded": [
+    {
+      "file": "honey-rework-pear-flow.webm",
+      "fileSha256": "599f88af41fc4831a63946ddca7d593e46c3a4a7ab9972e54e0253133b92b4ae",
+      "duration": 22.346,
+      "width": 1180,
+      "height": 820,
+      "uniformSamples": [
+        {
+          "requested": 0.1,
+          "decoded": 0.071
+        },
+        {
+          "requested": 2.0996363636363635,
+          "decoded": 2.093
+        },
+        {
+          "requested": 4.0992727272727265,
+          "decoded": 4.073
+        },
+        {
+          "requested": 6.098909090909091,
+          "decoded": 6.083
+        },
+        {
+          "requested": 8.098545454545453,
+          "decoded": 8.064
+        },
+        {
+          "requested": 10.098181818181818,
+          "decoded": 10.068
+        },
+        {
+          "requested": 12.097818181818182,
+          "decoded": 12.085
+        },
+        {
+          "requested": 14.097454545454543,
+          "decoded": 14.081
+        },
+        {
+          "requested": 16.09709090909091,
+          "decoded": 16.08
+        },
+        {
+          "requested": 18.096727272727275,
+          "decoded": 18.049
+        },
+        {
+          "requested": 20.096363636363638,
+          "decoded": 20.089
+        },
+        {
+          "requested": 22.096,
+          "decoded": 22.048
+        }
+      ],
+      "denseSamples": [
+        {
+          "requested": 0.4797999999970198,
+          "decoded": 0.473,
+          "sha256": "4a09e83c421f440015553c69813fb192e02f0c95ba4683b6ad2edf8242bf8099",
+          "changedStrandPixels": 0,
+          "meanStrandDelta": 0
+        },
+        {
+          "requested": 0.5131333333303532,
+          "decoded": 0.517,
+          "sha256": "840368530f556b06f0e20c8e42498460a0e8da2264925c2a32e6461c472a51db",
+          "changedStrandPixels": 774,
+          "meanStrandDelta": 13.42752849002849
+        },
+        {
+          "requested": 0.5464666666636865,
+          "decoded": 0.549,
+          "sha256": "f8cee78dd59dc51ca38c2440c6c630a947fbb1330e0935e850f83874541b84d2",
+          "changedStrandPixels": 1003,
+          "meanStrandDelta": 14.56712962962963
+        },
+        {
+          "requested": 0.5797999999970198,
+          "decoded": 0.582,
+          "sha256": "df51978c9d2f7b8b8dea1a3825673eef6a5c916efca9f5309cd8a00061cf6969",
+          "changedStrandPixels": 1167,
+          "meanStrandDelta": 13.685897435897436
+        },
+        {
+          "requested": 0.6131333333303531,
+          "decoded": 0.605,
+          "sha256": "9e822e2d32cd55d136ea867bd62c129d0aa6c5b7d7ff817f9ead813e577cbe29",
+          "changedStrandPixels": 1244,
+          "meanStrandDelta": 10.010861823361823
+        },
+        {
+          "requested": 0.6464666666636865,
+          "decoded": 0.649,
+          "sha256": "bc895934190c279e5c95e19bcba2201637075334051e04f13f7ca848ce4747e8",
+          "changedStrandPixels": 1547,
+          "meanStrandDelta": 16.08457977207977
+        },
+        {
+          "requested": 0.6797999999970198,
+          "decoded": 0.677,
+          "sha256": "aaa10b77e7c4357358c9bf202c52fd5f109e7a6934b15a8668ef89876f41ba4b",
+          "changedStrandPixels": 1182,
+          "meanStrandDelta": 6.292200854700854
+        },
+        {
+          "requested": 0.7131333333303531,
+          "decoded": 0.705,
+          "sha256": "d14ca260f1ff46f9254e16ed066ab1407d79f3e91069f852bc315ef1a917fa50",
+          "changedStrandPixels": 957,
+          "meanStrandDelta": 4.283475783475783
+        },
+        {
+          "requested": 0.7464666666636864,
+          "decoded": 0.739,
+          "sha256": "2d558776743df47fa345d91a0ffe230f7058f2924c813600657bbf3dea0d28af",
+          "changedStrandPixels": 868,
+          "meanStrandDelta": 3.472934472934473
+        },
+        {
+          "requested": 0.7797999999970198,
+          "decoded": 0.772,
+          "sha256": "9ea69bf552467d90f47594ded692b7689ecc652d727b7b9dc645cd22a9e58df7",
+          "changedStrandPixels": 814,
+          "meanStrandDelta": 3.3173076923076925
+        },
+        {
+          "requested": 0.8131333333303531,
+          "decoded": 0.827,
+          "sha256": "9583d03daccbe9386aa19475035c05792d550d0bf70a709508a6f8bc62e97f88",
+          "changedStrandPixels": 886,
+          "meanStrandDelta": 3.4830840455840457
+        },
+        {
+          "requested": 0.8464666666636864,
+          "decoded": 0.84,
+          "sha256": "2e82b1c13a0bd31ff5d7197568a171a384528cf24d1475c16285eeb20ef351f8",
+          "changedStrandPixels": 257,
+          "meanStrandDelta": 1.2181267806267806
+        },
+        {
+          "requested": 0.8797999999970199,
+          "decoded": 0.892,
+          "sha256": "15ef750142733bf631a22f9b833ddec1e43e0bf074d94450d6219d5503a29653",
+          "changedStrandPixels": 893,
+          "meanStrandDelta": 3.2115384615384617
+        },
+        {
+          "requested": 0.9131333333303531,
+          "decoded": 0.934,
+          "sha256": "869115776507eb39f6b557e7dd4901904471548f65aa8d4f364ef9f5ebf83ab4",
+          "changedStrandPixels": 449,
+          "meanStrandDelta": 1.9271723646723646
+        },
+        {
+          "requested": 0.9464666666636865,
+          "decoded": 0.959,
+          "sha256": "78ac41c532f3e5aa9bb281d922c3fff90f6cff58428de77da79414f8eac3ace1",
+          "changedStrandPixels": 522,
+          "meanStrandDelta": 2.0080128205128207
+        }
+      ],
+      "uniqueStrandFrames": 15,
+      "maxPresentationGap": 0.05499999999999994,
+      "maxDecodedOffset": 0.020866666669646983,
+      "transport": "fully buffered Blob; native playing requestVideoFrameCallback presentation timestamps; 15 consecutive presented frames with stationary input"
+    },
+    {
+      "file": "honey-rework-touch-390-flow.webm",
+      "fileSha256": "97d1a7e0ce11df1a2c9b65c76216267000b390d71d71b32e29de6962a1bb473f",
+      "duration": 17.997,
+      "width": 370,
+      "height": 820,
+      "uniformSamples": [
+        {
+          "requested": 0.1,
+          "decoded": 0.069
+        },
+        {
+          "requested": 1.7042727272727272,
+          "decoded": 1.686
+        },
+        {
+          "requested": 3.3085454545454542,
+          "decoded": 3.285
+        },
+        {
+          "requested": 4.912818181818181,
+          "decoded": 4.878
+        },
+        {
+          "requested": 6.517090909090908,
+          "decoded": 6.494
+        },
+        {
+          "requested": 8.121363636363634,
+          "decoded": 8.079
+        },
+        {
+          "requested": 9.725636363636362,
+          "decoded": 9.704
+        },
+        {
+          "requested": 11.32990909090909,
+          "decoded": 11.292
+        },
+        {
+          "requested": 12.934181818181816,
+          "decoded": 12.896
+        },
+        {
+          "requested": 14.538454545454544,
+          "decoded": 14.497
+        },
+        {
+          "requested": 16.14272727272727,
+          "decoded": 16.13
+        },
+        {
+          "requested": 17.747,
+          "decoded": 17.718
+        }
+      ],
+      "denseSamples": [
+        {
+          "requested": 0.631,
+          "decoded": 0.66,
+          "sha256": "c8864187f3759d72bc33f677e2ffe7965db907e2b6bcae07b9f714e5d09447d1",
+          "changedStrandPixels": 0,
+          "meanStrandDelta": 0
+        },
+        {
+          "requested": 0.6643333333333333,
+          "decoded": 0.697,
+          "sha256": "be47c6e2e70b97ed6b0383e961fdcb6ee71edbc3690132242060011c91573868",
+          "changedStrandPixels": 254,
+          "meanStrandDelta": 10.653079710144928
+        },
+        {
+          "requested": 0.6976666666666667,
+          "decoded": 0.709,
+          "sha256": "1d37785a7834f773448fe055b84bdf121cd709c031dc6795fcb801cf4be1d46c",
+          "changedStrandPixels": 166,
+          "meanStrandDelta": 4.054347826086956
+        },
+        {
+          "requested": 0.731,
+          "decoded": 0.756,
+          "sha256": "c11241c1bd11a429d7d067a224dc105c930ee9173a45de6019e387c31a5a9923",
+          "changedStrandPixels": 270,
+          "meanStrandDelta": 8.584239130434783
+        },
+        {
+          "requested": 0.7643333333333333,
+          "decoded": 0.783,
+          "sha256": "957bff345c96c016010f93fa5a9f57853028db3ba50691f9544fef8ca228cc2f",
+          "changedStrandPixels": 185,
+          "meanStrandDelta": 3.721014492753623
+        },
+        {
+          "requested": 0.7976666666666666,
+          "decoded": 0.818,
+          "sha256": "e8e390dcf22a8747779edb84f6d8dfe13d7bbe2a2ad44890e9e989810962e756",
+          "changedStrandPixels": 187,
+          "meanStrandDelta": 4.1875
+        },
+        {
+          "requested": 0.831,
+          "decoded": 0.844,
+          "sha256": "1d8a34fdc1a5f854f0e788b1e3092ddcf9d1002a1f7a15aac4711418abd3c31d",
+          "changedStrandPixels": 93,
+          "meanStrandDelta": 2.1458333333333335
+        },
+        {
+          "requested": 0.8643333333333334,
+          "decoded": 0.879,
+          "sha256": "ce26fae00bddb8241086047c612fd176a755a9e32c8a66c320ed76c10e1471c4",
+          "changedStrandPixels": 144,
+          "meanStrandDelta": 3.033514492753623
+        },
+        {
+          "requested": 0.8976666666666666,
+          "decoded": 0.925,
+          "sha256": "03a729dfaa28df6bfc7ca823f8ba75faa0073f79d1d5bfe696e9c4ad1409c0a8",
+          "changedStrandPixels": 146,
+          "meanStrandDelta": 3.3378623188405796
+        },
+        {
+          "requested": 0.931,
+          "decoded": 0.959,
+          "sha256": "4a1b465190099ee70390d1002d0500a37b5ba921e538f7406280a5965417c500",
+          "changedStrandPixels": 142,
+          "meanStrandDelta": 2.7916666666666665
+        },
+        {
+          "requested": 0.9643333333333333,
+          "decoded": 0.997,
+          "sha256": "2531916aa17f78004b1423b00763941f634d56d3f33719753fd33fdc0d5bba82",
+          "changedStrandPixels": 120,
+          "meanStrandDelta": 2.801630434782609
+        },
+        {
+          "requested": 0.9976666666666667,
+          "decoded": 1.021,
+          "sha256": "52f111bf86e1baf6ac973438d85085b6d8429151e9b0b6d47e86a7a13e0bad65",
+          "changedStrandPixels": 74,
+          "meanStrandDelta": 2.1467391304347827
+        },
+        {
+          "requested": 1.0310000000000001,
+          "decoded": 1.055,
+          "sha256": "4374e08d9cfbbc417dc67804ae900ed536db5904ef743f45113712b03ccc5815",
+          "changedStrandPixels": 95,
+          "meanStrandDelta": 2.351449275362319
+        },
+        {
+          "requested": 1.0643333333333334,
+          "decoded": 1.09,
+          "sha256": "354e9d2309dae402f58fa7c1517b789cd9fdd29a3bfa94b28d5a737280e31b35",
+          "changedStrandPixels": 104,
+          "meanStrandDelta": 2.574275362318841
+        },
+        {
+          "requested": 1.0976666666666666,
+          "decoded": 1.112,
+          "sha256": "dd94e9580784628972b6d5ba95e0e0260f2bf4d3786f6847c3575544006c3f20",
+          "changedStrandPixels": 69,
+          "meanStrandDelta": 1.7192028985507246
+        }
+      ],
+      "uniqueStrandFrames": 15,
+      "maxPresentationGap": 0.04700000000000004,
+      "maxDecodedOffset": 0.03266666666666673,
+      "transport": "fully buffered Blob; native playing requestVideoFrameCallback presentation timestamps; 15 consecutive presented frames with stationary input"
+    },
+    {
+      "file": "honey-rework-touch-568-flow.webm",
+      "fileSha256": "7078d1ef6af3ecbb9c79995f24f10492d09f082e5654e73502bd50acb764f4f5",
+      "duration": 16.591,
+      "width": 548,
+      "height": 300,
+      "uniformSamples": [
+        {
+          "requested": 0.1,
+          "decoded": 0.07
+        },
+        {
+          "requested": 1.5764545454545456,
+          "decoded": 1.54
+        },
+        {
+          "requested": 3.052909090909091,
+          "decoded": 3.05
+        },
+        {
+          "requested": 4.529363636363636,
+          "decoded": 4.514
+        },
+        {
+          "requested": 6.0058181818181815,
+          "decoded": 5.98
+        },
+        {
+          "requested": 7.4822727272727265,
+          "decoded": 7.468
+        },
+        {
+          "requested": 8.958727272727272,
+          "decoded": 8.943
+        },
+        {
+          "requested": 10.435181818181817,
+          "decoded": 10.416
+        },
+        {
+          "requested": 11.911636363636363,
+          "decoded": 11.896
+        },
+        {
+          "requested": 13.388090909090907,
+          "decoded": 13.377
+        },
+        {
+          "requested": 14.864545454545453,
+          "decoded": 14.846
+        },
+        {
+          "requested": 16.341,
+          "decoded": 16.276
+        }
+      ],
+      "denseSamples": [
+        {
+          "requested": 0.6743999999985099,
+          "decoded": 0.678,
+          "sha256": "3163af318f057ea9e967b5257ece520bead023e2a4ce203483abdce19480b207",
+          "changedStrandPixels": 0,
+          "meanStrandDelta": 0
+        },
+        {
+          "requested": 0.7077333333318432,
+          "decoded": 0.713,
+          "sha256": "008a24349b66ac7bbfe88f36732048eaaebee4852d6c03dffc58d9f034a0b137",
+          "changedStrandPixels": 155,
+          "meanStrandDelta": 16.23148148148148
+        },
+        {
+          "requested": 0.7410666666651765,
+          "decoded": 0.743,
+          "sha256": "c56112d39978fdc4ae25c01b0b99fe9fa29f4e6d6bf9bb097c2cde53842bda6c",
+          "changedStrandPixels": 142,
+          "meanStrandDelta": 10.753086419753087
+        },
+        {
+          "requested": 0.7743999999985098,
+          "decoded": 0.781,
+          "sha256": "fe6808e2506cd7cfb7b617135b1258a54555c2a585c7b6fe7f166de4eb2c876a",
+          "changedStrandPixels": 138,
+          "meanStrandDelta": 9.421296296296296
+        },
+        {
+          "requested": 0.8077333333318432,
+          "decoded": 0.809,
+          "sha256": "fcba265465a922a7d911d5f5418a43699edc96990ec4d2e74e1c979a3d7ceb28",
+          "changedStrandPixels": 102,
+          "meanStrandDelta": 4.478395061728395
+        },
+        {
+          "requested": 0.8410666666651765,
+          "decoded": 0.843,
+          "sha256": "6c3d9ac314a3f71b255598f6f4d6e168fd0a498d43e153a4a0c9e469af5723f7",
+          "changedStrandPixels": 97,
+          "meanStrandDelta": 3.8441358024691357
+        },
+        {
+          "requested": 0.8743999999985099,
+          "decoded": 0.883,
+          "sha256": "7215c98495f2ab57a727e4fb789021016de9bcb231932b80851584c002798663",
+          "changedStrandPixels": 79,
+          "meanStrandDelta": 3.1018518518518516
+        },
+        {
+          "requested": 0.9077333333318431,
+          "decoded": 0.917,
+          "sha256": "83a8610aab3c377d253fb8b7e10a3b305b5555d56a1ae154e5ac849d681587f2",
+          "changedStrandPixels": 44,
+          "meanStrandDelta": 1.7592592592592593
+        },
+        {
+          "requested": 0.9410666666651766,
+          "decoded": 0.941,
+          "sha256": "cbee0083a5f9009caec62a44835dc5522720f08cf070234286222d0fd8450e07",
+          "changedStrandPixels": 38,
+          "meanStrandDelta": 1.4614197530864197
+        },
+        {
+          "requested": 0.9743999999985098,
+          "decoded": 0.974,
+          "sha256": "656f6d941a517cebc626b4e78bebd6710059b9a363c9573d6ace90312b8e1713",
+          "changedStrandPixels": 40,
+          "meanStrandDelta": 2.0324074074074074
+        },
+        {
+          "requested": 1.0077333333318432,
+          "decoded": 1.007,
+          "sha256": "c8c517f5906aa71f471e778155e183b8b74148221abb9e1f7932c79aa69c7b8e",
+          "changedStrandPixels": 20,
+          "meanStrandDelta": 1.6867283950617284
+        },
+        {
+          "requested": 1.0410666666651764,
+          "decoded": 1.05,
+          "sha256": "ab1b6ad7f6bbe5f297eea22c39c4e68a7b9d5f9aa185af1034b2cbeec5cc7c2c",
+          "changedStrandPixels": 31,
+          "meanStrandDelta": 1.5679012345679013
+        },
+        {
+          "requested": 1.0743999999985099,
+          "decoded": 1.075,
+          "sha256": "cd74db86d8a9a813f7b8aab3cd824f1a99ff05a39c0e277213cdcca31a0e362f",
+          "changedStrandPixels": 12,
+          "meanStrandDelta": 1.0632716049382716
+        },
+        {
+          "requested": 1.107733333331843,
+          "decoded": 1.111,
+          "sha256": "2ede4bc1ecde4132c22c93c962be69dcff5c84ac10f16ae1d951efdf7b99d173",
+          "changedStrandPixels": 36,
+          "meanStrandDelta": 1.8009259259259258
+        },
+        {
+          "requested": 1.1410666666651765,
+          "decoded": 1.15,
+          "sha256": "02669d58c5d68ab74d90bcb2a2360bb970586d31dbfb875ea35b8d21b542e29f",
+          "changedStrandPixels": 39,
+          "meanStrandDelta": 1.7407407407407407
+        }
+      ],
+      "uniqueStrandFrames": 15,
+      "maxPresentationGap": 0.04300000000000015,
+      "maxDecodedOffset": 0.009266666668156898,
+      "transport": "fully buffered Blob; native playing requestVideoFrameCallback presentation timestamps; 15 consecutive presented frames with stationary input"
+    }
+  ],
+  "mediaSha256": {
+    "honey-rework-pear-flow.webm": "599f88af41fc4831a63946ddca7d593e46c3a4a7ab9972e54e0253133b92b4ae",
+    "honey-rework-touch-390-flow.webm": "97d1a7e0ce11df1a2c9b65c76216267000b390d71d71b32e29de6962a1bb473f",
+    "honey-rework-touch-568-flow.webm": "7078d1ef6af3ecbb9c79995f24f10492d09f082e5654e73502bd50acb764f4f5",
+    "honey-rework-biscuit-material-grip-v4.webm": "4530505062aea163c203d50919d48f03267662876fc35fc42b71ae377c36d5fc",
+    "honey-rework-honeyCake-accepted-final-flow.webm": "7baab276705ddcd8a2e37f301448de0987f251c9149036efb5d12eaea1f2164e",
+    "honey-rework-windParfait-accepted-final-flow.webm": "72642eff7cf19e31f02170d6ae3541cda0c522f11110bc2807a0a9cdfd1a9119"
+  },
+  "cleanup": {
+    "previewRemoved": true,
+    "ownedBrowserClosed": "honey-rework"
+  },
+  "limitations": [
+    "Viewport emulation is not a physical-phone benchmark.",
+    "Standalone commit counters do not establish FarmState stock debits; root production gate owns inventory validation.",
+    "MediaRecorder presentation is VFR; rAF timing and actual decoded frame timestamps are reported separately."
+  ]
+}

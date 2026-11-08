@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "node scripts/audit-russian.mjs && tsc --noEmit && vite build",
+    "audit:ru": "node scripts/audit-russian.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test tests/*.test.ts"
   },

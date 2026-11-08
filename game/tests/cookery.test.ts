@@ -3,7 +3,7 @@ import test from 'node:test'
 import {
   beginCookeryStroke, cancelCookery, completeCookery, cookeryParticle, cookeryProgress,
   cookeryViewport, createCookeryModel, endCookeryStroke, fillCookeryJar,
-  moveCookeryStroke, placeCookeryFruit, STIR_REQUIRED,
+  moveCookeryStroke, placeCookeryFruit, choosePreserveProcessing, STIR_REQUIRED,
 } from '../src/cookery-model.ts'
 
 function addFruit(kind: 'preserves' | 'decorate') {
@@ -114,4 +114,17 @@ test('sprinkle flecks have deterministic bounded variation without a random glob
     assert.ok(Math.abs(a.x) <= 1 && Math.abs(a.y) <= 1)
     assert.ok(a.size >= .7 && a.size <= 1.3)
   }
+})
+
+test('signature processing has distinct honest stirring requirements and locks after fruit preparation', () => {
+  const requirements: number[] = []
+  for (const processing of ['chunky', 'bright', 'silky'] as const) {
+    const model = createCookeryModel('preserves'); assert.equal(choosePreserveProcessing(model, processing), true); requirements.push(model.stirRequired)
+    for (let i = 0; i < 5; i++) placeCookeryFruit(model, i, { x: Math.cos(i) * .5, y: Math.sin(i) * .5 })
+    assert.equal(choosePreserveProcessing(model, 'bright'), false)
+    beginCookeryStroke(model, { x: .6, y: 0 })
+    for (let i = 1; i <= 500; i++) moveCookeryStroke(model, { x: Math.cos(i / 500 * model.stirRequired * 1.01) * .6, y: Math.sin(i / 500 * model.stirRequired * 1.01) * .6 })
+    assert.equal(model.stage, 'fill'); assert.equal(model.processing, processing)
+  }
+  assert.ok(requirements[0] < requirements[1] && requirements[1] < requirements[2])
 })

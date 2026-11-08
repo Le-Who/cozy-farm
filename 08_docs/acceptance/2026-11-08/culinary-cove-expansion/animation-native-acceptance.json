@@ -1,0 +1,12 @@
+{
+  "origin":"http://127.0.0.1:5260",
+  "session":"cove-scene",
+  "explicitFixture":true,
+  "assets":{"farmer":["walk-left-smooth.webp","walk-right-smooth.webp","walk-back-smooth.webp"],"farmerFrames":8,"farmerCell":[192,160],"farmerFoot":144,"hen":"hen-walk-smooth.webp","henFrames":8,"henCell":[128,128],"henFoot":112,"crab":"shore-crab-walk.webp","crabFrames":4,"crabCell":[128,128],"crabFoot":118},
+  "nativeActions":["Home world clicks: well, market, coop, farmhouse, market, coop","Travel by Islands panel to Grove","Open Living cove","Observe moving crab, school/channel minnows, walking/wading egret","Resize1440x900 ->390x844 ->568x320","Enable reduced motion and inspect568x320 +390x844"],
+  "review":{"farmerIdentityAndFootRegistration":"matches original walk/body scale","backWalk":"native upward walk sampled; head bob reads as a walking stride at play scale, accepted","henFeet":"new gait driven by actual displacement; keeps feet/shadow grounded and last direction when slow; old held/idle poses retained","crab":"four leg poses with distance-driven scuttle; refuge opacity eases; body retains intrinsic square cell proportions","coveCamera":"same orthographic world with smooth focus; resize safe","reducedMotion":"stable poses and immediate focus; no repeated gait","errors":[],"controlOverflow":false},
+  "motion":["animation-final-farmer-hens-native.webm","animation-final-cove-native.webm"],
+  "screenshots":["animation-final-farmer-back.png","animation-final-farmer-left.png","animation-final-farmer-right.png","animation-back-samples.jpg","animation-final-hens-home-1440.png","animation-final-cove-1440.png","animation-final-cove-probe-1440.png","animation-final-cove-390x844.png","animation-final-cove-568x320.png","animation-final-reduced-390x844.png","animation-final-reduced-568x320.png"],
+  "verification":{"typecheck":"npx tsc --noEmit PASS","closestTests":"node --test tests/fishing.test.ts tests/shoreline-view.test.ts:26PASS"},
+  "sourceFrozen":true
+}

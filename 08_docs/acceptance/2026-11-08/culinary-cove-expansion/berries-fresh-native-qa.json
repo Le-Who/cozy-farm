@@ -1,0 +1,203 @@
+{
+  "fixture": "Completely fresh ordinary save; no coin, stock, crop or clock injection; all actions native Playwright input",
+  "ledger": [
+    {
+      "action": "native purchase and autochoose",
+      "crop": "strawberry",
+      "day": 1,
+      "coins": 12,
+      "seeds": 3,
+      "selected": "strawberry"
+    },
+    {
+      "action": "native till/plant/water",
+      "crop": "strawberry",
+      "day": 1,
+      "bed": {
+        "kind": "crop",
+        "crop": "strawberry",
+        "growth": 0,
+        "watered": true,
+        "wateredAt": 1794144179264
+      },
+      "seeds": 2,
+      "water": 5
+    },
+    {
+      "action": "native purchase and autochoose",
+      "crop": "blueberry",
+      "day": 1,
+      "coins": 14,
+      "seeds": 3,
+      "selected": "blueberry"
+    },
+    {
+      "action": "native till/plant/water",
+      "crop": "blueberry",
+      "day": 1,
+      "bed": {
+        "kind": "crop",
+        "crop": "blueberry",
+        "growth": 0,
+        "watered": true,
+        "wateredAt": 1794144181778
+      },
+      "seeds": 2,
+      "water": 4
+    },
+    {
+      "action": "native purchase and autochoose",
+      "crop": "raspberry",
+      "day": 1,
+      "coins": 8,
+      "seeds": 3,
+      "selected": "raspberry"
+    },
+    {
+      "action": "native till/plant/water",
+      "crop": "raspberry",
+      "day": 1,
+      "bed": {
+        "kind": "crop",
+        "crop": "raspberry",
+        "growth": 0,
+        "watered": true,
+        "wateredAt": 1794144183833
+      },
+      "seeds": 2,
+      "water": 3
+    },
+    {
+      "action": "native rest",
+      "day": 2,
+      "beds": [
+        {
+          "kind": "crop",
+          "crop": "strawberry",
+          "growth": 1,
+          "watered": false
+        },
+        {
+          "kind": "crop",
+          "crop": "blueberry",
+          "growth": 1,
+          "watered": false
+        },
+        {
+          "kind": "crop",
+          "crop": "raspberry",
+          "growth": 1,
+          "watered": false
+        }
+      ]
+    },
+    {
+      "action": "native rest",
+      "day": 3,
+      "beds": [
+        {
+          "kind": "crop",
+          "crop": "strawberry",
+          "growth": 2,
+          "watered": false
+        },
+        {
+          "kind": "crop",
+          "crop": "blueberry",
+          "growth": 2,
+          "watered": false
+        },
+        {
+          "kind": "crop",
+          "crop": "raspberry",
+          "growth": 2,
+          "watered": false
+        }
+      ]
+    },
+    {
+      "action": "native well refill",
+      "day": 3,
+      "water": 6
+    },
+    {
+      "action": "native rest",
+      "day": 4,
+      "beds": [
+        {
+          "kind": "crop",
+          "crop": "strawberry",
+          "growth": 2,
+          "watered": false
+        },
+        {
+          "kind": "crop",
+          "crop": "blueberry",
+          "growth": 3,
+          "watered": false
+        },
+        {
+          "kind": "crop",
+          "crop": "raspberry",
+          "growth": 2,
+          "watered": false
+        }
+      ]
+    },
+    {
+      "action": "native harvest",
+      "crop": "strawberry",
+      "day": 4,
+      "produce": 3,
+      "archive": {
+        "regular": true
+      }
+    },
+    {
+      "action": "native harvest",
+      "crop": "blueberry",
+      "day": 4,
+      "produce": 3,
+      "archive": {
+        "regular": true
+      }
+    },
+    {
+      "action": "native harvest",
+      "crop": "raspberry",
+      "day": 4,
+      "produce": 3,
+      "archive": {
+        "regular": true
+      }
+    }
+  ],
+  "final": {
+    "day": 4,
+    "coins": 20,
+    "water": 5,
+    "seeds": {
+      "strawberry": 2,
+      "blueberry": 2,
+      "raspberry": 2
+    },
+    "produce": {
+      "strawberry": 3,
+      "blueberry": 3,
+      "raspberry": 3
+    },
+    "discoveries": {
+      "strawberry": {
+        "regular": true
+      },
+      "blueberry": {
+        "regular": true
+      },
+      "raspberry": {
+        "regular": true
+      }
+    }
+  },
+  "reloadPreserved": true,
+  "errors": []
+}

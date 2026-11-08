@@ -81,7 +81,7 @@ test('the Bakery sells bread, rotates its own orders, and keeps level-two kitche
   assert.equal(sellMarketItem(farm, 'dishes:farmhouseBread').ok, true);
   assert.equal(farm.coins, beforeSale + 15);
   assert.equal(cookDish(farm, 'farmhouseBread').ok, true);
-  assert.equal(specialtyOrder(farm)?.name, 'Bread basket');
+  assert.equal(specialtyOrder(farm)?.name, 'Хлебная корзина');
   assert.equal(specialtyOrder(farm)?.status, 'ready');
   const beforeOrder = farm.coins;
   assert.equal(deliverMarketOrder(farm, 'specialty').ok, true);
@@ -95,7 +95,7 @@ test('the Bakery sells bread, rotates its own orders, and keeps level-two kitche
   assert.equal(deliverMarketOrder(restored, 'specialty').ok, false);
   assert.equal(restored.coins, beforeOrder + 29);
   assert.equal(endDay(restored).ok, true);
-  assert.equal(specialtyOrder(restored)?.name, 'Baker’s table');
+  assert.equal(specialtyOrder(restored)?.name, 'Стол пекаря');
   restored.produce.wheat = 4;
   restored.eggs = 2;
   assert.equal(cookDish(restored, 'farmhouseBread').ok, true);
@@ -103,7 +103,7 @@ test('the Bakery sells bread, rotates its own orders, and keeps level-two kitche
   assert.equal(deliverMarketOrder(restored, 'specialty').ok, true);
   assert.equal(restored.coins, beforeOrder + 29 + 48);
   assert.equal(endDay(restored).ok, true);
-  assert.equal(specialtyOrder(restored)?.name, 'Bread basket');
+  assert.equal(specialtyOrder(restored)?.name, 'Хлебная корзина');
 });
 
 test('the Preserves kitchen makes and sells orchard preserves and cycles its two orders', () => {
@@ -129,13 +129,13 @@ test('the Preserves kitchen makes and sells orchard preserves and cycles its two
   assert.equal(sellMarketItem(farm, 'dishes:orchardPreserves').ok, true);
   assert.equal(farm.coins, beforeSale + 16);
   assert.equal(cookDish(farm, 'orchardPreserves').ok, true);
-  assert.equal(specialtyOrder(farm)?.name, 'Orchard preserves box');
+  assert.equal(specialtyOrder(farm)?.name, 'Ящик садового конфитюра');
   assert.equal(deliverMarketOrder(farm, 'specialty').ok, true);
   assert.equal(farm.coins, beforeSale + 16 + 30);
   assert.equal(farm.fruit.apple, 2);
   assert.equal(farm.dishes.orchardPreserves, 0);
   assert.equal(endDay(farm).ok, true);
-  assert.equal(specialtyOrder(farm)?.name, 'Grove pantry');
+  assert.equal(specialtyOrder(farm)?.name, 'Кладовая рощи');
   farm.fruit.apple = 4;
   farm.fruit.pear = 2;
   assert.equal(cookDish(farm, 'orchardPreserves').ok, true);
@@ -144,7 +144,7 @@ test('the Preserves kitchen makes and sells orchard preserves and cycles its two
   assert.equal(deliverMarketOrder(farm, 'specialty').ok, true);
   assert.equal(farm.coins, beforeSale + 16 + 30 + 50);
   assert.equal(endDay(farm).ok, true);
-  assert.equal(specialtyOrder(farm)?.name, 'Orchard preserves box');
+  assert.equal(specialtyOrder(farm)?.name, 'Ящик садового конфитюра');
   assert.deepEqual(restoreFarm(JSON.parse(JSON.stringify(farm))), farm);
 });
 

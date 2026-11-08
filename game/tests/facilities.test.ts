@@ -75,7 +75,7 @@ test('the Hatchery uses one egg, hatches on the second morning, and grows produc
   farm = reloaded;
   assert.equal(farm.hatchDay, 3);
   assert.equal(feedChickens(farm).ok, true);
-  assert.match(endDay(farm).message, /new hen hatched/);
+  assert.match(endDay(farm).message, /Вылупилась новая курочка/);
   assert.equal(farm.flockSize, 5);
   assert.equal(farm.hatchDay, null);
   assert.equal(farm.eggsReady, 8);
@@ -203,7 +203,7 @@ test('facility branches open independent rotating orders and preserve the Level 
   const restored = restoreFarm(JSON.parse(JSON.stringify(farm)));
   assert.ok(restored);
   assert.equal(endDay(restored).ok, true);
-  assert.deepEqual(getMarketOrders(restored).slice(-2).map(({ name }) => name), ['Breakfast shipment', 'Mill supper']);
+  assert.deepEqual(getMarketOrders(restored).slice(-2).map(({ name }) => name), ['Поставка к завтраку', 'Ужин на мельнице']);
 
   const other = createFarm();
   other.coins = 200;
@@ -211,7 +211,7 @@ test('facility branches open independent rotating orders and preserve the Level 
   assert.equal(upgradeBuilding(other, 'well').ok, true);
   assert.equal(specializeFacility(other, 'hatchery').ok, true);
   assert.equal(specializeFacility(other, 'rain').ok, true);
-  assert.deepEqual(getMarketOrders(other).slice(-2).map(({ name }) => name), ['Hatchery breakfast', 'Rain garden basket']);
+  assert.deepEqual(getMarketOrders(other).slice(-2).map(({ name }) => name), ['Завтрак в инкубаторе', 'Корзина дождливого сада']);
 });
 
 test('earlier saves keep their upgrades and invalid facility state is rejected', () => {

@@ -5,7 +5,7 @@ import { getRequirementHint, type Requirement } from '../src/requirement-guidanc
 
 test('each missing ingredient has its own source regardless of the onboarding task', () => {
   const farm = createFarm();
-  assert.deepEqual(getRequirementHint(farm,{kind:'stock',item:{kind:'fruit',item:'apple',quantity:2}}).action,{label:'Visit fruit tree',target:'visit-tree',value:'0'});
+  assert.deepEqual(getRequirementHint(farm,{kind:'stock',item:{kind:'fruit',item:'apple',quantity:2}}).action,{label:'К плодовому дереву',target:'visit-tree',value:'0'});
   assert.equal(getRequirementHint(farm,{kind:'stock',item:{kind:'produce',item:'wheat',quantity:1}}).action.value,'4');
   assert.equal(getRequirementHint(farm,{kind:'stock',item:{kind:'eggs',quantity:1}}).action.target,'visit-coop');
 });
@@ -48,9 +48,9 @@ test('owned delivery stock points to delivery rather than harvesting more', () =
 test('rare sources describe a chance and never point at a locked shoal', () => {
   const farm=createFarm();farm.boatOwned=true;farm.island='grove';
   const moon=getRequirementHint(farm,{kind:'stock',item:{kind:'shells',item:'moon',quantity:1}});
-  assert.equal(moon.action.value,'harbor');assert.match(moon.notice!,/may.*lunar tide/);
+  assert.equal(moon.action.value,'harbor');assert.match(moon.notice!,/могут.*лунном приливе/);
   const pearl=getRequirementHint(farm,{kind:'stock',item:{kind:'shoalFinds',item:'pearl',quantity:1}});
-  assert.equal(pearl.action.target,'focus-shell');assert.match(pearl.notice!,/both shell/);
+  assert.equal(pearl.action.target,'focus-shell');assert.match(pearl.notice!,/оба вида ракушек/);
 });
 
 test('exhausted remote sources lead Home to rest without bouncing back to the source island', () => {

@@ -1,0 +1,146 @@
+[
+  {
+    "file": "public/art/lavender/cookery/tart-strawberry.webp",
+    "size": [
+      512,
+      512
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "transparentFraction": 0.4612388610839844,
+    "visibleBounds": [
+      25,
+      85,
+      491,
+      469
+    ]
+  },
+  {
+    "file": "public/art/lavender/cookery/tart-blueberry.webp",
+    "size": [
+      512,
+      512
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "transparentFraction": 0.4616508483886719,
+    "visibleBounds": [
+      24,
+      85,
+      491,
+      469
+    ]
+  },
+  {
+    "file": "public/art/lavender/cookery/tart-raspberry.webp",
+    "size": [
+      512,
+      512
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "transparentFraction": 0.46616363525390625,
+    "visibleBounds": [
+      24,
+      86,
+      492,
+      469
+    ]
+  },
+  {
+    "file": "public/art/lavender/ui-strawberry-tart.webp",
+    "size": [
+      512,
+      512
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "transparentFraction": 0.4634437561035156,
+    "visibleBounds": [
+      25,
+      84,
+      491,
+      469
+    ]
+  },
+  {
+    "file": "public/art/lavender/ui-blueberry-tart.webp",
+    "size": [
+      512,
+      512
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "transparentFraction": 0.44532012939453125,
+    "visibleBounds": [
+      24,
+      84,
+      492,
+      470
+    ]
+  },
+  {
+    "file": "public/art/lavender/ui-raspberry-tart.webp",
+    "size": [
+      512,
+      512
+    ],
+    "alphaRange": [
+      0,
+      255
+    ],
+    "corners": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "transparentFraction": 0.46416473388671875,
+    "visibleBounds": [
+      24,
+      86,
+      492,
+      469
+    ]
+  }
+]

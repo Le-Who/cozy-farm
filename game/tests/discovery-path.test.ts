@@ -9,7 +9,7 @@ test('the new harbour leads to a neighbour, correctly shaped suppers and the sec
   const farm = createFarm(); farm.boatOwned = true; farm.village.built = true;
   assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'village');
   farm.island = 'village';
-  assert.deepEqual(getDiscoveryTask(farm, seen)?.action, {label:'Visit the first cottage',target:'visit-cottage',value:'0'});
+  assert.deepEqual(getDiscoveryTask(farm, seen)?.action, {label:'К первому домику',target:'visit-cottage',value:'0'});
   farm.village.residents[0] = 'bea'; farm.handmade.folded = 1; farm.fish.perch = 1;
   assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'folded');
   farm.village.meals = 1; farm.village.mealOn = farm.day;
@@ -17,7 +17,7 @@ test('the new harbour leads to a neighbour, correctly shaped suppers and the sec
   farm.village.meals = 2;
   assert.equal(getDiscoveryTask(farm, seen)?.action.value, '1');
   farm.village.residents[1] = 'finn';
-  assert.equal(getDiscoveryTask(farm, seen), undefined);
+  assert.equal(getDiscoveryTask(farm, seen)?.id, 'own-recipe');
 });
 
 test('a harbour pastry can be shaped locally and earning never demands an unaffordable seed', () => {
@@ -30,7 +30,7 @@ test('a harbour pastry can be shaped locally and earning never demands an unaffo
   farm.seeds = {carrot:0,cabbage:0,beetroot:0,tomato:0,pumpkin:0,wheat:2,leafyGreens:0};
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'focus-bed');
   farm.beds[0] = {kind:'tilled'};
-  assert.deepEqual(getDiscoveryTask(farm, seen)?.action, {label:'Choose seeds',target:'open-panel',value:'seeds'});
+  assert.deepEqual(getDiscoveryTask(farm, seen)?.action, {label:'Выбрать семена',target:'open-panel',value:'seeds'});
   farm.seeds.wheat = 0;
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'visit-tree');
 });
@@ -55,7 +55,7 @@ test('a fresh farm gets one precise bed action and the selector never changes th
   const farm = createFarm(), original = structuredClone(farm);
   const next = getDiscoveryTask(farm, { collections: false, islands: false })!;
   assert.equal(next.id, 'till'); assert.equal(next.progress, 0); assert.equal(next.target, 1); assert.equal(next.reward, 3);
-  assert.deepEqual(next.action, { label: 'Till soil', target: 'focus-bed', value: '0' });
+  assert.deepEqual(next.action, { label: 'Вскопать землю', target: 'focus-bed', value: '0' });
   assert.deepEqual(farm, original);
   workBed(farm, 0);
   assert.equal(getDiscoveryTask(farm, seen)?.id, 'plant');
@@ -88,7 +88,7 @@ test('out of order actions remain complete and collections are introduced only o
 
 test('first tart guidance points to each missing ingredient instead of an unavailable recipe', () => {
   const farm = starterDone();
-  assert.deepEqual(getDiscoveryTask(farm, seen)?.action, { label: 'Visit fruit tree', target: 'visit-tree', value: '0' });
+  assert.deepEqual(getDiscoveryTask(farm, seen)?.action, { label: 'К плодовому дереву', target: 'visit-tree', value: '0' });
   farm.fruit.apple = 2;
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'focus-bed');
   assert.equal(getDiscoveryTask(farm, seen)?.action.value, '4');
@@ -102,7 +102,7 @@ test('first tart guidance points to each missing ingredient instead of an unavai
 test('missing wheat sources lead through seeds, tilling, water and home before rest', () => {
   const farm = starterDone(); farm.fruit.apple = 2;
   farm.beds = farm.beds.map(() => ({ kind: 'empty' })); farm.seeds.wheat = 0;
-  assert.match(getDiscoveryTask(farm, seen)!.label, /wheat seeds/);
+  assert.match(getDiscoveryTask(farm, seen)!.label, /семена: пшеница/);
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'visit-market');
   farm.seeds.wheat = 1;
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'focus-bed');

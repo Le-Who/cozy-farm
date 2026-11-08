@@ -1,0 +1,166 @@
+{
+  "origin": "http://127.0.0.1:5264/",
+  "parentIntegration": true,
+  "isolatedMount": false,
+  "productSourcesEdited": false,
+  "buildRun": false,
+  "expectedBundle": "./assets/index-Bmp-vlhA.js",
+  "expectedCSS": "./assets/index-B43Bk1UC.css",
+  "allPassed": true,
+  "parfaitPeachFruitChipVerified": true,
+  "recipes": [
+    {
+      "family": "honeyCake",
+      "result": {
+        "family": "honeyCake",
+        "fruit": [],
+        "steps": [
+          "mix-batter",
+          "bake-golden",
+          "pour-honey"
+        ],
+        "baking": {
+          "method": "oven",
+          "finish": "golden",
+          "seconds": 2.4
+        }
+      },
+      "stockBefore": 0,
+      "stockAfter": 1,
+      "stockCredit": 1,
+      "observedCost": {
+        "wheat": 2,
+        "honey": 1,
+        "windHoney": 0,
+        "peach": 0,
+        "eggs": 0
+      },
+      "duplicate": false,
+      "navigation": {
+        "heading": "КУХНЯ",
+        "recipeCardVisible": true
+      },
+      "bundle": "./assets/index-Bmp-vlhA.js",
+      "css": "./assets/index-B43Bk1UC.css",
+      "errors": []
+    },
+    {
+      "family": "windParfait",
+      "ingredientImages": [
+        {
+          "src": "./art/lavender/ui-wind-honey.webp",
+          "alt": "Мёд ветров"
+        },
+        {
+          "src": "./art/lavender/ui-peach-fruit.webp",
+          "alt": "Персик"
+        },
+        {
+          "src": "./art/icons/egg.webp",
+          "alt": "Яйцо"
+        }
+      ],
+      "result": {
+        "family": "windParfait",
+        "fruit": [
+          {
+            "ingredientId": "peach",
+            "x": -0.37999991794471166,
+            "y": 0.19999958350962788,
+            "angle": 0
+          },
+          {
+            "ingredientId": "peach",
+            "x": 2.9722879302980564e-08,
+            "y": -6.1383992871001605e-09,
+            "angle": 0
+          },
+          {
+            "ingredientId": "peach",
+            "x": 0.38000011726284316,
+            "y": -0.20000055491126953,
+            "angle": 0
+          }
+        ],
+        "steps": [
+          "layer-custard",
+          "layer-fruit",
+          "pour-honey"
+        ],
+        "baking": {
+          "method": "chilled",
+          "finish": "set",
+          "seconds": 0
+        }
+      },
+      "stockBefore": 0,
+      "stockAfter": 1,
+      "stockCredit": 1,
+      "observedCost": {
+        "wheat": 0,
+        "honey": 0,
+        "windHoney": 1,
+        "peach": 1,
+        "eggs": 1
+      },
+      "duplicate": false,
+      "navigation": {
+        "heading": "Медовая кухня",
+        "recipeCardVisible": true
+      },
+      "bundle": "./assets/index-Bmp-vlhA.js",
+      "css": "./assets/index-B43Bk1UC.css",
+      "errors": []
+    },
+    {
+      "family": "honeyBiscuits",
+      "recording": "ru-production-biscuit-physical-motion.webm",
+      "ready": true,
+      "label": "Готово",
+      "stockBefore": 0,
+      "stockAfter": 1,
+      "stockCredit": 1,
+      "observedCost": {
+        "honey": 1,
+        "wheat": 2,
+        "eggs": 1
+      },
+      "result": {
+        "family": "honeyBiscuits",
+        "fruit": [],
+        "steps": [
+          "shape-biscuits",
+          "bake-golden",
+          "pour-honey"
+        ],
+        "baking": {
+          "method": "oven",
+          "finish": "golden",
+          "seconds": 2.4
+        }
+      },
+      "duplicateCommit": false,
+      "navigation": {
+        "heading": "Медовая кухня",
+        "recipeCardVisible": true
+      },
+      "bundle": "./assets/index-Bmp-vlhA.js",
+      "css": "./assets/index-B43Bk1UC.css",
+      "errors": []
+    }
+  ],
+  "movies": [
+    {
+      "file": "ru-production-honeyCake-accepted-final-flow.webm",
+      "bytes": 3119359
+    },
+    {
+      "file": "ru-production-windParfait-accepted-final-flow.webm",
+      "bytes": 4234600
+    },
+    {
+      "file": "ru-production-biscuit-physical-motion.webm",
+      "bytes": 14037834
+    }
+  ]
+}

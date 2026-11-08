@@ -1,0 +1,16 @@
+{
+  "origin": "http://127.0.0.1:5260",
+  "session": "cove-scene",
+  "fixture": {"explicitSyntheticFixture": true, "source": "fresh-player-save.json", "initialDay": 12, "modifications": ["island=grove", "fishCaughtToday.grove=0"], "validatedBy": "restoreFarm", "newDomainFields": "ordinary restore migration"},
+  "nativeRoute": ["Explore -> Living cove", "Quiet / Kelp / Sand", "Home -> Farmhouse -> Rest -> Islands -> Grove", "Fish -> Cast -> Reel early -> Return to shore", "Open / Meadow / Stones", "Home -> Farmhouse -> Rest -> Islands -> Grove", "Fish -> Cast -> Reel early -> Return to shore"],
+  "nursery": {"settledOn": 13, "revision": 1, "choices": {"flow":"sheltered","cover":"kelp","refuge":"sand"}, "nativeCast": {"token":4,"current":0.25,"shelter":0.35,"seaBassWeight":0.7,"perchWeight":0.3,"rareWeight":0.75}},
+  "channel": {"settledOn": 14, "revision": 2, "choices": {"flow":"open","cover":"meadow","refuge":"stones"}, "nativeCast": {"token":5,"current":0.8,"shelter":0.8,"seaBassWeight":0.45,"perchWeight":0.55,"rareWeight":1.25}},
+  "observations": ["crab-foraging","egret-watching","minnow-nursery","crab-refuge","egret-wading","minnow-migration","meadow-wings"],
+  "checks": {"pendingKeptPreviousSettledChoices":true,"nativeTouchQueuedAndRevertedPending":true,"revisionStayed2AfterTouchRevert":true,"worldMouseEntryOpenedCove":true,"worldEntryScreenCoordinate":[1115.25,562],"reducedMotionPortraitChecked":true,"controlsOverflow":false,"scriptErrors":[],"webglErrors":[]},
+  "viewportMatrix": [[1440,900],[390,844],[568,320]],
+  "screenshots": ["cove-final-nursery-1440x900.png","cove-final-nursery-390x844.png","cove-final-nursery-568x320.png","cove-final-channel-1440x900.png","cove-final-channel-390x844.png","cove-final-channel-568x320.png","cove-final-reduced-390x844.png"],
+  "motion": ["cove-nursery-motion.webm","cove-channel-motion.webm"],
+  "fullNativeChannelCatch": {"depthMetres":120,"catches":["Moonfish","Sea bass"],"inventoryAfter":{"moonfish":2,"lanternfish":0,"perch":0,"seaBass":1},"caughtTodayGrove":2,"pending":null,"stableAward":true,"restoreFarm":true,"screenshots":["cove-channel-fishing-ascent.png","cove-channel-fishing-result.png"]},
+  "pureVerification": {"fishingTests":23,"animalBehaviorTests":3,"typecheck":"npx tsc --noEmit PASS"},
+  "scope": "Native UI configuration, tide settlement, habitat snapshots, complete120m channel catch and visual layouts. Wildlife paths/head direction/behaviour cycles additionally verified by pure tests. Initial two casts deliberately reeled early to inspect snapshots; final full-depth cast caught Moonfish+Sea bass and awarded once."
+}

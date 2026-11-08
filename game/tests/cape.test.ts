@@ -316,7 +316,7 @@ test('the fair visitor keeps the same daily request when the Cape route opens', 
     assert.ok(guestBeforeUnlock);
     assert.equal(canSailTo(farm, 'cape'), false);
     if (unlockDay === 4) {
-      assert.equal(guestBeforeUnlock.name, 'Bea');
+      assert.equal(guestBeforeUnlock.name, 'Беа');
       assert.deepEqual(guestBeforeUnlock.item, { kind: 'produce', item: 'wheat', quantity: 3 });
     }
     sail(farm, 'grove');

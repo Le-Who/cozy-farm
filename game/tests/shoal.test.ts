@@ -15,7 +15,7 @@ test('the second shell discovery opens the shoal and one sea-glass find per day'
   assert.equal(collectShoalFind(farm, 'glass').ok, false);
   assert.equal(collectShell(farm, 1).ok, true);
   assert.equal(hasShoal(farm), false);
-  assert.match(collectShell(farm, 0).message, /Moonpool Shoal opened/);
+  assert.match(collectShell(farm, 0).message, /Открыта Лунная отмель/);
   assert.equal(hasShoal(farm), true);
   assert.equal(getShoalFindAt(farm, 'pearl'), undefined);
   assert.equal(collectShoalFind(farm, 'glass').ok, true);

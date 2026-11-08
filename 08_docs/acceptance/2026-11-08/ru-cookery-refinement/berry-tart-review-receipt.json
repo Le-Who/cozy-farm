@@ -1,0 +1,245 @@
+{
+  "personal": {
+    "nativeCreation": true,
+    "sourceGesture": "personal-tart-review.js",
+    "id": "s2",
+    "name": "Тарт: клубника",
+    "ingredients": [
+      {
+        "id": "strawberry",
+        "quantity": 2
+      }
+    ],
+    "costs": {
+      "strawberry": 2,
+      "wheat": 1,
+      "eggs": 1
+    },
+    "stock": 1,
+    "fruit": [
+      {
+        "ingredientId": "strawberry",
+        "x": -0.42644837955228854,
+        "y": -0.09912490761271146,
+        "angle": 0
+      },
+      {
+        "ingredientId": "strawberry",
+        "x": -0.019599064483795392,
+        "y": 0.08087509238728854,
+        "angle": 0
+      },
+      {
+        "ingredientId": "strawberry",
+        "x": 0.3336518543267628,
+        "y": -0.09912490761271146,
+        "angle": 0.5235987755982988
+      }
+    ],
+    "thumbnail": {
+      "src": "/art/lavender/cookery/tart-strawberry.webp",
+      "loaded": true
+    },
+    "toppings": [
+      {
+        "raw": "left:38.48589375208821%;top:44.21575166297119%;transform:translate(-50%,-50%) rotate(0rad)",
+        "src": "/art/lavender/cookery/strawberry.webp",
+        "loaded": true
+      },
+      {
+        "raw": "left:49.47082525893752%;top:47.455751662971196%;transform:translate(-50%,-50%) rotate(0rad)",
+        "src": "/art/lavender/cookery/strawberry.webp",
+        "loaded": true
+      },
+      {
+        "raw": "left:59.008600066822595%;top:44.21575166297119%;transform:translate(-50%,-50%) rotate(0.5235987755982988rad)",
+        "src": "/art/lavender/cookery/strawberry.webp",
+        "loaded": true
+      }
+    ],
+    "reloadPreservesResult": true,
+    "issues": []
+  },
+  "stock_paths": {
+    "setup": "Three ordinary berry-dish stocks seeded through cookDish in the isolated QA save; personal-tart receipt separately proves native creation. All sales and order deliveries below use normal UI.",
+    "icons": [
+      {
+        "surface": "inventory",
+        "id": "strawberryTart",
+        "src": "/art/lavender/ui-strawberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "inventory",
+        "id": "blueberryTart",
+        "src": "/art/lavender/ui-blueberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "inventory",
+        "id": "raspberryTart",
+        "src": "/art/lavender/ui-raspberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "archive",
+        "id": "strawberryTart",
+        "src": "/art/lavender/ui-strawberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "archive",
+        "id": "blueberryTart",
+        "src": "/art/lavender/ui-blueberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "archive",
+        "id": "raspberryTart",
+        "src": "/art/lavender/ui-raspberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "market",
+        "id": "strawberryTart",
+        "src": "/art/lavender/ui-strawberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "market",
+        "id": "blueberryTart",
+        "src": "/art/lavender/ui-blueberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "market",
+        "id": "raspberryTart",
+        "src": "/art/lavender/ui-raspberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "order",
+        "id": "strawberryTart",
+        "src": "/art/lavender/ui-strawberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "order",
+        "id": "blueberryTart",
+        "src": "/art/lavender/ui-blueberry-tart.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "order",
+        "id": "raspberryTart",
+        "src": "/art/lavender/ui-raspberry-tart.webp",
+        "width": 512,
+        "height": 512
+      }
+    ],
+    "sales": [
+      {
+        "id": "strawberryTart",
+        "stockBefore": 2,
+        "stockAfter": 1,
+        "coins": 33
+      },
+      {
+        "id": "blueberryTart",
+        "stockBefore": 2,
+        "stockAfter": 1,
+        "coins": 35
+      },
+      {
+        "id": "raspberryTart",
+        "stockBefore": 2,
+        "stockAfter": 1,
+        "coins": 33
+      }
+    ],
+    "orders": [
+      {
+        "id": "strawberryTart",
+        "day": 12,
+        "stockBefore": 1,
+        "stockAfter": 0,
+        "coins": 45
+      },
+      {
+        "id": "blueberryTart",
+        "day": 13,
+        "stockBefore": 1,
+        "stockAfter": 0,
+        "coins": 47
+      },
+      {
+        "id": "raspberryTart",
+        "day": 14,
+        "stockBefore": 1,
+        "stockAfter": 0,
+        "coins": 45
+      }
+    ],
+    "issues": [],
+    "initial": {
+      "day": 12,
+      "dishes": {
+        "strawberryTart": 2,
+        "blueberryTart": 2,
+        "raspberryTart": 2,
+        "appleJam": 0,
+        "farmhouseBread": 0,
+        "orchardPreserves": 0,
+        "honeyCake": 0,
+        "honeyBiscuits": 0,
+        "honeyPear": 0,
+        "windParfait": 0,
+        "orchardTart": 0,
+        "grilledFish": 0
+      }
+    },
+    "discoveryPersistsAfterReload": true
+  },
+  "same_day_recency_fix": {
+    "first": "s2",
+    "stock": 1,
+    "base": {
+      "src": "/art/lavender/cookery/tart-strawberry.webp",
+      "width": 512
+    },
+    "rotation": 0.5235987755982988,
+    "ordinaryStocks": {
+      "strawberryTart": 0,
+      "blueberryTart": 0,
+      "raspberryTart": 0
+    },
+    "archiveRetained": true,
+    "issues": []
+  },
+  "source_files": {
+    "game/src/cookery.ts": "a766ed04540c8c927f194d038eedad3c9dc386676be7ff4e1c4fa7c25c9d89f8",
+    "game/src/culinary-ui.ts": "51fad15e65115d743ce6c1683c7aad5f8697c11d3bd70c02ca4f4d41db0dedd6",
+    "game/src/main.ts": "3c982042ac9eb8d4db3e692021b1c2733ebcd17fe5a6f93013fc8ffef91bc688",
+    "game/src/farm.ts": "f4e537b019336dcbd91dc06bff32c9a79b4642a10178a7ffbe6814f96a96f83d"
+  },
+  "scope": {
+    "nativePersonalTart": "UI studio → native F/arrows/Space fruit placement → native rotation handle twice → held shaker sweep → finish → book → reload",
+    "ordinaryStockSetup": "cookDish seeded two of each in isolated QA save; subsequent inventory/archive/market/order paths were native UI",
+    "runtimeAudit": "No English or Russian quantity findings on inspected screens",
+    "sourceEdits": false,
+    "buildWritten": false,
+    "server": "Dedicated 5272 Vite; HMR disabled to isolate live edits in other workers"
+  },
+  "review_findings_remaining": []
+}

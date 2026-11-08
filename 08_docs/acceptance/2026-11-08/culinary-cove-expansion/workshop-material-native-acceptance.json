@@ -1,0 +1,160 @@
+{
+  "before": {
+    "stage": "finished",
+    "shape": "folded",
+    "worked": "true",
+    "mixed": "1.000",
+    "pieceCount": "2",
+    "selectedPiece": "1",
+    "tool": "cut",
+    "mass": "1.93471",
+    "cutting": "false",
+    "touching": "false",
+    "layout": "landscape",
+    "ready": "true",
+    "mixCx": "68.88575557993855",
+    "mixCy": "108.79613205017958",
+    "mixRx": "17.440071887646358",
+    "mixRy": "7.00851545431014",
+    "cutEngine": "worker"
+  },
+  "after": {
+    "stage": "finished",
+    "shape": "folded",
+    "worked": "true",
+    "mixed": "1.000",
+    "pieceCount": "2",
+    "selectedPiece": "1",
+    "tool": "cut",
+    "mass": "1.93471",
+    "cutting": "false",
+    "touching": "false",
+    "layout": "landscape",
+    "ready": "true",
+    "mixCx": "68.88575557993855",
+    "mixCy": "108.79613205017958",
+    "mixRx": "17.440071887646358",
+    "mixRy": "7.00851545431014",
+    "cutEngine": "worker"
+  },
+  "materials": [
+    {
+      "name": "Authored ivory dough and honey crust",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-0"
+    },
+    {
+      "name": "Authored dense dough cut face",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-1"
+    },
+    {
+      "name": "Authored ivory dough and honey crust",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-0"
+    },
+    {
+      "name": "Authored dense dough cut face",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-1"
+    },
+    {
+      "name": "Authored ivory dough and honey crust",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-0"
+    },
+    {
+      "name": "Authored dense dough cut face",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-1"
+    },
+    {
+      "name": "Authored ivory dough and honey crust",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-0"
+    },
+    {
+      "name": "Authored dense dough cut face",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-1"
+    },
+    {
+      "name": "Authored ivory dough and honey crust",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-0"
+    },
+    {
+      "name": "Authored dense dough cut face",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-1"
+    },
+    {
+      "name": "Authored ivory dough and honey crust",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-0"
+    },
+    {
+      "name": "Authored dense dough cut face",
+      "bumpMap": false,
+      "uvMap": false,
+      "cacheKey": "lavender-dough-surface-v5-1"
+    }
+  ],
+  "touch": {
+    "fixture": "Actual isolated component; no farm state loaded or mutated",
+    "results": [
+      {
+        "viewport": [
+          390,
+          844
+        ],
+        "nativeCDPTouch": true,
+        "latchedOutsideContour": true,
+        "stages": [
+          "raw",
+          "press",
+          "large stretch",
+          "fold",
+          "cut",
+          "bake"
+        ],
+        "pieces": 2,
+        "mass": 1.93471,
+        "stage": "finished",
+        "cutEngine": "worker"
+      },
+      {
+        "viewport": [
+          568,
+          320
+        ],
+        "nativeCDPTouch": true,
+        "latchedOutsideContour": true,
+        "stages": [
+          "raw",
+          "press",
+          "large stretch",
+          "fold",
+          "cut",
+          "bake"
+        ],
+        "pieces": 2,
+        "mass": 1.93471,
+        "stage": "finished",
+        "cutEngine": "worker"
+      }
+    ],
+    "errors": []
+  }
+}

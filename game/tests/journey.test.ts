@@ -59,7 +59,7 @@ test('a new farm shows every destination and its first reachable action before b
   farm.coins = 52;
   assert.equal(journey(farm, 'grove').nextAction?.enabled, true);
   assert.equal(buyBoat(farm).ok, true);
-  assert.deepEqual(journey(farm, 'grove').nextAction, { target: 'sail', value: 'grove', label: 'Set sail · Saltwind Grove', enabled: true });
+  assert.deepEqual(journey(farm, 'grove').nextAction, { target: 'sail', value: 'grove', label: 'В путь · Солёная роща', enabled: true });
 });
 
 test('Cape explains the hidden specialization and pier requirements and directs travel to their location', () => {

@@ -1,0 +1,100 @@
+{
+  "scope": "Isolated native createCookery adapter; parent owns production inventory receipts",
+  "frozenAt": "2026-11-08T17:23:21.7460550+02:00",
+  "sourceHashes": {
+    "game/src/cookery.ts": "A013C72C00764ECAC99ACAF71DEF91A77ACD6E16D7FE85D3D1C26AD67EE85C43",
+    "game/src/cookery-model.ts": "6FBEA24AE63B5EA9283D5E59274929EEACF8FFF8B4FD457AA98319AD083ADDDD",
+    "game/src/cookery.css": "60C516337D811AC46C16E62EF8E1C37974AB58D5994713F46A6132EE18B70ECE",
+    "game/src/honey-cookery.ts": "CF64CE086BCFFA05E4576C66E9E69ABDE758E39FE8427838FF5FDED56E839399",
+    "game/src/honey-cookery-model.ts": "FC619AB364AC5E295748EDC4BCB722EA5B359294DE47F4DE1A0F20A1BF56D536",
+    "game/src/honey-cookery.css": "80CEEC94C506F82D36C21FA65C909CE685510D69537CA477D6A469DBB635BB21",
+    "game/src/honey-pear-view.ts": "2AA204F4AF4F6715E913D753378249E669C63F3049207693F936BAC8F3580DC5",
+    "game/src/food-motion.ts": "128850EB1F9DEEDD9D44FE5E93F33D7009D4C9030AF45649C1B6E49B82F2E3F1",
+    "game/src/food-deformation.ts": "2B735D8BEA98D13FDC2E7BB31A6031ECE9BC199F10FA2B6AA693995B54F69EB0",
+    "game/src/pear-cut.ts": "F3455E7E6CA9BB1019073501E94FF269517D20B9FDBC43BEE1D228033892D023",
+    "game/src/honey-stream.ts": "0F5FF118737C484C00A6448D8BCA0F8A3272B6A38C20C74E10AC969991933434",
+    "game/src/knife-trace.ts": "F3F242024BAD35610752169C1F01131DE872EA385DA28EBB9B1E7203A93D7DCC"
+  },
+  "checks": [
+    {
+      "coating": "Actual UV flesh area, mean >=45%, each >=25%, material density threshold96",
+      "completionCommits": 1,
+      "actualCut": "Two direct longitudinal body contacts; real closed halves",
+      "video": "pear-accepted-final-physical-flow.webm",
+      "recipe": "honeyPear",
+      "rendererReceipt": "pear-accepted-final-receipt.json",
+      "motionReceipt": "pear-accepted-final-motion-receipt.json",
+      "input": "Native mouse",
+      "viewport": "1440x900"
+    },
+    {
+      "viewport": "1440x900",
+      "WebGL": "Formed geometry and paint food-region pixels identical after restore",
+      "video": "biscuit-accepted-final-physical-flow.webm",
+      "work": "Actual material grip; 150px pull retained through bake/glaze",
+      "recipe": "honeyBiscuits",
+      "completionCommits": 1,
+      "input": "Native mouse"
+    },
+    {
+      "oldNormalizedDistance": 0.31648,
+      "result": "Bake-ready",
+      "screenshot": "biscuit-final-edge-contact.png",
+      "recipe": "honeyBiscuits edge regression",
+      "obsoleteRadius": 0.26,
+      "cancelCommits": 0,
+      "input": "Native mouse hold on two visible outer shoulders"
+    },
+    {
+      "input": "Native mouse",
+      "completionCommits": 1,
+      "viewport": "844x390",
+      "recipe": "honeyCake",
+      "video": "honey-honeyCake-accepted-final-flow.webm"
+    },
+    {
+      "viewport": "390x844",
+      "video": "honey-windParfait-accepted-final-flow.webm",
+      "recipe": "windParfait",
+      "fruit": "Lands with continuous XY motion, sinks and incorporates; no duplicate final sprites",
+      "completionCommits": 1,
+      "input": "Native CDP touchscreen"
+    },
+    {
+      "viewport": "390x844",
+      "sequence": "5 fruit, real circular stir, 3 jar transfers; finished Enter did not recommit",
+      "script": "cookery-preserves-qa.js",
+      "recipe": "Regular preserves regression",
+      "completionCommits": 1,
+      "input": "Native mouse"
+    },
+    {
+      "rotation": "44px local handle, wheel, true two-pointer twist; valid saved angles",
+      "viewports": [
+        "1440x900",
+        "390x844"
+      ],
+      "script": "signature-rotation-qa.js",
+      "recipe": "Tart regression",
+      "completionCommitsEach": 1,
+      "input": "Native mouse and CDP touchscreen"
+    }
+  ],
+  "verification": {
+    "latestTypeScript": "PASS",
+    "pearFoodPixelsAfterGL": "Identical",
+    "closestCookeryHoneyTests": 19,
+    "biscuitFoodPixelsAfterGL": "Identical",
+    "DPR": [
+      1,
+      1.25,
+      2
+    ],
+    "earlierAllMotionHelperTests": 53,
+    "phoneAndShortLandscapeBounds": [
+      "390x844",
+      "568x320"
+    ]
+  },
+  "mediaNotes": "Canvas recordings intentionally exclude DOM HUD. Decoded hero has 12 unique sampled frames; actual presentation timestamps are retained."
+}

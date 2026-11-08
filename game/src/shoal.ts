@@ -5,8 +5,8 @@ export const shoalFindIds = ['glass', 'pearl'] as const;
 export type ShoalFindId = typeof shoalFindIds[number];
 
 export const shoalDefinitions = {
-  glass: { name: 'Sea glass', icon: 'ui-sea-glass', price: 5, luminous: false },
-  pearl: { name: 'Moon pearl', icon: 'ui-moon-pearl', price: 18, luminous: true },
+  glass: { name: 'Морское стекло', icon: 'ui-sea-glass', price: 5, luminous: false },
+  pearl: { name: 'Лунная жемчужина', icon: 'ui-moon-pearl', price: 18, luminous: true },
 };
 
 export function hasShoal(farm: { shellDiscoveries: readonly ShellId[] }): boolean {

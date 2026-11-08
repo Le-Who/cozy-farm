@@ -1,0 +1,26 @@
+[
+  {
+    "file": "01_primary_target/lavender-bay/ru-cookery-refinement/ASSET_PROMPTS.md",
+    "kind": "remove only trailing blank lines at EOF",
+    "beforeSha256": "524e950ce8ab7f086019f32001062d8d662d5dee9000d0041d5eeddc87274793",
+    "afterSha256": "ecd512afd24a19eb72500bff88763f4e56e59a00eccc193e2268e98370493552",
+    "bodySha256": "6cc0fdf9da8e78d6bc466d2fed688b129ea75d3b19f70b38ce22c9e1b2707c73",
+    "bodyIdentical": true
+  },
+  {
+    "file": "game/src/honey-cookery.ts",
+    "kind": "remove only trailing blank lines at EOF",
+    "beforeSha256": "f073121750d8d20a910087f4c4cc3830fed487b573e98ba4e97f5c97088ab2cc",
+    "afterSha256": "332d7d271fe7b888e46496c62a8e95877e65eeac1aeac45f5db5de52dd0d0c79",
+    "bodySha256": "977aadbc05d45377c2e2e650110e2523bae70bd75c49477ce39208c2d93a580e",
+    "bodyIdentical": true
+  },
+  {
+    "file": "game/src/honey-pear-view.ts",
+    "kind": "remove only trailing blank lines at EOF",
+    "beforeSha256": "3b83c36a71de61d30d27e3c4a9690f3b16ed70d3c1da022708e3a5326971119f",
+    "afterSha256": "423626552e5a12d27fb01e37badb1506d0a14c644712b9a541b6171947b15758",
+    "bodySha256": "9b2a27d5cfb735aacf8c32401cf50f2a0a5442370057196bca0b0ddefd44439f",
+    "bodyIdentical": true
+  }
+]

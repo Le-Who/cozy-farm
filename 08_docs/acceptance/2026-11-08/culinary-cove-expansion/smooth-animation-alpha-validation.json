@@ -1,0 +1,67 @@
+[
+  {
+    "name": "walk-left-smooth",
+    "size": [
+      1536,
+      160
+    ],
+    "alpha": [
+      0,
+      255
+    ],
+    "uniqueFrames": 8,
+    "cornersClear": true
+  },
+  {
+    "name": "walk-right-smooth",
+    "size": [
+      1536,
+      160
+    ],
+    "alpha": [
+      0,
+      255
+    ],
+    "uniqueFrames": 8,
+    "cornersClear": true
+  },
+  {
+    "name": "walk-back-smooth",
+    "size": [
+      1536,
+      160
+    ],
+    "alpha": [
+      0,
+      255
+    ],
+    "uniqueFrames": 8,
+    "cornersClear": true
+  },
+  {
+    "name": "hen-walk-smooth",
+    "size": [
+      1024,
+      128
+    ],
+    "alpha": [
+      0,
+      255
+    ],
+    "uniqueFrames": 8,
+    "cornersClear": true
+  },
+  {
+    "name": "shore-crab-walk",
+    "size": [
+      512,
+      128
+    ],
+    "alpha": [
+      0,
+      255
+    ],
+    "uniqueFrames": 4,
+    "cornersClear": true
+  }
+]

@@ -1,0 +1,325 @@
+{
+  "status": "passed",
+  "origin": "http://127.0.0.1:5264",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "compiled": {
+    "origin": "http://127.0.0.1:5264",
+    "js": "./assets/index-Bmp-vlhA.js",
+    "css": [
+      "./assets/index-B43Bk1UC.css"
+    ],
+    "title": "Уютная ферма",
+    "lang": "ru",
+    "jsSha256": "f40174910840813b2813e1810b460aef4791e852c7d915ed988bb5c524590ff0",
+    "cssSha256": "d29882d24c7bc4772d8ce9e030795f194eeeb00447002472412077742fb3fb22"
+  },
+  "fixture": "final-home-kitchen-browser-state.json",
+  "tarts": {
+    "ok": true,
+    "bundle": "./assets/index-Bmp-vlhA.js",
+    "out": [
+      {
+        "dish": "strawberryTart",
+        "berry": "strawberry",
+        "stock": 1,
+        "cost": {
+          "berry": 2,
+          "wheat": 1,
+          "egg": 1
+        },
+        "discovered": true,
+        "stockBefore": 0,
+        "rotation": 0.23797292483611077,
+        "duplicateCommit": false,
+        "russianText": {
+          "label": "strawberryTart finished",
+          "stage": "finished",
+          "recipe": "Клубничный тарт",
+          "hint": "",
+          "finish": "На кухню",
+          "english": []
+        }
+      },
+      {
+        "dish": "blueberryTart",
+        "berry": "blueberry",
+        "stock": 1,
+        "cost": {
+          "berry": 2,
+          "wheat": 1,
+          "egg": 1
+        },
+        "discovered": true,
+        "stockBefore": 0,
+        "rotation": 0.23817252259696187,
+        "duplicateCommit": false,
+        "russianText": {
+          "label": "blueberryTart finished",
+          "stage": "finished",
+          "recipe": "Черничный тарт",
+          "hint": "",
+          "finish": "На кухню",
+          "english": []
+        }
+      },
+      {
+        "dish": "raspberryTart",
+        "berry": "raspberry",
+        "stock": 1,
+        "cost": {
+          "berry": 2,
+          "wheat": 1,
+          "egg": 1
+        },
+        "discovered": true,
+        "stockBefore": 0,
+        "rotation": 0.23853515501220934,
+        "duplicateCommit": false,
+        "russianText": {
+          "label": "raspberryTart finished",
+          "stage": "finished",
+          "recipe": "Малиновый тарт",
+          "hint": "",
+          "finish": "На кухню",
+          "english": []
+        }
+      }
+    ],
+    "snapshots": [
+      {
+        "label": "strawberryTart arranged",
+        "stage": "sprinkle",
+        "recipe": "Клубничный тарт",
+        "hint": "Посыпьте тарт сахаром",
+        "finish": "Готово",
+        "english": []
+      },
+      {
+        "label": "strawberryTart finished",
+        "stage": "finished",
+        "recipe": "Клубничный тарт",
+        "hint": "",
+        "finish": "На кухню",
+        "english": []
+      },
+      {
+        "label": "blueberryTart arranged",
+        "stage": "sprinkle",
+        "recipe": "Черничный тарт",
+        "hint": "Посыпьте тарт сахаром",
+        "finish": "Готово",
+        "english": []
+      },
+      {
+        "label": "blueberryTart finished",
+        "stage": "finished",
+        "recipe": "Черничный тарт",
+        "hint": "",
+        "finish": "На кухню",
+        "english": []
+      },
+      {
+        "label": "raspberryTart arranged",
+        "stage": "sprinkle",
+        "recipe": "Малиновый тарт",
+        "hint": "Посыпьте тарт сахаром",
+        "finish": "Готово",
+        "english": []
+      },
+      {
+        "label": "raspberryTart finished",
+        "stage": "finished",
+        "recipe": "Малиновый тарт",
+        "hint": "",
+        "finish": "На кухню",
+        "english": []
+      }
+    ],
+    "errors": []
+  },
+  "ordinaryJam": {
+    "ok": true,
+    "bundle": "./assets/index-Bmp-vlhA.js",
+    "stockBefore": 0,
+    "stockAfter": 1,
+    "inventoryDelta": {
+      "appleJam": 1,
+      "apple": -2
+    },
+    "discovered": true,
+    "duplicateCommit": false,
+    "snapshots": [
+      {
+        "label": "appleJam fruit",
+        "stage": "stir",
+        "recipe": "Яблочное варенье",
+        "hint": "Возьмите ложку и перемешайте",
+        "finish": "Готово",
+        "english": []
+      },
+      {
+        "label": "appleJam reduced",
+        "stage": "fill",
+        "recipe": "Яблочное варенье",
+        "hint": "Переложите конфитюр ложкой в банку",
+        "finish": "Готово",
+        "english": []
+      },
+      {
+        "label": "appleJam finished",
+        "stage": "finished",
+        "recipe": "Яблочное варенье",
+        "hint": "",
+        "finish": "На кухню",
+        "english": []
+      }
+    ],
+    "errors": []
+  },
+  "finalStocks": {
+    "strawberryTart": 1,
+    "blueberryTart": 1,
+    "raspberryTart": 1,
+    "appleJam": 1
+  },
+  "finalArchive": {
+    "strawberryTart": true,
+    "blueberryTart": true,
+    "raspberryTart": true,
+    "appleJam": true
+  },
+  "savedResultFamilies": {
+    "strawberryTart": "decorate",
+    "blueberryTart": "decorate",
+    "raspberryTart": "decorate",
+    "appleJam": "preserves"
+  },
+  "artifacts": {
+    "ru-production-strawberryTart-arranged.png": {
+      "bytes": 463941,
+      "sha256": "fdc003b98f5ada0dd8cc6b4d4d20c1fa639b2c4d7f50dc7b98883ba8dd28115a"
+    },
+    "ru-production-strawberryTart-finished.png": {
+      "bytes": 471299,
+      "sha256": "f9e778276ba114f14c7f79a0e9c9d4e33bb9572a45d2fd2b60315f94e51f9228"
+    },
+    "ru-production-strawberryTart-manual.webm": {
+      "bytes": 341805,
+      "sha256": "e4ed2311a98e33b97001c344bc2579590cbbb17c73b4c79bc33f4b9a0b9c88f0"
+    },
+    "ru-production-blueberryTart-arranged.png": {
+      "bytes": 459059,
+      "sha256": "ff9ffefc1a7f6b626d685644370ac93b944410904f25bbaf182fad0dab6a7ce9"
+    },
+    "ru-production-blueberryTart-finished.png": {
+      "bytes": 467678,
+      "sha256": "4233368d48efc9bd42180f57fdf49b61ab3aa07d14ca89f6a24ece7f6fb1cfbc"
+    },
+    "ru-production-blueberryTart-manual.webm": {
+      "bytes": 393395,
+      "sha256": "5638a549cd6648df1afebfa2d2fffd5549676d0a8d43364cbab2dea53f5b0ece"
+    },
+    "ru-production-raspberryTart-arranged.png": {
+      "bytes": 464429,
+      "sha256": "1f570d54f74f53184e551d219943d1910f6c11cd5765f7c888ad5732059afd3a"
+    },
+    "ru-production-raspberryTart-finished.png": {
+      "bytes": 472778,
+      "sha256": "406f53489f8229b7661a59f309fb80a46c48676c93ff1ae5b1c104cf09955376"
+    },
+    "ru-production-raspberryTart-manual.webm": {
+      "bytes": 398176,
+      "sha256": "c70189d014a83f1f6a67f876d6a91d4f3538bbff972d766bcd22b599aa6a10b4"
+    },
+    "ru-production-regular-preserves-fruit.png": {
+      "bytes": 456244,
+      "sha256": "d6c91f063cb7b066f43d77a14acb7889322526a3a78ac79dd269756c2ad868a4"
+    },
+    "ru-production-regular-preserves-reduced.png": {
+      "bytes": 457868,
+      "sha256": "f6c50281709df01672c2134be40db3d1dafe1f75cb0f33092133d4ecc5e5e09f"
+    },
+    "ru-production-regular-preserves-finished.png": {
+      "bytes": 461649,
+      "sha256": "a7f3fdc19428f4ace8120f42188cce2bb75ff685b441523c93337469282add3a"
+    },
+    "ru-production-peach-inventory.png": {
+      "bytes": 134281,
+      "sha256": "29a6a5b6c495d9b11e44dc697ed20255386f780a9f3cf6b56d161495fd708ae4"
+    },
+    "ru-production-peach-orchard-archive.png": {
+      "bytes": 144612,
+      "sha256": "bbd4d6bdd46959dfbb5d8f992085ebb6e837a6d632e7dd62bdd1b9137886316b"
+    },
+    "ru-production-peach-bay-archive.png": {
+      "bytes": 150418,
+      "sha256": "721bb0c9f4d4e34675c518b97c77306700a115bacf11dcde4e68187c4a605d7c"
+    },
+    "ru-production-peach-ingredient.png": {
+      "bytes": 129166,
+      "sha256": "239f30a08d1e39e59cf8207cd6e02ba6afb272a24122e82acce709a6beba777d"
+    }
+  },
+  "savedBrowserState": "ru-production-interface-browser-state.json",
+  "input": "Native mouse placement/rotation/sugar; native mouse fruit/stir/jar transfer; Enter duplicate-completion checks. No direct model mutation.",
+  "sourceEdits": false,
+  "buildPerformed": false,
+  "peachIcons": {
+    "bundle": "./assets/index-Bmp-vlhA.js",
+    "icons": [
+      {
+        "surface": "inventory fruit",
+        "src": "./art/lavender/ui-peach-fruit.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "market sapling",
+        "src": "./art/lavender/ui-tree-peach.webp",
+        "width": 128,
+        "height": 128
+      },
+      {
+        "surface": "planting tree",
+        "src": "./art/lavender/ui-tree-peach.webp",
+        "width": 128,
+        "height": 128
+      },
+      {
+        "surface": "orchard archive fruit",
+        "src": "./art/lavender/ui-peach-fruit.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "bay archive fruit",
+        "src": "./art/lavender/ui-peach-fruit.webp",
+        "width": 512,
+        "height": 512
+      },
+      {
+        "surface": "parfait ingredient fruit",
+        "src": "./art/lavender/ui-peach-fruit.webp",
+        "width": 512,
+        "height": 512
+      }
+    ],
+    "nativeDiscovery": {
+      "plant": true,
+      "nights": 3,
+      "pick": true,
+      "fruitBefore": 20,
+      "fruitAfter": 22,
+      "coinsSpent": 13
+    },
+    "russianSnapshot": {
+      "recipe": "Воздушное парфе",
+      "ingredient": "Персик\n22/1",
+      "button": "Готовить, Воздушное парфе"
+    },
+    "sourceEdits": false
+  }
+}

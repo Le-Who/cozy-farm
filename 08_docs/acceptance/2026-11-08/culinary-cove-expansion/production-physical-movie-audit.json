@@ -1,0 +1,1092 @@
+{
+  "reportedProductionBundle": "index-zvbs654r.js",
+  "method": "Read-only native HTMLvideo audit through Vite byte-range files. Twelve uniform samples across each duration plus twelve dense food-contact samples. Await seeked and requestVideoFrameCallback, then two rAFs before canvas capture. Actual requested and decoded timestamps and SHA256/64-bit dHash included. Variable-frame recordings permit nearest presented frame within .8 seconds; observed offsets reported in summary.",
+  "classification": "Both recordings are dynamic and show changed food geometry/material response, not merely changing backgrounds.",
+  "observations": {
+    "biscuit": "First biscuit spreads/changes silhouette under contact and retains its worked shape. Baking then moving brush and progressively covered glossy surfaces are visible.",
+    "pear": "Knife travels through fruit; cut halves separate around2seconds for first pear. Moving jug/strand and growing amber coating are visible in dense13\u0432\u0402\u201c15second window.",
+    "visualIssues": "No clipping, exploding geometry, harsh surface grain or new blocking visual issue observed in sampled frames. This audit establishes recording content; underlying topology and transaction checks belong to production QA."
+  },
+  "uniform": [
+    {
+      "name": "production-biscuit-physical-motion.webm",
+      "duration": 25.869,
+      "width": 1180,
+      "height": 820,
+      "decodeTolerance": 0.8,
+      "samples": [
+        {
+          "requestedTime": 0.08,
+          "mediaTime": 0.069,
+          "presentedFrames": 3,
+          "hashes": {
+            "full": {
+              "sha256": "814d82a931843442628fde0e278f9eba9fe533b5c8abfab59c9a0d576c8c20aa",
+              "dHash": "397d9b7e952555cd"
+            },
+            "food": {
+              "sha256": "8c5ebd9f5b5c60a3b9247564f6913322e7bb54506cd584089512abfce3c4dd67",
+              "dHash": "e67333bab337bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "7246ad78d2c4b816091c23920ba841800edd058bffc41853cb9c40929b3b3038",
+              "dHash": "5d1f0f1f0f8eea51"
+            }
+          }
+        },
+        {
+          "requestedTime": 2.417181818181818,
+          "mediaTime": 2.401,
+          "presentedFrames": 4,
+          "hashes": {
+            "full": {
+              "sha256": "80757be40aae5e63cb1601e2a09291b88fc68ba9c938b35d75f2d5f1f4ae15e7",
+              "dHash": "397d9b36952555cd"
+            },
+            "food": {
+              "sha256": "9cf3e697da363651c2d6dc0700807ac72e034e499979ab18a711cc758bb20803",
+              "dHash": "e65353bab337bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "665a4e0f9d0ca5d65b43572a447880d41f52c2514603fa5060e5d10fdbb2cef3",
+              "dHash": "4d474347071f8e53"
+            }
+          }
+        },
+        {
+          "requestedTime": 4.754363636363636,
+          "mediaTime": 4.741,
+          "presentedFrames": 5,
+          "hashes": {
+            "full": {
+              "sha256": "00f635f51542059f565a064606d5ed878e6bd82d1cd90ab7939018661b79e678",
+              "dHash": "397d9b3f952555cd"
+            },
+            "food": {
+              "sha256": "0c96c0b22181b3d59ca6cfc6bda78b5085809d585ac6fb887fb9b26b5a9f4a9a",
+              "dHash": "e65353bab3133315"
+            },
+            "firstBiscuit": {
+              "sha256": "b5cf0c1f3509d39622102f9c73f80b532743dc12c4e331e5fe9957a36cf758b9",
+              "dHash": "4d072303071fce53"
+            }
+          }
+        },
+        {
+          "requestedTime": 7.091545454545455,
+          "mediaTime": 7.074,
+          "presentedFrames": 6,
+          "hashes": {
+            "full": {
+              "sha256": "65f5da43758764ab39e1f6c7b6d04f54dde292922b506b45f0c22d0dba2b1dc0",
+              "dHash": "397d9b37952555cd"
+            },
+            "food": {
+              "sha256": "aba61fd0a2da70e808613c7774eb9263b8a436f9764d63546a2293716274c945",
+              "dHash": "e61313bab3573315"
+            },
+            "firstBiscuit": {
+              "sha256": "6aaf4d34966f41597a679899790bd924d056aa24b9253f4c96a2ebe9dacc74f8",
+              "dHash": "4d0f4323070fce53"
+            }
+          }
+        },
+        {
+          "requestedTime": 9.428727272727272,
+          "mediaTime": 9.407,
+          "presentedFrames": 7,
+          "hashes": {
+            "full": {
+              "sha256": "a066a137530e1a68d64237a64a7a5162d7c8b9a5f50c83b68c8ee2a8f2bc592f",
+              "dHash": "397d9b36952555cd"
+            },
+            "food": {
+              "sha256": "c7c67b2d1da00c3c6a17ca8faed4be5cb057bb774c9e3c7a9bd5942d220f6509",
+              "dHash": "e41373aab357b315"
+            },
+            "firstBiscuit": {
+              "sha256": "42fbbc3ed1bba7679854fde035418b6e0acf34bb381ccaac88f9fd6bcb63cc90",
+              "dHash": "4d1b0b1b330ec853"
+            }
+          }
+        },
+        {
+          "requestedTime": 11.76590909090909,
+          "mediaTime": 11.741,
+          "presentedFrames": 8,
+          "hashes": {
+            "full": {
+              "sha256": "d829f2290d965f189431183acb9b8feea4c42a82b83c91ad524d21bcd17f1f53",
+              "dHash": "397d9b3f952555cd"
+            },
+            "food": {
+              "sha256": "723375931197d9c4eb4acdbaec11b0d39d7856dda680a1d335f31c4ca82f6ee2",
+              "dHash": "e51133aab353b315"
+            },
+            "firstBiscuit": {
+              "sha256": "a7544c9667857b0714eea9af387ddb49836d6df6d0fd1c081b8c1c9d9f2d698b",
+              "dHash": "4d0b0b1b330ed85b"
+            }
+          }
+        },
+        {
+          "requestedTime": 14.10309090909091,
+          "mediaTime": 14.073,
+          "presentedFrames": 9,
+          "hashes": {
+            "full": {
+              "sha256": "39b47728ce073d07394648d00613c101fd2dbef19f20a50cc99b5fb96c079a2b",
+              "dHash": "397d932f8d2555cd"
+            },
+            "food": {
+              "sha256": "b3cc8472c5f4d9ede2a2f33209283bc20042694a75d7bc4f64d70d2bb3ba8130",
+              "dHash": "ee8d13aab357b315"
+            },
+            "firstBiscuit": {
+              "sha256": "f642ae67aa8077a133b86e23803f6bf041a5ee297065372d3e5d719de3c08217",
+              "dHash": "4c05791b350ed851"
+            }
+          }
+        },
+        {
+          "requestedTime": 16.440272727272724,
+          "mediaTime": 16.406,
+          "presentedFrames": 10,
+          "hashes": {
+            "full": {
+              "sha256": "ef30662228acd3ea1959e0495dc04007c8ed0dea0bd4a2a53086fd6e78a945b7",
+              "dHash": "397d9b3fad2555cd"
+            },
+            "food": {
+              "sha256": "1747039d0fb6227e2b1b69823419bab1e64b2406f8ba0d6945a5673f3dfb6467",
+              "dHash": "e4b537aab353b315"
+            },
+            "firstBiscuit": {
+              "sha256": "427db52adaf927055904b87ee70da7f26cc828bb61b53597885013ae07924eea",
+              "dHash": "c525ebd40d8e8873"
+            }
+          }
+        },
+        {
+          "requestedTime": 18.777454545454543,
+          "mediaTime": 18.774,
+          "presentedFrames": 11,
+          "hashes": {
+            "full": {
+              "sha256": "f61adca7f092b7e54fe3136cc284d81c70af7cfcbb3d34ceba11b9459dcd8f6c",
+              "dHash": "397d9b3f8d2555cd"
+            },
+            "food": {
+              "sha256": "06b1552930f13d0986275adc730d3a68724984471ff73720aa0b63ae9eacfcb0",
+              "dHash": "e5b555cab353b315"
+            },
+            "firstBiscuit": {
+              "sha256": "4acc12c4f7f4d8e0c2130dec6c1629487a9593db9a0ba59787ca64fd63c7d91a",
+              "dHash": "4d05dbb51d86c85b"
+            }
+          }
+        },
+        {
+          "requestedTime": 21.11463636363636,
+          "mediaTime": 21.107,
+          "presentedFrames": 12,
+          "hashes": {
+            "full": {
+              "sha256": "78c342e9b9ce0d7e5a08cdef78032218a7c45dadaffaf7c8344fccc76157a32e",
+              "dHash": "397d9b3f8d2955cd"
+            },
+            "food": {
+              "sha256": "61bdf38405324c2f5bc9b257929f641b868bca28f98910e6f6d35888b5810bbc",
+              "dHash": "e6b155cdb153b315"
+            },
+            "firstBiscuit": {
+              "sha256": "6ba5b854e8a605c9f60c05c23d9e2f2720f7d2b444f5c79fbf9377a8c70f7106",
+              "dHash": "4d05dbb51d86c853"
+            }
+          }
+        },
+        {
+          "requestedTime": 23.45181818181818,
+          "mediaTime": 23.44,
+          "presentedFrames": 13,
+          "hashes": {
+            "full": {
+              "sha256": "0e26940686f5fa5a7621695ba9b805b5ab4bc479bf52dc63431e27044844e681",
+              "dHash": "397d9b368d2551cd"
+            },
+            "food": {
+              "sha256": "270044b48fa5226782eb343e52662bc3833b2306b4f6bfcf3a555524fd9cf5e3",
+              "dHash": "e4b167eeb5959815"
+            },
+            "firstBiscuit": {
+              "sha256": "03db20efa959c5d91941ac435983eb584f35b08cc7ed8555de0296a6b15d145a",
+              "dHash": "4d05d9b61d85ca5b"
+            }
+          }
+        },
+        {
+          "requestedTime": 25.788999999999998,
+          "mediaTime": 25.772,
+          "presentedFrames": 14,
+          "hashes": {
+            "full": {
+              "sha256": "d35571099a7d0f6e4785e159010171d956ceaefbf36923ce6046a3f4fb163086",
+              "dHash": "397d9b3e8d2551cd"
+            },
+            "food": {
+              "sha256": "8799a52444f551e63851cf608820136096f4d788d5210d303506e48c892bb3fb",
+              "dHash": "e4b157ceb515ac15"
+            },
+            "firstBiscuit": {
+              "sha256": "93859e7e1e69a0036a8a96e12c001070c723066637ab2faa9f159b9205fe93c7",
+              "dHash": "4d05dbb51d86c853"
+            }
+          }
+        }
+      ],
+      "unique": {
+        "full": {
+          "exact": 12,
+          "perceptual": 10
+        },
+        "food": {
+          "exact": 12,
+          "perceptual": 12
+        },
+        "firstBiscuit": {
+          "exact": 12,
+          "perceptual": 11
+        }
+      }
+    },
+    {
+      "name": "production-pear-physical-flow.webm",
+      "duration": 40.577,
+      "width": 1180,
+      "height": 820,
+      "decodeTolerance": 0.8,
+      "samples": [
+        {
+          "requestedTime": 0.08,
+          "mediaTime": 0.068,
+          "presentedFrames": 3,
+          "hashes": {
+            "full": {
+              "sha256": "110d07131c531ad1104aa400926b2c0e133cc3a23b4cba3d6f870838588f8be0",
+              "dHash": "797d9a37952f07c5"
+            },
+            "food": {
+              "sha256": "12518580ee714502431f5818a65782b4ba29e20869d0c1b074f667b24f6ed44d",
+              "dHash": "6b558d4fab8b532a"
+            },
+            "firstPear": {
+              "sha256": "3ce4d9075fddb6853e9579600623f5362b791ccd379cf2805700554f6bf3d1a8",
+              "dHash": "1ab50755aeac61b1"
+            }
+          }
+        },
+        {
+          "requestedTime": 3.7542727272727276,
+          "mediaTime": 3.734,
+          "presentedFrames": 4,
+          "hashes": {
+            "full": {
+              "sha256": "b194764c13c21fef87986e36821e890da4274f94ec32f0249907c7190f8c817e",
+              "dHash": "397d9f37959f37c5"
+            },
+            "food": {
+              "sha256": "1392febd9920c51c0b0bf44ce8ae873a5b5bfb19756fb50c0feac8d022ac1873",
+              "dHash": "e7558d1f3b4b6726"
+            },
+            "firstPear": {
+              "sha256": "7dd996b8d2f0b83bf4bdd386a2146b5839c4fd0e91533b92cd82b9060317b925",
+              "dHash": "1ab537221307e692"
+            }
+          }
+        },
+        {
+          "requestedTime": 7.428545454545455,
+          "mediaTime": 7.4,
+          "presentedFrames": 5,
+          "hashes": {
+            "full": {
+              "sha256": "65ef51dd52064fc9613478ca1a2b49ca7fe674d73af3b9213fe7c4ad205bcc5c",
+              "dHash": "397d9b3f981f37cd"
+            },
+            "food": {
+              "sha256": "43c6d569a0e0c521d31625496641d4a63bef21ab54b2b99154022152ac1a11f1",
+              "dHash": "6b7d891715576b3e"
+            },
+            "firstPear": {
+              "sha256": "5cf951113e70beb621dddf24e2d469e81e43080015a68c5878cba3452a4c8768",
+              "dHash": "1eb537263313c692"
+            }
+          }
+        },
+        {
+          "requestedTime": 11.102818181818183,
+          "mediaTime": 11.075,
+          "presentedFrames": 6,
+          "hashes": {
+            "full": {
+              "sha256": "0acec6db138d7314b651a9c343c1702de971b03cfa8c811f9b50121133ab0196",
+              "dHash": "397d9b3f931f37cd"
+            },
+            "food": {
+              "sha256": "9dbd3c31dcc362b3d5e63c36a4cd3c7b735d26161ae41b5e2fb501cda7a3490f",
+              "dHash": "eb458d1b9557e32e"
+            },
+            "firstPear": {
+              "sha256": "4b262711af3c9c1ebb91ca3bac25a47e82a33dcd0574fca13a96f1affcb8d5f5",
+              "dHash": "1eb432253913c692"
+            }
+          }
+        },
+        {
+          "requestedTime": 14.77709090909091,
+          "mediaTime": 14.744,
+          "presentedFrames": 7,
+          "hashes": {
+            "full": {
+              "sha256": "f0dabeb37af31659ace804b5b2ab34958ceaf3b3a0a9e00a64c123f918ef229b",
+              "dHash": "397d9b3f99133bcd"
+            },
+            "food": {
+              "sha256": "76bcbc649ee00a91926c954ec5db7546c4c8830e25e9cf5084082aa74ba726e7",
+              "dHash": "eb5d89332d5b432e"
+            },
+            "firstPear": {
+              "sha256": "571a1e7081751dd3d49452b19cf9575a4a22b63d0876f5659cb2ce6e916c7e73",
+              "dHash": "1eb537273434c4b0"
+            }
+          }
+        },
+        {
+          "requestedTime": 18.451363636363634,
+          "mediaTime": 18.441,
+          "presentedFrames": 8,
+          "hashes": {
+            "full": {
+              "sha256": "5d198a5edc9b6eea6877488237a9fbaaf9813ca7fb196e2aa4a67d24a6876ba6",
+              "dHash": "397d9b3f991737cd"
+            },
+            "food": {
+              "sha256": "c91422e1b6a75c515f8773f019fbecbec5c533916da3fbde00a0154cd7439a26",
+              "dHash": "eb7d89277557632e"
+            },
+            "firstPear": {
+              "sha256": "0de030e974ad018fce4a9e66276e672ad7b35332b5380a38b25e37af3793e89e",
+              "dHash": "1eb537067a56cdb6"
+            }
+          }
+        },
+        {
+          "requestedTime": 22.125636363636364,
+          "mediaTime": 22.108,
+          "presentedFrames": 9,
+          "hashes": {
+            "full": {
+              "sha256": "cec5c52176d7f8d2e441ab2e9f7ca4240c4ba65e1669fc50f909322acb33aae1",
+              "dHash": "397d9b3f9b3f2bcd"
+            },
+            "food": {
+              "sha256": "c908e21f65556cf3ad14301edecee785d395b187521f5f5ff19acc77b52cc681",
+              "dHash": "eb7d89273175693a"
+            },
+            "firstPear": {
+              "sha256": "68dcccc9d660ba433808164a2e08f707a24ac83c3987fb0e6738915cb2c2bc35",
+              "dHash": "1eb537222c34dcf4"
+            }
+          }
+        },
+        {
+          "requestedTime": 25.799909090909086,
+          "mediaTime": 25.773,
+          "presentedFrames": 10,
+          "hashes": {
+            "full": {
+              "sha256": "6116097a26aee427b8c386fad77960f7351301bb227113f798cca7299a97a73c",
+              "dHash": "397d9b379b3727cd"
+            },
+            "food": {
+              "sha256": "30515255b3267b0e6345707c5acf5d165727c8e2df0eeb8379018eeb0f1dc60a",
+              "dHash": "eb578f2d3d67e326"
+            },
+            "firstPear": {
+              "sha256": "53dbfa2cfdc509203d3741cf34743bc4bc15a4f655f63cdd4e7d1b6cd7c91e9d",
+              "dHash": "1eb537262434fcf4"
+            }
+          }
+        },
+        {
+          "requestedTime": 29.47418181818182,
+          "mediaTime": 29.44,
+          "presentedFrames": 11,
+          "hashes": {
+            "full": {
+              "sha256": "db859516cbbe50864a5968885a9b148991b2f8c745d8581276963479a7767114",
+              "dHash": "397d9b3f993b27cd"
+            },
+            "food": {
+              "sha256": "61eabd0419374b1cb10e53c75e66bce34abb763c87019da3c83220ea2d7081fb",
+              "dHash": "eb6d892775676b2e"
+            },
+            "firstPear": {
+              "sha256": "eeac89a4325a15dd5b3044efe08b41de70247d2b32ae46de5b1c688a0271d4f1",
+              "dHash": "1ea537262474fcf4"
+            }
+          }
+        },
+        {
+          "requestedTime": 33.14845454545455,
+          "mediaTime": 33.142,
+          "presentedFrames": 12,
+          "hashes": {
+            "full": {
+              "sha256": "552d9d765c8b599c8b83fbff54999ef7d72680848f0ecc2aee5a79eb6d723572",
+              "dHash": "397d9b37993b2bcd"
+            },
+            "food": {
+              "sha256": "ff556202dd3be064965365a1112943430bd5e4919c925beff0c4b0d67c331cff",
+              "dHash": "eb5d892b356deb2e"
+            },
+            "firstPear": {
+              "sha256": "7e51e1f54299073a0ea075332daca3e3ce3fc0dd9396534bcbebf1f3d0ead6e3",
+              "dHash": "1eb537262434dcf4"
+            }
+          }
+        },
+        {
+          "requestedTime": 36.82272727272727,
+          "mediaTime": 36.807,
+          "presentedFrames": 13,
+          "hashes": {
+            "full": {
+              "sha256": "0623a8fd3beb7eade9df846bca7f14740a84d92bfab956bed278b151f763d909",
+              "dHash": "397d9b3f993b2bcc"
+            },
+            "food": {
+              "sha256": "a6aaf6cc9555a80ba9ed9b1ccc412c466217fbf1e80c0211e7ffc641e3417452",
+              "dHash": "eb5d89273663632a"
+            },
+            "firstPear": {
+              "sha256": "a7182d0b5e6d19414d7a963a68b55dcd8bf4ab132b24f6fd1e3ae9afa8de0b73",
+              "dHash": "1eb537262434fcf4"
+            }
+          }
+        },
+        {
+          "requestedTime": 40.497,
+          "mediaTime": 40.474,
+          "presentedFrames": 14,
+          "hashes": {
+            "full": {
+              "sha256": "781c06a345a0cfa880b81d801481d09e2c94d5f1873a149002ee367050b51970",
+              "dHash": "797d9b3f98bb2bcd"
+            },
+            "food": {
+              "sha256": "95e7d19eee2c88047a4bda51aef340fae7a7cef35fb4cb0ad8d7a982df53d5e8",
+              "dHash": "eb55892735636332"
+            },
+            "firstPear": {
+              "sha256": "0c473b8d574420595b819f56f5a296b2f0763000482ad72fb6128eb73ff4cb48",
+              "dHash": "1ab537262434fcf4"
+            }
+          }
+        }
+      ],
+      "unique": {
+        "full": {
+          "exact": 12,
+          "perceptual": 12
+        },
+        "food": {
+          "exact": 12,
+          "perceptual": 12
+        },
+        "firstPear": {
+          "exact": 12,
+          "perceptual": 11
+        }
+      }
+    }
+  ],
+  "dense": [
+    {
+      "name": "production-biscuit-physical-motion.webm",
+      "duration": 25.869,
+      "width": 1180,
+      "height": 820,
+      "decodeTolerance": 0.8,
+      "times": [
+        0.4,
+        0.7,
+        1,
+        1.3,
+        1.6,
+        1.9,
+        3.2,
+        3.5,
+        3.8,
+        4.1,
+        4.4,
+        4.7
+      ],
+      "contactSuffix": "-dense",
+      "samples": [
+        {
+          "requestedTime": 0.4,
+          "mediaTime": 0.373,
+          "presentedFrames": 3,
+          "hashes": {
+            "full": {
+              "sha256": "943a12bdffd51db33a45c5bdb467f5a7d7a7cfa397ce513868ce9d5de982af4b",
+              "dHash": "797d9b3e972555cd"
+            },
+            "food": {
+              "sha256": "afbe88989bbd5eef74270a708b4b981ac4bb3951f23cdb28773759c96c9a3637",
+              "dHash": "e47333bab337bb17"
+            },
+            "firstBiscuit": {
+              "sha256": "9a2e809a614f19832bd4edab28487217b4602fe1d5db5a88e9295d832d144826",
+              "dHash": "dd1f0f1f1f8eea53"
+            }
+          }
+        },
+        {
+          "requestedTime": 0.7,
+          "mediaTime": 0.672,
+          "presentedFrames": 4,
+          "hashes": {
+            "full": {
+              "sha256": "cf744a36184c0617af09321485f0e97a2e630f6cfe648270a6f1109b9f246581",
+              "dHash": "397d9b36952555cd"
+            },
+            "food": {
+              "sha256": "967d3bccced0da24d6191b0d4e02744c41323e692d3a9f8c95a60e67761df4d2",
+              "dHash": "e67333bab333bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "a17b8c2b3494ca05aa4522ef978b50dd7308fb8799ffe351b885c39878992729",
+              "dHash": "4d1f1f1f1f8eea5b"
+            }
+          }
+        },
+        {
+          "requestedTime": 1,
+          "mediaTime": 0.971,
+          "presentedFrames": 5,
+          "hashes": {
+            "full": {
+              "sha256": "2be1e3a965feb8c713eebf44bc4de6a9fef93d28fa8ab1c2947611910c9287c3",
+              "dHash": "397d9b36952555cd"
+            },
+            "food": {
+              "sha256": "807cdd64be05c0a64df5f91d10a30123e04d177e4a9abe1a56e2dca3f1c0f95f",
+              "dHash": "e65373aab333bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "d5febc1d6750b2827f48b9dd119e0138f43b370801a17a762d11bbe7abe7d1e0",
+              "dHash": "cd0f47071f1fd459"
+            }
+          }
+        },
+        {
+          "requestedTime": 1.3,
+          "mediaTime": 1.276,
+          "presentedFrames": 6,
+          "hashes": {
+            "full": {
+              "sha256": "1d18981c0ac87ad5b39057094531e6a1ec472fa1ff2594a672d1a000941975a1",
+              "dHash": "397d9b36952555cd"
+            },
+            "food": {
+              "sha256": "723d14cb5fd401686c17bd270d5a0c02547924733bfa194c53770ffd04a85fc1",
+              "dHash": "e65333bab333bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "1f4b8c66a913ee51db6de96b041d472f941ec05889234a498a569ab3b726096d",
+              "dHash": "4d07570f0f1fcc5b"
+            }
+          }
+        },
+        {
+          "requestedTime": 1.6,
+          "mediaTime": 1.575,
+          "presentedFrames": 7,
+          "hashes": {
+            "full": {
+              "sha256": "28ccf870d40d81a1adb3e4a45519bc85857215b2205a8fa6f8db841b070a01a8",
+              "dHash": "397d9b37952555cd"
+            },
+            "food": {
+              "sha256": "392652eadd6eb81e367df8407d3cf53e3bfbbf88cd7be7a0076dce78ff52d56f",
+              "dHash": "e65333bab333bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "e043d3b249d6683ed3bd4dd84b393048f86d596e7475d83e0556d0e247de433f",
+              "dHash": "cd0753470f1fcc5b"
+            }
+          }
+        },
+        {
+          "requestedTime": 1.9,
+          "mediaTime": 1.873,
+          "presentedFrames": 8,
+          "hashes": {
+            "full": {
+              "sha256": "76c9044a75f50733efdf02a11c84797b2a04c946f44ef7168b05b610dc991eaa",
+              "dHash": "397d9b37952555cd"
+            },
+            "food": {
+              "sha256": "0ec96c53ffd7dda7a1b87d6ebcc915d87b2f1d5a0d463d8d650aa97b10f29b08",
+              "dHash": "e65333bab333bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "d372e9c205b08291c4dd0c3eea88c32828107a12a68455b7ab15cf98949bf6d9",
+              "dHash": "4d2f53070f0fcc5b"
+            }
+          }
+        },
+        {
+          "requestedTime": 3.2,
+          "mediaTime": 3.172,
+          "presentedFrames": 9,
+          "hashes": {
+            "full": {
+              "sha256": "30021f922b22b7a6466cc25484d4bb10c9403c3d0e378a6dbdfb1f3b330299f1",
+              "dHash": "397d9b37952555cd"
+            },
+            "food": {
+              "sha256": "f8beceb46634782fbf39a397aa994957472ee425e5d69921e3944410c538541f",
+              "dHash": "e45313bbb373bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "e5df608c1eb6a7f2dcf519d1d55dd2fee9dcbbb8be3687ffe79177fa35126d1e",
+              "dHash": "4d072703271fce53"
+            }
+          }
+        },
+        {
+          "requestedTime": 3.5,
+          "mediaTime": 3.477,
+          "presentedFrames": 10,
+          "hashes": {
+            "full": {
+              "sha256": "ebc36f2fc34ffe228d8c6c50750a63a9c4df16af28e1fa5cc1b3822282c5d3bf",
+              "dHash": "397d9b36952555cd"
+            },
+            "food": {
+              "sha256": "cd98faea5d4811f5ab59919382fe1a3ee309c5120fcb6594cbbebc3fc51a5287",
+              "dHash": "e41313bab333bb15"
+            },
+            "firstBiscuit": {
+              "sha256": "84dcb9282aa5da920bf4bf19ac0e6363817998023c1dcb975ccd87d804915651",
+              "dHash": "4d172303071fce53"
+            }
+          }
+        },
+        {
+          "requestedTime": 3.8,
+          "mediaTime": 3.775,
+          "presentedFrames": 11,
+          "hashes": {
+            "full": {
+              "sha256": "464a5c1eb4105cdc9e9ace847b14a533ca36e7e9e1c1b3065d90dd38c3e5bac1",
+              "dHash": "397d9b3e951555cd"
+            },
+            "food": {
+              "sha256": "0bf9615e7eb27c9ec121553290e5b130727f11665b9fb102ea636639996abde7",
+              "dHash": "e41753ba33333b15"
+            },
+            "firstBiscuit": {
+              "sha256": "677c57f8871a9969199b896335af2bb2d102c1ad87a73aacf7ff8090f371a739",
+              "dHash": "4d072303071fce53"
+            }
+          }
+        },
+        {
+          "requestedTime": 4.1,
+          "mediaTime": 4.074,
+          "presentedFrames": 12,
+          "hashes": {
+            "full": {
+              "sha256": "29e3b6d244d8099dae182559aaaf8aeaf99b5b871e03fdae881fe37b05381455",
+              "dHash": "397d9b3f953555cd"
+            },
+            "food": {
+              "sha256": "0e0307340c14098b22774bb967d2832042cbc270f7f1c545e7e5fdbb6b8f96de",
+              "dHash": "e65313bab3533b15"
+            },
+            "firstBiscuit": {
+              "sha256": "dcdd3d4addcb4385abcd146a771d26278ef85e5110adda265ff1dc5a1de0907d",
+              "dHash": "4d072303071fce53"
+            }
+          }
+        },
+        {
+          "requestedTime": 4.4,
+          "mediaTime": 4.373,
+          "presentedFrames": 13,
+          "hashes": {
+            "full": {
+              "sha256": "f20c55eebe13be80afb281de30a9aa696cdabc34ac94c7fe4cba143280e58f88",
+              "dHash": "397d9b3f952555cd"
+            },
+            "food": {
+              "sha256": "d767d57b2c6adae4bc4c22e65a8c2eb9309c6c3188efacbb8bf387796f6f5dae",
+              "dHash": "e65313bab3133315"
+            },
+            "firstBiscuit": {
+              "sha256": "24a29bff45f9cf7f282448a038a723ca368557a8495ea0adc26b5ad1e96ea3e8",
+              "dHash": "4d072303071fce53"
+            }
+          }
+        },
+        {
+          "requestedTime": 4.7,
+          "mediaTime": 4.671,
+          "presentedFrames": 14,
+          "hashes": {
+            "full": {
+              "sha256": "bdf9e96d24d7a0bed463fca636ff9a8eae928f8a7b0254117f742d2acec32192",
+              "dHash": "397d9b3f952555cd"
+            },
+            "food": {
+              "sha256": "baf5c59a9579fc698b18bb6705c372f4b5ccc0a25cd9d4f9c59a89c4459ac9ee",
+              "dHash": "e65353bab3133315"
+            },
+            "firstBiscuit": {
+              "sha256": "184131d165a378357565190e3dcfd76372d35e54feffa4633abfab71a1294049",
+              "dHash": "4d072303071fce53"
+            }
+          }
+        }
+      ],
+      "unique": {
+        "full": {
+          "exact": 12,
+          "perceptual": 6
+        },
+        "food": {
+          "exact": 12,
+          "perceptual": 10
+        },
+        "firstBiscuit": {
+          "exact": 12,
+          "perceptual": 9
+        }
+      }
+    },
+    {
+      "name": "production-pear-physical-flow.webm",
+      "duration": 40.577,
+      "width": 1180,
+      "height": 820,
+      "decodeTolerance": 0.8,
+      "times": [
+        0.5,
+        1,
+        1.5,
+        2,
+        2.5,
+        3,
+        13,
+        13.4,
+        13.8,
+        14.2,
+        14.6,
+        15
+      ],
+      "contactSuffix": "-dense",
+      "samples": [
+        {
+          "requestedTime": 0.5,
+          "mediaTime": 0.472,
+          "presentedFrames": 3,
+          "hashes": {
+            "full": {
+              "sha256": "3df0abcdb14fe53f5cd667791bcda85fb9e060ae7b52a1dd34d20a59d2978187",
+              "dHash": "797d9a17952f07c5"
+            },
+            "food": {
+              "sha256": "ade68f8a8bf172c0db7882f2eb6bd9a191d92e6fbd1a628280b2fc794c0992f2",
+              "dHash": "2b2dad6f6b4b932e"
+            },
+            "firstPear": {
+              "sha256": "f845ec857ef063a89a41bbf2de0a8a47d8418c66cd41235f193839da5ed32d10",
+              "dHash": "1acd172d4e6c6191"
+            }
+          }
+        },
+        {
+          "requestedTime": 1,
+          "mediaTime": 0.971,
+          "presentedFrames": 4,
+          "hashes": {
+            "full": {
+              "sha256": "abf00872d106a5785400f22466001f4dee04b22ecfdcd173f50344005f322629",
+              "dHash": "797daa16972f1fc5"
+            },
+            "food": {
+              "sha256": "364978a41e09daa1342e9ccd78419e2bc0ad9384b58fd7a73874693db233a7f5",
+              "dHash": "2b2dad6f6b4b132e"
+            },
+            "firstPear": {
+              "sha256": "a9d85824fce8b41b5a6bef2a01a78e46f00e17347323eb3ec0a5d465d4d0a560",
+              "dHash": "1a8d1f254eec6191"
+            }
+          }
+        },
+        {
+          "requestedTime": 1.5,
+          "mediaTime": 1.479,
+          "presentedFrames": 5,
+          "hashes": {
+            "full": {
+              "sha256": "340a7c04ec1e0e3a220c42679f3ea76492aff0272095915e06ca2c98492794fc",
+              "dHash": "797dab2797af0fc5"
+            },
+            "food": {
+              "sha256": "284253db29c8dfa8c814fe34982288151a5a0e315f9ac859c3eefa7e9c3ec82e",
+              "dHash": "cb7dad6f6b4b352e"
+            },
+            "firstPear": {
+              "sha256": "19104149b6cd6f11efd214db34648c33e53fc6891617fa1b5de84878f25402d7",
+              "dHash": "129d073456ecf189"
+            }
+          }
+        },
+        {
+          "requestedTime": 2,
+          "mediaTime": 1.971,
+          "presentedFrames": 6,
+          "hashes": {
+            "full": {
+              "sha256": "ff1f25227d9b05ba452e74cdb450b7164244573f812d3c657de3a87c3908b7e4",
+              "dHash": "797d9b17a79f37c5"
+            },
+            "food": {
+              "sha256": "2e8d2cc9b05d2fcc10a832c9a49e91b8bbf1bb3b87b03495ecc34a1a54c56b9c",
+              "dHash": "ab5d8d5f1b4b652e"
+            },
+            "firstPear": {
+              "sha256": "d7d804f2f801483285ff3f302f2929b70e9b691c097688c735e4221a8f2aa1ca",
+              "dHash": "1aa51f363333c6b2"
+            }
+          }
+        },
+        {
+          "requestedTime": 2.5,
+          "mediaTime": 2.471,
+          "presentedFrames": 7,
+          "hashes": {
+            "full": {
+              "sha256": "92a922697bfa23cb43908a844fbffc21bae35a3388ab8235ff35d345bd52f0c4",
+              "dHash": "397d9a3f961f37c5"
+            },
+            "food": {
+              "sha256": "1b10a2828813709bdcc0960ece2be59447378e6e3db212220410696ce71425cf",
+              "dHash": "eb5d8d1f1b4b652e"
+            },
+            "firstPear": {
+              "sha256": "e494a3865e596e00d52270b42ad0506ccbe657cb7458c83d6cca0e134b898dfd",
+              "dHash": "1e9537037312c692"
+            }
+          }
+        },
+        {
+          "requestedTime": 3,
+          "mediaTime": 2.97,
+          "presentedFrames": 8,
+          "hashes": {
+            "full": {
+              "sha256": "4422a0c065a9dac6af3aa626f1450bd51245223e01acdd9a4b696382ee8dd2f8",
+              "dHash": "397d9a3f969f37c5"
+            },
+            "food": {
+              "sha256": "0614fe15c014d241579ff405f2d01da6a638d196545e6ebf8b3213f991e053af",
+              "dHash": "eb5d8d1f9b4b252e"
+            },
+            "firstPear": {
+              "sha256": "87e1a36e4f932df34abc9323a83571a21805bd83c483b8d105f77b456acb5035",
+              "dHash": "1e9537227312c692"
+            }
+          }
+        },
+        {
+          "requestedTime": 13,
+          "mediaTime": 12.976,
+          "presentedFrames": 9,
+          "hashes": {
+            "full": {
+              "sha256": "6ca8a97bbf2482837cc170a03aed7ebfb3345cfcd41680d2e704392f2d614bf2",
+              "dHash": "397d9b3f8b1737cd"
+            },
+            "food": {
+              "sha256": "cdea6f6f5ec760c6ff8bdb48221411ceb732c2ff0339bdbc1a3d36c7c4d02e7d",
+              "dHash": "eb75a92735676b2e"
+            },
+            "firstPear": {
+              "sha256": "1e90c5b0f892ee30963a62df8396e22e481531e1aca433a04ffe36dcd41157c5",
+              "dHash": "1eb531315d5eceb2"
+            }
+          }
+        },
+        {
+          "requestedTime": 13.4,
+          "mediaTime": 13.375,
+          "presentedFrames": 10,
+          "hashes": {
+            "full": {
+              "sha256": "99e9e4d904f64fc96ce9ad695384ec8675d1ce61a01a73bc219dccf0eb14628e",
+              "dHash": "397d9b3f9d0b37cd"
+            },
+            "food": {
+              "sha256": "1aed26866ae498cf14dbe0fa249ada228fa4fb2604fa0cbb96e73f78fe81dc3a",
+              "dHash": "eb5595133957632e"
+            },
+            "firstPear": {
+              "sha256": "fd51971e9ecd21e8c5997809938103de4fe14c4fadbc8a160086c045cccf490c",
+              "dHash": "1ea5362e3f39c7b2"
+            }
+          }
+        },
+        {
+          "requestedTime": 13.8,
+          "mediaTime": 13.773,
+          "presentedFrames": 11,
+          "hashes": {
+            "full": {
+              "sha256": "d102a853f6eca958a123dce15910d92975e112f0e27e2e07ea02842b83dbaa32",
+              "dHash": "397d9b37971b37cd"
+            },
+            "food": {
+              "sha256": "98621a05805747105c1093351cfce0cd381c32c582869afe970661d5ae8358e3",
+              "dHash": "eb7d9b1b295b4b2e"
+            },
+            "firstPear": {
+              "sha256": "72bd98e864d64ae7c94bb95c180c251de13c57e403db676a8320a59362cbd475",
+              "dHash": "1eb537273234e692"
+            }
+          }
+        },
+        {
+          "requestedTime": 14.2,
+          "mediaTime": 14.178,
+          "presentedFrames": 12,
+          "hashes": {
+            "full": {
+              "sha256": "761c58cbaae818a950d17c2c0109b523709ef5cf3f9ea509fece6ad3f350a0d6",
+              "dHash": "397d9b3f951f37cd"
+            },
+            "food": {
+              "sha256": "9d297164e82a5e08bce3711f61f2e426cf88bef2a8244eb4b9f101006ef5a11e",
+              "dHash": "eb5d8b19395b632e"
+            },
+            "firstPear": {
+              "sha256": "26061c1d7f2d37acc8df8fbfe2f9a25837f45dd762c75a5a39da08e098f03956",
+              "dHash": "1eb537263234c6b0"
+            }
+          }
+        },
+        {
+          "requestedTime": 14.6,
+          "mediaTime": 14.575,
+          "presentedFrames": 13,
+          "hashes": {
+            "full": {
+              "sha256": "89d98a63949331e1bb6f8786c047cd3a0112a1904b435803876b705d414e1214",
+              "dHash": "397d9b3f99133bcd"
+            },
+            "food": {
+              "sha256": "0c1a58da878f878b7928de0e0494958f29bbdd6a7ab7576b62e75d03d6c49cb5",
+              "dHash": "eb5d8d1d2d5b632e"
+            },
+            "firstPear": {
+              "sha256": "6adcbd933936555177d8d5c46f7d02e84b7a03c07cbaf7a3c8667141ec14c2e6",
+              "dHash": "1eb537273236c6b0"
+            }
+          }
+        },
+        {
+          "requestedTime": 15,
+          "mediaTime": 14.971,
+          "presentedFrames": 14,
+          "hashes": {
+            "full": {
+              "sha256": "c75d2d84eb111cecf3e794d4408601b043039b120ee011dd309e6f544d0a8a03",
+              "dHash": "397d9b3f991337cd"
+            },
+            "food": {
+              "sha256": "f6bc1ccf5a8b6cce564ff061e3854c7801f6bbc873ab1c02886db6af66718637",
+              "dHash": "eb5d89133577432e"
+            },
+            "firstPear": {
+              "sha256": "e8722f61a58943e74a92175d7ebaaf7cd2da4d0ea227adb397391de9d45d52f6",
+              "dHash": "1eb537273435c9b6"
+            }
+          }
+        }
+      ],
+      "unique": {
+        "full": {
+          "exact": 12,
+          "perceptual": 12
+        },
+        "food": {
+          "exact": 12,
+          "perceptual": 12
+        },
+        "firstPear": {
+          "exact": 12,
+          "perceptual": 12
+        }
+      }
+    }
+  ],
+  "fileSha256": {
+    "production-biscuit-physical-motion.webm": "58d3b6d7528876cbf1cd9ca06f864f9c6c95f9f9cf9727028ceff18151f33572",
+    "production-pear-physical-flow.webm": "31d9acafc0a62eda0d0ab8afe533351eb82d55d3f84fed14bd5f10d9cece6c12"
+  },
+  "summary": [
+    {
+      "name": "production-biscuit-physical-motion.webm",
+      "duration": 25.869,
+      "unique": {
+        "full": {
+          "exact": 12,
+          "perceptual": 10
+        },
+        "food": {
+          "exact": 12,
+          "perceptual": 12
+        },
+        "firstBiscuit": {
+          "exact": 12,
+          "perceptual": 11
+        }
+      },
+      "maxSeekOffset": 0.034272727272725234
+    },
+    {
+      "name": "production-pear-physical-flow.webm",
+      "duration": 40.577,
+      "unique": {
+        "full": {
+          "exact": 12,
+          "perceptual": 12
+        },
+        "food": {
+          "exact": 12,
+          "perceptual": 12
+        },
+        "firstPear": {
+          "exact": 12,
+          "perceptual": 11
+        }
+      },
+      "maxSeekOffset": 0.03418181818181765
+    }
+  ]
+}

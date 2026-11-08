@@ -1,0 +1,10 @@
+{
+  "bundle": "./assets/index-Bmp-vlhA.js",
+  "partialCut": true,
+  "contextLossRestore": true,
+  "resizes": [
+    390,
+    568
+  ],
+  "cancelSaveByteIdentical": true
+}

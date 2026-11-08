@@ -1,0 +1,192 @@
+{
+  "verifiedUtc": "2026-11-08T20:12:03.457Z",
+  "baseCommit": "3cbefcea7b66c57e36568aee6a2d8553c06a8f15",
+  "status": "passed",
+  "build": {
+    "builtAt": "2026-11-08",
+    "tests": {
+      "passed": 253,
+      "failed": 0
+    },
+    "sourceAudit": {
+      "files": 65,
+      "untranslated": 0
+    },
+    "assets": [
+      {
+        "path": "game/dist/assets/index-Bmp-vlhA.js",
+        "bytes": 1049101,
+        "sha256": "f40174910840813b2813e1810b460aef4791e852c7d915ed988bb5c524590ff0"
+      },
+      {
+        "path": "game/dist/assets/index-B43Bk1UC.css",
+        "bytes": 69677,
+        "sha256": "d29882d24c7bc4772d8ce9e030795f194eeeb00447002472412077742fb3fb22"
+      },
+      {
+        "path": "game/dist/assets/workshop-cut-worker-CccrLeeP.js",
+        "bytes": 121854,
+        "sha256": "8d4ba22a26b0f1139f2b8d59548d478bf9169f928daaa28854ed22b98299a36b"
+      }
+    ]
+  },
+  "production": {
+    "eightRecipes": [
+      "strawberryTart",
+      "blueberryTart",
+      "raspberryTart",
+      "appleJam",
+      "honeyPear",
+      "honeyCake",
+      "windParfait",
+      "honeyBiscuits"
+    ],
+    "pear": {
+      "stageBeforeCommit": "ready",
+      "inventoryDelta": {
+        "honeyPear": 1,
+        "honey": -1,
+        "pear": -2,
+        "seaSalt": -1
+      },
+      "result": {
+        "family": "honeyPear",
+        "fruit": [
+          {
+            "ingredientId": "pear",
+            "x": -0.44,
+            "y": 0,
+            "angle": -0.12
+          },
+          {
+            "ingredientId": "pear",
+            "x": 0.44,
+            "y": 0,
+            "angle": 0.1
+          }
+        ],
+        "steps": [
+          "cut-pears",
+          "pour-honey"
+        ]
+      },
+      "duplicate": false,
+      "stationaryStart": 2.8271999999955297,
+      "stationarySeconds": 0.8,
+      "denseStart": 3.1071999999955295,
+      "frameStats": {
+        "count": 1983,
+        "median": 13.799999999999272,
+        "p95": 20.899999999997817,
+        "p99": 21,
+        "max": 27.80000000000291
+      },
+      "rasterFlood": false,
+      "bundle": "./assets/index-Bmp-vlhA.js"
+    },
+    "otherRecipes": [
+      "ru-production-interface-receipt.json",
+      "ru-production-honey-parent-integration.json"
+    ],
+    "cancelAndRecovery": {
+      "bundle": "./assets/index-Bmp-vlhA.js",
+      "partialCut": true,
+      "contextLossRestore": true,
+      "resizes": [
+        390,
+        568
+      ],
+      "cancelSaveByteIdentical": true
+    }
+  },
+  "motion": {
+    "file": "ru-production-pear-flow.webm",
+    "sha256": "0c8a9e69c655213bc4d1cc8fb53efdc921e38dce9a3c980ab281713e5c7ccad5",
+    "duration": 24.055,
+    "dimensions": [
+      1180,
+      820
+    ],
+    "stationaryConsecutiveFrames": 15,
+    "firstPresentedFrame": 3.08,
+    "lastPresentedFrame": 3.541,
+    "maxPresentationGap": 0.040000000000000036,
+    "maxDecodedOffset": 0.01946666667113739,
+    "transport": "fully buffered Blob; fresh continuous playback from zero, no dense seeking; 15 consecutive presented stationary strand frames",
+    "source": "Final compiled parent kitchen; real native inputs; natural curved drizzles."
+  },
+  "visual": {
+    "master": "01_primary_target/lavender-bay/ru-cookery-refinement/01-honey-optics-master.png",
+    "productionScreens": [
+      "pear.png",
+      "parfait.png",
+      "tarts.png",
+      "stationary-stream.png",
+      "pouring-sequence.png"
+    ],
+    "alpha": "ru-tart-asset-alpha.json"
+  },
+  "russian": {
+    "sourceFiles": 65,
+    "untranslatedUIStrings": 0,
+    "receipts": [
+      "ru-interface-acceptance.json",
+      "ru-mini-native-acceptance.json",
+      "berry-tart-review-receipt.json",
+      "ru-tree-semantics-review-receipt.json"
+    ],
+    "physicalKeyboardCodes": true
+  },
+  "limits": [
+    "Late recipes and island tests use validated prepared saves; newcomer flow used a separate clean profile.",
+    "DPR emulation and viewport changes were tested; Windows system scale was not changed.",
+    "Performance figures are native local desktop frame timings, not a claim about physical mobile hardware.",
+    "Full local movies remain in ignored output/playwright; committed decoded sheets and hashes document the accepted recordings."
+  ],
+  "validatedHoneySourceSha256BeforeEOFNormalization": {
+    "game/src/honey-cookery.ts": "f073121750d8d20a910087f4c4cc3830fed487b573e98ba4e97f5c97088ab2cc",
+    "game/src/honey-pear-view.ts": "3b83c36a71de61d30d27e3c4a9690f3b16ed70d3c1da022708e3a5326971119f",
+    "game/src/honey-stream.ts": "28640725b0ae0fb8210ad5c348acba50cb0806ccb3b074218da4c9867dd090c3",
+    "game/src/honey-cookery-model.ts": "03102319fcb36fb47ee7036a33151d8cfa06b305756031a8b95431408c87d0cc",
+    "game/src/honey-cookery.css": "80ceec94c506f82d36c21fa65c909ce685510d69537ca477d6a469dbb635bb21",
+    "game/tests/honey-cookery.test.ts": "aa0cc7a8a6df196ad5c9383d02de3d8380e6bed91560ad7f1fe2017850223586",
+    "game/tests/honey-stream.test.ts": "2993a836988a94b2f7a19205dbc73754eade96361e9831ff356791c65ac85c00"
+  },
+  "deliveredHoneySourceSha256": {
+    "game/src/honey-cookery.ts": "332d7d271fe7b888e46496c62a8e95877e65eeac1aeac45f5db5de52dd0d0c79",
+    "game/src/honey-pear-view.ts": "423626552e5a12d27fb01e37badb1506d0a14c644712b9a541b6171947b15758",
+    "game/src/honey-stream.ts": "28640725b0ae0fb8210ad5c348acba50cb0806ccb3b074218da4c9867dd090c3",
+    "game/src/honey-cookery-model.ts": "03102319fcb36fb47ee7036a33151d8cfa06b305756031a8b95431408c87d0cc",
+    "game/src/honey-cookery.css": "80ceec94c506f82d36c21fa65c909ce685510d69537ca477d6a469dbb635bb21",
+    "game/tests/honey-cookery.test.ts": "aa0cc7a8a6df196ad5c9383d02de3d8380e6bed91560ad7f1fe2017850223586",
+    "game/tests/honey-stream.test.ts": "2993a836988a94b2f7a19205dbc73754eade96361e9831ff356791c65ac85c00"
+  },
+  "sourceNormalization": [
+    {
+      "file": "01_primary_target/lavender-bay/ru-cookery-refinement/ASSET_PROMPTS.md",
+      "kind": "remove only trailing blank lines at EOF",
+      "beforeSha256": "524e950ce8ab7f086019f32001062d8d662d5dee9000d0041d5eeddc87274793",
+      "afterSha256": "ecd512afd24a19eb72500bff88763f4e56e59a00eccc193e2268e98370493552",
+      "bodySha256": "6cc0fdf9da8e78d6bc466d2fed688b129ea75d3b19f70b38ce22c9e1b2707c73",
+      "bodyIdentical": true
+    },
+    {
+      "file": "game/src/honey-cookery.ts",
+      "kind": "remove only trailing blank lines at EOF",
+      "beforeSha256": "f073121750d8d20a910087f4c4cc3830fed487b573e98ba4e97f5c97088ab2cc",
+      "afterSha256": "332d7d271fe7b888e46496c62a8e95877e65eeac1aeac45f5db5de52dd0d0c79",
+      "bodySha256": "977aadbc05d45377c2e2e650110e2523bae70bd75c49477ce39208c2d93a580e",
+      "bodyIdentical": true
+    },
+    {
+      "file": "game/src/honey-pear-view.ts",
+      "kind": "remove only trailing blank lines at EOF",
+      "beforeSha256": "3b83c36a71de61d30d27e3c4a9690f3b16ed70d3c1da022708e3a5326971119f",
+      "afterSha256": "423626552e5a12d27fb01e37badb1506d0a14c644712b9a541b6171947b15758",
+      "bodySha256": "9b2a27d5cfb735aacf8c32401cf50f2a0a5442370057196bca0b0ddefd44439f",
+      "bodyIdentical": true
+    }
+  ],
+  "finalCompiledBytesUnchangedByNormalization": true,
+  "finalPeachResourceIcon": "ui-peach-fruit.webp"
+}

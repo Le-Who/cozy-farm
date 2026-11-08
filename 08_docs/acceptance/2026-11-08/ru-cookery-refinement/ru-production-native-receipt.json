@@ -1,0 +1,43 @@
+{
+  "stageBeforeCommit": "ready",
+  "inventoryDelta": {
+    "honeyPear": 1,
+    "honey": -1,
+    "pear": -2,
+    "seaSalt": -1
+  },
+  "result": {
+    "family": "honeyPear",
+    "fruit": [
+      {
+        "ingredientId": "pear",
+        "x": -0.44,
+        "y": 0,
+        "angle": -0.12
+      },
+      {
+        "ingredientId": "pear",
+        "x": 0.44,
+        "y": 0,
+        "angle": 0.1
+      }
+    ],
+    "steps": [
+      "cut-pears",
+      "pour-honey"
+    ]
+  },
+  "duplicate": false,
+  "stationaryStart": 2.8271999999955297,
+  "stationarySeconds": 0.8,
+  "denseStart": 3.1071999999955295,
+  "frameStats": {
+    "count": 1983,
+    "median": 13.799999999999272,
+    "p95": 20.899999999997817,
+    "p99": 21,
+    "max": 27.80000000000291
+  },
+  "rasterFlood": false,
+  "bundle": "./assets/index-Bmp-vlhA.js"
+}

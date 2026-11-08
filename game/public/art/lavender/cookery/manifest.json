@@ -72,7 +72,7 @@
     "raspberry": {
       "url": "raspberry.webp",
       "width": 512,
-      "height": 491
+      "height": 512
     },
     "room-portrait": {
       "url": "room-portrait.webp",
@@ -93,6 +93,154 @@
       "url": "jar-full.webp",
       "width": 512,
       "height": 512
+    },
+    "honey-pear-whole": {
+      "url": "honey-pear-whole.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-pear-left": {
+      "url": "honey-pear-left.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-pear-right": {
+      "url": "honey-pear-right.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-knife": {
+      "url": "honey-knife.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-pitcher": {
+      "url": "honey-pitcher.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-biscuit-dough": {
+      "url": "honey-biscuit-dough.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-biscuit-baked": {
+      "url": "honey-biscuit-baked.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-biscuit-glazed": {
+      "url": "honey-biscuit-glazed.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-cake-baked": {
+      "url": "honey-cake-baked.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-cake-glazed": {
+      "url": "honey-cake-glazed.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-parfait-empty": {
+      "url": "honey-parfait-empty.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-parfait-custard": {
+      "url": "honey-parfait-custard.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-parfait-fruit": {
+      "url": "honey-parfait-fruit.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-parfait-full": {
+      "url": "honey-parfait-full.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-cake-bowl": {
+      "url": "honey-cake-bowl.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-brush": {
+      "url": "honey-brush.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-pear-cut": {
+      "url": "honey-pear-cut.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-glaze": {
+      "url": "honey-glaze.webp",
+      "width": 512,
+      "height": 512
+    },
+    "honey-cake-batter": {
+      "url": "honey-cake-batter.webp",
+      "width": 512,
+      "height": 512
+    },
+    "strawberry": {
+      "url": "strawberry.webp",
+      "width": 512,
+      "height": 512
+    },
+    "blueberry": {
+      "url": "blueberry.webp",
+      "width": 512,
+      "height": 512
+    },
+    "peach-slice": {
+      "url": "peach-slice.webp",
+      "width": 512,
+      "height": 512
+    },
+    "berry-jar-full": {
+      "url": "berry-jar-full.webp",
+      "width": 512,
+      "height": 512
+    },
+    "tart-strawberry": {
+      "url": "tart-strawberry.webp",
+      "width": 512,
+      "height": 512,
+      "mixSurfaceEllipse": {
+        "cx": 257,
+        "cy": 240,
+        "rx": 146,
+        "ry": 110
+      }
+    },
+    "tart-blueberry": {
+      "url": "tart-blueberry.webp",
+      "width": 512,
+      "height": 512,
+      "mixSurfaceEllipse": {
+        "cx": 257,
+        "cy": 240,
+        "rx": 146,
+        "ry": 110
+      }
+    },
+    "tart-raspberry": {
+      "url": "tart-raspberry.webp",
+      "width": 512,
+      "height": 512,
+      "mixSurfaceEllipse": {
+        "cx": 257,
+        "cy": 240,
+        "rx": 146,
+        "ry": 110
+      }
     }
   }
 }

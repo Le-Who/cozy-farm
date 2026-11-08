@@ -8,11 +8,13 @@ import { isLunarTide } from './tide';
 import { hasShoal, shoalFindIds } from './shoal';
 import { createSupportShadow, type SupportShadow } from './support-shadow';
 import { defaultHenPositions, henIdlePoint, projectHenToGround, type HenNativePoint } from './hen-roaming';
+import { getCoveEcology } from './shoreline';
+import { createCoveMotion, stepCoveMotion, coveChannelPoint, coveSceneAnchors } from './shoreline-view';
 
 export type IslandTarget =
   | { kind: 'bed' | 'tree' | 'hen' | 'flower' | 'village-home'; index: number }
   | ShoreTarget
-  | { kind: 'well' | 'coop' | 'market' | 'farmhouse' | 'kitchen' | 'pier' | 'boat' | 'harbor' | 'salt' | 'tidepool' | 'hive' | 'honey-kitchen' | 'guest' | 'bay-display' | 'workshop' | 'village' | 'village-meal' };
+  | { kind: 'well' | 'coop' | 'market' | 'farmhouse' | 'kitchen' | 'pier' | 'boat' | 'harbor' | 'salt' | 'cove' | 'tidepool' | 'hive' | 'honey-kitchen' | 'guest' | 'bay-display' | 'workshop' | 'village' | 'village-meal' };
 
 type Point = { x: number; y: number };
 type Area = { target: IslandTarget; center: Point; w: number; h: number; stop: Point };
@@ -34,6 +36,7 @@ const WORK_MS = { till: 510, plant: 500, water: 680, harvest: 550 } satisfies Re
 const cropSizes: Record<CropId, [number, number]> = {
   carrot: [81, 89], cabbage: [118, 106], beetroot: [80, 91],
   tomato: [85, 109], pumpkin: [143, 123], wheat: [85, 107], leafyGreens: [93, 99],
+  strawberry: [98, 98], blueberry: [118, 118], raspberry: [121, 121],
 };
 
 const areas: Area[] = [
@@ -122,6 +125,7 @@ const kitchenSite: Area = {
 const groveSites: Area[] = [
   ...orchardAreas('grove'),
   { target: { kind: 'salt' }, center: { x: saltCove.foot.x, y: saltCove.foot.y - 20 }, w: 99, h: 74, stop: saltCove.stop },
+  { target: { kind: 'cove' }, center: scenePoint(1320, 700), stop: saltCove.stop, w: 70, h: 40 },
 ];
 const harborSite: Area = {
   target: { kind: 'harbor' }, center: scenePoint(469, 810), w: 44, h: 44, stop: docks.grove.end,
@@ -328,7 +332,7 @@ export function createIsland(
   const weatherEffects = createWeatherEffects(world);
   unavailable.hidden = world.available;
   canvas.setAttribute('aria-disabled', String(!world.available));
-  unavailable.textContent = 'The island needs WebGL2 to display. If the graphics context was interrupted, the scene will return when it reconnects.';
+  unavailable.textContent = 'Для отображения острова нужен WebGL2. При временном сбое графики сцена восстановится после подключения.';
   const cutouts = { home: [], grove: [], cape: [], village: [] } as Record<FarmState['island'], { image: HTMLImageElement; bounds: typeof landscape.home.occluders[number] }[]>;
   let scale = 1;
   let offset: Point = { x: 0, y: 0 };
@@ -340,6 +344,8 @@ export function createIsland(
   let hovered: Area | undefined;
   let showFocus = false;
   let fieldView = false;
+  let coveFocus = false;
+  let coveBlend = 0;
   let pointerStart: { id: number; x: number; y: number } | undefined;
   let heldHen: { index: number; point: Point; offset:Point; dragging: boolean } | undefined;
   let shorePickup: { site: ShoreArea; began?: number; commit: () => boolean } | undefined;
@@ -365,10 +371,10 @@ export function createIsland(
   const flowerPlanted = new Map<number, number>();
   let crossing = false;
   let departure = 0;
-  const crabRetreat = spring(0);
+  const coveMotion = createCoveMotion();
   const hens = defaultHenPositions.map((point) => {
     const { x, y } = scenePoint(point.x,point.y);
-    return { x, y, px: spring(x), py: spring(y), lift: spring(0), excited: 0, saved:undefined as HenNativePoint|null|undefined };
+    return { x, y, px: spring(x), py: spring(y), lift: spring(0), excited: 0, gait: 0, facingRight: true, saved:undefined as HenNativePoint|null|undefined };
   });
   const boatFloat = spring(0);
   const boatRoll = spring(0);
@@ -760,7 +766,8 @@ export function createIsland(
       const w = width * sceneScale * size * variety;
       const h = height * sceneScale * size * variety;
       const bend = Math.sin(time * 1.7 + index * 0.7 + i) * 0.022;
-      const options = { frame, fullCell: true, baseline: 122 / 136, bend };
+      const berry = bed.crop === 'strawberry' || bed.crop === 'blueberry' || bed.crop === 'raspberry';
+      const options = { frame, fullCell: true, baseline: berry ? 480 / 512 : 122 / 136, bend };
       art.draw(world, key, x, y, w, h, { ...options, shadow: true });
       art.draw(world, key, x, y, w, h, options);
     });
@@ -940,6 +947,53 @@ export function createIsland(
     });
   }
 
+  function paintCove(farm: FarmState, dt: number, time: number): void {
+    const ecology = getCoveEcology(farm.shoreline, farm.day);
+    const choices = farm.shoreline.pending ?? ecology.choices;
+    const actors = stepCoveMotion(coveMotion, ecology, dt, nativeHenPoint(farmer), motion.matches);
+    // Physical choices preview immediately; animals and fishing keep the last settled tide.
+    const draw = (key: string, point: Point, size: number, options: Parameters<typeof art.draw>[6] = {}) => {
+      const spot = scenePoint(point.x, point.y);
+      art.draw(world, key, spot.x, spot.y, size * sceneScale, size * sceneScale,
+        { fullCell: true, baseline: .82, footY: spot.y, ...options });
+    };
+    if (choices.flow === 'sheltered') draw('cove-rock', { x: 1451, y: 742 }, 65);
+    if (!motion.matches) for (let i = 0; i < 7; i++) {
+      const phase = (time * (choices.flow === 'open' ? .075 : .022) + i / 7) % 1;
+      const p = choices.flow === 'open' ? coveChannelPoint(phase)
+        : { x: 1330 + Math.cos(phase * Math.PI * 2) * 47, y: 709 + Math.sin(phase * Math.PI * 2) * 16 };
+      const spot = scenePoint(p.x, p.y);
+      const fade = Math.sin(phase * Math.PI) ** 2;
+      world.shape('shade', spot.x, spot.y, (choices.flow === 'open' ? 9 : 5) * sceneScale,
+        1.2 * sceneScale, '#c0e6cb', fade * .27, -24, choices.flow === 'open' ? .25 : -.2);
+    }
+    for (const fish of actors.minnows) draw('cove-minnow', fish, 25,
+      { frame: fish.frame, flip: fish.flip, angle: fish.angle, opacity: fish.opacity, baseline: .5, layer: -20 });
+    if (choices.cover === 'kelp') coveSceneAnchors.kelp.forEach((point, i) => draw(i ? 'cove-kelp-left' : 'cove-kelp-right', point, 84,
+      { bend: motion.matches ? 0 : Math.sin(time * .8 + i) * .018 }));
+    else coveSceneAnchors.meadow.forEach(point => draw('cove-meadow', point, 76));
+    const crab = actors.crab, crabPoint = scenePoint(crab.x, crab.y);
+    world.shape('shade', crabPoint.x, crabPoint.y, 8, 2.5, '#9c734d', .21 * crab.opacity);
+    const crabWalk = Boolean(art.image('shore-crab-walk'));
+    art.draw(world, crabWalk ? 'shore-crab-walk' : 'shore-crab', crabPoint.x, crabPoint.y, 26, 26,
+      { frame: crabWalk ? crab.frame : 0, fullCell: true, baseline: 118 / 128, footY: crabPoint.y, angle: crab.angle, flip: crab.flip, opacity: crab.opacity });
+    if (choices.refuge === 'stones') draw('cove-refuge', { x: coveSceneAnchors.refuge.x, y: coveSceneAnchors.refuge.y + 9 }, 95);
+    draw('cove-perch', { x: 1440, y: 680 }, 77, { footY: scenePoint(1440, 640).y });
+    const birdFoot = scenePoint(actors.egret.x, actors.egret.y);
+    world.shape('shade', birdFoot.x, birdFoot.y, 7, 2.2, '#646a59', .16, -1);
+    draw('cove-egret', actors.egret, 73,
+      { frame: actors.egret.frame, flip: actors.egret.flip, baseline: .78 });
+    if (getClimate(farm.day).weather === 'sun' || getClimate(farm.day).weather === 'rainbow') {
+      for (let i = 0; i < ecology.animals.butterflies.count; i++) {
+        const point = choices.cover === 'kelp' ? coveSceneAnchors.meadow[0] : coveSceneAnchors.meadow[i % 2];
+        const p = scenePoint(point.x + Math.sin(time * .8 + i * 2.3) * 25,
+          point.y - 12 + Math.sin(time * 1.5 + i) * 8);
+        art.draw(world, 'butterfly', p.x, p.y, 10, 9,
+          { frame: motion.matches ? 0 : Math.floor(time * 8 + i) % 4, angle: -.2 + Math.sin(time + i) * .25 });
+      }
+    }
+  }
+
   function paint(time: number): void {
     const island = state?.island ?? 'home';
     const atHome = island === 'home';
@@ -953,6 +1007,12 @@ export function createIsland(
     const moment = performance.now();
     const dt = motion.matches ? 0 : clamp((moment - (lastPhysics || moment - 16)) / 1000, 0.001, 0.05);
     lastPhysics = moment;
+    const coveTarget = coveFocus && atGrove ? 1 : 0;
+    if (Math.abs(coveBlend - coveTarget) > .0001) {
+      coveBlend = motion.matches ? coveTarget : coveBlend + (coveTarget - coveBlend) * (1 - Math.exp(-dt * 9));
+      if (Math.abs(coveBlend - coveTarget) < .0001) coveBlend = coveTarget;
+      updateCameraView();
+    }
     const traveling = arrival ? clamp(1 - (moment - arrival) / 950, 0, 1) : 0;
     const leaving = departure ? clamp((moment - departure) / 420, 0, 1) : 0;
     const boatX = dock.boat.x + 191 * traveling * traveling + 150 * leaving * leaving;
@@ -967,6 +1027,8 @@ export function createIsland(
       if (original) world.plate(original, landscape.grove.bounds);
       world.plate(plate, bounds, Boolean(original), expanded ? reveal * reveal * (3 - 2 * reveal) : 1);
     }
+    const coveTerrain = atGrove && art.image('cove-terrain');
+    if (coveTerrain) world.plate(coveTerrain, { ...scenePoint(1110, 590), w: 430 * sceneScale, h: 430 * 975 / 1613 * sceneScale }, true, 1, { top: .1, left: .08 });
     const upgraded = plate ? visibleUpgrades() : [];
     const project = atHome ? 'fair' : 'dock';
     const stage = projectStages[project];
@@ -1105,15 +1167,15 @@ export function createIsland(
           const dx = segment.to.x - segment.from.x;
           const dy = segment.to.y - segment.from.y;
           if (Math.abs(dx) > 2) facingRight = dx > 0;
-          travelingUp = dy < -Math.abs(dx) * 0.28;
-          lean += (0.065 * dx / segment.distance - lean) * 0.19;
+          travelingUp = dy < -Math.abs(dx) * (travelingUp ? .15 : .42);
+          lean += (0.065 * dx / segment.distance - lean) * (1 - Math.exp(-dt * 13));
           break;
         }
         traveled -= segment.distance;
       }
     } else {
       farmer = destination;
-      lean *= 0.67;
+      lean *= Math.exp(-dt * 24);
     }
     if (moving && traveling <= 0.12) {
       const step = Math.floor(stride * 2);
@@ -1176,9 +1238,11 @@ export function createIsland(
       const progress = pose ? clamp((moment - pose.started) / WORK_MS[pose.kind], 0, 0.999) : 0;
       const impactPose = Boolean(pose && progress > 0.19 && progress < 0.91);
       const animated = pose?.kind === 'water' || pose?.kind === 'till';
-      const key = moving ? (travelingUp ? 'walk-back' : facingRight ? 'walk-right' : 'walk-left')
+      const walkKey = travelingUp ? 'walk-back' : facingRight ? 'walk-right' : 'walk-left';
+      const smoothWalk = Boolean(art.image(`${walkKey}-smooth`));
+      const key = moving ? smoothWalk ? `${walkKey}-smooth` : walkKey
         : animated ? `work-${pose.kind}` : 'farmer-actions';
-      const frame = moving ? Math.floor(stride * 4) % 4
+      const frame = moving ? Math.floor(stride * (smoothWalk ? 8 : 4)) % (smoothWalk ? 8 : 4)
         : animated ? Math.min(3, Math.floor(progress * 4))
         : bobber ? 5 : impactPose && pose?.kind === 'plant' ? 2
         : capeProgress > 0.18 && capeWork?.target.kind === 'flower' ? 2
@@ -1214,17 +1278,7 @@ export function createIsland(
         }
         art.draw(world, item.icon, x, y, 39, 36, { fullCell: true, baseline: 118 / 128, footY: y, angle });
       }
-      const near = Math.hypot(farmer.x - beach.crab.x, farmer.y - beach.crab.y) < 62;
-      const retreat = driveSpring(crabRetreat, near ? 1 : 0, dt, 9, 0.88);
-      const pace = time * 1.6;
-      const scuttle = time ? Math.sin(pace) * 13 + Math.sin(pace * 10) * 1.1 : 0;
-      const hop = time ? Math.abs(Math.sin(pace * 8)) * 2.3 : 0;
-      const x = beach.crab.x + scuttle + retreat * 24;
-      const y = beach.crab.y + retreat * 14 + Math.sin(pace) * 4;
-      world.shape('shade', x, y, 14, 4.5, '#9c734d', 0.25);
-      art.draw(world, 'shore-crab', x, y - hop, 51, 46, {
-        fullCell: true, baseline: 118 / 128, footY: y, angle: Math.sin(pace * 8) * 0.044, scaleY: 1 - hop * 0.015,
-      });
+      paintCove(farm, dt, time);
       if (expanded && reveal > 0.8) {
         const { x, y } = shoal.starfish;
         const drift = Math.sin(time * 0.73) * 2.8;
@@ -1256,6 +1310,7 @@ export function createIsland(
     if (atHome) hens.forEach((hen, index) => {
       if (index >= (state?.flockSize ?? chickenCount)) return;
       const held = heldHen?.index === index && heldHen.dragging ? heldHen : undefined;
+      const previous = { x: hen.px.value, y: hen.py.value };
       const idle=henIdlePoint(nativeHenPoint(hen),time,index,state?.buildingLevels),target=held?.point??scenePoint(idle.x,idle.y);
       let x = driveSpring(hen.px, target.x, dt, held ? 23 : 14, 0.82);
       let y = driveSpring(hen.py, target.y, dt, held ? 23 : 14, 0.82);
@@ -1271,17 +1326,21 @@ export function createIsland(
         hen.lift.value = 0;
         hen.lift.speed = Math.abs(hen.lift.speed) > 8 ? Math.abs(hen.lift.speed) * 0.29 : 0;
       }
-      const facing = Math.abs(hen.px.speed) > 1 ? hen.px.speed > 0 : Math.cos(time * 0.83 + index * 2) > 0;
+      if (!held && !motion.matches) hen.gait += Math.hypot(x - previous.x, y - previous.y) / 15;
+      if (Math.abs(hen.px.speed) > 2) hen.facingRight = hen.px.speed > 0;
+      const facing = hen.facingRight;
+      const walking = !held && !playful && !motion.matches && Math.hypot(hen.px.speed, hen.py.speed) > 1.8 && Boolean(art.image('hen-walk-smooth'));
       const frame = held ? 5 + Math.floor(time * 8) % 2 : playful ? Math.min(7, 5 + Math.floor((950 - joy) / 280))
-        : !facing ? 4 : motion.matches ? 0 : Math.floor(time * 7 + index) % 4;
-      const pose = { frame, fullCell: true, baseline: 112 / 128 };
+        : walking ? Math.floor(hen.gait * 8) % 8 : !facing ? 4 : motion.matches ? 0 : Math.floor(time * 7 + index) % 4;
+      const pose = { frame, fullCell: true, baseline: 112 / 128, flip: walking && !facing };
+      const henArt = walking ? 'hen-walk-smooth' : 'hen-poses';
       const angle = clamp(hen.px.speed * 0.001, -0.13, 0.13);
       const scaleY = clamp(1 - hen.lift.speed * 0.001, 0.91, 1.07);
       henSites.push({ target: { kind: 'hen', index }, center: { x, y: y - 17 - Math.max(0, lift) }, stop: { x, y }, w: 40, h: 43 });
       const elevation = Math.max(0, lift);
       world.shape('shade', x, y, 10 + elevation * 0.12, 3.9, '#47462a', 0.25 / (1 + elevation * 0.04));
-      art.draw(world, 'hen-poses', x, y, 47, 47, { ...pose, angle, scaleY, shadow: true, lift: elevation });
-      art.draw(world, 'hen-poses', x, y - elevation, 47, 47, { ...pose, angle, scaleY, footY: y,layer:held?world.overlay:undefined });
+      art.draw(world, henArt, x, y, 47, 47, { ...pose, angle, scaleY, shadow: true, lift: elevation });
+      art.draw(world, henArt, x, y - elevation, 47, 47, { ...pose, angle, scaleY, footY: y,layer:held?world.overlay:undefined });
       if (joy) {
         const progress = 1 - joy / 950;
         const pop = 0.72 + 0.42 * Math.sin(Math.min(1, progress * 3.7) * Math.PI * 0.73);
@@ -1350,15 +1409,35 @@ export function createIsland(
     if (motion.matches) paint(0);
   }
 
-  function resize(): void {
-    pixelDensity = window.devicePixelRatio || 1;
-    viewport = { width: Math.max(1, canvas.clientWidth), height: Math.max(1, canvas.clientHeight) };
+  function cameraView(): { scale: number; center: Point } {
     const wide = Math.min(viewport.width / WORLD.w, viewport.height / WORLD.h);
     const closeUp = fieldView && state?.island === 'home';
     const shortLandscape = viewport.width > viewport.height && viewport.height < 480;
     const fieldHeight = Math.max(140, viewport.height - (shortLandscape ? 123 : 190));
-    scale = closeUp ? Math.min(viewport.width / 486, fieldHeight / 278) : wide;
-    const center = closeUp ? scenePoint(784, 577) : { x: WORLD.w / 2, y: WORLD.h / 2 };
+    const baseScale = closeUp ? Math.min(viewport.width / 486, fieldHeight / 278) : wide;
+    const baseCenter = closeUp ? scenePoint(784, 577) : { x: WORLD.w / 2, y: WORLD.h / 2 };
+    const coveHeight = Math.max(120, viewport.height - (shortLandscape ? 110 : 200));
+    const coveScale = Math.min(viewport.width / (430 * sceneScale), coveHeight / (280 * sceneScale));
+    const focus = scenePoint(1320, 700);
+    const coveCenter = { x: focus.x, y: focus.y + viewport.height * .1 / coveScale };
+    return { scale: baseScale + (coveScale - baseScale) * coveBlend,
+      center: { x: baseCenter.x + (coveCenter.x - baseCenter.x) * coveBlend,
+        y: baseCenter.y + (coveCenter.y - baseCenter.y) * coveBlend } };
+  }
+
+  function updateCameraView(): void {
+    const view = cameraView(); scale = view.scale;
+    const center = view.center;
+    offset = { x: viewport.width / 2 - center.x * scale, y: viewport.height / 2 - center.y * scale };
+    world.setView(viewport.width, viewport.height, scale, center);
+    syncShore();
+  }
+
+  function resize(): void {
+    pixelDensity = window.devicePixelRatio || 1;
+    const bounds = canvas.getBoundingClientRect();
+    viewport = { width: Math.max(1, bounds.width), height: Math.max(1, bounds.height) };
+    const { scale: nextScale, center } = cameraView(); scale = nextScale;
     offset = { x: viewport.width / 2 - center.x * scale, y: viewport.height / 2 - center.y * scale };
     world.resize(viewport.width, viewport.height, window.devicePixelRatio || 1, scale, center);
     syncShore();
@@ -1409,7 +1488,7 @@ export function createIsland(
     if (state?.island === 'grove' && event.pointerType === 'touch') {
       const point = { x, y };
       return sites.filter(({ target, center }) =>
-        (target.kind === 'shell' || target.kind === 'shoal-find' || target.kind === 'tidepool') && distance(center, point) < 22 / scale)
+        (target.kind === 'shell' || target.kind === 'shoal-find' || target.kind === 'tidepool' || target.kind === 'cove') && distance(center, point) < 22 / scale)
         .sort((a, b) => distance(a.center, point) - distance(b.center, point))[0];
     }
     return fieldView && state?.island === 'home' ? undefined : upgradeHit(x, y);
@@ -1418,8 +1497,8 @@ export function createIsland(
   function describeFocus(): void {
     const label = focused && inspect(focused.target);
     canvas.setAttribute('aria-label', label
-      ? `Island. ${label}. Use arrow keys to choose another spot and Enter to act.`
-      : 'Island. Use arrow keys to choose a spot and Enter to act.');
+      ? `Остров. ${label}. Выберите другое место стрелками и нажмите Enter для действия.`
+      : 'Остров. Выберите место стрелками и нажмите Enter для действия.');
   }
 
   const listeners = { signal: abort.signal };
@@ -1592,6 +1671,12 @@ export function createIsland(
   load('ui-shell', 1);
   load('ui-moon-shell', 1);
   load('shore-crab', 1);
+  load('shore-crab-walk', 4);
+  load('hen-walk-smooth', 8);
+  load('cove-minnow', 4);
+  load('cove-egret', 4);
+  for (const key of ['cove-kelp-right', 'cove-kelp-left', 'cove-meadow', 'cove-rock', 'cove-refuge', 'cove-perch']) load(key, 1);
+  art.load('cove-terrain', 'lavender/cove-terrain');
   load('ui-sea-glass', 1);
   load('ui-moon-pearl', 1);
   load('shoal-starfish', 1);
@@ -1606,6 +1691,7 @@ export function createIsland(
   load('guest-cake', 1, 'ui-honey-cake');
   load('orchard-start', 2);
   for (const direction of ['left', 'right', 'back']) load(`walk-${direction}`, 4);
+  for (const direction of ['left', 'right', 'back']) load(`walk-${direction}-smooth`, 8);
   for (const action of ['water', 'till']) load(`work-${action}`, 4);
   for (const tree of ['apple', 'pear', 'peach']) load(`tree-${tree}`, 2);
   for (const crop of Object.keys(cropSizes)) load(`crop-${crop}`, 4);
@@ -1708,6 +1794,7 @@ export function createIsland(
         art.load(shoalPlate.key, shoalPlate.path);
       }
       if (currentIsland !== next.island) {
+        if (next.island !== 'grove') { coveFocus = false; coveBlend = 0; }
         heldHen=undefined;pointerStart=undefined;
         residentClock = 0;
         villageMealCelebration = 0;
@@ -1733,6 +1820,7 @@ export function createIsland(
         hovered = undefined;
       }
       state = next;
+      updateCameraView();
       syncShore();
       describeFocus();
       requestPaint();
@@ -1808,6 +1896,12 @@ export function createIsland(
       resize();
       describeFocus();
       return fieldView;
+    },
+    setCoveFocus(active: boolean): void {
+      coveFocus = active;
+      if (motion.matches) { coveBlend = active && state?.island === 'grove' ? 1 : 0; updateCameraView(); }
+      hovered = undefined;
+      requestPaint();
     },
     setFishing(active: boolean): void {
       fishing = active;

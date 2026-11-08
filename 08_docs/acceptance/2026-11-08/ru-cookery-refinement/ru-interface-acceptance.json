@@ -1,0 +1,1016 @@
+{
+  "panels": {
+    "checks": 95,
+    "issues": [],
+    "all": [
+      {
+        "label": "market",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 482,
+          "scroll": 482
+        }
+      },
+      {
+        "label": "market-trees",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "market-care",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "market-buildings",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "inventory",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 482,
+          "scroll": 482
+        }
+      },
+      {
+        "label": "inventory-seeds",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 482,
+          "scroll": 482
+        }
+      },
+      {
+        "label": "inventory-archive",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 482,
+          "scroll": 482
+        }
+      },
+      {
+        "label": "archive-orchard",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "archive-coop",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "archive-shore",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "archive-bay",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 482,
+          "scroll": 482
+        }
+      },
+      {
+        "label": "orchard",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "rest",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "kitchen",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 482,
+          "scroll": 482
+        }
+      },
+      {
+        "label": "coop",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "upgrades",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "recipes",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "signature",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 482,
+          "scroll": 482
+        }
+      },
+      {
+        "label": "settings",
+        "width": 1440,
+        "height": 900,
+        "content": {
+          "client": 497,
+          "scroll": 497
+        }
+      },
+      {
+        "label": "market",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "market-trees",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "market-care",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "market-buildings",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "inventory",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 330,
+          "scroll": 330
+        }
+      },
+      {
+        "label": "inventory-seeds",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 330,
+          "scroll": 330
+        }
+      },
+      {
+        "label": "inventory-archive",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 330,
+          "scroll": 330
+        }
+      },
+      {
+        "label": "archive-orchard",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "archive-coop",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "archive-shore",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "archive-bay",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 330,
+          "scroll": 330
+        }
+      },
+      {
+        "label": "orchard",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "rest",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "kitchen",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 330,
+          "scroll": 330
+        }
+      },
+      {
+        "label": "coop",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 330,
+          "scroll": 330
+        }
+      },
+      {
+        "label": "upgrades",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "recipes",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "signature",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 330,
+          "scroll": 330
+        }
+      },
+      {
+        "label": "settings",
+        "width": 390,
+        "height": 844,
+        "content": {
+          "client": 345,
+          "scroll": 345
+        }
+      },
+      {
+        "label": "market",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "market-trees",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "market-care",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 315,
+          "scroll": 315
+        }
+      },
+      {
+        "label": "market-buildings",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "inventory",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "inventory-seeds",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "inventory-archive",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "archive-orchard",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "archive-coop",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 315,
+          "scroll": 315
+        }
+      },
+      {
+        "label": "archive-shore",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "archive-bay",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "orchard",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 315,
+          "scroll": 315
+        }
+      },
+      {
+        "label": "rest",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 315,
+          "scroll": 315
+        }
+      },
+      {
+        "label": "kitchen",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "coop",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "upgrades",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "recipes",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 315,
+          "scroll": 315
+        }
+      },
+      {
+        "label": "signature",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 300,
+          "scroll": 300
+        }
+      },
+      {
+        "label": "settings",
+        "width": 360,
+        "height": 640,
+        "content": {
+          "client": 315,
+          "scroll": 315
+        }
+      },
+      {
+        "label": "market",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "market-trees",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "market-care",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "market-buildings",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "inventory",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "inventory-seeds",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "inventory-archive",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "archive-orchard",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "archive-coop",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "archive-shore",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "archive-bay",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "orchard",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "rest",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "kitchen",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "coop",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "upgrades",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "recipes",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "signature",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 496,
+          "scroll": 496
+        }
+      },
+      {
+        "label": "settings",
+        "width": 568,
+        "height": 320,
+        "content": {
+          "client": 511,
+          "scroll": 511
+        }
+      },
+      {
+        "label": "market",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "market-trees",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "market-care",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "market-buildings",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "inventory",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "inventory-seeds",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "inventory-archive",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "archive-orchard",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "archive-coop",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 470,
+          "scroll": 470
+        }
+      },
+      {
+        "label": "archive-shore",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "archive-bay",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "orchard",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "rest",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 470,
+          "scroll": 470
+        }
+      },
+      {
+        "label": "kitchen",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "coop",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "upgrades",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "recipes",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "signature",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 454,
+          "scroll": 454
+        }
+      },
+      {
+        "label": "settings",
+        "width": 520,
+        "height": 480,
+        "content": {
+          "client": 470,
+          "scroll": 470
+        }
+      }
+    ]
+  },
+  "nested": {
+    "checks": 56,
+    "issues": [],
+    "routes": [
+      {
+        "label": "tart-route",
+        "id": "strawberryTart",
+        "kind": "decorate"
+      },
+      {
+        "label": "tart-route",
+        "id": "blueberryTart",
+        "kind": "decorate"
+      },
+      {
+        "label": "tart-route",
+        "id": "raspberryTart",
+        "kind": "decorate"
+      }
+    ]
+  },
+  "cape_dpr": {
+    "checks": 9,
+    "issues": [],
+    "all": [
+      {
+        "label": "hive",
+        "width": 390,
+        "height": 844,
+        "dpr": 1.0000000149011612,
+        "horizontal": false,
+        "english": null
+      },
+      {
+        "label": "hive",
+        "width": 360,
+        "height": 640,
+        "dpr": 1.0000000149011612,
+        "horizontal": false,
+        "english": null
+      },
+      {
+        "label": "hive",
+        "width": 568,
+        "height": 320,
+        "dpr": 1.0000000149011612,
+        "horizontal": false,
+        "english": null
+      },
+      {
+        "label": "hive",
+        "width": 520,
+        "height": 480,
+        "dpr": 1.0000000149011612,
+        "horizontal": false,
+        "english": null
+      },
+      {
+        "label": "honey-kitchen",
+        "width": 520,
+        "height": 480,
+        "dpr": 1.0000000149011612,
+        "horizontal": false,
+        "english": null
+      },
+      {
+        "label": "cape-upgrade",
+        "width": 520,
+        "height": 480,
+        "dpr": 1.0000000149011612,
+        "horizontal": false,
+        "english": null
+      },
+      {
+        "label": "cape-upgrade-dpr",
+        "width": 520,
+        "height": 480,
+        "dpr": 1.25,
+        "horizontal": false,
+        "english": null
+      },
+      {
+        "label": "cape-upgrade-dpr",
+        "width": 520,
+        "height": 480,
+        "dpr": 1.5000000596046448,
+        "horizontal": false,
+        "english": null
+      },
+      {
+        "label": "cape-upgrade-dpr",
+        "width": 520,
+        "height": 480,
+        "dpr": 2.0000000298023224,
+        "horizontal": false,
+        "english": null
+      }
+    ]
+  },
+  "active_scenes": {
+    "checks": 23,
+    "issues": [],
+    "detection": [
+      {
+        "location": "button",
+        "context": "aria-label",
+        "text": "Go home",
+        "words": [
+          "Go",
+          "home"
+        ]
+      },
+      {
+        "location": "button",
+        "context": "text",
+        "text": "Ready",
+        "words": [
+          "Ready"
+        ]
+      },
+      {
+        "location": "p",
+        "context": "quantity",
+        "text": "21 монет",
+        "expected": [
+          "монета",
+          "монету"
+        ],
+        "advisory": true
+      }
+    ]
+  },
+  "fresh_native": {
+    "checks": 7,
+    "issues": [],
+    "progress": {
+      "till": 1,
+      "plant": 1,
+      "water": 1,
+      "rest": 0,
+      "harvest": 0,
+      "sell": 0,
+      "feed": 0,
+      "collect": 0
+    },
+    "appleTarget": "Остров. Яблоко · Собрать плоды: яблоко. Выберите другое место стрелками и нажмите Enter для действия.",
+    "berryPanel": "upgrades"
+  },
+  "limits": [
+    "No shared production build was written by this worker.",
+    "DPR was emulated at 520x480; Windows system or browser zoom was not changed.",
+    "Source audit follows explicit UI contexts; runtime audit covers visited states. Quantity warnings are advisory."
+  ]
+}

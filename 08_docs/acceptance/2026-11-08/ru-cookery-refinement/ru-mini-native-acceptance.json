@@ -1,0 +1,320 @@
+{
+  "origin": "http://127.0.0.1:5260/",
+  "nativeMainGame": true,
+  "session": "ru-mini",
+  "fixture": "ru-mini-browser-state.json (only origin changed from final-home-kitchen-browser-state.json)",
+  "modelMutation": false,
+  "sourceChanges": {
+    "workshop.ts": [
+      "Localized hand-menu labels shortened to fit: Скатать, Двигать; full Russian ARIA retained.",
+      "Physical event.code shortcuts work with Russian keyboard layout."
+    ],
+    "fishing.ts": [
+      "Physical KeyA/KeyD shortcuts work with Russian keyboard layout."
+    ]
+  },
+  "sourceSHA256": {
+    "workshop.ts": "a6847a6168d478c6dac70fa9fc9976488905026c4d086a1282950abfec65f499",
+    "fishing.ts": "3313994cf2ad135e6fedc73da188d6514e144d475d0d852697604d7ffac978cd"
+  },
+  "checks": {
+    "typescript": "npx tsc --noEmit passed",
+    "scopedTests": "52 passed, 0 failed",
+    "diffCheck": "passed"
+  },
+  "workshop": [
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 2.0000000298023224,
+      "flow": "intro, Space mixing, physical Russian-layout shortcuts, hand menu, bake, finished, return",
+      "pageErrors": [],
+      "horizontalOverflow": false,
+      "textClippedByAnyAncestorOrViewport": false,
+      "menuLabelOverflow": false,
+      "physicalShortcuts": [
+        {
+          "key": "к",
+          "code": "KeyR",
+          "expected": "roll",
+          "actual": "roll"
+        },
+        {
+          "key": "с",
+          "code": "KeyC",
+          "expected": "cup",
+          "actual": "cup"
+        },
+        {
+          "key": "а",
+          "code": "KeyF",
+          "expected": "fold",
+          "actual": "fold"
+        },
+        {
+          "key": "ь",
+          "code": "KeyM",
+          "expected": "move",
+          "actual": "move"
+        }
+      ]
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "dpr": 1.5000000596046448,
+      "flow": "intro, Space mixing, physical Russian-layout shortcuts, hand menu, bake, finished, return",
+      "pageErrors": [],
+      "horizontalOverflow": false,
+      "textClippedByAnyAncestorOrViewport": false,
+      "menuLabelOverflow": false,
+      "physicalShortcuts": [
+        {
+          "key": "к",
+          "code": "KeyR",
+          "expected": "roll",
+          "actual": "roll"
+        },
+        {
+          "key": "с",
+          "code": "KeyC",
+          "expected": "cup",
+          "actual": "cup"
+        },
+        {
+          "key": "а",
+          "code": "KeyF",
+          "expected": "fold",
+          "actual": "fold"
+        },
+        {
+          "key": "ь",
+          "code": "KeyM",
+          "expected": "move",
+          "actual": "move"
+        }
+      ]
+    },
+    {
+      "viewport": [
+        520,
+        480
+      ],
+      "dpr": 2.0000000298023224,
+      "flow": "intro, Space mixing, physical Russian-layout shortcuts, hand menu, bake, finished, return",
+      "pageErrors": [],
+      "horizontalOverflow": false,
+      "textClippedByAnyAncestorOrViewport": false,
+      "menuLabelOverflow": false,
+      "physicalShortcuts": [
+        {
+          "key": "к",
+          "code": "KeyR",
+          "expected": "roll",
+          "actual": "roll"
+        },
+        {
+          "key": "с",
+          "code": "KeyC",
+          "expected": "cup",
+          "actual": "cup"
+        },
+        {
+          "key": "а",
+          "code": "KeyF",
+          "expected": "fold",
+          "actual": "fold"
+        },
+        {
+          "key": "ь",
+          "code": "KeyM",
+          "expected": "move",
+          "actual": "move"
+        }
+      ]
+    },
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "dpr": 1.5000000596046448,
+      "flow": "intro, Space mixing, physical Russian-layout shortcuts, hand menu, bake, finished, return",
+      "pageErrors": [],
+      "horizontalOverflow": false,
+      "textClippedByAnyAncestorOrViewport": false,
+      "menuLabelOverflow": false,
+      "physicalShortcuts": [
+        {
+          "key": "к",
+          "code": "KeyR",
+          "expected": "roll",
+          "actual": "roll"
+        },
+        {
+          "key": "с",
+          "code": "KeyC",
+          "expected": "cup",
+          "actual": "cup"
+        },
+        {
+          "key": "а",
+          "code": "KeyF",
+          "expected": "fold",
+          "actual": "fold"
+        },
+        {
+          "key": "ь",
+          "code": "KeyM",
+          "expected": "move",
+          "actual": "move"
+        }
+      ]
+    }
+  ],
+  "fishing": [
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 2.0000000298023224,
+      "flow": "sail to Grove, intro, Russian-layout A/D, cast, drag steering, ascent catch, quota, return to shore",
+      "pageErrors": [],
+      "horizontalOverflow": false,
+      "englishWordsInResult": [],
+      "quotaReached": true,
+      "attempts": 1,
+      "caughtToday": {
+        "home": 0,
+        "grove": 4
+      },
+      "pendingTrip": null,
+      "physicalShortcuts": {
+        "keyA": "ф",
+        "keyD": "в",
+        "initial": -0.4,
+        "left": -2.1651576593603945,
+        "right": 0.4365056070071808
+      }
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "dpr": 1.5000000596046448,
+      "flow": "sail to Grove, intro, Russian-layout A/D, cast, drag steering, ascent catch, quota, return to shore",
+      "pageErrors": [],
+      "horizontalOverflow": false,
+      "englishWordsInResult": [],
+      "quotaReached": true,
+      "attempts": 1,
+      "caughtToday": {
+        "home": 0,
+        "grove": 4
+      },
+      "pendingTrip": null,
+      "physicalShortcuts": {
+        "keyA": "ф",
+        "keyD": "в",
+        "initial": -0.4,
+        "left": -2.1129571763083996,
+        "right": 0.6745769576008104
+      }
+    },
+    {
+      "viewport": [
+        520,
+        480
+      ],
+      "dpr": 2.0000000298023224,
+      "flow": "sail to Grove, intro, Russian-layout A/D, cast, drag steering, ascent catch, quota, return to shore",
+      "pageErrors": [],
+      "horizontalOverflow": false,
+      "englishWordsInResult": [],
+      "quotaReached": true,
+      "attempts": 1,
+      "caughtToday": {
+        "home": 0,
+        "grove": 4
+      },
+      "pendingTrip": null,
+      "physicalShortcuts": {
+        "keyA": "ф",
+        "keyD": "в",
+        "initial": -0.4,
+        "left": -2.161281483953853,
+        "right": 0.5336880647391875
+      }
+    },
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "dpr": 1.5000000596046448,
+      "flow": "sail to Grove, intro, Russian-layout A/D, cast, drag steering, ascent catch, quota, return to shore",
+      "pageErrors": [],
+      "horizontalOverflow": false,
+      "englishWordsInResult": [],
+      "quotaReached": true,
+      "attempts": 1,
+      "caughtToday": {
+        "home": 0,
+        "grove": 4
+      },
+      "pendingTrip": null,
+      "physicalShortcuts": {
+        "keyA": "ф",
+        "keyD": "в",
+        "initial": -0.4,
+        "left": -2.2213826959865934,
+        "right": 0.4953152704236514
+      }
+    }
+  ],
+  "screenshots": [
+    "ru-mini-workshop-baking-1440x900-dpr1.5.png",
+    "ru-mini-workshop-baking-390x844-dpr2.png",
+    "ru-mini-workshop-baking-520x480-dpr2.png",
+    "ru-mini-workshop-baking-568x320-dpr1.5.png",
+    "ru-mini-workshop-intro-1440x900-dpr1.5.png",
+    "ru-mini-workshop-intro-390x844-dpr2.png",
+    "ru-mini-workshop-intro-520x480-dpr2.png",
+    "ru-mini-workshop-intro-568x320-dpr1.5.png",
+    "ru-mini-workshop-menu-1440x900-dpr1.5.png",
+    "ru-mini-workshop-menu-390x844-dpr2.png",
+    "ru-mini-workshop-menu-520x480-dpr2.png",
+    "ru-mini-workshop-menu-568x320-dpr1.5.png",
+    "ru-mini-workshop-result-1440x900-dpr1.5.png",
+    "ru-mini-workshop-result-390x844-dpr2.png",
+    "ru-mini-workshop-result-520x480-dpr2.png",
+    "ru-mini-workshop-result-568x320-dpr1.5.png",
+    "ru-mini-fishing-intro-1440x900-dpr1.5.png",
+    "ru-mini-fishing-intro-390x844-dpr2.png",
+    "ru-mini-fishing-intro-520x480-dpr2.png",
+    "ru-mini-fishing-intro-568x320-dpr1.5.png",
+    "ru-mini-fishing-ongoing-1440x900-dpr1.5.png",
+    "ru-mini-fishing-ongoing-390x844-dpr2.png",
+    "ru-mini-fishing-ongoing-520x480-dpr2.png",
+    "ru-mini-fishing-ongoing-568x320-dpr1.5.png",
+    "ru-mini-fishing-result-1440x900-dpr1.5.png",
+    "ru-mini-fishing-result-390x844-dpr2.png",
+    "ru-mini-fishing-result-520x480-dpr2.png",
+    "ru-mini-fishing-result-568x320-dpr1.5.png"
+  ],
+  "receipts": [
+    "ru-mini-workshop-receipt.json",
+    "ru-mini-fishing-receipt.json"
+  ],
+  "scripts": [
+    "ru-mini-workshop-qa.js",
+    "ru-mini-fishing-qa.js"
+  ],
+  "measurementNote": "Some cue glyphs extend beyond the small overflow-visible cue layout box. Direct ancestor/viewport clipping checks are all false; play-scale screenshots show the full text."
+}

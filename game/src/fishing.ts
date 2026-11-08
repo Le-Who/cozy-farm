@@ -1,7 +1,10 @@
+import { fishDefinitions } from './farm.ts';
+import { shellDefinitions } from './tide.ts';
+import { ruCount, formatRuNumber } from './ru.ts';
 import * as THREE from 'three';
 import {
   castFishing, createFishingModel, fishPosition, fishingDepth, fishingHalfWidth,
-  fishingCatchLoot, fishingCatchScale, fishingCatchMouth, reelFishing, stepFishing, type FishingLoot,
+  fishingCatchLoot, fishingCatchScale, fishingCatchMouth, reelFishing, stepFishing, type FishingLoot, type FishingHabitat,
 } from './fishing-model';
 import './fishing.css';
 
@@ -11,6 +14,7 @@ export type FishingGameOptions = {
   resilience?: number;
   seed?: number;
   fish: 'perch' | 'seaBass';
+  habitat?: FishingHabitat;
   onCast?: () => boolean | void;
   /** Return false when the cast used the last available attempt. */
   onFinish: (result: { count: number; depth: number; catches: FishingLoot[] }) => boolean | void;
@@ -19,9 +23,9 @@ export type FishingGameOptions = {
 };
 
 function lootName(loot: FishingLoot): string {
-  return loot.kind === 'fish' ? ({ perch: 'Perch', seaBass: 'Sea bass', moonfish: 'Moonfish', lanternfish: 'Lanternfish' })[loot.species]
-    : loot.kind === 'shell' ? loot.variant === 'moon' ? 'Moon shell' : 'Seashell'
-      : ({ boot: 'Old boot', weed: 'Tangled weed', rock: 'Smooth rock' })[loot.item];
+  return loot.kind === 'fish' ? fishDefinitions[loot.species].name
+    : loot.kind === 'shell' ? shellDefinitions[loot.variant].name
+      : ({ boot: 'Старый сапог', weed: 'Пучок водорослей', rock: 'Гладкий камень' })[loot.item];
 }
 
 function lootArt(loot: FishingLoot): string {
@@ -41,34 +45,34 @@ export function fishingBackgroundCover(width: number, height: number, aspect: nu
 
 /** Owns one cast and its renderer; rewards remain the caller's responsibility. */
 export function createFishingGame(host: HTMLElement, options: FishingGameOptions): { destroy(): void } {
-  const model = createFishingModel(options.capacity, options.resilience, options.seed ?? Date.now(), options.fish);
+  const model = createFishingModel(options.capacity, options.resilience, options.seed ?? Date.now(), options.fish, options.habitat);
   const maxDepth = Math.max(1, Number.isFinite(options.maxDepth) ? options.maxDepth : 30);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const root = document.createElement('section');
   root.className = 'fishing-game';
   root.dataset.phase = model.phase;
-  root.setAttribute('aria-label', 'Underwater fishing');
+  root.setAttribute('aria-label', 'Подводная рыбалка');
   root.innerHTML = `
-    <div class="fishing-stage" tabindex="0" role="application" aria-label="Steer the hook with left and right arrow keys or drag. Space casts, then reels in early.">
+    <div class="fishing-stage" tabindex="0" role="application" aria-label="Управляйте крючком стрелками влево и вправо или перетаскиванием. Пробел — опустить крючок или начать подъём раньше.">
       <div class="fishing-hud">
-        <div class="fishing-depth"><span class="fishing-direction" aria-hidden="true">↓</span><strong>0</strong><span>m</span></div>
-        <div class="fishing-slots" role="img" aria-label="Empty hook"></div>
+        <div class="fishing-depth"><span class="fishing-direction" aria-hidden="true">↓</span><strong>0</strong><span>м</span></div>
+        <div class="fishing-slots" role="img" aria-label="Пустой крючок"></div>
       </div>
-      <div class="fishing-depth-track" aria-hidden="true"><i></i><span>${maxDepth} m</span></div>
+      <div class="fishing-depth-track" aria-hidden="true"><i></i><span>${formatRuNumber(maxDepth)} м</span></div>
       <div class="fishing-contacts" aria-hidden="true"></div>
-      <div class="fishing-zone" aria-hidden="true">Sunlit shallows</div>
-      <div class="fishing-intro"><p>Guide down. Catch the front half coming up.</p><span>Drag or ← → · Space to reel early</span></div>
+      <div class="fishing-zone" aria-hidden="true">Солнечное мелководье</div>
+      <div class="fishing-intro"><p>Опускайте крючок. На подъёме ловите рыбу за переднюю часть.</p><span>Тяните или ← → · Пробел — поднять раньше</span></div>
       <div class="fishing-callout" aria-hidden="true"></div>
       <div class="fishing-render-status" role="status" hidden></div>
       <section class="fishing-result" aria-labelledby="fishing-result-title" hidden>
-        <h2 id="fishing-result-title">Your catch</h2>
+        <h2 id="fishing-result-title">Ваш улов</h2>
         <p class="fishing-result-summary"></p>
         <ul class="fishing-result-catches"></ul>
-        <p class="fishing-result-quota" hidden>No casts left today</p>
-        <div class="fishing-result-actions"><button class="fishing-again fishing-action" type="button">Cast again</button><button class="fishing-leave" type="button">Return to shore</button></div>
+        <p class="fishing-result-quota" hidden>На сегодня рыбалка закончена</p>
+        <div class="fishing-result-actions"><button class="fishing-again fishing-action" type="button">Ещё раз</button><button class="fishing-leave" type="button">На берег</button></div>
       </section>
     </div>
-    <p class="fishing-live" role="status" aria-live="polite"></p><div class="fishing-controls"><button class="fishing-action" type="button">Cast line <span aria-hidden="true">↓</span></button></div>`;
+    <p class="fishing-live" role="status" aria-live="polite"></p><div class="fishing-controls"><button class="fishing-action" type="button">Закинуть удочку <span aria-hidden="true">↓</span></button></div>`;
   host.append(root);
   const stage = root.querySelector<HTMLElement>('.fishing-stage')!;
   const action = root.querySelector<HTMLButtonElement>('.fishing-controls .fishing-action')!;
@@ -93,7 +97,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   for (let i = 0; i < model.capacity; i++) {
     const slot = document.createElement('i'); slot.className = 'fishing-slot'; slots.append(slot);
   }
-  slots.setAttribute('aria-label', `0 of ${model.capacity} hook spaces filled`);
+  slots.setAttribute('aria-label', `Занято мест на крючке: 0 из ${model.capacity}`);
   for (let i = 0; i < model.resilience; i++) {
     const contact = document.createElement('i'); contacts.append(contact);
   }
@@ -103,8 +107,8 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
   } catch {
     renderStatus.hidden = false;
-    renderStatus.textContent = 'The water view could not open. Please return to shore and try again.';
-    action.textContent = 'Return to shore';
+    renderStatus.textContent = 'Не удалось открыть рыбалку. Вернитесь на берег и попробуйте ещё раз.';
+    action.textContent = 'На берег';
     const cancel = () => options.onCancel?.();
     action.addEventListener('click', cancel);
     return { destroy() { action.removeEventListener('click', cancel); root.remove(); } };
@@ -235,6 +239,8 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     const plant = mesh(plantGeometry, plantMaterial, scene,
       [(i % 2 ? 1 : -1) * (4.9 + Math.sin(i) * .15), -3 - Math.floor(i / 2) * 5.2, i % 3 ? -.9 : 1.8],
       [i % 2 ? -1 : 1, .8 + i % 3 * .15, 1]);
+    // The trip keeps its settled tide; a meadow margin leaves the casting channel open.
+    plant.visible = !model.habitat || model.habitat.cover === 'kelp' || i % 3 === 0;
     return plant;
   });
   const finMaterials = [material('#d48f91')];
@@ -343,14 +349,16 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   const keyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') { event.preventDefault(); options.onCancel?.(); return; }
     if ((event.target as HTMLElement).closest('button') || model.phase === 'done') return;
-    if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D', ' ', 'Enter', 'Escape'].includes(event.key)) event.preventDefault();
-    if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') left = true;
-    if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') right = true;
+    const leftKey = event.key === 'ArrowLeft' || event.code === 'KeyA' || event.key.toLowerCase() === 'a';
+    const rightKey = event.key === 'ArrowRight' || event.code === 'KeyD' || event.key.toLowerCase() === 'd';
+    if (leftKey || rightKey || [' ', 'Enter', 'Escape'].includes(event.key)) event.preventDefault();
+    if (leftKey) left = true;
+    if (rightKey) right = true;
     if (!event.repeat && (event.key === ' ' || event.key === 'Enter')) performAction();
   };
   const keyUp = (event: KeyboardEvent) => {
-    if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') left = false;
-    if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') right = false;
+    if (event.key === 'ArrowLeft' || event.code === 'KeyA' || event.key.toLowerCase() === 'a') left = false;
+    if (event.key === 'ArrowRight' || event.code === 'KeyD' || event.key.toLowerCase() === 'd') right = false;
   };
   root.addEventListener('keydown', keyDown, { signal });
   root.addEventListener('keyup', keyUp, { signal });
@@ -380,7 +388,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     event.preventDefault(); contextLost = true; clearKeys(); releasePointer();
     // Release listeners tied to the lost GL generation while retaining all CPU art/model data.
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose());
-    renderStatus.textContent = 'The water view paused. Waiting for the graphics to recover…'; renderStatus.hidden = false;
+    renderStatus.textContent = 'Изображение приостановлено. Ждём восстановления…'; renderStatus.hidden = false;
     action.disabled = true;
   }, { signal });
   renderer.domElement.addEventListener('webglcontextrestored', () => {
@@ -411,30 +419,32 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   }).catch(() => { /* The accepted master remains a proportionate fallback. */ });
 
   function updateInterface(): void {
-    depthLabel.textContent = String(Math.round(model.depth / fishingDepth * maxDepth));
-    zone.textContent = model.depth > 25.2 ? 'Lantern depths' : model.depth > 18.6 ? 'Moonlit water' : model.depth > 9 ? 'Kelp gardens' : 'Sunlit shallows';
+    depthLabel.textContent = formatRuNumber(Math.round(model.depth / fishingDepth * maxDepth));
+    zone.textContent = model.depth > 25.2 ? 'Глубинные огни' : model.depth > 18.6 ? 'Лунные воды'
+      : model.habitat ? model.habitat.profile === 'nursery' ? 'Тихие ясли мальков' : 'Приливный проток'
+        : model.depth > 9 ? 'Заросли водорослей' : 'Солнечное мелководье';
     depthMarker.style.top = `${model.depth / fishingDepth * 92}%`;
     if (lastPhase !== model.phase) {
       lastPhase = model.phase; root.dataset.phase = model.phase;
       if (model.phase === 'descending') {
-        action.innerHTML = 'Reel in <span aria-hidden="true">↑</span>';
-        showCallout('↓ Steer around fish');
-        announce('Steer around fish. Space reels in early.');
+        action.innerHTML = 'Поднять крючок <span aria-hidden="true">↑</span>';
+        showCallout('↓ Обходите рыб');
+        announce('Обходите рыб. Пробел — начать подъём раньше.');
       } else if (model.phase === 'ascending') {
         controls.hidden = true; action.disabled = true; directionLabel.textContent = '↑';
-        showCallout('↑ Aim for the front half');
-        announce('Coming up. Guide the hook through the front half of fish to catch them.');
+        showCallout('↑ Ловите за переднюю часть');
+        announce('Крючок поднимается. Проведите им через переднюю часть рыбы, чтобы поймать её.');
       } else if (model.phase === 'done') {
         controls.hidden = true; directionLabel.textContent = '✓';
-        const message = model.caught.length ? `${model.caught.length} finds brought ashore` : 'The hook returned empty. Aim for the front half on the way up.';
+        const message = model.caught.length ? `На берег доставлено: ${ruCount(model.caught.length, 'находка', 'находки', 'находок')}` : 'Крючок пуст. На подъёме цельтесь в переднюю часть рыбы.';
         announce(message); callout.classList.remove('visible');
       }
     }
     if (lastContacts !== model.contacts) {
       lastContacts = model.contacts;
       Array.from(contacts.children).forEach((item, i) => item.classList.toggle('used', i < model.contacts));
-      showCallout(model.phase === 'descending' ? 'Careful — steer around' : 'Time to bring it up');
-      announce(`${model.contacts} of ${model.resilience} contacts. ${model.phase === 'ascending' ? 'The hook is coming up.' : 'Steer around fish.'}`);
+      showCallout(model.phase === 'descending' ? 'Осторожно, обойдите' : 'Пора поднимать');
+      announce(`Касания: ${model.contacts} из ${model.resilience}. ${model.phase === 'ascending' ? 'Крючок поднимается.' : 'Обходите рыб.'}`);
     }
     if (lastCount !== model.caught.length) {
       lastCount = model.caught.length;
@@ -448,15 +458,15 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       });
       const latest = model.fish.find(fish => fish.id === model.caught.at(-1));
       const loot = latest && fishingCatchLoot(latest, options.fish);
-      const name = loot ? lootName(loot) : 'Caught!';
-      slots.setAttribute('aria-label', `${lastCount} of ${model.capacity} hook spaces filled`);
+      const name = loot ? lootName(loot) : 'Поймано!';
+      slots.setAttribute('aria-label', `Занято мест на крючке: ${lastCount} из ${model.capacity}`);
       showCallout(name);
-      announce(`${name}. ${lastCount} of ${model.capacity} hook spaces filled.`);
+      announce(`${name}. Занято мест на крючке: ${lastCount} из ${model.capacity}.`);
     }
     const warning = model.fish.find(fish => fish.dart?.phase === 'warning');
     if (warning && warning.id !== lastWarning) {
-      lastWarning = warning.id; showCallout('Little fish is eyeing the bait — steer aside');
-      announce('A little fish is preparing to dart. Steer aside.');
+      lastWarning = warning.id; showCallout('Малёк заметил наживку — в сторону');
+      announce('Малёк готовится к рывку. Отведите крючок в сторону.');
     }
     if (model.time > calloutUntil) callout.classList.remove('visible');
   }
@@ -526,7 +536,8 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
         group.rotation.z = 0;
       }
     });
-    kelps.forEach((kelp, i) => { kelp.rotation.z = reducedMotion.matches ? 0 : Math.sin(model.time * .9 + i * 1.2) * .065; });
+    kelps.forEach((kelp, i) => { kelp.rotation.z = reducedMotion.matches ? 0
+      : Math.sin(model.time * (.6 + (model.habitat?.current ?? .3)) + i * 1.2) * (.045 + (model.habitat?.current ?? .3) * .065); });
     for (let i = 0; i < 64; i++) {
       const t = reducedMotion.matches ? 0 : model.time;
       dummy.position.set(Math.sin(i * 13.71) * 5.1 + Math.sin(t * .5 + i) * .12,
@@ -544,10 +555,10 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       const depth = Math.round(model.deepest / fishingDepth * maxDepth);
       const canRecast = options.onFinish({ count: catches.length, depth, catches }) !== false;
       if (destroyed) return;
-      resultTitle.textContent = catches.length ? 'Your catch' : 'An empty hook';
+      resultTitle.textContent = catches.length ? 'Ваш улов' : 'Пустой крючок';
       resultSummary.textContent = catches.length
-        ? `${depth} m reached`
-        : `${depth} m reached · Try steering through the front half of a fish`;
+        ? `Глубина: ${formatRuNumber(depth)} м`
+        : `Глубина: ${formatRuNumber(depth)} м · Ловите рыбу за переднюю часть`;
       for (const loot of catches) {
         const item = document.createElement('li');
         const img = document.createElement('img'); img.src = lootArt(loot); img.alt = '';
@@ -559,7 +570,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       resultQuota.hidden = canRecast;
       controls.hidden = true; callout.classList.remove('visible'); result.hidden = false;
       stage.removeAttribute('role'); stage.tabIndex = -1;
-      announce(`${resultTitle.textContent}. ${resultSummary.textContent}. ${canRecast ? 'Cast again or return to shore.' : 'No casts left today. Return to shore.'}`);
+      announce(`${resultTitle.textContent}. ${resultSummary.textContent}. ${canRecast ? 'Попробуйте ещё раз или вернитесь на берег.' : 'На сегодня рыбалка закончена. Вернитесь на берег.'}`);
       (again.hidden ? leave : again).focus({ preventScroll: true });
     }
   }
