@@ -1,0 +1,83 @@
+{
+  "items": {
+    "pot": {
+      "url": "pot.webp",
+      "width": 512,
+      "height": 512,
+      "innerRimEllipse": {
+        "cx": 263,
+        "cy": 219,
+        "rx": 165,
+        "ry": 105
+      },
+      "mixSurfaceEllipse": {
+        "cx": 263,
+        "cy": 219,
+        "rx": 165,
+        "ry": 105
+      },
+      "foregroundUrl": "pot-foreground.webp"
+    },
+    "tart": {
+      "url": "tart.webp",
+      "width": 512,
+      "height": 512,
+      "mixSurfaceEllipse": {
+        "cx": 257,
+        "cy": 240,
+        "rx": 146,
+        "ry": 110
+      }
+    },
+    "jar": {
+      "url": "jar.webp",
+      "width": 512,
+      "height": 512
+    },
+    "spoon": {
+      "url": "spoon.webp",
+      "width": 512,
+      "height": 512
+    },
+    "shaker": {
+      "url": "shaker.webp",
+      "width": 512,
+      "height": 512
+    },
+    "dish": {
+      "url": "dish.webp",
+      "width": 512,
+      "height": 512
+    },
+    "room": {
+      "url": "room.webp",
+      "width": 1536,
+      "height": 1024
+    },
+    "apple-slice": {
+      "url": "apple-slice.webp",
+      "width": 520,
+      "height": 422
+    },
+    "pear-piece": {
+      "url": "pear-piece.webp",
+      "width": 454,
+      "height": 464
+    },
+    "apple-piece": {
+      "url": "apple-piece.webp",
+      "width": 477,
+      "height": 433
+    },
+    "raspberry": {
+      "url": "raspberry.webp",
+      "width": 512,
+      "height": 491
+    },
+    "room-portrait": {
+      "url": "room-portrait.webp",
+      "width": 1024,
+      "height": 1536
+    }
+  }
+}

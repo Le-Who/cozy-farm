@@ -1,0 +1,74 @@
+{
+  "moonfish": {
+    "file": "moonfish.webp",
+    "width": 512,
+    "height": 512,
+    "alphaRange": [
+      0,
+      254
+    ],
+    "cell": 0,
+    "mouth": {
+      "u": 0.91,
+      "v": 0.56
+    }
+  },
+  "lanternfish": {
+    "file": "lanternfish.webp",
+    "width": 512,
+    "height": 512,
+    "alphaRange": [
+      0,
+      254
+    ],
+    "cell": 1,
+    "mouth": {
+      "u": 0.84,
+      "v": 0.56
+    }
+  },
+  "boot": {
+    "file": "boot.webp",
+    "width": 512,
+    "height": 512,
+    "alphaRange": [
+      0,
+      254
+    ],
+    "cell": 2,
+    "mouth": null
+  },
+  "weed": {
+    "file": "weed.webp",
+    "width": 512,
+    "height": 512,
+    "alphaRange": [
+      0,
+      254
+    ],
+    "cell": 3,
+    "mouth": null
+  },
+  "rock": {
+    "file": "rock.webp",
+    "width": 512,
+    "height": 512,
+    "alphaRange": [
+      0,
+      254
+    ],
+    "cell": 4,
+    "mouth": null
+  },
+  "shell": {
+    "file": "shell.webp",
+    "width": 512,
+    "height": 512,
+    "alphaRange": [
+      0,
+      254
+    ],
+    "cell": 5,
+    "mouth": null
+  }
+}

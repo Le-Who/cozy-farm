@@ -1,6 +1,6 @@
 import {
-  DataTexture, LinearFilter, LinearMipmapLinearFilter, Mesh, PlaneGeometry, RedFormat, type Scene,
-  ShaderMaterial, SRGBColorSpace, Texture, UnsignedByteType, Vector2, Vector3, Vector4,
+  DataTexture, LinearFilter, Mesh, PlaneGeometry, RedFormat, type Scene,
+  ShaderMaterial, UnsignedByteType, Vector2, Vector3, Vector4,
 } from 'three';
 
 type Point = { x: number; y: number };
@@ -9,9 +9,8 @@ type Boat = Point & { speed: number };
 
 type WaterLayer = {
   resize(width: number, height: number, dpr?: number): void;
-  setTexture(image: HTMLImageElement): void;
   setShore(image: HTMLImageElement, rect: Rect, minY: number): void;
-  paint(time: number, boat?: Boat, bobber?: Point): void;
+  paint(time: number, boat?: Boat, bobber?: Point, lunarTide?: boolean): void;
   dispose(): void;
 };
 
@@ -27,13 +26,12 @@ const fragmentShader = /* glsl */ `
   varying vec2 vUv;
   uniform vec2 uSize;
   uniform float uTime;
-  uniform sampler2D uPaint;
-  uniform float uPaintAspect;
   uniform sampler2D uShore;
   uniform vec4 uShoreRect;
   uniform vec2 uShoreScale;
   uniform vec3 uBoat;
   uniform vec3 uBobber;
+  uniform float uLunarTide;
 
   float hash(vec2 cell) {
     vec3 p = fract(vec3(cell.xyx) * 0.1031);
@@ -64,7 +62,7 @@ const fragmentShader = /* glsl */ `
     float ringDistance = length(d * vec2(1.0, 2.75));
     float mooring = band(29.0 + drift, 3.1, ringDistance) * 0.42
                   + band(38.0 - drift, 2.2, ringDistance) * 0.22;
-    float behind = -d.x - 10.0;
+    float behind = d.x - 10.0;
     float span = 24.0 + 114.0 * uBoat.z;
     float edge = abs(d.y - behind * 0.17) - (4.0 + behind * 0.19);
     float plume = band(0.0, 3.0 + behind * 0.018, edge);
@@ -87,30 +85,25 @@ const fragmentShader = /* glsl */ `
   void main() {
     vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
     vec2 p = uv * uSize;
-    vec2 flow = vec2(p.x * 0.022, p.y * 0.064) / (0.80 + 0.34 * uv.y);
+    vec2 flow = vec2(p.x * 0.017, p.y * 0.061) / (0.94 + 0.15 * uv.y);
     float t = uTime;
-    float a = dot(flow, vec2(0.29, 0.92)) - t * 0.88;
-    float b = dot(flow, vec2(-0.68, 0.57)) + t * 0.62;
+    float a = dot(flow, vec2(0.13, 0.92)) - t * 0.74;
+    float b = dot(flow, vec2(-0.44, 0.69)) + t * 0.55;
     float c = dot(flow, vec2(0.93, 1.28)) - t * 1.21;
     float swell = sin(a + sin(b) * 0.46);
     float cross = sin(b + sin(c) * 0.24);
     float pattern = noise(flow * vec2(0.83, 0.58) + vec2(t * 0.12, -t * 0.17));
-    vec3 color = mix(vec3(0.035, 0.36, 0.40), vec3(0.016, 0.205, 0.32), uv.y);
-    if (uPaintAspect > 0.0) {
-      float aspect = uSize.x / uSize.y;
-      vec2 cover = vec2(min(1.0, aspect / uPaintAspect), min(1.0, uPaintAspect / aspect));
-      vec2 paintUV = (uv - 0.5) * cover * 0.974 + 0.5;
-      paintUV += vec2(cross * 0.009, swell * 0.007) * cover;
-      color = mix(texture2D(uPaint, vec2(paintUV.x, 1.0 - paintUV.y)).rgb, color, 0.26);
-    }
-
-    color *= 0.99 + swell * 0.032 + cross * 0.022;
-    float lightDistance = (uv.x - 0.31 + uv.y * 0.20) * 2.8;
-    float sunlight = exp(-lightDistance * lightDistance) * (1.0 - uv.y * 0.45);
-    float ribbons = smoothstep(0.79, 0.995, swell) * smoothstep(0.40, 0.81, pattern);
-    float glints = smoothstep(0.86, 0.99, sin(c + swell * 0.42)) * smoothstep(0.72, 0.91, pattern);
-    vec3 light = vec3(0.68, 0.86, 0.69);
-    color = mix(color, light, ribbons * (0.064 + sunlight * 0.095) + glints * sunlight * 0.32);
+    // Match the matte turquoise of the desktop master and keep highlights subordinate to the island.
+    vec3 color = mix(vec3(0.130, 0.481, 0.589), vec3(0.106, 0.443, 0.543), uv.y);
+    color = mix(color, vec3(0.131, 0.277, 0.507), uLunarTide * 0.56);
+    color *= 0.985 + 0.024 * swell + 0.017 * cross + 0.038 * pattern;
+    float ribbons = smoothstep(0.79, 0.985, swell) * smoothstep(0.42, 0.79, pattern);
+    float dashes = smoothstep(0.88, 0.995, sin(c + swell * 0.3)) * smoothstep(0.63, 0.91, pattern);
+    vec3 light = mix(vec3(0.64, 0.88, 0.88), vec3(0.73, 0.81, 1.0), uLunarTide);
+    color = mix(color, light, ribbons * 0.12 + dashes * 0.11);
+    float caustic = smoothstep(0.91, 0.997, sin(a * 1.55 + cross * 0.8))
+                  * smoothstep(0.43, 0.82, pattern);
+    color = mix(color, vec3(0.36, 0.73, 0.73), caustic * 0.13);
 
     if (uShoreScale.x > 0.0 && p.y > uShoreScale.y) {
       vec2 shoreUV = (p - uShoreRect.xy) / uShoreRect.zw;
@@ -120,13 +113,16 @@ const fragmentShader = /* glsl */ `
         float mask = smoothstep(uShoreScale.y, uShoreScale.y + 38.0, p.y)
                    * (1.0 - smoothstep(0.72, 0.98, shoreDistance));
         float shallows = (1.0 - smoothstep(1.0, 73.0, distance)) * mask;
-        float tide = distance + swell * 2.3 + cross * 1.6;
+        float tide = distance + swell * 3.6 + cross * 1.8;
         float contact = (1.0 - smoothstep(0.0, 7.0, distance)) * mask;
         float foam = band(7.0, 4.0, tide) * (0.20 + smoothstep(0.22, 0.78, pattern) * 0.80)
-                   + band(17.0, 5.8, tide) * smoothstep(0.48, 0.88, pattern) * 0.40;
-        color *= 1.0 - contact * 0.13;
-        color = mix(color, vec3(0.068, 0.44, 0.35), shallows * 0.53);
-        color = mix(color, light, foam * mask * 0.40);
+                   + band(18.0 + cross * 2.0, 5.8, tide) * smoothstep(0.48, 0.88, pattern) * 0.40;
+        color *= 1.0 - contact * 0.07;
+        color = mix(color, vec3(0.18, 0.52, 0.52), shallows * 0.33);
+        color = mix(color, light, foam * mask * 0.26);
+        float moonWash = band(25.0 + sin(t * 1.15) * 5.0, 8.0, tide);
+        color = mix(color, vec3(0.61, 0.65, 0.99), uLunarTide * moonWash * mask
+          * (0.06 + pattern * 0.21));
       }
     }
 
@@ -187,20 +183,16 @@ function createShoreTexture(image: HTMLImageElement): ShoreTexture | undefined {
 export function createWaterLayer(scene: Scene): WaterLayer {
   let disposed = false;
 
-  const painted = new Texture();
-  painted.colorSpace = SRGBColorSpace;
-  painted.minFilter = LinearMipmapLinearFilter;
   const shores = new Map<HTMLImageElement, ShoreTexture | undefined>();
   const uniforms = {
     uSize: { value: new Vector2(1, 1) },
     uTime: { value: 0 },
-    uPaint: { value: painted },
-    uPaintAspect: { value: 0 },
     uShore: { value: null as DataTexture | null },
     uShoreRect: { value: new Vector4() },
     uShoreScale: { value: new Vector2() },
     uBoat: { value: new Vector3(0, 0, -1) },
     uBobber: { value: new Vector3(0, 0, -1) },
+    uLunarTide: { value: 0 },
   };
   const material = new ShaderMaterial({ vertexShader, fragmentShader, uniforms, depthTest: false, depthWrite: false, toneMapped: false });
   const geometry = new PlaneGeometry(2, 2);
@@ -214,13 +206,6 @@ export function createWaterLayer(scene: Scene): WaterLayer {
     resize(width, height) {
       if (disposed) return;
       uniforms.uSize.value.set(width, height);
-    },
-
-    setTexture(image) {
-      if (disposed || painted.image === image || !image.naturalWidth || !image.naturalHeight) return;
-      painted.image = image;
-      painted.needsUpdate = true;
-      uniforms.uPaintAspect.value = image.naturalWidth / image.naturalHeight;
     },
 
     setShore(image, rect, minY) {
@@ -244,9 +229,10 @@ export function createWaterLayer(scene: Scene): WaterLayer {
       uniforms.uShoreScale.value.x = Math.min(px, py) * shoreRange;
     },
 
-    paint(time, boat, bobber) {
+    paint(time, boat, bobber, lunarTide) {
       if (disposed) return;
       uniforms.uTime.value = time;
+      uniforms.uLunarTide.value = Number(Boolean(lunarTide));
       uniforms.uBoat.value.set(boat?.x ?? 0, boat?.y ?? 0, boat ? Math.max(0, Math.min(1, boat.speed)) : -1);
       uniforms.uBobber.value.set(bobber?.x ?? 0, bobber?.y ?? 0, bobber ? 1 : -1);
     },
@@ -255,7 +241,6 @@ export function createWaterLayer(scene: Scene): WaterLayer {
       if (disposed) return;
       disposed = true;
       plane.removeFromParent();
-      painted.dispose();
       for (const shore of shores.values()) shore?.texture.dispose();
       shores.clear();
       material.dispose();

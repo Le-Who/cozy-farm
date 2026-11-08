@@ -1,0 +1,255 @@
+{
+  "version": 1,
+  "units": "pixels",
+  "pivotUnits": "normalized",
+  "sourceAtlases": {
+    "props": {
+      "path": "01_primary_target/lavender-bay/workshop-design/runtime/props-atlas-source.png",
+      "width": 1536,
+      "height": 1024
+    },
+    "ui": {
+      "path": "01_primary_target/lavender-bay/workshop-design/runtime/ui-atlas-source.png",
+      "width": 2172,
+      "height": 724
+    }
+  },
+  "items": {
+    "bowl": {
+      "url": "art/lavender/workshop-authored/bowl.webp",
+      "width": 486,
+      "height": 373,
+      "sourceAtlas": "props",
+      "sourceRect": {
+        "x": 18,
+        "y": 70,
+        "w": 486,
+        "h": 373
+      },
+      "pivot": {
+        "x": 0.4794239,
+        "y": 0.9597855
+      },
+      "contact": {
+        "x": 233,
+        "y": 358
+      },
+      "baseline": 0.9597855,
+      "innerRimEllipse": {
+        "cx": 211.60023505385163,
+        "cy": 102.61114069609414,
+        "rx": 185.46561034500877,
+        "ry": 79.91495753141494,
+        "rotation": -0.012520913479153005,
+        "fitRmsPixels": 1.1112,
+        "excludesPouringLip": true
+      },
+      "mixSurfaceEllipse": {
+        "cx": 211.60023505385163,
+        "cy": 107.61114069609414,
+        "rx": 176.46561034500877,
+        "ry": 70.91495753141494,
+        "rotation": -0.012520913479153005
+      },
+      "foregroundUrl": "art/lavender/workshop-authored/bowl-foreground.webp"
+    },
+    "spoon": {
+      "url": "art/lavender/workshop-authored/spoon.webp",
+      "width": 438,
+      "height": 378,
+      "sourceAtlas": "props",
+      "sourceRect": {
+        "x": 529,
+        "y": 73,
+        "w": 438,
+        "h": 378
+      },
+      "pivot": {
+        "x": 0.7328767,
+        "y": 0.9470899
+      },
+      "contact": {
+        "x": 321,
+        "y": 358
+      },
+      "baseline": 0.9470899
+    },
+    "rollingPin": {
+      "url": "art/lavender/workshop-authored/rolling-pin.webp",
+      "width": 509,
+      "height": 310,
+      "sourceAtlas": "props",
+      "sourceRect": {
+        "x": 1016,
+        "y": 103,
+        "w": 509,
+        "h": 310
+      },
+      "pivot": {
+        "x": 0.11787819253438114,
+        "y": 0.9548387096774194
+      },
+      "contact": {
+        "x": 60,
+        "y": 296
+      },
+      "baseline": 0.9548387096774194,
+      "supportContacts": [
+        {
+          "name": "leftHandle",
+          "x": 60,
+          "y": 296,
+          "rx": 32,
+          "ry": 6
+        },
+        {
+          "name": "barrel",
+          "x": 280,
+          "y": 211,
+          "rx": 130,
+          "ry": 6,
+          "rotation": -0.464
+        },
+        {
+          "name": "rightHandle",
+          "x": 449,
+          "y": 101,
+          "rx": 25,
+          "ry": 5
+        }
+      ]
+    },
+    "curvedKnife": {
+      "url": "art/lavender/workshop-authored/curved-knife.webp",
+      "width": 469,
+      "height": 345,
+      "sourceAtlas": "props",
+      "sourceRect": {
+        "x": 8,
+        "y": 583,
+        "w": 469,
+        "h": 345
+      },
+      "pivot": {
+        "x": 0.4925373,
+        "y": 0.9449275
+      },
+      "contact": {
+        "x": 231,
+        "y": 326
+      },
+      "baseline": 0.9449275
+    },
+    "scraper": {
+      "url": "art/lavender/workshop-authored/scraper.webp",
+      "width": 475,
+      "height": 364,
+      "sourceAtlas": "props",
+      "sourceRect": {
+        "x": 516,
+        "y": 580,
+        "w": 475,
+        "h": 364
+      },
+      "pivot": {
+        "x": 0.5052632,
+        "y": 0.9478022
+      },
+      "contact": {
+        "x": 240,
+        "y": 345
+      },
+      "baseline": 0.9478022
+    },
+    "handMedallion": {
+      "url": "art/lavender/workshop-authored/hand-medallion.webp",
+      "width": 405,
+      "height": 411,
+      "sourceAtlas": "props",
+      "sourceRect": {
+        "x": 1075,
+        "y": 555,
+        "w": 405,
+        "h": 411
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "contact": {
+        "x": 202.5,
+        "y": 205.5
+      },
+      "baseline": 0.5
+    },
+    "bakeFrame": {
+      "url": "art/lavender/workshop-authored/bake-frame.webp",
+      "width": 816,
+      "height": 385,
+      "sourceAtlas": "ui",
+      "sourceRect": {
+        "x": 9,
+        "y": 190,
+        "w": 816,
+        "h": 385
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "contact": {
+        "x": 408.0,
+        "y": 192.5
+      },
+      "baseline": 0.5,
+      "contentRect": {
+        "x": 110,
+        "y": 83,
+        "w": 596,
+        "h": 165
+      }
+    },
+    "closeMedallion": {
+      "url": "art/lavender/workshop-authored/close-medallion.webp",
+      "width": 502,
+      "height": 513,
+      "sourceAtlas": "ui",
+      "sourceRect": {
+        "x": 887,
+        "y": 105,
+        "w": 502,
+        "h": 513
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "contact": {
+        "x": 251.0,
+        "y": 256.5
+      },
+      "baseline": 0.5
+    },
+    "mitt": {
+      "url": "art/lavender/workshop-authored/mitt.webp",
+      "width": 591,
+      "height": 675,
+      "sourceAtlas": "ui",
+      "sourceRect": {
+        "x": 1519,
+        "y": 29,
+        "w": 591,
+        "h": 675
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "contact": {
+        "x": 295.5,
+        "y": 337.5
+      },
+      "baseline": 0.5
+    }
+  }
+}

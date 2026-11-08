@@ -15,7 +15,6 @@ export type SpriteOptions = {
   shadow?: boolean;
   fullCell?: boolean;
   baseline?: number;
-  fixedRoot?: boolean;
   angle?: number;
   bend?: number;
   scaleY?: number;
@@ -23,7 +22,7 @@ export type SpriteOptions = {
   layer?: number;
   lift?: number;
 };
-type Shape = 'ellipse' | 'outline' | 'ripple' | 'shade' | 'diamond' | 'panel';
+type Shape = 'ellipse' | 'outline' | 'ripple' | 'shade' | 'diamond' | 'panel' | 'plot';
 
 // X is across the island, Z is along the ground and Y is elevation. The
 // authored image coordinates are the orthographic projection of that ground.
@@ -66,13 +65,18 @@ const fragmentShader = `
       }
       if (uMode == 5) color.a *= pow(max(0.0, 1.0 - d * d), 2.1);
       if (uMode == 6) color.a *= 1.0 - smoothstep(0.89, 1.0, abs(p.x) + abs(p.y));
+      if (uMode == 8) {
+        vec2 q = abs(p * vec2(1.0, 0.54)) - vec2(0.79, 0.34);
+        float rim = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 0.13;
+        color.a *= 1.0 - smoothstep(0.015, 0.015 + fwidth(rim), abs(rim));
+      }
     }
     if (color.a < 0.009) discard;
     gl_FragColor = color;
     #include <colorspace_fragment>
   }
 `;
-const modes = { ellipse: 2, outline: 3, ripple: 4, shade: 5, diamond: 6, panel: 7 } satisfies Record<Shape, number>;
+const modes = { ellipse: 2, outline: 3, ripple: 4, shade: 5, diamond: 6, panel: 7, plot: 8 } satisfies Record<Shape, number>;
 
 export function createWorld(canvas: HTMLCanvasElement, onAvailability: (available: boolean) => void) {
   let renderer: WebGLRenderer | undefined;
@@ -208,21 +212,24 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       Math.max(0, src.w - 1) / sourceWidth, Math.max(0, src.h - 1) / sourceHeight,
     );
     uniforms.uMode.value = shadow ? 1 : 0;
-    uniforms.uColor.value.copy(ink(shadow ? '#353b27' : '#ffffff').rgb);
+    uniforms.uColor.value.copy(ink(shadow ? '#595842' : '#ffffff').rgb);
     const lift = options.lift ?? 0;
-    uniforms.uOpacity.value = (options.opacity ?? 1) * (shadow ? 0.19 / (1 + lift * 0.033) : 1);
+    uniforms.uOpacity.value = (options.opacity ?? 1) * (shadow ? 0.17 / (1 + lift * 0.033) : 1);
     const displayedHeight = h * (options.scaleY ?? 1);
     if (shadow) {
-      // Project the same animated silhouette onto the ground along the key light.
-      // The foot point stays put as the actor changes pose or elevation.
-      const sx = 0.31 * displayedHeight;
-      const sz = 0.18 * displayedHeight / sin;
-      const py = (options.baseline ?? 1) - 0.5;
+      // Compose the sprite's pose with the ground projection, around its foot pivot.
+      const c = Math.cos(options.angle ?? 0), s = Math.sin(options.angle ?? 0);
       const flip = options.flip ? -1 : 1;
+      const a = c * flip, b = s - c * (options.bend ?? 0);
+      const d = -s * flip, e = c + s * (options.bend ?? 0);
+      const ax = a + 0.24 * d, bx = b + 0.24 * e;
+      const az = 0.13 * d / sin, bz = 0.13 * e / sin;
+      const px = (0.5 - origin) * w;
+      const py = ((options.baseline ?? 1) - 0.5) * displayedHeight;
       node.matrix.set(
-        flip * w, sx, 0, x + flip * (0.5 - origin) * w + sx * py + lift * 0.31,
+        ax * w, bx * displayedHeight, 0, x + ax * px + bx * py + lift * 0.31,
         0, 0, 1, 0.3,
-        0, sz, 0, y / sin + sz * py + lift * 0.18 / sin,
+        az * w, bz * displayedHeight, 0, (options.footY ?? y) / sin + az * px + bz * py + lift * 0.18 / sin,
         0, 0, 0, 1,
       );
     } else {
@@ -245,7 +252,7 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
   }
 
   return {
-    water, sprite, shape, overlay,
+    water, sprite, shape, overlay, decals,
     get available() { return available; },
     resize(width: number, height: number, dpr: number, scale: number, center: { x: number; y: number }) {
       view = { ...center, w: width / scale, h: height / scale };
@@ -265,9 +272,9 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       bobber.visible = false;
       line.visible = false;
     },
-    plate(image: HTMLImageElement, bounds: Box) {
+    plate(image: HTMLImageElement, bounds: Box, patch = false, opacity = 1) {
       sprite(image, { x: 0, y: 0, w: image.naturalWidth, h: image.naturalHeight },
-        bounds.x + bounds.w / 2, bounds.y, bounds.w, bounds.h, { baseline: 0, layer: background });
+        bounds.x + bounds.w / 2, bounds.y, bounds.w, bounds.h, { baseline: 0, layer: background + Number(patch), opacity });
     },
     occluder(image: HTMLImageElement, bounds: Box & { footY: number }) {
       sprite(image, { x: 0, y: 0, w: image.naturalWidth, h: image.naturalHeight },

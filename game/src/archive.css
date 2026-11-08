@@ -1,0 +1,128 @@
+.archive-series-list, .archive-slots {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.archive-series {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #e1b889;
+  border-radius: 15px;
+  background: #fff8e9;
+  box-shadow: inset 0 1px #fffbed, 0 2px #b37f5640;
+  color: var(--plum);
+}
+
+.archive-series-name {
+  margin: 0;
+  padding-inline: 3px;
+  font-size: 17px;
+}
+
+.archive-series-count {
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.archive-slots {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(3px, 1.2vw, 7px);
+}
+
+.archive-slot {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 3px;
+  padding: 5px 2px;
+  border: 1px solid #e4c49b;
+  border-radius: 10px;
+  background: var(--archive-slot-color, #fff2d8);
+  box-shadow: inset 0 1px #fff9ed;
+  text-align: center;
+}
+
+.archive-slot-art {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+}
+
+.archive-slot .icon {
+  width: 100%;
+  height: 100%;
+  filter: var(--archive-slot-filter, none);
+}
+
+.archive-slot-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: clamp(9px, 2.5vw, 12px);
+  font-weight: 750;
+  line-height: 1.15;
+}
+
+.archive-slot[data-variant="dew"] {
+  --archive-slot-color: #e8f2e7;
+  --archive-slot-filter: drop-shadow(1px 2px 1px #6ba78c);
+}
+
+.archive-slot[data-variant="frost"] {
+  --archive-slot-color: #e9f2fc;
+  --archive-slot-filter: saturate(.66) drop-shadow(1px 2px 1px #88a9ce);
+}
+
+.archive-slot[data-variant="rainbow"] {
+  --archive-slot-color: linear-gradient(145deg, #f8dfe8, #fff2c9 37%, #e4f2df 64%, #ebe1f6);
+  --archive-slot-filter: drop-shadow(-2px 1px 1px #d789b9) drop-shadow(2px 0 1px #85afb9);
+}
+
+.archive-slot[data-variant="star"] {
+  --archive-slot-color: radial-gradient(ellipse at 50% 37%, #fff0bd, #efe2f5 74%);
+  --archive-slot-filter: drop-shadow(0 0 3px #d9993d);
+}
+
+.archive-slots[data-shore] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.archive-slot:is([data-variant="moon"],[data-variant="pearl"]) {
+  --archive-slot-color: linear-gradient(145deg, #e3f5f3, #e7e2fb);
+  --archive-slot-filter: drop-shadow(0 1px 3px #a48cc9);
+}
+.archive-slot[data-variant="glass"] { --archive-slot-color: #e7f2e5; }
+
+.archive-slot[data-discovered="false"] {
+  border-color: #e0cdb1;
+  background: #f4e9d6;
+  color: var(--muted);
+}
+
+.archive-slot[data-discovered="false"] .archive-slot-art {
+  color: #816b85;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+@media (max-width: 359px) {
+  .archive-slots { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.collection-source { font-size:14px; line-height:1.4; margin:0 0 12px; color:var(--ink); }
+.collection-clue { position:static; font-size:11px; line-height:1.35; text-align:center; }
+.collection-clue summary { cursor:pointer; min-width:44px; min-height:44px; display:grid; place-items:center; color:var(--plum); font-weight:700; border-radius:8px; background:#fff4df; }
+.collection-clue>span { display:block; padding:3px; }
+.archive-slot { min-width:0; }
+
+.collection-clue strong { display:block; margin-bottom:3px; color:var(--plum); }

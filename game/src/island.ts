@@ -1,91 +1,162 @@
-import { cropDefinitions, getDayPhase, getGoal, treeDefinitions, type Bed, type BedAction, type CropId, type FarmState } from './farm';
+import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
 import { createRasterLibrary } from './raster';
 import { createWorld } from './world';
-import { occluders } from './occlusion';
+import { beach, buildingUpgrades, cape, capeBuildings, capeKitchenSteam, capeKitchenStop, docks, landscape, orchard, plots, projectStages, saltCove, scenePoint, sceneScale, shoal, shoalPlate, specializationStages, village, windmillSails } from './lavender-layout';
+import { getClimate } from './climate';
+import { createWeatherEffects } from './weather-effects';
+import { isLunarTide } from './tide';
+import { hasShoal, shoalFindIds } from './shoal';
+import { createSupportShadow, type SupportShadow } from './support-shadow';
 
 export type IslandTarget =
-  | { kind: 'bed' | 'tree' | 'hen'; index: number }
-  | { kind: 'well' | 'coop' | 'market' | 'farmhouse' | 'pier' | 'boat' | 'salt' };
+  | { kind: 'bed' | 'tree' | 'hen' | 'flower' | 'village-home'; index: number }
+  | ShoreTarget
+  | { kind: 'well' | 'coop' | 'market' | 'farmhouse' | 'kitchen' | 'pier' | 'boat' | 'harbor' | 'salt' | 'tidepool' | 'hive' | 'honey-kitchen' | 'guest' | 'bay-display' | 'workshop' | 'village' | 'village-meal' };
 
 type Point = { x: number; y: number };
 type Area = { target: IslandTarget; center: Point; w: number; h: number; stop: Point };
-type Prop = { art: string; x: number; y: number; w: number; h: number; frame?: number; flip?: boolean; opacity?: number };
+type ShoreArea = Area & { target: ShoreTarget; foot: Point; angle: number };
+type Prop = { art: string; x: number; y: number; w: number; h: number; frame?: number; baseline?: number; opacity?: number };
 type WorkOrder = { index: number; next: () => BedAction['kind']; commit: () => void };
 type GestureKind = Exclude<BedAction['kind'], 'wait'>;
 type Gesture = { order: WorkOrder; kind: GestureKind; started: number; hit: boolean };
 type Burst = { x: number; y: number; from: Point; kind: GestureKind; crop?: CropId; began: number };
 type Footfall = { x: number; y: number; began: number; side: number };
 type Spring = { value: number; speed: number };
+type CapeWork = { target: { kind: 'flower'; index: number } | { kind: 'hive' | 'honey-kitchen' }; commit: () => boolean; reward?: string; began?: number; hit: boolean };
 
 const WORLD = { w: 1440, h: 900 };
-const PLATES = {
-  home: { x: 51, y: 85, w: 1338, h: 753 },
-  grove: { x: 126, y: 153, w: 1188, h: 668 },
-};
-const BED = { x: 487, y: 402, w: 111, h: 49, dx: 116, dy: 70 };
-const HOME = { x: 700, y: 695 };
+const HOME = scenePoint(1174, 585);
+const PEN = { min: scenePoint(196, 609), max: scenePoint(381, 699) };
 const WORK_MS = { till: 510, plant: 500, water: 680, harvest: 550 } satisfies Record<GestureKind, number>;
-const sprites = [
-  'windmill-sails', 'farmer', 'hen', 'boat', 'salt', 'fisher', 'heart', 'stake', 'harvest-marker',
-] as const;
-
-const treeSpots = {
-  home: [{ x: 1180, y: 513 }, { x: 1245, y: 594 }, { x: 1125, y: 660 }],
-  grove: [{ x: 443, y: 439 }, { x: 706, y: 443 }, { x: 895, y: 502 }],
-};
-
-const moorings = {
-  home: { x: 298, y: 745, boatX: 390, boatY: 832 },
-  grove: { x: 459, y: 696, boatX: 349, boatY: 812 },
-};
-const saltCove = { x: 1125, y: 676 };
-
-const crops: Record<CropId, { w: number; h: number }> = {
-  carrot: { w: 94, h: 65 }, cabbage: { w: 95, h: 58 }, beetroot: { w: 92, h: 61 },
-  tomato: { w: 93, h: 74 }, pumpkin: { w: 97, h: 59 }, wheat: { w: 90, h: 72 },
-  leafyGreens: { w: 92, h: 61 },
+const cropSizes: Record<CropId, [number, number]> = {
+  carrot: [81, 89], cabbage: [118, 106], beetroot: [80, 91],
+  tomato: [85, 109], pumpkin: [143, 123], wheat: [85, 107], leafyGreens: [93, 99],
 };
 
 const areas: Area[] = [
-  { target: { kind: 'farmhouse' }, center: { x: 337, y: 268 }, w: 236, h: 217, stop: { x: 337, y: 397 } },
-  { target: { kind: 'well' }, center: { x: 629, y: 284 }, w: 106, h: 135, stop: { x: 629, y: 372 } },
-  { target: { kind: 'market' }, center: { x: 1105, y: 309 }, w: 190, h: 164, stop: { x: 1105, y: 403 } },
-  { target: { kind: 'coop' }, center: { x: 292, y: 556 }, w: 239, h: 218, stop: { x: 298, y: 691 } },
-  ...Array.from({ length: 16 }, (_, index): Area => {
-    const x = BED.x + (index % 4) * BED.dx + BED.w / 2;
-    const y = BED.y + Math.floor(index / 4) * BED.dy + BED.h / 2;
-    return {
-      target: { kind: 'bed', index },
-      center: { x, y: y - 5 },
-      w: BED.dx - 4,
-      h: BED.dy - 2,
-      stop: { x: x + BED.w * 0.34, y: y + BED.h / 2 + 9 },
-    };
-  }),
+  { target: { kind: 'farmhouse' }, center: scenePoint(353, 228), w: 216, h: 230, stop: scenePoint(353, 392) },
+  { target: { kind: 'well' }, center: scenePoint(689, 260), w: 103, h: 138, stop: scenePoint(688, 367) },
+  { target: { kind: 'market' }, center: scenePoint(1245, 281), w: 188, h: 148, stop: scenePoint(1242, 405) },
+  { target: { kind: 'coop' }, center: scenePoint(280, 545), w: 135, h: 130, stop: scenePoint(445, 706) },
+  ...plots.map((plot, index): Area => ({
+    target: { kind: 'bed', index }, center: plot.center, w: plot.w, h: plot.h, stop: plot.stop,
+  })),
 ];
 
 function orchardAreas(island: 'home' | 'grove'): Area[] {
-  const dock = moorings[island];
+  const dock = docks[island];
+  const middle = (dock.entry.y + dock.end.y) / 2;
   return [
-    ...treeSpots[island].map((spot, index): Area => ({
-      target: { kind: 'tree', index }, center: { x: spot.x, y: spot.y - 36 },
-      w: 98, h: 113, stop: { x: spot.x - 13, y: spot.y + 14 },
+    ...orchard[island].map((spot, index): Area => ({
+      target: { kind: 'tree', index }, center: { x: spot.x, y: spot.y - 42 },
+      w: 112, h: 112, stop: { x: spot.x - 23, y: spot.y + 15 },
     })),
-    { target: { kind: 'pier' }, center: { x: dock.x, y: dock.y + 30 }, w: 72, h: 80,
-      stop: { x: dock.x, y: dock.y + 19 } },
-    { target: { kind: 'boat' }, center: { x: dock.boatX, y: dock.boatY - 22 }, w: 115, h: 67,
-      stop: { x: dock.x, y: dock.y + 19 } },
+    { target: { kind: 'pier' }, center: { x: dock.end.x, y: middle }, w: 83, h: 102, stop: dock.end },
+    { target: { kind: 'boat' }, center: { x: dock.boat.x, y: dock.boat.y - 22 }, w: 116, h: 56, stop: dock.end },
   ];
 }
 
 const homeSites = [...areas, ...orchardAreas('home')];
-const groveSites: Area[] = [
-  ...orchardAreas('grove'),
-  { target: { kind: 'salt' }, center: { x: saltCove.x, y: saltCove.y - 24 }, w: 99, h: 74,
-    stop: { x: saltCove.x - 37, y: saltCove.y + 8 } },
+const homeWorkshopSite: Area = { target: { kind: 'workshop' }, center: scenePoint(1153, 369),
+  stop: scenePoint(1110, 429), w: 75, h: 64 };
+const villageProjectSite: Area = { target: { kind: 'village' }, center: scenePoint(1249, 365),
+  stop: scenePoint(1215, 432), w: 78, h: 64 };
+const villageSites: Area[] = [
+  ...village.homes.map((stop, index): Area => ({ target: { kind: 'village-home', index },
+    center: { x: stop.x, y: stop.y - 100 }, stop, w: 191, h: 211 })),
+  { target: { kind: 'workshop' }, center: scenePoint(382, 516), stop: village.workshop, w: 272, h: 185 },
+  { target: { kind: 'village-meal' }, center: scenePoint(979, 604), stop: village.table, w: 228, h: 113 },
+  { target: { kind: 'village' }, center: village.square, stop: village.square, w: 79, h: 54 },
+  { target: { kind: 'boat' }, center: { x: docks.village.boat.x, y: docks.village.boat.y - 22 },
+    stop: docks.village.end, w: 116, h: 56 },
 ];
 
+// The graph follows the plate's front stone paths. No route crosses a building or the table.
+const villageWalkNodes = [
+  [439,357], [535,380], [632,419], [715,470], [803,470], [983,448], [1067,392], [1160,357],
+  [644,520], [617,574], [597,610], [620,675], [787,704], [1012,738], [1158,680], [1200,614], [1222,561],
+  [570,675], [452,700], [367,739], [367,877],
+].map(([x,y]) => scenePoint(x,y));
+const villageWalkEdges = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],
+  [3,8],[8,9],[9,10],[10,11],[11,12],[12,13],[13,14],[14,15],[15,16],[16,5],
+  [11,17],[17,18],[18,19],[19,20]] as const;
+
+function villagePath(from: Point, to: Point): Point[] {
+  const nearest = (point: Point) => villageWalkNodes.reduce((best, entry, index) =>
+    distance(point, entry) < distance(point, villageWalkNodes[best]) ? index : best, 0);
+  const start = nearest(from), end = nearest(to);
+  const costs = villageWalkNodes.map(() => Infinity);
+  const previous = villageWalkNodes.map(() => -1);
+  const remaining = new Set(villageWalkNodes.map((_, index) => index));
+  costs[start] = 0;
+  while (remaining.size) {
+    const current = [...remaining].reduce((best, index) => costs[index] < costs[best] ? index : best);
+    remaining.delete(current);
+    if (current === end) break;
+    for (const [a,b] of villageWalkEdges) {
+      const next = a === current ? b : b === current ? a : -1;
+      if (next < 0 || !remaining.has(next)) continue;
+      const cost = costs[current] + distance(villageWalkNodes[current], villageWalkNodes[next]);
+      if (cost < costs[next]) { costs[next] = cost; previous[next] = current; }
+    }
+  }
+  const indices = [end];
+  while (indices[0] !== start && previous[indices[0]] >= 0) indices.unshift(previous[indices[0]]);
+  return [from, ...indices.map((index) => villageWalkNodes[index]), to];
+}
+
+type VillageActor = {
+  id: ResidentId; slot: number; point: Point; route: Point[]; facingRight: boolean;
+  stride: number; waitUntil: number; circuit: number; serviceRequested: boolean;
+  serviceUntil: number; gathering: boolean; mealUntil: number;
+};
+const kitchenWingX = scenePoint(472, 0).x;
+const kitchenSite: Area = {
+  target: { kind: 'kitchen' }, center: scenePoint(538, 285), w: 93, h: 120, stop: scenePoint(528, 396),
+};
+const groveSites: Area[] = [
+  ...orchardAreas('grove'),
+  { target: { kind: 'salt' }, center: { x: saltCove.foot.x, y: saltCove.foot.y - 20 }, w: 99, h: 74, stop: saltCove.stop },
+];
+const harborSite: Area = {
+  target: { kind: 'harbor' }, center: scenePoint(469, 810), w: 44, h: 44, stop: docks.grove.end,
+};
+const tidepoolSite: Area = { target: { kind: 'tidepool' }, center: shoal.pools[1], stop: shoal.look, w: 42, h: 24 };
+const capeSites: Area[] = [
+  ...cape.flowers.map((center, index): Area => ({ target: { kind: 'flower', index }, center,
+    stop: { x: center.x + 12, y: center.y + 44 }, w: 131, h: 78 })),
+  { target: { kind: 'hive' }, center: { x: cape.hive.x, y: cape.hive.y - 38 }, stop: cape.hiveStop, w: 174, h: 179 },
+  { target: { kind: 'honey-kitchen' }, center: { x: capeBuildings.kitchen.x, y: capeBuildings.kitchen.y - capeBuildings.kitchen.h * 0.42 },
+    stop: capeKitchenStop, w: capeBuildings.kitchen.w * 0.85, h: capeBuildings.kitchen.h * 0.9 },
+  { target: { kind: 'boat' }, center: { x: docks.cape.boat.x, y: docks.cape.boat.y - 22 }, stop: docks.cape.end, w: 116, h: 56 },
+];
+const apiarySite: Area = { target: { kind: 'hive' },
+  center: { x: capeBuildings.apiary.x, y: capeBuildings.apiary.y - capeBuildings.apiary.h * 0.42 },
+  stop: scenePoint(995, 410), w: capeBuildings.apiary.w * 0.9, h: capeBuildings.apiary.h * 0.85 };
+const guestSite: Area = { target: { kind: 'guest' }, center: scenePoint(1153, 438), stop: scenePoint(1116, 502), w: 55, h: 82 };
+const guestFoot = scenePoint(1153, 478);
+const displayFoot = scenePoint(545, 720);
+const displayShadow: SupportShadow = {
+  width: 128, height: 128, baseline: 118 / 128, castHeight: 76,
+  contacts: [{ x: 40, y: 118, rx: 10, ry: 3 }, { x: 88.5, y: 112, rx: 10, ry: 3 }],
+};
+const displaySite: Area = { target: { kind: 'bay-display' }, center: { x: displayFoot.x, y: displayFoot.y - 26 },
+  stop: { x: displayFoot.x + 24, y: displayFoot.y + 15 }, w: 46, h: 59 };
+const shoreSites: ShoreArea[] = [
+  ...beach.shells.map((point, index): ShoreArea => ({
+    target: { kind: 'shell', index }, foot: point, center: { x: point.x, y: point.y - 9 },
+    stop: { x: point.x - 17, y: point.y + 9 }, angle: (index - 1) * 0.15, w: 44, h: 34,
+  })),
+  ...shoalFindIds.map((id): ShoreArea => ({
+    target: { kind: 'shoal-find', id }, foot: shoal[id], center: { x: shoal[id].x, y: shoal[id].y - 9 },
+    stop: { x: shoal[id].x - 14, y: shoal[id].y + 8 }, angle: 0, w: 42, h: 34,
+  })),
+];
+const pickupDuration = 370;
+
 function sameTarget(a: IslandTarget, b: IslandTarget): boolean {
+  if (a.kind === 'shoal-find') return b.kind === 'shoal-find' && a.id === b.id;
   return a.kind === b.kind && (!('index' in a) || ('index' in b && a.index === b.index));
 }
 
@@ -120,50 +191,77 @@ function driveSpring(body: Spring, target: number, dt: number, frequency: number
   return body.value;
 }
 
+function distance(a: Point, b: Point): number {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
 function walkingPath(from: Point, to: Point): Point[] {
-  if (Math.abs(from.y - to.y) < 8) return [from, to];
-  const entry = (point: Point): Point => {
-    if (point.y < 395) return { x: point.x, y: 382 };
-    if (point.y > 675) return { x: point.x, y: 695 };
-    if (point.x < 466) return { x: 460, y: point.x < 412 && point.y > 500 ? 695 : point.y };
-    if (point.x > 976) return { x: 976, y: point.y };
-    return { x: point.x < 724 ? 464 : 976, y: point.y };
+  const left = scenePoint(460, 0).x;
+  const right = scenePoint(1118, 0).x;
+  const top = scenePoint(0, 392).y;
+  const bottom = scenePoint(0, 766).y;
+  const dock = docks.home;
+  const onDock = (p: Point) => p.y > bottom && Math.abs(p.x - dock.end.x) < 34;
+  const start = onDock(from) ? dock.entry : from;
+  const end = onDock(to) ? dock.entry : to;
+  const exits = (p: Point): Point[] => {
+    if (p.x <= left + 8) return [{ x: left, y: p.y }];
+    if (p.x >= right - 8) return [{ x: right, y: p.y }];
+    return [{ x: left, y: p.y }, { x: right, y: p.y }];
   };
-  const a = entry(from);
-  const b = entry(to);
-  const points = [from];
-  if (from.x < 412 && from.y > 500 && from.y < 675) points.push({ x: 298, y: 690 });
-  points.push(a);
-  if (a.x !== b.x && a.y !== b.y) {
-    const edgeY = a.y + b.y < 1077 ? 382 : 695;
-    const ax = a.y < 395 || a.y > 675 ? b.x : a.x;
-    const bx = b.y < 395 || b.y > 675 ? a.x : b.x;
-    if (a.y < 395 || a.y > 675) points.push({ x: ax, y: a.y });
-    else if (b.y < 395 || b.y > 675) points.push({ x: bx, y: b.y });
-    else points.push({ x: a.x, y: edgeY }, { x: b.x, y: edgeY });
+  const candidates: Point[][] = [];
+  if (Math.abs(start.y - end.y) < 4 || (start.x > right && end.x > right)) candidates.push([start, end]);
+  for (const a of exits(start)) for (const b of exits(end)) {
+    if (a.x === b.x) candidates.push([start, a, b, end]);
+    else for (const y of [top, bottom]) candidates.push([start, a, { x: a.x, y }, { x: b.x, y }, b, end]);
   }
-  points.push(b);
-  if (to.x < 412 && to.y > 500 && to.y < 675) points.push({ x: 298, y: 690 });
-  points.push(to);
-  return points;
+  const length = (points: Point[]) => points.slice(1).reduce((total, point, i) => total + distance(points[i], point), 0);
+  candidates.sort((a, b) => length(a) - length(b));
+  return [from, ...candidates[0], to];
 }
 
 function grovePath(from: Point, to: Point): Point[] {
-  // The central rocks sit across the direct route from the pier to the salt cove.
-  function clearsRocks(a: Point, b: Point): boolean {
-    const x = (a.x - 675) / 69;
-    const y = (a.y - 659) / 29;
-    const dx = (b.x - a.x) / 69;
-    const dy = (b.y - a.y) / 29;
-    const length = dx * dx + dy * dy;
-    const t = length ? clamp(-(x * dx + y * dy) / length, 0, 1) : 0;
-    return (x + dx * t) ** 2 + (y + dy * t) ** 2 >= 1;
+  const dock = docks.grove;
+  const onDock = (p: Point) => p.y > dock.entry.y && Math.abs(p.x - dock.end.x) < 32;
+  const onShoal = (p: Point) => p.x > shoal.entry.x + 21 && p.y > shoal.entry.y - 8;
+  const fromShoal = onShoal(from);
+  const toShoal = onShoal(to);
+  if (fromShoal && toShoal) {
+    const turns = shoal.path.filter(({ x }) => x > Math.min(from.x, to.x) && x < Math.max(from.x, to.x));
+    return [from, ...(from.x < to.x ? turns : turns.reverse()), to];
   }
+  const start = fromShoal ? shoal.entry : onDock(from) ? dock.entry : from;
+  const end = toShoal ? shoal.entry : onDock(to) ? dock.entry : to;
+  const exit = fromShoal ? shoal.path.filter(({ x }) => x < from.x).reverse() : [];
+  const enter = toShoal ? shoal.path.filter(({ x }) => x < to.x) : [];
+  const pool = scenePoint(1328, 694);
+  const turn = scenePoint(1224, 747);
+  const path = clearsEllipse(start, end, pool, 72, 28) ? groveLandPath(start, end)
+    : [...groveLandPath(start, turn), ...groveLandPath(turn, end).slice(1)];
+  return [from, ...exit, ...path, ...enter, to];
+}
+
+function clearsEllipse(a: Point, b: Point, center: Point, radiusX: number, radiusY: number): boolean {
+  const x = (a.x - center.x) / radiusX;
+  const y = (a.y - center.y) / radiusY;
+  const dx = (b.x - a.x) / radiusX;
+  const dy = (b.y - a.y) / radiusY;
+  const length = dx * dx + dy * dy;
+  const t = length ? clamp(-(x * dx + y * dy) / length, 0, 1) : 0;
+  return (x + dx * t) ** 2 + (y + dy * t) ** 2 >= 1;
+}
+
+function groveLandPath(from: Point, to: Point): Point[] {
+  // The central rocks sit across the direct route from the pier to the salt cove.
+  const rock = scenePoint(731, 723);
+  const radiusX = 98 * sceneScale;
+  const radiusY = 39 * sceneScale;
+  const clearsRocks = (a: Point, b: Point) => clearsEllipse(a, b, rock, radiusX, radiusY);
   if (clearsRocks(from, to)) return [from, to];
   const routes: { points: Point[]; length: number }[] = [];
-  for (const y of [620, 702]) {
-    const left = { x: 587, y };
-    const right = { x: 760, y };
+  for (const y of [651, 775]) {
+    const left = scenePoint(603, y);
+    const right = scenePoint(865, y);
     const pair = from.x < to.x ? [left, right] : [right, left];
     for (const points of [[from, left, to], [from, right, to], [from, ...pair, to]]) {
       if (points.slice(1).every((point, index) => clearsRocks(points[index], point))) {
@@ -212,31 +310,60 @@ export function createIsland(
   const unavailable = document.createElement('div');
   unavailable.className = 'island-render-status';
   unavailable.setAttribute('role', 'status');
-  canvas.after(hint, unavailable);
+  const crossingVeil = document.createElement('div');
+  crossingVeil.className = 'island-crossing';
+  crossingVeil.hidden = true;
+  crossingVeil.setAttribute('aria-hidden', 'true');
+  canvas.after(hint, unavailable, crossingVeil);
   const world = createWorld(canvas, (ready) => {
     unavailable.hidden = ready;
     canvas.setAttribute('aria-disabled', String(!ready));
     if (ready) requestPaint();
   });
   const water = world.water;
+  const weatherEffects = createWeatherEffects(world);
   unavailable.hidden = world.available;
   canvas.setAttribute('aria-disabled', String(!world.available));
   unavailable.textContent = 'The island needs WebGL2 to display. If the graphics context was interrupted, the scene will return when it reconnects.';
-  const cutouts = { home: [], grove: [] } as Record<FarmState['island'], { image: HTMLImageElement; bounds: typeof occluders.home[number] }[]>;
+  const cutouts = { home: [], grove: [], cape: [], village: [] } as Record<FarmState['island'], { image: HTMLImageElement; bounds: typeof landscape.home.occluders[number] }[]>;
   let scale = 1;
   let offset: Point = { x: 0, y: 0 };
   let viewport = { width: 1, height: 1 };
   let state: FarmState | undefined;
   let currentIsland: FarmState['island'] | undefined;
   let focused: Area | undefined;
+  let guidance: { target: IslandTarget; island: FarmState['island'] } | undefined;
   let hovered: Area | undefined;
   let showFocus = false;
   let fieldView = false;
   let pointerStart: { id: number; x: number; y: number } | undefined;
   let heldHen: { index: number; point: Point; dragging: boolean } | undefined;
-  const hens = Array.from({ length: 4 }, (_, i) => {
-    const x = 218 + i * 49;
-    const y = 599 + (i % 3) * 27;
+  let shorePickup: { site: ShoreArea; began?: number; commit: () => boolean } | undefined;
+  let shoreReward: { point: Point; icon: string; began: number } | undefined;
+  let shoalRequested = false;
+  let shoalKnown = false;
+  let shoalReveal = 0;
+  let shoalRevealPending = false;
+  const villageActors = new Map<ResidentId, VillageActor>();
+  let villageMealSeen = 0;
+  const residentServiceSeen: Record<ResidentId, number> = { bea: 0, finn: 0 };
+  let villageWelcome = 0;
+  let villageBuiltSeen = false;
+  let villageMealCelebration = 0;
+  let residentClock = 0;
+  let guestServed = false;
+  let guestDeparture = 0;
+  let honeyReward = 0;
+  let kitchenReward: { icon: string; began: number } | undefined;
+  let capeLevelSeen = 1;
+  let capeBuild: { level: number; began: number } | undefined;
+  let capeWork: CapeWork | undefined;
+  const flowerPlanted = new Map<number, number>();
+  let crossing = false;
+  let departure = 0;
+  const crabRetreat = spring(0);
+  const hens = [[209, 643], [250, 682], [325, 672], [365, 641], [292, 637]].map(([nativeX, nativeY]) => {
+    const { x, y } = scenePoint(nativeX, nativeY);
     return { x, y, px: spring(x), py: spring(y), lift: spring(0), excited: 0 };
   });
   const boatFloat = spring(0);
@@ -249,16 +376,20 @@ export function createIsland(
   const growthFrames = new Map<number, { crop: CropId; frame: number; time: number }>();
   const impactByBed = new Map<number, number>();
   const bursts: Burst[] = [];
+  const celebrationSparks: { x: number; y: number; spread: number; began: number }[] = [];
+  const maskPixels = new Map<HTMLImageElement, ImageData>();
+  const supportShadows = new Map<string, ReturnType<typeof createSupportShadow>>();
   const footfalls: Footfall[] = [];
   let workOrders: WorkOrder[] = [];
   let gesture: Gesture | undefined;
   let lastTime = 0;
   let frameId = 0;
+  let pixelDensity = window.devicePixelRatio || 1;
   let farmer = { ...HOME };
   let destination = farmer;
   let depart = 0;
   let duration = 0;
-  let flip = false;
+  let facingRight = false;
   let travelingUp = false;
   let stride = 0;
   let previousStep = -1;
@@ -268,73 +399,332 @@ export function createIsland(
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const abort = new AbortController();
   const art = createRasterLibrary((key) => {
-    if (key === 'water') {
-      const image = art.image(key);
-      if (image) water.setTexture(image);
+    if (key === shoalPlate.key && shoalRevealPending && currentIsland === 'grove') {
+      shoalReveal = performance.now();
+      shoalRevealPending = false;
     }
-    if (key === `${state?.island ?? 'home'}-plate`) syncShore();
+    if (key === `${state?.island ?? 'home'}-plate` || key === shoalPlate.key) syncShore();
     requestPaint();
   }, abort.signal);
 
-  function syncShore(): void {
-    const island = state?.island ?? 'home';
-    const image = art.image(`${island}-plate`);
-    if (!image) return;
-    const bounds = PLATES[island];
-    water.setShore(image, {
-      x: offset.x + bounds.x * scale, y: offset.y + bounds.y * scale,
-      w: bounds.w * scale, h: bounds.h * scale,
-    }, offset.y + (island === 'home' ? 330 : 390) * scale);
+  function loadedStage(stage: typeof buildingUpgrades[number]) {
+    const patchImage = art.image(stage.patch.key);
+    const maskImage = art.image(stage.mask.key);
+    return patchImage && maskImage ? { ...stage, patchImage, maskImage } : undefined;
   }
 
-  function currentSites(): Area[] {
-    return state?.island === 'grove' ? groveSites : [...henSites, ...homeSites];
-  }
-
-  function paintProp(prop: Prop, shadow = false, time = 0): void {
-    const bend = prop.art.endsWith('tree') ? Math.sin(time * 1.5 + prop.x * 0.021) * 0.022 : 0;
-    art.draw(world, prop.art, prop.x, prop.y, prop.w, prop.h, {
-      shadow, frame: prop.frame, flip: prop.flip, opacity: prop.opacity, bend,
+  function visibleUpgrades() {
+    if (state?.island !== 'home') return [];
+    return buildingUpgrades.flatMap((asset) => {
+      if (!state || state.buildingLevels[asset.building] < 2) return [];
+      const branch = state[`${asset.building}Specialization`];
+      const specialized = branch
+        ? loadedStage({ building: asset.building, ...specializationStages[branch] })
+        : undefined;
+      const stage = specialized ?? loadedStage(asset);
+      return stage ? [stage] : [];
     });
   }
 
-  function paintShore(time: number, island: 'home' | 'grove'): void {
-    const near = island === 'home'
-      ? [[138, 813, 33, 3], [1380, 713, 31, 3]]
-      : [[187, 704, 35, 3], [1203, 779, 37, 3]];
-    for (const [x, y, w, frame] of near) {
-      const bob = frame === 3 ? Math.sin(time * 1.4 + x) * 3 : 0;
-      ripple(x, y + 1, w * 0.64, time + x);
-      art.draw(world, 'shore', x, y + bob, w, w * 0.65, { frame, layer: -89 });
+  function maskHit(maskImage: HTMLImageElement, mask: { x: number; y: number; w: number; h: number }, x: number, y: number): boolean {
+    const u = (x - mask.x) / mask.w;
+    const v = (y - mask.y) / mask.h;
+    if (u < 0 || u >= 1 || v < 0 || v >= 1) return false;
+    let pixels = maskPixels.get(maskImage);
+    if (!pixels) {
+      const scratch = document.createElement('canvas');
+      scratch.width = maskImage.naturalWidth;
+      scratch.height = maskImage.naturalHeight;
+      const context = scratch.getContext('2d', { willReadFrequently: true });
+      if (!context) return false;
+      context.drawImage(maskImage, 0, 0);
+      pixels = context.getImageData(0, 0, scratch.width, scratch.height);
+      maskPixels.set(maskImage, pixels);
+    }
+    const offset = (Math.floor(v * pixels.height) * pixels.width + Math.floor(u * pixels.width)) * 4 + 3;
+    return pixels.data[offset] >= 128;
+  }
+
+  function upgradeHit(x: number, y: number): Area | undefined {
+    for (const { building, mask, maskImage } of visibleUpgrades()) {
+      if (maskHit(maskImage, mask, x, y)) {
+        if (building === 'farmhouse' && x >= kitchenWingX) return kitchenSite;
+        return areas.find(({ target }) => target.kind === building);
+      }
+    }
+    return undefined;
+  }
+
+  function islandPlate() {
+    const island = state?.island ?? 'home';
+    const expanded = island === 'grove' && state && hasShoal(state) ? art.image(shoalPlate.key) : undefined;
+    if (expanded) return { image: expanded, bounds: shoalPlate.bounds, expanded: true };
+    return { image: art.image(`${island}-plate`), bounds: landscape[island].bounds, expanded: false };
+  }
+
+  function syncShore(): void {
+    const island = state?.island ?? 'home';
+    const { image, bounds } = islandPlate();
+    if (!image) return;
+    const { shoreY } = landscape[island];
+    water.setShore(image, {
+      x: offset.x + bounds.x * scale, y: offset.y + bounds.y * scale,
+      w: bounds.w * scale, h: bounds.h * scale,
+    }, offset.y + shoreY * scale);
+  }
+
+  function currentSites(): Area[] {
+    if (state?.island === 'village') return [
+      ...[...villageActors.values()].map((actor): Area => ({
+        target: { kind: 'village-home', index: actor.slot },
+        center: { x: actor.point.x, y: actor.point.y - 46 }, stop: { ...actor.point }, w: 47, h: 89,
+      })),
+      ...villageSites,
+    ];
+    if (state?.island === 'cape') {
+      const level = state.capeLevel;
+      return [...(level >= 2 ? [apiarySite] : []),
+        ...capeSites.filter(({ target }) => target.kind !== 'honey-kitchen' || level >= 3)];
+    }
+    if (state?.island === 'grove') {
+      const farm = state;
+      const expanded = islandPlate().expanded && (!shoalReveal || performance.now() - shoalReveal > 720);
+      const sites = [...groveSites, ...shoreSites.filter(({ target }) =>
+        (target.kind === 'shell' || expanded) && getShoreItem(farm, target))];
+      if (expanded) sites.push(tidepoolSite);
+      if (hasBayDisplay(farm)) sites.push(displaySite);
+      return getHarborOrder(farm) ? [harborSite, ...sites] : sites;
+    }
+    const sites = [...henSites, ...homeSites];
+    if (state && state.buildingLevels.farmhouse >= 2) sites.push(kitchenSite);
+    if (state && getFairGuest(state)?.served === false) sites.unshift(guestSite);
+    if (state && isProjectComplete(state, 'fair')) sites.push(homeWorkshopSite, villageProjectSite);
+    return sites;
+  }
+
+  function paintProp(prop: Prop, time: number): void {
+    const bend = prop.art.startsWith('tree-') ? Math.sin(time * 1.4 + prop.x * 0.021) * 0.013 : 0;
+    const options = { frame: prop.frame, opacity: prop.opacity, bend,
+      fullCell: prop.baseline !== undefined, baseline: prop.baseline };
+    art.draw(world, prop.art, prop.x, prop.y, prop.w, prop.h, { ...options, shadow: true });
+    art.draw(world, prop.art, prop.x, prop.y, prop.w, prop.h, options);
+  }
+
+  function paintSupportShadow(key: string, definition: SupportShadow, x: number, y: number, w: number, h: number,
+    options: { opacity?: number; scaleY?: number } = {}): void {
+    let shadow = supportShadows.get(key);
+    if (!shadow) {
+      shadow = createSupportShadow(definition);
+      supportShadows.set(key, shadow);
+    }
+    const { canvas, origin, baseline, widthRatio, heightRatio } = shadow;
+    world.sprite(canvas, { x: 0, y: 0, w: canvas.width, h: canvas.height },
+      x, y, w * widthRatio, h * heightRatio, { ...options, baseline, layer: world.decals }, origin);
+  }
+
+  function paintApiary(farm: FarmState, time: number, moment: number): void {
+    for (const asset of Object.values(capeBuildings)) {
+      if (farm.capeLevel < asset.level || !art.image(asset.key)) continue;
+      const phase = capeBuild?.level === asset.level ? clamp((moment - capeBuild.began) / 780, 0, 1) : 1;
+      const options = { fullCell: true, baseline: asset.baseline, footY: asset.y,
+        opacity: Math.min(1, phase * 4), scaleY: phase < 1 ? 1 + Math.sin(phase * Math.PI * 3) * (1 - phase) * 0.075 : 1 };
+      paintSupportShadow(asset.key, asset.shadow, asset.x, asset.y, asset.w, asset.h, options);
+      art.draw(world, asset.key, asset.x, asset.y, asset.w, asset.h, options);
+    }
+    if (farm.capeLevel >= 2) for (let index = 0; index < 3; index++) {
+      const flower = cape.flowers[index];
+      const phase = time * 0.73 + index * 2.1;
+      const t = (1 - Math.cos(phase)) / 2;
+      const dx = capeBuildings.apiary.x - 20 - flower.x;
+      const dy = capeBuildings.apiary.y - 48 - flower.y + 34;
+      const x = flower.x + dx * t;
+      const y = flower.y - 43 + dy * t - Math.sin(phase * 2) * 9;
+      const heading = Math.atan2(dy * Math.sin(phase) / 2 - Math.cos(phase * 2) * 18, dx * Math.sin(phase) / 2);
+      art.draw(world, 'cape-bee', x, y, 14, 14, { angle: heading + Math.PI / 6,
+        scaleY: 1 + Math.sin(time * 31 + index) * 0.065, footY: y + 35 });
+    }
+    const kitchen = capeBuildings.kitchen;
+    if (farm.capeLevel >= 3 && !motion.matches) for (let index = 0; index < 3; index++) {
+      const phase = (time * 0.52 + index / 3) % 1;
+      world.shape('shade', capeKitchenSteam.x + Math.sin(phase * 3 + index) * 5, capeKitchenSteam.y - phase * 28,
+        3 + phase * 7, 2 + phase * 4, '#fff7de', (1 - phase) * 0.22, kitchen.y + 1);
+    }
+    if (kitchenReward) {
+      const phase = (moment - kitchenReward.began) / 1050;
+      if (phase >= 1) kitchenReward = undefined;
+      else art.draw(world, kitchenReward.icon, kitchen.x, kitchen.y - 54 - phase * 63, 47, 47,
+        { opacity: Math.min(1, (1 - phase) * 3), angle: Math.sin(phase * Math.PI * 2) * 0.09, layer: world.overlay });
     }
   }
 
-  function ripple(x: number, y: number, width: number, time: number): void {
-    for (let i = 0; i < 2; i++) {
-      const phase = (time * 0.57 + i * 0.5) % 1;
-      world.shape('ripple', x, y, width * (0.62 + phase * 0.52), width * (0.15 + phase * 0.09),
-        '#c0f9eb', 0.42 * (1 - phase), -90);
+  function routeResident(actor: VillageActor, target: Point): void {
+    actor.route = roundTurns(villagePath(actor.point, target)).slice(1)
+      .filter((point) => distance(point, actor.point) > 0.2);
+  }
+
+  function syncVillageResidents(next: FarmState, moment: number): void {
+    for (const id of residentIds) {
+      const slot = next.village.residents.indexOf(id);
+      if (slot < 0) { villageActors.delete(id); continue; }
+      let actor = villageActors.get(id);
+      if (!actor) {
+        actor = { id, slot, point: { ...village.homes[slot] }, route: [], facingRight: slot === 0,
+          stride: 0, waitUntil: moment + 1800 + slot * 1500, circuit: 0, serviceRequested: false,
+          serviceUntil: 0, gathering: false, mealUntil: 0 };
+        villageActors.set(id, actor);
+      } else if (actor.slot !== slot) {
+        actor.slot = slot;
+        actor.gathering = false;
+        actor.serviceRequested = false;
+        routeResident(actor, village.homes[slot]);
+        actor.waitUntil = moment + 2000;
+      }
+      if (currentIsland === 'village' && next.island === 'village'
+        && next.village.serviceOn[id] > residentServiceSeen[id] && !motion.matches) {
+        actor.gathering = false;
+        actor.serviceRequested = true;
+        actor.serviceUntil = 0;
+        routeResident(actor, id === 'bea' ? village.workshop : village.lookout);
+      }
+    }
+    if (currentIsland === 'village' && next.island === 'village'
+      && next.village.mealOn > villageMealSeen && !motion.matches) {
+      villageMealCelebration = moment;
+      for (const actor of villageActors.values()) {
+        actor.gathering = true;
+        actor.mealUntil = 0;
+        actor.serviceRequested = false;
+        actor.serviceUntil = 0;
+        routeResident(actor, scenePoint(actor.id === 'bea' ? 939 : 1068, 743));
+      }
+    }
+    villageMealSeen = next.village.mealOn;
+    for (const id of residentIds) residentServiceSeen[id] = next.village.serviceOn[id];
+  }
+
+  function paintVillage(farm: FarmState, time: number, moment: number): void {
+    const elapsed = motion.matches ? 0 : clamp((moment - (residentClock || moment)) / 1000, 0, 0.05);
+    residentClock = moment;
+    const mealActive = villageMealCelebration && moment - villageMealCelebration < 24000;
+    if (farm.village.mealOn === farm.day) {
+      const shape = farm.workshopPatterns.find((id) => farm.handmade[id] > 0) ?? farm.workshopPatterns[0] ?? 'round';
+      const meal = [
+        { key: `ui-handmade-${shape}`, point: scenePoint(930, 607), width: 24, height: 22 },
+        { key: 'ui-grilled-fish', point: scenePoint(1020, 597), width: 27, height: 22 },
+      ];
+      for (const { key, point, width, height } of meal) {
+        art.draw(world, key, point.x, point.y, width, height, { footY: village.table.y });
+      }
+    }
+    for (const [slot, home] of village.homes.entries()) {
+      const occupied = farm.village.residents[slot] !== null;
+      if (occupied) {
+        // Small amber highlights sit inside the two authored window panes.
+        for (const dx of [-72, 62]) {
+          world.shape('shade', home.x + dx * sceneScale, home.y - 111 * sceneScale,
+            13 * sceneScale, 16 * sceneScale, '#ffd286', 0.28 + Math.sin(time * 0.85 + slot) * 0.025, 0, 0, home.y - 8);
+        }
+      } else if (slot >= getVillageHomeCount(farm)) {
+        world.shape('shade', home.x, home.y - 6, 19, 4.7, '#e2c5f6', 0.23);
+      }
+    }
+    const actors = [...villageActors.values()];
+    for (const actor of actors) {
+      if (motion.matches) {
+        actor.point = { ...village.homes[actor.slot] };
+        actor.route = [];
+      } else if (actor.route.length) {
+        let step = elapsed * (actor.id === 'bea' ? 32 : 35);
+        while (actor.route.length && step > 0) {
+          const to = actor.route[0];
+          const gap = distance(actor.point, to);
+          if (gap > 0.02) {
+            const ratio = Math.min(1, step / gap);
+            if (Math.abs(to.x - actor.point.x) > 0.2) actor.facingRight = to.x > actor.point.x;
+            actor.point = { x: actor.point.x + (to.x - actor.point.x) * ratio,
+              y: actor.point.y + (to.y - actor.point.y) * ratio };
+            actor.stride += Math.min(step, gap) / 38;
+          }
+          if (step < gap) break;
+          step -= gap;
+          actor.route.shift();
+        }
+        if (!actor.route.length) {
+          if (actor.gathering) actor.mealUntil = moment + 7200;
+          else if (actor.serviceRequested) actor.serviceUntil = moment + 5100;
+          actor.waitUntil = moment + (actor.id === 'bea' ? 4200 : 5600);
+        }
+      } else if (actor.gathering && actor.mealUntil && moment >= actor.mealUntil) {
+        actor.gathering = false;
+        actor.mealUntil = 0;
+        actor.waitUntil = moment + 1200;
+      } else if (actor.serviceRequested && actor.serviceUntil && moment >= actor.serviceUntil) {
+        actor.serviceRequested = false;
+        actor.serviceUntil = 0;
+        actor.waitUntil = moment + 1300;
+      } else if (!actor.gathering && !actor.serviceRequested && moment >= actor.waitUntil) {
+        const destinations = actor.id === 'bea'
+          ? [scenePoint(770, 466), village.workshop, scenePoint(939, 743), village.homes[actor.slot]]
+          : [scenePoint(845, 466), village.lookout, scenePoint(1068, 743), village.homes[actor.slot]];
+        routeResident(actor, destinations[actor.circuit++ % destinations.length]);
+      }
+    }
+    actors.sort((a,b) => a.point.y - b.point.y);
+    for (const actor of actors) {
+      const walking = actor.route.length > 0 && !motion.matches;
+      const serving = !walking && (actor.serviceRequested && actor.serviceUntil > moment || actor.gathering && actor.mealUntil > moment);
+      const frame = walking ? 1 + Math.floor(actor.stride * 4) % 4 : serving ? 5 : 0;
+      const options = { frame, fullCell: true, baseline: 236 / 256, flip: !actor.facingRight,
+        scaleY: walking ? 1 : 1 + Math.sin(time * 1.75 + actor.slot * 2) * 0.004,
+        footY: actor.point.y };
+      // A 110px cell contains approximately 94px of visible character, versus the farmer's 88px.
+      const size = 110;
+      world.shape('shade', actor.point.x, actor.point.y, 12, 4, '#62543b', 0.18);
+      art.draw(world, `village-${actor.id}`, actor.point.x, actor.point.y, size, size, { ...options, shadow: true });
+      art.draw(world, `village-${actor.id}`, actor.point.x, actor.point.y, size, size, options);
+      if (!motion.matches && (actor.gathering && actor.mealUntil > moment || actor.serviceUntil > moment)) {
+        const cycle = ((moment / 1650) + actor.slot * 0.5) % 1;
+        art.draw(world, 'heart', actor.point.x + Math.sin(cycle * Math.PI * 2) * 6,
+          actor.point.y - 91 - cycle * 22, 14, 16,
+          { opacity: Math.sin(cycle * Math.PI) * 0.85, layer: world.overlay });
+      }
+    }
+    if (mealActive && !motion.matches) {
+      const phase = (moment - villageMealCelebration) / 24000;
+      const alpha = Math.min(1, phase * 6, (1 - phase) * 7);
+      const table = scenePoint(969, 623);
+      // Warmth around the shared table lingers while residents walk over from across the quarter.
+      world.shape('shade', village.table.x, village.table.y - 22, 88, 23, '#ffe8b4', alpha * 0.14);
+      for (let index = 0; index < 3; index++) {
+        const cycle = (moment / 2300 + index / 3) % 1;
+        world.shape('shade', table.x - 35 + index * 31 + Math.sin(cycle * 4) * 3,
+          table.y - 28 - cycle * 17, 2 + cycle * 3.5, 2 + cycle * 3,
+          '#fff2d6', alpha * (1 - cycle) * 0.38, world.overlay - 1);
+      }
+    }
+    if (villageWelcome && moment - villageWelcome < 3000 && !motion.matches) {
+      const phase = (moment - villageWelcome) / 3000;
+      const point = village.square;
+      world.shape('ripple', point.x, point.y, 15 + phase * 63, 5 + phase * 18,
+        '#ffefd3', (1 - phase) * 0.65);
     }
   }
 
   function paintBed(bed: Bed, index: number, highlit: boolean, now: number): void {
-    const x = BED.x + (index % 4) * BED.dx;
-    const y = BED.y + Math.floor(index / 4) * BED.dy;
+    const { center: { x, y }, w, h } = plots[index];
     const watered = bed.kind === 'crop' && bed.watered;
-    const age = now - (impactByBed.get(index) ?? -1_000);
-    const recoil = !motion.matches && age < 330 ? Math.sin(age * Math.PI / 330) : 0;
-    const tint = watered ? '#422d25' : bed.kind === 'empty' ? '#fcd390' : '#683d24';
-    const alpha = watered ? 0.40 : bed.kind === 'empty' ? 0.14 : bed.kind === 'tilled' ? 0.19 : 0.10;
-    world.shape('shade', x + BED.w / 2, y + BED.h / 2, BED.w * 0.56, BED.h * 0.52, tint, alpha + 0.12 * recoil);
+    const age = now - (impactByBed.get(index) ?? -1000);
+    const recoil = !motion.matches && age >= 0 && age < 330 ? Math.sin(age * Math.PI / 330) : 0;
+    const tint = watered ? '#6c4c40' : bed.kind === 'empty' ? '#f4c386' : '#875a42';
+    const alpha = watered ? 0.54 : bed.kind === 'empty' ? 0.12 : bed.kind === 'tilled' ? 0.24 : 0.07;
+    world.shape('shade', x, y, w * 0.54, h * 0.54, tint, alpha + 0.14 * recoil);
     if (watered) {
-      for (let i = 0; i < 5; i++) {
-        world.shape('ellipse', x + 10 + i * (BED.w - 20) / 4, y + BED.h * 0.75 - random(i + index) * 16,
-          2.4, 0.9, '#c4e5e19b');
+      for (let i = 0; i < 4; i++) {
+        world.shape('ellipse', x - w * 0.36 + i * w * 0.24, y + h * 0.27 - random(i + index) * 12,
+          2.1, 1, '#b6dfd2', 0.52);
       }
     }
-    if (highlit) {
-      world.shape('outline', x + BED.w / 2, y + BED.h / 2 + 1, BED.w * 0.45, BED.h * 0.46, '#fff0b9b5');
-    }
+    if (highlit) world.shape('plot', x, y, w * 0.47, h * 0.48, '#fff1c4', 0.96);
   }
 
   function growthFrame(bed: Extract<Bed, { kind: 'crop' }>, index: number, now: number): number {
@@ -342,9 +732,9 @@ export function createIsland(
     const wateredAge = bed.watered && bed.wateredAt !== undefined
       ? Math.min(0.9, Math.max(0, (now - bed.wateredAt) / 45_000))
       : 0;
-    const target = bed.growth >= readyAfter ? 8 : Math.min(7, (bed.growth + wateredAge) * 8 / readyAfter);
+    const target = bed.growth >= readyAfter ? 3 : Math.min(2.94, (bed.growth + wateredAge) * 3 / readyAfter);
     const prior = growthFrames.get(index);
-    const frame = motion.matches || prior?.crop !== bed.crop
+    const frame = motion.matches || target === 3 || prior?.crop !== bed.crop
       ? target
       : Math.min(target, prior.frame + Math.max(0, now - prior.time) / 420);
     growthFrames.set(index, { crop: bed.crop, frame, time: now });
@@ -353,16 +743,23 @@ export function createIsland(
 
   function paintCrop(bed: Extract<Bed, { kind: 'crop' }>, index: number, progress: number, time: number): void {
     const frame = Math.floor(progress);
-    const blend = progress - frame;
-    const style = crops[bed.crop];
-    const x = BED.x + (index % 4) * BED.dx + BED.w / 2;
-    const y = BED.y + Math.floor(index / 4) * BED.dy + BED.h - 5;
-    const key = `growth-${bed.crop}`;
-    const flip = index % 2 === 0;
-    const bend = Math.sin(time * 1.9 + index * 0.63) * 0.027;
-    art.draw(world, key, x, y, style.w, style.h, { frame, flip, shadow: true, bend });
-    art.draw(world, key, x, y, style.w, style.h, { frame, flip, bend });
-    if (blend > 0) art.draw(world, key, x, y, style.w, style.h, { frame: frame + 1, flip, opacity: blend, bend });
+    const [width, height] = cropSizes[bed.crop];
+    const { foot } = plots[index];
+    const key = `crop-${bed.crop}`;
+    const single = frame > 1 && (bed.crop === 'cabbage' || bed.crop === 'pumpkin');
+    const plants = single ? [[0, -2]] : frame === 0 ? [[-22, -13], [20, -14], [-24, 1], [19, 2]] : [[-21, -3], [21, 1]];
+    const size = frame === 3 ? 1 : 0.9 + 0.14 * (progress - frame);
+    plants.forEach(([dx, dy], i) => {
+      const x = foot.x + dx * sceneScale;
+      const y = foot.y + dy * sceneScale;
+      const variety = i % 2 ? 0.93 : 1;
+      const w = width * sceneScale * size * variety;
+      const h = height * sceneScale * size * variety;
+      const bend = Math.sin(time * 1.7 + index * 0.7 + i) * 0.022;
+      const options = { frame, fullCell: true, baseline: 122 / 136, bend };
+      art.draw(world, key, x, y, w, h, { ...options, shadow: true });
+      art.draw(world, key, x, y, w, h, options);
+    });
   }
 
   function paintHint(area: Area | undefined): void {
@@ -384,7 +781,22 @@ export function createIsland(
 
   function moveTo(stop: Point): void {
     destination = stop;
-    const points = roundTurns(state?.island === 'grove' ? grovePath(farmer, stop) : walkingPath(farmer, stop));
+    const capePath = () => {
+      const dock = docks.cape;
+      const aisle = scenePoint(0, 566).y;
+      const start = farmer.y > dock.entry.y ? dock.entry : farmer;
+      const end = stop.y > dock.entry.y ? dock.entry : stop;
+      if (start.y < cape.flowers[0].y - 15 && end.y < cape.flowers[0].y - 15) return [farmer, start, end, stop];
+      const gaps = [391, 650, 910, 1160].map((x) => scenePoint(x, 0).x);
+      const exit = (point: Point) => point.y < cape.flowers[0].y - 15
+        ? { x: gaps.reduce((nearest, x) => Math.abs(x - point.x) < Math.abs(nearest - point.x) ? x : nearest), y: point.y }
+        : point;
+      const from = exit(start);
+      const to = exit(end);
+      return [farmer, start, from, { x: from.x, y: aisle }, { x: to.x, y: aisle }, to, end, stop];
+    };
+    const points = roundTurns(state?.island === 'grove' ? grovePath(farmer, stop)
+      : state?.island === 'cape' ? capePath() : state?.island === 'village' ? villagePath(farmer, stop) : walkingPath(farmer, stop));
     path = points.slice(1).map((to, i) => {
       const from = points[i];
       return { from, to, distance: Math.hypot(to.x - from.x, to.y - from.y) };
@@ -430,6 +842,7 @@ export function createIsland(
     for (let i = bursts.length - 1; i >= 0; i--) {
       const burst = bursts[i];
       const age = (now - burst.began) / 1000;
+      if (age < 0) continue;
       if (age > 0.85) {
         bursts.splice(i, 1);
         continue;
@@ -466,6 +879,32 @@ export function createIsland(
     }
   }
 
+  function celebrate(bounds: { x: number; w: number; h: number; footY: number }): void {
+    if (motion.matches) return;
+    celebrationSparks.push({ x: bounds.x + bounds.w / 2, y: bounds.footY - bounds.h * 0.23,
+      spread: bounds.w * 0.43, began: performance.now() });
+  }
+
+  function paintCelebration(now: number): void {
+    for (let i = celebrationSparks.length - 1; i >= 0; i--) {
+      const spark = celebrationSparks[i];
+      const t = (now - spark.began) / 1050;
+      if (t >= 1) {
+        celebrationSparks.splice(i, 1);
+        continue;
+      }
+      for (let n = 0; n < 10; n++) {
+        const angle = n * Math.PI * 0.2;
+        const distance = spark.spread * (0.4 + t * 0.67);
+        const x = spark.x + Math.cos(angle) * distance;
+        const y = spark.y + Math.sin(angle) * distance * 0.44 - 38 * t;
+        const size = 2.5 + random(n + 86) * 3;
+        world.shape('diamond', x, y, size, size * 1.25, n % 2 ? '#fff4cb' : '#e7c3ee',
+          (1 - t) * Math.min(1, t * 10), world.overlay);
+      }
+    }
+  }
+
   function paintFootfalls(now: number): void {
     for (let i = footfalls.length - 1; i >= 0; i--) {
       const step = footfalls[i];
@@ -482,13 +921,17 @@ export function createIsland(
   }
 
   function paintButterflies(time: number, atHome: boolean): void {
-    const centers = atHome ? [[472, 378], [1068, 566], [1135, 680]] : [[451, 392], [822, 444]];
-    centers.forEach(([x, y], i) => {
+    const centers = atHome ? [scenePoint(516, 366), scenePoint(1162, 614), scenePoint(1375, 738)]
+      : [scenePoint(410, 412), scenePoint(879, 484)];
+    centers.forEach(({ x, y }, i) => {
       const phase = time * (0.72 + i * 0.09) + i * 3.1;
       const px = x + 35 * Math.sin(phase);
       const py = y + 13 * Math.sin(phase * 1.78) + 4 * Math.cos(time * 5 + i);
+      const speed = 0.72 + i * 0.09;
+      const dx = 35 * Math.cos(phase) * speed;
+      const dy = 13 * Math.cos(phase * 1.78) * 1.78 * speed - 20 * Math.sin(time * 5 + i);
       art.draw(world, 'butterfly', px, py, 14 + i * 2, 12 + i, {
-        frame: Math.floor(time * 8 + i) % 4, flip: Math.cos(phase) > 0, angle: 0.2 * Math.sin(phase), footY: y + 33,
+        frame: Math.floor(time * 8 + i) % 4, angle: Math.atan2(dy, dx) + Math.PI / 3, footY: y + 33,
       });
     });
   }
@@ -496,50 +939,154 @@ export function createIsland(
   function paint(time: number): void {
     const island = state?.island ?? 'home';
     const atHome = island === 'home';
-    const dock = moorings[island];
+    const atGrove = island === 'grove';
+    const atCape = island === 'cape';
+    const honeyWind = atCape && isHoneyWind(state?.day ?? 1);
+    const lunarTide = atGrove && isLunarTide(state?.day ?? 1);
+    const { weather } = getClimate(state?.day ?? 1);
+    const dock = docks[island];
     const now = Date.now();
     const moment = performance.now();
     const dt = motion.matches ? 0 : clamp((moment - (lastPhysics || moment - 16)) / 1000, 0.001, 0.05);
     lastPhysics = moment;
     const traveling = arrival ? clamp(1 - (moment - arrival) / 950, 0, 1) : 0;
-    const boatX = dock.boatX - 255 * traveling * traveling;
-    const swell = Math.sin(time * 1.7 + dock.boatX * 0.03) * 3.8 + Math.sin(time * 2.36 + 1) * 1.6;
-    const boatY = dock.boatY + 80 * traveling + driveSpring(boatFloat, swell, dt, 8, 0.76);
-    const boatAngle = driveSpring(boatRoll, Math.cos(time * 1.7 + dock.boatX * 0.03) * 0.051, dt, 10, 0.73);
+    const leaving = departure ? clamp((moment - departure) / 420, 0, 1) : 0;
+    const boatX = dock.boat.x + 191 * traveling * traveling + 150 * leaving * leaving;
+    const swell = time ? Math.sin(time * 1.7 + dock.boat.x * 0.03) * 2.2 + Math.sin(time * 2.36 + 1) * 0.8 : 0;
+    const boatY = dock.boat.y + 37 * traveling + 27 * leaving + driveSpring(boatFloat, swell, dt, 8, 0.76);
+    const boatAngle = driveSpring(boatRoll, time ? Math.cos(time * 1.7 + dock.boat.x * 0.03) * 0.033 : 0, dt, 10, 0.73);
     world.begin();
-    paintShore(time, island);
-    const plate = art.image(`${island}-plate`);
-    if (plate) world.plate(plate, PLATES[island]);
-    for (const { image, bounds } of cutouts[island]) world.occluder(image, bounds);
-    if (atHome) art.draw(world, 'windmill-sails', 821, 213, 108, 108,
-      { angle: time * 0.62, baseline: 0.5, footY: 326 });
-    art.draw(world, 'boat', boatX, boatY, 105, 59, { flip: atHome, angle: boatAngle });
+    const { image: plate, bounds, expanded } = islandPlate();
+    const reveal = shoalReveal ? clamp((moment - shoalReveal) / 980, 0, 1) : 1;
+    if (plate) {
+      const original = atGrove && expanded && reveal < 1 ? art.image('grove-plate') : undefined;
+      if (original) world.plate(original, landscape.grove.bounds);
+      world.plate(plate, bounds, Boolean(original), expanded ? reveal * reveal * (3 - 2 * reveal) : 1);
+    }
+    const upgraded = plate ? visibleUpgrades() : [];
+    const project = atHome ? 'fair' : 'dock';
+    const stage = projectStages[project];
+    const complete = (atHome || atGrove) && plate && state && isProjectComplete(state, project);
+    const projectPatch = complete && art.image(stage.patch.key);
+    const projectMask = complete && art.image(stage.mask.key);
+    for (const { patch, patchImage } of upgraded) world.plate(patchImage, patch, true);
+    if (projectPatch && projectMask) world.plate(projectPatch, stage.patch, true);
+    for (const { image, bounds } of cutouts[island]) {
+      if (projectPatch && projectMask && bounds.project === project) continue;
+      if (bounds.building && upgraded.some(({ building }) => building === bounds.building)) continue;
+      world.occluder(image, bounds);
+    }
+    for (const { mask, maskImage } of upgraded) world.occluder(maskImage, mask);
+    if (projectPatch && projectMask) world.occluder(projectMask, stage.mask);
+    const well = upgraded.find(({ building }) => building === 'well');
+    if (well && !motion.matches) {
+      const pools = state?.wellSpecialization === 'pipes' ? [[748, 316, 9], [773, 315, 6]]
+        : state?.wellSpecialization === 'rain' ? [[754, 317, 9], [773, 232, 9]] : [[754, 317, 9]];
+      pools.forEach(([x, y, spread], index) => {
+        const basin = scenePoint(x, y);
+        const phase = (time * 0.9 + index * 0.42) % 1;
+        world.shape('ripple', basin.x, basin.y, 4 + spread * phase, 1.5 + 2 * phase,
+          '#e6f8ef', (1 - phase) * 0.56, 0, 0, well.mask.footY + 0.1);
+      });
+    }
+    const sails = atHome && art.image('windmill-sails');
+    if (sails) {
+      const { pivot, w, h, footY, origin, baseline } = windmillSails;
+      world.sprite(sails, { x: 0, y: 0, w: sails.naturalWidth, h: sails.naturalHeight },
+        pivot.x, pivot.y, w, h, { angle: time * 0.39, baseline, footY }, origin);
+    }
+    art.draw(world, 'boat', boatX, boatY, 160 * sceneScale, 87 * sceneScale, { fullCell: true, angle: boatAngle });
     const selected = hovered ?? (showFocus && focused
       ? currentSites().find((area) => sameTarget(area.target, focused!.target))
       : undefined);
     if (atHome) state?.beds.forEach((bed, index) => {
       paintBed(bed, index, selected?.target.kind === 'bed' && selected.target.index === index, moment);
     });
-    const props: Prop[] = atHome ? [] : [{
-      art: 'salt', ...saltCove, w: 68, h: 48, opacity: state?.saltGatheredToday ? 0.36 : 1,
-    }];
-    treeSpots[island].forEach(({ x, y }, index) => {
+    if (atGrove && !state?.saltGatheredToday) {
+      paintProp({ art: 'salt', ...saltCove.foot, w: 56, h: 35 }, time);
+    }
+    if (island === 'home' || island === 'grove') orchard[island].forEach(({ x, y }, index) => {
       const tree = state?.trees[island][index];
-      if (!tree) {
-        props.push({ art: 'stake', x, y, w: 26, h: 39 });
+      const age = tree ? Math.min(1, tree.age / treeDefinitions[tree.tree].days) : 0;
+      if (atHome) world.shape('shade', x, y - 2, 36, 11, '#936342', tree ? 0.50 : 0.31);
+      if (!tree || age < 0.55) {
+        paintProp({ art: 'orchard-start', x, y, w: 65, h: 70,
+          frame: tree ? 1 : 0, baseline: 112 / 128 }, time);
         return;
       }
-      const age = Math.min(1, tree.age / treeDefinitions[tree.tree].days);
-      const frame = age < 0.45 ? 0 : age < 1 ? 1 : tree.fruitReady > 0 ? 3 : 2;
-      props.push({ art: `${tree.tree}tree`, x, y, w: 121, h: 127, frame, flip: index % 2 > 0 });
-      if (tree.fruitReady > 0) {
-        const color = tree.tree === 'apple' ? '#ffe998' : '#fff2af';
-        paintWaypoint(x, y - 146, time + index * 0.4, color);
-      }
+      const size = (atHome ? 150 : 193) * (age < 1 ? 0.72 : 1);
+      paintProp({ art: `tree-${tree.tree}`, x, y, w: size * 220 / 230, h: size,
+        frame: tree.fruitReady > 0 ? 0 : 1, baseline: 212 / 230 }, time);
+      if (tree.fruitReady > 0 && tree.trait) weatherEffects.glint(tree.trait, x + size * 0.32, y - size * 0.54, time);
     });
-    for (const prop of props) {
-      paintProp(prop, true, time);
-      paintProp(prop, false, time);
+    if (atCape && state) {
+      const farm = state;
+      paintApiary(farm, time, moment);
+      const harvest = farm.capeLevel >= 2 ? { x: capeBuildings.apiary.x, y: capeBuildings.apiary.y + 12 } : cape.hive;
+      cape.flowers.forEach(({ x, y }, index) => {
+        const bloom = getCapeBloom(farm, index);
+        if (bloom === 'empty') {
+          if (selected?.target.kind === 'flower' && selected.target.index === index) {
+            world.shape('ripple', x, y, 47, 15, '#ffefc2', 0.9, y);
+          }
+          return;
+        }
+        const planted = flowerPlanted.get(index);
+        const phase = planted ? clamp((moment - planted) / 580, 0, 1) : 1;
+        const pop = 1 - Math.cos(phase * Math.PI * 2.2) * Math.exp(-phase * 6);
+        const size = (bloom === 'bloom' ? 82 : 47) * (planted && phase < 1 ? pop : 1);
+        const sway = Math.sin(time * (honeyWind ? 2.3 : 1.3) + index * 1.7) * (honeyWind ? 0.07 : 0.025);
+        for (const [dx, dy, factor] of [[-27, -4, 0.77], [25, -3, 0.83], [0, 12, 1]]) {
+          const options = { fullCell: true, baseline: 118 / 128, bend: sway, footY: y + dy };
+          art.draw(world, 'cape-flowers', x + dx, y + dy, size * factor, size * factor, { ...options, shadow: true });
+          art.draw(world, 'cape-flowers', x + dx, y + dy, size * factor, size * factor, options);
+        }
+      });
+      if (getCapeHoney(farm).available) {
+        art.draw(world, honeyWind ? 'ui-wind-honey' : 'ui-honey', harvest.x + 18,
+          harvest.y - 131 + Math.sin(time * 2) * 2, 30, 34, { layer: world.overlay });
+      }
+      const reward = honeyReward ? (moment - honeyReward) / 850 : 1;
+      if (reward < 1) art.draw(world, honeyWind ? 'ui-wind-honey' : 'ui-honey', harvest.x,
+        harvest.y - 90 - reward * 64, 42, 46, { opacity: Math.min(1, (1 - reward) * 3), layer: world.overlay });
+      if (reward < 1 && farm.capeLevel >= 2) art.draw(world, 'ui-beeswax', harvest.x + 37,
+        harvest.y - 78 - reward * 54, 33, 33, { opacity: Math.min(1, (1 - reward) * 3), layer: world.overlay });
+      if (honeyWind) for (let i = 0; i < 15; i++) {
+        const drift = (time * 43 + i * 71) % 810;
+        const p = scenePoint(360 + drift, 410 + random(i + 29) * 270);
+        world.shape('ellipse', p.x, p.y + Math.sin(time * 2 + i) * 7, 2.1, 1.2, '#ffefb2', 0.7, p.y + 90);
+      }
+    }
+    if (atGrove && state && hasBayDisplay(state)) {
+      if (art.image('bay-display')) paintSupportShadow('bay-display', displayShadow, displayFoot.x, displayFoot.y, 69, 75);
+      art.draw(world, 'bay-display', displayFoot.x, displayFoot.y, 69, 75, { fullCell: true, baseline: 118 / 128 });
+    }
+    if (atHome && state) {
+      const guest = getFairGuest(state);
+      const progress = guestDeparture ? clamp((moment - guestDeparture) / 1400, 0, 1) : 0;
+      if (guest && (!guest.served || guestDeparture && progress < 1)) {
+        const travel = progress * progress * (3 - 2 * progress);
+        const x = guestFoot.x + travel * 54;
+        const y = guestFoot.y - travel * 35;
+        const walking = guest.served && Boolean(art.image('fair-guest-walk'));
+        const key = walking ? 'fair-guest-walk' : 'fair-guest';
+        const lift = walking ? Math.abs(Math.sin(travel * Math.PI * 4)) * 2.3 : 0;
+        const options = { fullCell: true, baseline: 118 / 128, opacity: Math.min(1, (1 - progress) * 3),
+          footY: y, frame: walking ? Math.floor(travel * 8) % 4 : 0,
+          scaleY: 1 + Math.sin(walking ? travel * Math.PI * 8 : time * 2.1) * 0.01,
+          angle: walking ? 0.025 : Math.sin(time * 1.3) * 0.009 };
+        art.draw(world, key, x, y, 108, 108, { ...options, shadow: true, lift });
+        art.draw(world, key, x, y - lift, 108, 108, options);
+        if (!guest.served) {
+          const requestIcon = guest.item.kind === 'fruit' ? 'guest-apple'
+            : guest.item.kind === 'dishes' ? guest.item.item === 'appleJam' ? 'guest-jam' : 'guest-cake' : 'item-wheat';
+          const floatY = y - 115 + Math.sin(time * 2) * 2;
+          world.shape('ellipse', x, floatY - 11, 22, 21, '#fff7dc', 0.95, world.overlay);
+          art.draw(world, requestIcon, x, floatY + 4, 28, 32, { layer: world.overlay + 1 });
+        }
+        if (guest.served) art.draw(world, 'heart', x, y - 95 - progress * 22, 21, 23,
+          { opacity: 1 - progress, layer: world.overlay });
+      }
     }
     const moving = duration > 0 && moment < depart + duration;
     if (moving) {
@@ -553,7 +1100,7 @@ export function createIsland(
           farmer = { x: segment.from.x + (segment.to.x - segment.from.x) * t, y: segment.from.y + (segment.to.y - segment.from.y) * t };
           const dx = segment.to.x - segment.from.x;
           const dy = segment.to.y - segment.from.y;
-          if (Math.abs(dx) > 2) flip = dx > 0;
+          if (Math.abs(dx) > 2) facingRight = dx > 0;
           travelingUp = dy < -Math.abs(dx) * 0.28;
           lean += (0.065 * dx / segment.distance - lean) * 0.19;
           break;
@@ -573,78 +1120,155 @@ export function createIsland(
       }
     }
     if (atHome) advanceWork(moment, moving);
+    let capeProgress = 0;
+    if (capeWork && atCape && !moving && !crossing && traveling <= 0.12) {
+      const work = capeWork;
+      work.began ??= moment;
+      capeProgress = clamp((moment - work.began) / 560, 0, 1);
+      if (!work.hit && capeProgress >= 0.55) {
+        work.hit = true;
+        if (work.commit() && !motion.matches) {
+          if (work.target.kind === 'hive') honeyReward = moment;
+          else if (work.target.kind === 'flower') flowerPlanted.set(work.target.index, moment);
+          else if (work.reward) kitchenReward = { icon: work.reward, began: moment };
+        }
+      }
+      if (capeProgress >= 1) {
+        capeWork = undefined;
+        capeProgress = 0;
+      }
+    }
+    let pickupProgress = 0;
+    if (shorePickup && !moving && traveling <= 0.12 && state) {
+      shorePickup.began ??= moment;
+      pickupProgress = clamp((moment - shorePickup.began) / pickupDuration, 0, 1);
+      if (pickupProgress >= 0.52) {
+        const { site, commit } = shorePickup;
+        shorePickup = undefined;
+        const item = getShoreItem(state, site.target);
+        if (item && commit()) shoreReward = { point: site.foot, icon: item.icon, began: moment };
+      }
+    }
     const biteAge = biteSince ? (moment - biteSince) / 1000 : 0;
     const bite = biteSince && !motion.matches ? Math.sin(Math.min(1, biteAge / 0.62) * Math.PI) ** 2 : 0;
     const bobber = fishing && !moving
-      ? { x: farmer.x - 56 + 3 * bite, y: farmer.y + 35 + Math.sin(time * 2.5) * 3 + 5 * bite }
+      ? { x: dock.float.x + 3 * bite, y: dock.float.y + Math.sin(time * 2.5) * 2 + 4 * bite }
       : undefined;
     if (bobber && biteSince && biteAge < 0.72 && !motion.matches) {
       const spread = 8 + biteAge * 33;
       world.shape('ripple', bobber.x, bobber.y + 1, spread, spread * 0.39, '#e8fff1', 0.8 * (1 - biteAge / 0.72), -90);
     }
     water.paint(time, {
-      x: offset.x + boatX * scale, y: offset.y + boatY * scale, speed: Math.min(1, traveling * 1.65),
-    }, bobber && { x: offset.x + bobber.x * scale, y: offset.y + bobber.y * scale });
+      x: offset.x + boatX * scale, y: offset.y + boatY * scale, speed: Math.min(1, Math.max(traveling, leaving) * 1.65),
+    }, bobber && { x: offset.x + bobber.x * scale, y: offset.y + bobber.y * scale }, lunarTide);
     function paintFarmer(): void {
-      if (traveling > 0.12) return;
+      if (traveling > 0.12 || leaving > 0.02) return;
       const bob = moving ? Math.abs(Math.sin(stride * Math.PI * 2)) * 2.8 : 0;
       if (bobber) {
-        world.fishingLine(farmer.x - 28, farmer.y - 25, bobber.x, bobber.y);
+        world.fishingLine(farmer.x - 64, farmer.y - 76, bobber.x, bobber.y);
         world.float(bobber.x, bobber.y, time, bite);
-        art.draw(world, 'fisher', farmer.x - 12, farmer.y, 74, 68, { shadow: true });
-        art.draw(world, 'fisher', farmer.x - 12, farmer.y, 74, 68);
-        return;
       }
       const pose = gesture && !moving ? gesture : undefined;
       const progress = pose ? clamp((moment - pose.started) / WORK_MS[pose.kind], 0, 0.999) : 0;
-      const scaleY = moving ? 1 + Math.sin(stride * Math.PI * 4) * 0.018
-        : pose ? 1 - Math.sin(progress * Math.PI) * 0.045 : 1 + Math.sin(time * 2.4) * 0.009;
-      const key = pose ? (pose.kind === 'till' ? 'farmer-hoe' : `farmer-${pose.kind}`)
-        : moving ? (travelingUp ? 'farmer-back' : 'farmer-walk')
-        : motion.matches ? 'farmer' : 'farmer-idle';
-      const rest = time % 3.8;
-      const idleFrame = rest < 1.15 ? 0 : rest < 2.35 ? 1 : rest < 2.46 ? 2 : 3;
-      const frame = pose ? Math.floor(progress * 6) : moving ? Math.floor(stride * 6) % 6 : idleFrame;
-      const wholeCell = !pose && key !== 'farmer';
-      const options = {
-        frame: key === 'farmer' ? 0 : frame, flip: !pose && flip,
-        fullCell: wholeCell, baseline: wholeCell ? 216 / 224 : 1,
-        fixedRoot: Boolean(pose), angle: pose ? Math.sin(progress * Math.PI) * -0.035 : lean, scaleY,
-      };
-      const width = wholeCell ? 63 : pose ? 76 : 45;
-      const height = wholeCell ? 74 : 67;
-      world.shape('shade', farmer.x, farmer.y, 12, 4.8, '#4a4729', 0.26);
+      const impactPose = Boolean(pose && progress > 0.19 && progress < 0.91);
+      const animated = pose?.kind === 'water' || pose?.kind === 'till';
+      const key = moving ? (travelingUp ? 'walk-back' : facingRight ? 'walk-right' : 'walk-left')
+        : animated ? `work-${pose.kind}` : 'farmer-actions';
+      const frame = moving ? Math.floor(stride * 4) % 4
+        : animated ? Math.min(3, Math.floor(progress * 4))
+        : bobber ? 5 : impactPose && pose?.kind === 'plant' ? 2
+        : capeProgress > 0.18 && capeWork?.target.kind === 'flower' ? 2
+        : capeProgress > 0.18 || pickupProgress > 0.18 || impactPose && pose?.kind === 'harvest' ? 4 : 0;
+      const scaleY = moving ? 1 + Math.sin(stride * Math.PI * 4) * 0.016
+        : pose || pickupProgress || capeProgress ? 1 - Math.sin((progress || pickupProgress || capeProgress) * Math.PI) * 0.029 : 1 + Math.sin(time * 2.4) * 0.009;
+      const options = { frame, fullCell: true, baseline: 0.9, angle: moving ? lean : 0, scaleY };
+      const height = 105;
+      const width = height * (moving ? 192 : 224) / 160;
+      world.shape('shade', farmer.x, farmer.y, 14, 5, '#63523f', 0.22);
       art.draw(world, key, farmer.x, farmer.y, width, height, { ...options, shadow: true, lift: bob });
       if (!art.draw(world, key, farmer.x, farmer.y - bob, width, height, { ...options, footY: farmer.y })) {
-        art.draw(world, 'farmer', farmer.x, farmer.y - bob, 45, 67, { flip, scaleY, footY: farmer.y });
+        const fallback = animated ? pose.kind === 'water' ? 3 : 1 : 0;
+        art.draw(world, 'farmer-actions', farmer.x, farmer.y - bob, height * 224 / 160, height,
+          { ...options, frame: fallback, footY: farmer.y });
       }
     }
+    if (island === 'village' && state) paintVillage(state, time, moment);
     paintFarmer();
+    if (atGrove && state) {
+      if (lunarTide) world.wash('#49497a12');
+      const farm = state;
+      for (const { target, foot: { x, y }, angle } of shoreSites) {
+        if (target.kind === 'shoal-find' && (!expanded || reveal < 0.8)) continue;
+        const item = getShoreItem(farm, target);
+        if (!item) continue;
+        world.shape('shade', x, y, 12, 4, '#9c734d', 0.23);
+        if (item.luminous) {
+          const glimmer = 0.79 + Math.sin(time * 2.7) * 0.19;
+          world.shape('shade', x, y - 9, 22, 15, '#c5b7ff', glimmer * 0.57, y - 1);
+          world.shape('diamond', x + 13, y - 23, 3, 7, '#f1eeff', glimmer, y);
+          world.shape('diamond', x - 13, y - 16, 2.5, 4.5, '#c6faff', glimmer, y);
+        }
+        art.draw(world, item.icon, x, y, 39, 36, { fullCell: true, baseline: 118 / 128, footY: y, angle });
+      }
+      const near = Math.hypot(farmer.x - beach.crab.x, farmer.y - beach.crab.y) < 62;
+      const retreat = driveSpring(crabRetreat, near ? 1 : 0, dt, 9, 0.88);
+      const pace = time * 1.6;
+      const scuttle = time ? Math.sin(pace) * 13 + Math.sin(pace * 10) * 1.1 : 0;
+      const hop = time ? Math.abs(Math.sin(pace * 8)) * 2.3 : 0;
+      const x = beach.crab.x + scuttle + retreat * 24;
+      const y = beach.crab.y + retreat * 14 + Math.sin(pace) * 4;
+      world.shape('shade', x, y, 14, 4.5, '#9c734d', 0.25);
+      art.draw(world, 'shore-crab', x, y - hop, 51, 46, {
+        fullCell: true, baseline: 118 / 128, footY: y, angle: Math.sin(pace * 8) * 0.044, scaleY: 1 - hop * 0.015,
+      });
+      if (expanded && reveal > 0.8) {
+        const { x, y } = shoal.starfish;
+        const drift = Math.sin(time * 0.73) * 2.8;
+        art.draw(world, 'shoal-starfish', x + drift, y, 31, 25, {
+          fullCell: true, baseline: 118 / 128, footY: y, angle: -0.15 + drift * 0.023, opacity: 0.87,
+        });
+        shoal.pools.forEach((pool, index) => {
+          const ring = time ? (time * 0.46 + index * 0.43) % 1 : 0.42;
+          world.shape('ripple', pool.x, pool.y, 5 + ring * 15, 2 + ring * 4,
+            '#caffef', (1 - ring) * 0.52, pool.y + 0.1);
+        });
+      }
+      if (shoreReward) {
+        const progress = (moment - shoreReward.began) / 690;
+        if (progress >= 1) shoreReward = undefined;
+        else {
+          const { point: { x, y }, icon } = shoreReward;
+          art.draw(world, icon, x, y - 6 - progress * 47, 39, 36,
+            { fullCell: true, baseline: 118 / 128, opacity: Math.min(1, (1 - progress) * 3), layer: world.overlay });
+        }
+      }
+    }
     henSites = [];
     if (atHome) hens.forEach((hen, index) => {
+      if (index >= (state?.flockSize ?? chickenCount)) return;
       const held = heldHen?.index === index && heldHen.dragging ? heldHen : undefined;
-      const targetX = held?.point.x ?? clamp(hen.x + Math.sin(time * 0.83 + index * 2) * 13, 207, 378);
-      const targetY = held?.point.y ?? clamp(hen.y + Math.cos(time * 0.89 + index) * 8, 594, 649);
-      const x = clamp(driveSpring(hen.px, targetX, dt, held ? 23 : 14, 0.82), 207, 378);
-      const y = clamp(driveSpring(hen.py, targetY, dt, held ? 23 : 14, 0.82), 594, 649);
+      const targetX = held?.point.x ?? clamp(hen.x + Math.sin(time * 0.83 + index * 2) * 13, PEN.min.x, PEN.max.x);
+      const targetY = held?.point.y ?? clamp(hen.y + Math.cos(time * 0.89 + index) * 8, PEN.min.y, PEN.max.y);
+      const x = clamp(driveSpring(hen.px, targetX, dt, held ? 23 : 14, 0.82), PEN.min.x, PEN.max.x);
+      const y = clamp(driveSpring(hen.py, targetY, dt, held ? 23 : 14, 0.82), PEN.min.y, PEN.max.y);
       const joy = Math.max(0, hen.excited - moment);
       const playful = Boolean(held) || joy > 0;
-      const key = playful ? 'henplay' : motion.matches ? 'hen' : 'henwalk';
-      const frame = held ? Math.floor(time * 7) % 4
-        : playful ? Math.min(3, Math.floor((950 - joy) / 238)) : motion.matches ? 0 : Math.floor(time * 7 + index) % 4;
       const lift = driveSpring(hen.lift, held && !motion.matches ? 20 : 0, dt, 16, 0.61);
       if (hen.lift.value < 0) {
         hen.lift.value = 0;
         hen.lift.speed = Math.abs(hen.lift.speed) > 8 ? Math.abs(hen.lift.speed) * 0.29 : 0;
       }
       const facing = Math.abs(hen.px.speed) > 1 ? hen.px.speed > 0 : Math.cos(time * 0.83 + index * 2) > 0;
+      const frame = held ? 5 + Math.floor(time * 8) % 2 : playful ? Math.min(7, 5 + Math.floor((950 - joy) / 280))
+        : !facing ? 4 : motion.matches ? 0 : Math.floor(time * 7 + index) % 4;
+      const pose = { frame, fullCell: true, baseline: 112 / 128 };
       const angle = clamp(hen.px.speed * 0.001, -0.13, 0.13);
       const scaleY = clamp(1 - hen.lift.speed * 0.001, 0.91, 1.07);
-      henSites.push({ target: { kind: 'hen', index }, center: { x, y: y - 14 - Math.max(0, lift) }, stop: { x, y }, w: 34, h: 38 });
+      henSites.push({ target: { kind: 'hen', index }, center: { x, y: y - 17 - Math.max(0, lift) }, stop: { x, y }, w: 40, h: 43 });
       const elevation = Math.max(0, lift);
       world.shape('shade', x, y, 10 + elevation * 0.12, 3.9, '#47462a', 0.25 / (1 + elevation * 0.04));
-      art.draw(world, key, x, y, 30, 34, { frame, flip: facing, shadow: true, lift: elevation });
-      art.draw(world, key, x, y - elevation, 30, 34, { frame, flip: facing, angle, scaleY, footY: y });
+      art.draw(world, 'hen-poses', x, y, 47, 47, { ...pose, angle, scaleY, shadow: true, lift: elevation });
+      art.draw(world, 'hen-poses', x, y - elevation, 47, 47, { ...pose, angle, scaleY, footY: y });
       if (joy) {
         const progress = 1 - joy / 950;
         const pop = 0.72 + 0.42 * Math.sin(Math.min(1, progress * 3.7) * Math.PI * 0.73);
@@ -659,49 +1283,69 @@ export function createIsland(
       }
       const frame = growthFrame(bed, index, now);
       paintCrop(bed, index, frame, time);
+      if (bed.trait) {
+        const { foot, w } = plots[index];
+        weatherEffects.glint(bed.trait, foot.x - w * 0.35, foot.y - 13, time);
+      }
     });
     if (atHome) state?.beds.forEach((bed, index) => {
       if (bed.kind !== 'crop' || bed.growth < cropDefinitions[bed.crop].days) return;
-      const x = BED.x + (index % 4) * BED.dx + BED.w - 5;
-      const y = BED.y + Math.floor(index / 4) * BED.dy + BED.h - 1;
-      art.draw(world, 'harvest-marker', x, y + Math.sin(time * 2.1 + index) * 1.1, 18, 18, { layer: world.overlay });
+      const { foot, w } = plots[index];
+      const x = foot.x + w * 0.41;
+      art.draw(world, 'harvest-marker', x, foot.y + 4 + Math.sin(time * 2.1 + index) * 0.8,
+        15, 15, { layer: world.overlay });
     });
-    paintButterflies(time, atHome);
+    if ((atHome || atGrove) && (weather === 'sun' || weather === 'rainbow')) paintButterflies(time, atHome);
+    weatherEffects.paint(weather, time, motion.matches);
     if (!motion.matches) paintFootfalls(moment);
     paintBursts(moment);
+    paintCelebration(moment);
     const phase = state && getDayPhase(state);
     const wash = phase === 'Evening' ? '#6f49662b' : phase === 'Afternoon' ? '#e9b24c12' : undefined;
     if (wash) world.wash(wash);
-    if (atHome && state && getGoal(state)?.id === 'till' && state.beds[0]?.kind === 'empty' && selected !== areas[4]) {
-      paintWaypoint(BED.x + BED.w / 2, BED.y - 10, time, '#fff0a4');
+    if (!guidance && atHome && state && getGoal(state)?.id === 'till' && state.beds[0]?.kind === 'empty' && selected !== areas[4]) {
+      const { center, h } = plots[0];
+      paintWaypoint(center.x, center.y - h / 2 - 11, time, '#fff0a4');
     }
     if (atHome && state?.eggsReady && !fieldView) {
-      art.draw(world, 'egg', 348, 598, 13, 17, { shadow: true });
-      art.draw(world, 'egg', 348, 598, 13, 17);
+      const egg = scenePoint(340, 626);
+      art.draw(world, 'egg', egg.x, egg.y, 12, 15, { shadow: true });
+      art.draw(world, 'egg', egg.x, egg.y, 12, 15);
+      if (state.eggTrait) weatherEffects.glint(state.eggTrait, egg.x + 12, egg.y - 15, time);
     }
-    paintHint(selected);
+    if (guidance && guidance.island !== state?.island) guidance = undefined;
+    const guided = guidance && currentSites().find(area => sameTarget(area.target, guidance!.target));
+    if (guided) paintWaypoint(guided.center.x, guided.center.y - guided.h / 2 - 12, time, '#ffeaae');
+    paintHint(guided || selected);
     world.render();
   }
 
   function tick(now: number): void {
+    if (abort.signal.aborted) return;
+    if (pixelDensity !== (window.devicePixelRatio || 1)) resize();
     const interval = 1000 / 60;
     const elapsed = now - lastTime;
-    if (elapsed >= interval - 0.5) {
+    if (!motion.matches && elapsed >= interval - 0.5) {
       lastTime = elapsed > 100 ? now : now - Math.max(0, elapsed - interval);
-      paint(motion.matches ? 0 : now / 1000);
+      paint(now / 1000);
     }
-    if (!motion.matches) frameId = requestAnimationFrame(tick);
+    frameId = requestAnimationFrame(tick);
   }
 
   function requestPaint(): void {
+    if (abort.signal.aborted) return;
     if (motion.matches) paint(0);
   }
 
   function resize(): void {
+    pixelDensity = window.devicePixelRatio || 1;
     viewport = { width: Math.max(1, canvas.clientWidth), height: Math.max(1, canvas.clientHeight) };
     const wide = Math.min(viewport.width / WORLD.w, viewport.height / WORLD.h);
-    scale = fieldView ? Math.min(viewport.width / 575, viewport.height / 580) : wide;
-    const center = fieldView ? { x: 720, y: 531 } : { x: WORLD.w / 2, y: WORLD.h / 2 };
+    const closeUp = fieldView && state?.island === 'home';
+    const shortLandscape = viewport.width > viewport.height && viewport.height < 480;
+    const fieldHeight = Math.max(140, viewport.height - (shortLandscape ? 123 : 190));
+    scale = closeUp ? Math.min(viewport.width / 486, fieldHeight / 278) : wide;
+    const center = closeUp ? scenePoint(784, 577) : { x: WORLD.w / 2, y: WORLD.h / 2 };
     offset = { x: viewport.width / 2 - center.x * scale, y: viewport.height / 2 - center.y * scale };
     world.resize(viewport.width, viewport.height, window.devicePixelRatio || 1, scale, center);
     syncShore();
@@ -717,15 +1361,43 @@ export function createIsland(
   }
 
   function hit(event: PointerEvent): Area | undefined {
-    if (!world.available) return undefined;
+    if (!world.available || crossing) return undefined;
     const { x, y } = location(event);
-    return currentSites().find((area) => (!fieldView || area.target.kind === 'bed')
+    if (fieldView && event.pointerType === 'touch' && state?.island === 'home') {
+      const minimum = 44 / scale;
+      return areas.slice(4).filter((area) =>
+        Math.abs(x - area.center.x) <= Math.max(area.w, minimum) / 2
+        && Math.abs(y - area.center.y) <= Math.max(area.h, minimum) / 2)
+        .sort((a, b) => distance(a.center, { x, y }) - distance(b.center, { x, y }))[0];
+    }
+    const sites = currentSites();
+    if ((state?.island === 'cape' || state?.island === 'village') && event.pointerType === 'touch') {
+      const minimum = 44 / scale;
+      return sites.filter((area) => Math.abs(x - area.center.x) <= Math.max(area.w, minimum) / 2
+        && Math.abs(y - area.center.y) <= Math.max(area.h, minimum) / 2)
+        .sort((a, b) => distance(a.center, { x, y }) - distance(b.center, { x, y }))[0];
+    }
+    if (sites.includes(harborSite)) {
+      const { mask } = projectStages.dock;
+      const image = art.image(mask.key);
+      if (image && maskHit(image, mask, x, y)) return harborSite;
+    }
+    const target = sites.find((area) => area !== kitchenSite && area !== harborSite && (!(fieldView && state?.island === 'home') || area.target.kind === 'bed')
       && Math.abs(x - area.center.x) <= area.w / 2 && Math.abs(y - area.center.y) <= area.h / 2);
+    if (target) return target;
+    if (state?.island === 'grove' && event.pointerType === 'touch') {
+      const point = { x, y };
+      return sites.filter(({ target, center }) =>
+        (target.kind === 'shell' || target.kind === 'shoal-find' || target.kind === 'tidepool') && distance(center, point) < 22 / scale)
+        .sort((a, b) => distance(a.center, point) - distance(b.center, point))[0];
+    }
+    return fieldView && state?.island === 'home' ? undefined : upgradeHit(x, y);
   }
 
   function describeFocus(): void {
-    canvas.setAttribute('aria-label', focused
-      ? `Island. ${inspect(focused.target)}. Use arrow keys to choose another spot and Enter to act.`
+    const label = focused && inspect(focused.target);
+    canvas.setAttribute('aria-label', label
+      ? `Island. ${label}. Use arrow keys to choose another spot and Enter to act.`
       : 'Island. Use arrow keys to choose a spot and Enter to act.');
   }
 
@@ -734,7 +1406,7 @@ export function createIsland(
   canvas.addEventListener('pointermove', (event) => {
     if (heldHen && pointerStart?.id === event.pointerId) {
       const point = location(event);
-      heldHen.point = { x: clamp(point.x, 207, 378), y: clamp(point.y + 12, 594, 649) };
+      heldHen.point = { x: clamp(point.x, PEN.min.x, PEN.max.x), y: clamp(point.y + 12, PEN.min.y, PEN.max.y) };
       if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 5) {
         heldHen.dragging = true;
         hovered = undefined;
@@ -753,6 +1425,7 @@ export function createIsland(
     requestPaint();
   }, listeners);
   canvas.addEventListener('pointerdown', (event) => {
+    guidance = undefined;
     if (!event.isPrimary || event.button !== 0) return;
     pointerStart = { id: event.pointerId, x: event.clientX, y: event.clientY };
     const target = hit(event)?.target;
@@ -791,7 +1464,7 @@ export function createIsland(
   }, listeners);
   canvas.addEventListener('focus', () => {
     showFocus = canvas.matches(':focus-visible');
-    focused ??= state?.island === 'grove' ? groveSites[0] : areas[4];
+    focused ??= state?.island === 'home' ? areas[4] : currentSites()[0];
     describeFocus();
     requestPaint();
   }, listeners);
@@ -800,20 +1473,21 @@ export function createIsland(
     requestPaint();
   }, listeners);
   canvas.addEventListener('keydown', (event) => {
-    if (!world.available) return;
+    if (!world.available || crossing) return;
     const directions: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
     const direction = directions[event.key];
     if (!direction && event.key !== 'Enter' && event.key !== ' ') return;
+    guidance = undefined;
     event.preventDefault();
     hovered = undefined;
     showFocus = true;
-    focused ??= state?.island === 'grove' ? groveSites[0] : areas[4];
+    focused ??= state?.island === 'home' ? areas[4] : currentSites()[0];
     if (direction) {
       const origin = focused.center;
       const [dx, dy] = direction;
       let score = Infinity;
       for (const area of currentSites()) {
-        if (fieldView && area.target.kind !== 'bed') continue;
+        if (fieldView && state?.island === 'home' && area.target.kind !== 'bed') continue;
         const x = area.center.x - origin.x;
         const y = area.center.y - origin.y;
         const forward = x * dx + y * dy;
@@ -833,7 +1507,23 @@ export function createIsland(
   motion.addEventListener('change', () => {
     cancelAnimationFrame(frameId);
     if (motion.matches) {
+      arrival = 0;
+      shoalReveal = 0;
+      shoalRevealPending = false;
+      guestDeparture = 0;
+      honeyReward = 0;
+      kitchenReward = undefined;
+      capeBuild = undefined;
+      flowerPlanted.clear();
+      crossingVeil.getAnimations().forEach((animation) => animation.finish());
       duration = 0;
+      const pickup = shorePickup;
+      shorePickup = undefined;
+      shoreReward = undefined;
+      pickup?.commit();
+      const cape = capeWork;
+      capeWork = undefined;
+      if (cape && !cape.hit) cape.commit();
       const active = gesture;
       const queued = workOrders;
       gesture = undefined;
@@ -841,14 +1531,13 @@ export function createIsland(
       if (active && !active.hit) active.order.commit();
       for (const order of queued) order.commit();
       paint(0);
-    } else {
-      frameId = requestAnimationFrame(tick);
     }
+    frameId = requestAnimationFrame(tick);
   }, listeners);
 
-  for (const key of ['home-plate', 'grove-plate', 'water']) art.load(key, key);
-  for (const island of ['home', 'grove'] as const) {
-    for (const bounds of occluders[island]) {
+  for (const island of ['home', 'grove', 'cape', 'village'] as const) {
+    art.load(`${island}-plate`, landscape[island].path);
+    for (const bounds of landscape[island].occluders) {
       const image = new Image();
       image.addEventListener('load', () => {
         cutouts[island].push({ image, bounds });
@@ -857,12 +1546,39 @@ export function createIsland(
       image.src = bounds.url;
     }
   }
-  for (const key of sprites) art.load(key, key, [1, 1]);
-  for (const key of ['henwalk', 'henplay', 'shore', 'butterfly', 'farmer-idle']) art.load(key, key, [2, 2]);
-  for (const tree of ['apple', 'pear', 'peach']) art.load(`${tree}tree`, `${tree}tree-v2`, [2, 2], 'none');
-  for (const key of ['farmer-walk', 'farmer-back', 'farmer-hoe', 'farmer-plant', 'farmer-water', 'farmer-harvest']) art.load(key, key, [3, 2]);
-  for (const crop of Object.keys(crops)) art.load(`growth-${crop}`, `growth-${crop}-v2`, [3, 3], 'saturate(0.96) contrast(0.98)');
-  for (const crop of Object.keys(crops)) art.load(`item-${crop}`, `icons/${crop}`, [1, 1]);
+  for (const { patch, mask } of [...buildingUpgrades, ...Object.values(projectStages), ...Object.values(specializationStages)]) {
+    art.load(patch.key, patch.path);
+    art.load(mask.key, mask.path);
+  }
+  const load = (key: string, frames: number, path = key) =>
+    art.load(key, `lavender/${path}`, [frames, 1]);
+  art.load('windmill-sails', 'lavender/home-mill-sails');
+  load('boat', 1, 'home-boat');
+  load('farmer-actions', 6);
+  load('hen-poses', 8);
+  load('ui-shell', 1);
+  load('ui-moon-shell', 1);
+  load('shore-crab', 1);
+  load('ui-sea-glass', 1);
+  load('ui-moon-pearl', 1);
+  load('shoal-starfish', 1);
+  for (const key of ['cape-flowers', 'fair-guest', 'bay-display', 'ui-honey', 'ui-wind-honey']) load(key, 1);
+  for (const key of ['cape-apiary', 'cape-honey-kitchen', 'cape-bee', 'ui-beeswax', 'ui-honey-biscuits', 'ui-honey-pear', 'ui-wind-parfait']) load(key, 1);
+  load('fair-guest-walk', 4);
+  load('village-bea', 6);
+  load('village-finn', 6);
+  for (const key of ['ui-handmade-round', 'ui-handmade-folded', 'ui-handmade-long', 'ui-grilled-fish']) load(key, 1);
+  art.load('guest-apple', 'icons/apple', [1, 1]);
+  load('guest-jam', 1, 'ui-apple-jam');
+  load('guest-cake', 1, 'ui-honey-cake');
+  load('orchard-start', 2);
+  for (const direction of ['left', 'right', 'back']) load(`walk-${direction}`, 4);
+  for (const action of ['water', 'till']) load(`work-${action}`, 4);
+  for (const tree of ['apple', 'pear', 'peach']) load(`tree-${tree}`, 2);
+  for (const crop of Object.keys(cropSizes)) load(`crop-${crop}`, 4);
+  for (const key of ['heart', 'salt', 'harvest-marker']) art.load(key, key, [1, 1]);
+  art.load('butterfly', 'butterfly', [2, 2]);
+  for (const crop of Object.keys(cropSizes)) art.load(`item-${crop}`, `icons/${crop}`, [1, 1]);
   art.load('egg', 'icons/egg', [1, 1]);
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
@@ -870,16 +1586,103 @@ export function createIsland(
   resize();
   frameId = requestAnimationFrame(tick);
   return {
+    focusTarget(target: IslandTarget): void {
+      const site = currentSites().find(area => sameTarget(area.target, target));
+      if (!site) return;
+      focused = site;
+      if (state) guidance = {target, island: state.island};
+      hovered = undefined;
+      showFocus = true;
+      canvas.focus({ preventScroll: true });
+      showFocus = true;
+      describeFocus();
+      requestPaint();
+    },
+    isCrossing(): boolean { return crossing; },
+    workCape(target: CapeWork['target'], commit: CapeWork['commit'], reward?: string): void {
+      if (state?.island !== 'cape' || crossing || !world.available || capeWork && sameTarget(capeWork.target, target)) return;
+      if (target.kind === 'honey-kitchen' && state.capeLevel < 3) return;
+      const site = currentSites().find((area) => sameTarget(area.target, target));
+      if (!site) return;
+      moveTo(site.stop);
+      if (motion.matches) commit();
+      else capeWork = { target, commit, reward, hit: false };
+    },
+    async crossIsland(commit: () => boolean): Promise<void> {
+      if (crossing || abort.signal.aborted) return;
+      if (motion.matches) { commit(); return; }
+      crossing = true;
+      capeWork = undefined;
+      departure = performance.now();
+      hovered = undefined;
+      crossingVeil.hidden = false;
+      let fade: Animation | undefined;
+      try {
+        fade = crossingVeil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-in-out', fill: 'forwards' });
+        await fade.finished;
+        if (abort.signal.aborted) return;
+        commit();
+        departure = 0;
+        if (motion.matches) return;
+        fade.cancel();
+        fade = crossingVeil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, easing: 'ease-in-out', fill: 'forwards' });
+        await fade.finished;
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
+      } finally {
+        fade?.cancel();
+        crossing = false;
+        departure = 0;
+        crossingVeil.hidden = true;
+        requestPaint();
+      }
+    },
     render(next: FarmState): void {
+      const moment = performance.now();
+      syncVillageResidents(next, moment);
+      if (next.village.built && !villageBuiltSeen && state && !motion.matches) villageWelcome = moment;
+      villageBuiltSeen = next.village.built;
+      if (currentIsland === 'cape' && next.island === 'cape' && next.capeLevel > capeLevelSeen && !motion.matches) {
+        capeBuild = { level: next.capeLevel, began: performance.now() };
+        const asset = next.capeLevel === 2 ? capeBuildings.apiary : capeBuildings.kitchen;
+        celebrate({ x: asset.x - asset.w / 2, w: asset.w, h: asset.h, footY: asset.y });
+      }
+      capeLevelSeen = next.capeLevel;
+      const expanded = hasShoal(next);
+      if (expanded && !shoalKnown && currentIsland === 'grove' && !motion.matches) {
+        shoalRevealPending = !art.image(shoalPlate.key);
+        if (!shoalRevealPending) shoalReveal = performance.now();
+      }
+      shoalKnown = expanded;
+      const served = getFairGuest(next)?.served ?? false;
+      if (served && !guestServed && currentIsland === 'home' && next.island === 'home' && !motion.matches) guestDeparture = performance.now();
+      if (!served) guestDeparture = 0;
+      guestServed = served;
+      if (next.island === 'grove' && !shoalRequested) {
+        shoalRequested = true;
+        art.load(shoalPlate.key, shoalPlate.path);
+      }
       if (currentIsland !== next.island) {
+        residentClock = 0;
+        villageMealCelebration = 0;
+        if (next.island === 'village' && !motion.matches) villageWelcome = performance.now();
+        shoalReveal = 0;
+        shoalRevealPending = false;
+        guestDeparture = 0;
+        kitchenReward = undefined;
+        capeBuild = undefined;
         arrival = currentIsland && !motion.matches ? performance.now() : 0;
         currentIsland = next.island;
-        const dock = moorings[next.island];
-        farmer = destination = next.island === 'home' && !state ? HOME : { x: dock.x, y: dock.y - 10 };
+        const dock = docks[next.island];
+        farmer = destination = next.island === 'home' && !state ? HOME : dock.entry;
         duration = 0;
         workOrders = [];
         gesture = undefined;
+        shorePickup = undefined;
+        capeWork = undefined;
+        shoreReward = undefined;
         footfalls.length = 0;
+        celebrationSparks.length = 0;
         focused = undefined;
         hovered = undefined;
       }
@@ -891,6 +1694,8 @@ export function createIsland(
     visit(target: IslandTarget): void {
       workOrders = [];
       gesture = undefined;
+      shorePickup = undefined;
+      capeWork = undefined;
       if (target.kind === 'hen') {
         const hen = hens[target.index];
         hen.excited = performance.now() + 950;
@@ -902,6 +1707,14 @@ export function createIsland(
       if (!stop) return;
       moveTo(stop);
       requestPaint();
+    },
+    pickShore(target: ShoreTarget, commit: () => boolean): void {
+      const site = shoreSites.find((area) => sameTarget(area.target, target));
+      if (!site || state?.island !== 'grove' || target.kind === 'shoal-find' && !islandPlate().expanded
+        || !getShoreItem(state, target) || shorePickup?.site === site) return;
+      moveTo(site.stop);
+      if (motion.matches) commit();
+      else shorePickup = { site, commit };
     },
     workBed(index: number, next: WorkOrder['next'], commit: WorkOrder['commit']): void {
       const area = areas[index + 4];
@@ -916,6 +1729,32 @@ export function createIsland(
         if (!gesture) moveTo(area.stop);
       }
       if (workOrders.length < 3) workOrders.push({ index, next, commit });
+    },
+    showIrrigation(targets: readonly number[]): void {
+      if (motion.matches) return;
+      const now = performance.now();
+      for (const [offset, index] of targets.entries()) {
+        const { center, foot } = plots[index];
+        const began = now + offset * 42;
+        impactByBed.set(index, began);
+        bursts.push({ ...foot, from: { x: center.x - 18, y: center.y - 16 }, kind: 'water', began });
+      }
+    },
+    showUpgrade(building: BuildingId): void {
+      const branch = state?.[`${building}Specialization`];
+      const bounds = branch ? specializationStages[branch].mask
+        : buildingUpgrades.find((asset) => asset.building === building)!.mask;
+      celebrate(bounds);
+    },
+    showHatch(): void {
+      if (motion.matches || !state) return;
+      const hen = hens[state.flockSize - 1];
+      hen.excited = performance.now() + 950;
+      hen.lift.speed = 245;
+      celebrate(specializationStages.hatchery.mask);
+    },
+    showProject(id: ProjectId): void {
+      celebrate(projectStages[id].mask);
     },
     toggleFieldView(): boolean {
       fieldView = !fieldView;
@@ -938,8 +1777,11 @@ export function createIsland(
       observer.disconnect();
       abort.abort();
       world.dispose();
+      supportShadows.clear();
       hint.remove();
       unavailable.remove();
+      crossingVeil.getAnimations().forEach((animation) => animation.cancel());
+      crossingVeil.remove();
     },
   };
 }

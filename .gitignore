@@ -1,0 +1,3 @@
+# Local browser traces, experiments and generated build output.
+.playwright-cli/
+output/

@@ -6,6 +6,7 @@ const asset = (name: string) => `${import.meta.env.BASE_URL}art/${name}.webp`;
 
 // Bounds place masked plate pixels back at their original world coordinates.
 export const occluders: Record<IslandId, readonly Occluder[]> = {
+  village: [],
   home: [
     { url: asset('home-occluder-farmhouse'), x: 213.2325, y: 122.65, w: 247.53, h: 266.06, footY: 385.3633 },
     { url: asset('home-occluder-well'), x: 575.3288, y: 206.3167, w: 107.04, h: 152.2733, footY: 356.08 },
@@ -26,4 +27,5 @@ export const occluders: Record<IslandId, readonly Occluder[]> = {
     { url: asset('grove-occluder-center-rocks'), x: 612.2314, y: 623.2313, w: 126.4371, h: 60.2643, footY: 680.9492 },
     { url: asset('grove-occluder-east-rocks'), x: 1094.22, y: 509.493, w: 155.2886, h: 75.5426, footY: 584.1868 },
   ],
+  cape: [],
 };

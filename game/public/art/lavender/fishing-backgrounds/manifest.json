@@ -1,0 +1,22 @@
+{
+  "items": {
+    "portrait": {
+      "url": "portrait.webp",
+      "width": 724,
+      "height": 2172,
+      "viewportAspect": 0.667
+    },
+    "landscape": {
+      "url": "landscape.webp",
+      "width": 1086,
+      "height": 1448,
+      "viewportAspect": 1.5
+    },
+    "ultrawide": {
+      "url": "ultrawide.webp",
+      "width": 1254,
+      "height": 1254,
+      "viewportAspect": 2
+    }
+  }
+}

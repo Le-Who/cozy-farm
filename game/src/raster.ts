@@ -2,7 +2,7 @@ import type { IslandWorld, SpriteOptions } from './world';
 
 type Box = { x: number; y: number; w: number; h: number };
 type Sheet = {
-  image: HTMLCanvasElement;
+  image: HTMLImageElement;
   cells: Box[];
   frames: Box[];
   maxWidth: number;
@@ -27,7 +27,7 @@ function measureFrame(pixels: ImageData, cell: Box): Box {
   return { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
 }
 
-function readSheet(image: HTMLImageElement, cols: number, rows: number, palette: string): Sheet {
+function readSheet(image: HTMLImageElement, cols: number, rows: number): Sheet {
   const scratch = document.createElement('canvas');
   const w = scratch.width = image.naturalWidth;
   const h = scratch.height = image.naturalHeight;
@@ -44,14 +44,8 @@ function readSheet(image: HTMLImageElement, cols: number, rows: number, palette:
     };
   });
   const frames = cells.map((cell) => measureFrame(pixels, cell));
-  const graded = document.createElement('canvas');
-  graded.width = w;
-  graded.height = h;
-  const grade = graded.getContext('2d')!;
-  grade.filter = palette;
-  grade.drawImage(image, 0, 0);
   return {
-    image: graded, frames, cells,
+    image, frames, cells,
     maxWidth: Math.max(1, ...frames.map((box) => box.w)),
     maxHeight: Math.max(1, ...frames.map((box) => box.h)),
   };
@@ -62,11 +56,10 @@ export function createRasterLibrary(onLoad: (key: string) => void, signal: Abort
   const sheets = new Map<string, Sheet>();
 
   return {
-    load(key: string, path: string, grid?: readonly [number, number],
-      palette = 'saturate(0.87) contrast(0.93) brightness(0.98)'): void {
+    load(key: string, path: string, grid?: readonly [number, number]): void {
       const image = new Image();
       image.addEventListener('load', () => {
-        if (grid) sheets.set(key, readSheet(image, ...grid, palette));
+        if (grid) sheets.set(key, readSheet(image, ...grid));
         images.set(key, image);
         onLoad(key);
       }, { signal, once: true });
@@ -85,11 +78,9 @@ export function createRasterLibrary(onLoad: (key: string) => void, signal: Abort
       const cell = sheet?.cells[index];
       if (!sheet || !frame?.w || !frame.h || !cell) return false;
       const src = options.fullCell ? cell : frame;
-      const width = options.fullCell ? w
-        : options.fixedRoot ? h * frame.w / sheet.maxHeight : w * frame.w / sheet.maxWidth;
+      const width = options.fullCell ? w : w * frame.w / sheet.maxWidth;
       const height = options.fullCell ? h : h * frame.h / sheet.maxHeight;
-      const xOrigin = options.fixedRoot ? (cell.x + cell.w / 2 - src.x) / src.w : 0.5;
-      world.sprite(sheet.image, src, x, y, width, height, options, xOrigin);
+      world.sprite(sheet.image, src, x, y, width, height, options);
       return true;
     },
   };

@@ -10,6 +10,7 @@ import {
   collectEggs,
   cookDish,
   createFarm,
+  deliverMarketOrder,
   endDay,
   feedChickens,
   gatherSeaSalt,
@@ -19,9 +20,13 @@ import {
   getDayPhase,
   getFishAction,
   getGoal,
+  getIrrigationRow,
+  getMarketOrders,
   getSale,
   getTreeAction,
   getWaterCapacity,
+  irrigateRow,
+  packEggBasket,
   petChicken,
   pickFruit,
   plantTree,
@@ -30,10 +35,27 @@ import {
   sail,
   selectSeed,
   sellProduce,
+  sellMarketItem,
   upgradeCan,
   upgradeBuilding,
   workBed,
 } from '../src/farm.ts';
+
+test('discovery introductions persist per save and migrate established farms', () => {
+  const fresh = createFarm();
+  assert.deepEqual(fresh.orientation, { collections: false, islands: false });
+  fresh.orientation.collections = true;
+  assert.deepEqual(restoreFarm(JSON.parse(JSON.stringify(fresh)))?.orientation, fresh.orientation);
+  const legacy = JSON.parse(JSON.stringify(fresh));
+  delete legacy.orientation;
+  assert.deepEqual(restoreFarm(legacy)?.orientation, { collections: false, islands: false });
+  legacy.boatOwned = true;
+  assert.deepEqual(restoreFarm(legacy)?.orientation, { collections: true, islands: true });
+  legacy.orientation = { collections: 'true', islands: false };
+  assert.equal(restoreFarm(legacy), undefined);
+  legacy.orientation = null;
+  assert.equal(restoreFarm(legacy), undefined);
+});
 
 test('a starter bed can be tilled, planted, watered, harvested and reused', () => {
   const farm = createFarm();
@@ -326,4 +348,163 @@ test('older farm saves gain the expansion without losing farming progress', () =
   assert.equal(endDay(restored).ok, true);
   assert.equal(getBedStage(restored.beds[0]), 'ripe');
   assert.equal(restoreFarm({ ...restored, island: 'grove', boatOwned: false }), undefined);
+});
+
+test('market deliveries keep unfinished orders across nights and pay exactly once', () => {
+  const farm = createFarm();
+  const order = () => getMarketOrders(farm).find(({ lane }) => lane === 'garden')!;
+  assert.equal(order().name, 'Garden basket');
+  assert.equal(deliverMarketOrder(farm, 'garden').ok, false);
+  endDay(farm);
+  assert.equal(order().name, 'Garden basket');
+
+  workBed(farm, 2);
+  workBed(farm, 3);
+  assert.equal(sellMarketItem(farm, 'produce:tomato').ok, true);
+  assert.equal(farm.produce.tomato, 2);
+  assert.equal(farm.produce.cabbage, 2);
+  assert.equal(order().status, 'ready');
+
+  const coins = farm.coins;
+  const reward = order().reward;
+  assert.equal(deliverMarketOrder(farm, 'garden').ok, true);
+  assert.equal(farm.coins, coins + reward);
+  assert.equal(farm.produce.tomato, 1);
+  assert.equal(farm.produce.cabbage, 0);
+  assert.equal(order().status, 'delivered');
+  const saved = restoreFarm(JSON.parse(JSON.stringify(farm)))!;
+  const beforeRepeat = structuredClone(saved);
+  assert.equal(deliverMarketOrder(saved, 'garden').ok, false);
+  assert.deepEqual(saved, beforeRepeat);
+  endDay(saved);
+  assert.equal(getMarketOrders(saved).find(({ lane }) => lane === 'garden')?.name, 'Root box');
+});
+
+test('Grove orders use island goods and unlock the final meal after the kitchen upgrade', () => {
+  const farm = createFarm();
+  farm.coins = 200;
+  const grove = () => getMarketOrders(farm).find(({ lane }) => lane === 'grove');
+  assert.equal(grove(), undefined);
+  assert.equal(deliverMarketOrder(farm, 'grove').ok, false);
+  assert.equal(buyBoat(farm).ok, true);
+  assert.equal(sail(farm, 'grove').ok, true);
+  catchFish(farm, true);
+  gatherSeaSalt(farm);
+  const before = structuredClone(farm);
+  assert.equal(deliverMarketOrder(farm, 'grove').ok, false);
+  assert.equal(sellMarketItem(farm, 'fish:seaBass').ok, false);
+  assert.deepEqual(farm, before);
+  sail(farm, 'home');
+  assert.equal(deliverMarketOrder(farm, 'grove').ok, true);
+  assert.equal(farm.fish.seaBass, 0);
+  assert.equal(farm.seaSalt, 1);
+  endDay(farm);
+  farm.fruit.pear = 2;
+  farm.produce.beetroot = 2;
+  assert.equal(deliverMarketOrder(farm, 'grove').ok, true);
+  endDay(farm);
+  assert.equal(grove()?.status, 'upgrade');
+  assert.equal(deliverMarketOrder(farm, 'grove').ok, false);
+  assert.equal(upgradeBuilding(farm, 'farmhouse').ok, true);
+  assert.equal(grove()?.status, 'waiting');
+  farm.produce.carrot = 1;
+  farm.fish.seaBass = 1;
+  farm.seaSalt = 2;
+  assert.equal(cookDish(farm, 'grilledFish').ok, true);
+  assert.equal(grove()?.status, 'ready');
+  assert.equal(deliverMarketOrder(farm, 'grove').ok, true);
+  assert.equal(farm.dishes.grilledFish, 0);
+  assert.equal(farm.seaSalt, 0);
+});
+
+test('old saves get an empty market ledger and invalid order dates are rejected', () => {
+  const { orders, ...previousSave } = createFarm();
+  const restored = restoreFarm(previousSave)!;
+  assert.deepEqual(restored.orders, orders);
+  const before = structuredClone(restored);
+  assert.equal(sellMarketItem(restored, 'produce:unknown').ok, false);
+  assert.equal(sellMarketItem(restored, 'produce:carrot').ok, false);
+  assert.deepEqual(restored, before);
+  restored.orders.garden = { completed: 1, deliveredOn: 2 };
+  assert.equal(restoreFarm(restored), undefined);
+});
+
+test('the orchard kitchen unlocks jam and its own market orders', () => {
+  const farm = createFarm();
+  const kitchen = () => getMarketOrders(farm).find(({ lane }) => lane === 'kitchen');
+  farm.coins = 80;
+  pickFruit(farm, 0);
+  workBed(farm, 4);
+  assert.equal(kitchen(), undefined);
+  assert.equal(cookDish(farm, 'appleJam').ok, false);
+  assert.equal(upgradeBuilding(farm, 'farmhouse').ok, true);
+  assert.equal(kitchen()?.name, 'Jam & grain');
+  assert.equal(cookDish(farm, 'appleJam').ok, true);
+  assert.equal(farm.fruit.apple, 0);
+  assert.equal(kitchen()?.status, 'ready');
+  assert.equal(deliverMarketOrder(farm, 'kitchen').ok, true);
+  assert.equal(farm.dishes.appleJam, 0);
+  assert.equal(farm.produce.wheat, 1);
+  assert.equal(kitchen()?.status, 'delivered');
+});
+
+test('the packing coop turns collected eggs into a product without taking unrelated stock', () => {
+  const farm = createFarm();
+  farm.coins = 80;
+  assert.equal(packEggBasket(farm).ok, false);
+  assert.equal(upgradeBuilding(farm, 'coop').ok, true);
+  const emptyNest = structuredClone(farm);
+  assert.equal(packEggBasket(farm).ok, false);
+  assert.deepEqual(farm, emptyNest);
+  feedChickens(farm);
+  endDay(farm);
+  collectEggs(farm);
+  workBed(farm, 9);
+  assert.equal(farm.eggs, 5);
+  assert.equal(packEggBasket(farm).ok, true);
+  assert.equal(farm.eggs, 2);
+  assert.equal(farm.eggBaskets, 1);
+  assert.equal(deliverMarketOrder(farm, 'coop').ok, true);
+  assert.equal(farm.eggBaskets, 0);
+  assert.equal(farm.eggs, 2);
+});
+
+test('row watering spends one unit per dry crop and is atomic when water is short', () => {
+  const farm = createFarm();
+  farm.coins = 80;
+  assert.equal(irrigateRow(farm, 2).ok, false);
+  upgradeBuilding(farm, 'well');
+  assert.equal(getMarketOrders(farm).some(({ lane }) => lane === 'irrigation'), true);
+  farm.water = 1;
+  assert.deepEqual(getIrrigationRow(farm, 2), { targets: [10, 11], available: false });
+  const before = structuredClone(farm);
+  assert.equal(irrigateRow(farm, 2).ok, false);
+  assert.equal(irrigateRow(farm, 4).ok, false);
+  assert.deepEqual(farm, before);
+  refillWater(farm);
+  assert.equal(irrigateRow(farm, 2, 1234).ok, true);
+  assert.equal(farm.water, 6);
+  assert.equal(farm.beds[8].kind, 'empty');
+  assert.equal(farm.beds[9].kind === 'crop' && farm.beds[9].watered, false);
+  assert.equal(farm.beds[10].kind === 'crop' && farm.beds[10].wateredAt, 1234);
+  assert.equal(farm.beds[11].kind === 'crop' && farm.beds[11].wateredAt, 1234);
+  assert.equal(irrigateRow(farm, 2).ok, false);
+  assert.equal(farm.water, 6);
+});
+
+test('earlier market saves retain their delivered orders and building upgrades', () => {
+  const { eggBaskets, ...current } = createFarm();
+  const earlier = {
+    ...current,
+    buildingLevels: { ...current.buildingLevels, coop: 2 },
+    orders: { garden: { completed: 1, deliveredOn: 1 }, pantry: current.orders.pantry, grove: current.orders.grove },
+    dishes: { orchardTart: 1, grilledFish: 0 },
+  };
+  const restored = restoreFarm(earlier)!;
+  assert.equal(restored.buildingLevels.coop, 2);
+  assert.equal(restored.eggBaskets, 0);
+  assert.equal(restored.dishes.appleJam, 0);
+  assert.equal(restored.dishes.orchardTart, 1);
+  assert.equal(getMarketOrders(restored).find(({ lane }) => lane === 'garden')?.status, 'delivered');
+  assert.equal(getMarketOrders(restored).find(({ lane }) => lane === 'coop')?.name, 'Morning hamper');
 });
