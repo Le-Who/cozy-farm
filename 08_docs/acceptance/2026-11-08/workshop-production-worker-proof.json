@@ -1,0 +1,16 @@
+{
+  "page": "http://127.0.0.1:5264/art/lavender/workshop-authored/manifest.json",
+  "workerUrl": "/assets/workshop-cut-worker-CccrLeeP.js",
+  "compiledWorkerResponded": true,
+  "requestId": 5264,
+  "pieces": 2,
+  "volumes": [
+    3.9999999999999996,
+    3.9999999999999996
+  ],
+  "totalVolume": 7.999999999999999,
+  "sourceBuffersRetained": true,
+  "transferredPacketDetached": true,
+  "farmStorageUnchanged": true,
+  "durationMs": 24.899999999906868
+}

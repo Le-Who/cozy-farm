@@ -1,0 +1,2430 @@
+{
+  "fixture": "Isolated actual workshop component for raster geometry QA; no farm state loaded or changed",
+  "cases": 24,
+  "results": [
+    {
+      "viewport": [
+        1440,
+        1000
+      ],
+      "dpr": 1.0000000149011612,
+      "layout": "desktop",
+      "sprites": [
+        {
+          "asset": "room-desktop.webp",
+          "intrinsic": [
+            1536,
+            1024
+          ],
+          "scaleX": 0.9244791666666666,
+          "scaleY": 0.9244791666666666,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.5583556747095622,
+          "scaleY": 0.5583556747095622,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.48630136986301364,
+          "scaleY": 0.48630136986301364,
+          "rotation": -0.12
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.7702079871138604,
+          "scaleY": 0.7702079871138604,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.3704347826086957,
+          "scaleY": 0.37043478260869567,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.39271062271062274,
+          "scaleY": 0.3927106227106227,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.2629629629629629,
+          "scaleY": 0.2629629629629629,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          248.5,
+          104.125
+        ],
+        "frame": {
+          "x": 1176.942021040483,
+          "y": 845.6875,
+          "width": 220.6909090909091,
+          "height": 104.125
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1.0000000149011612,
+      "layout": "portrait",
+      "sprites": [
+        {
+          "asset": "room-portrait.webp",
+          "intrinsic": [
+            1000,
+            1573
+          ],
+          "scaleX": 0.36999364272091545,
+          "scaleY": 0.36999364272091545,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.2664563270623877,
+          "scaleY": 0.2664563270623877,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.13515749505786864,
+          "scaleY": 0.13515749505786864,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.36596031531263634,
+          "scaleY": 0.3659603153126364,
+          "rotation": 2.0943951023931953
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.14042402644844978,
+          "scaleY": 0.14042402644844978,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.18149161842941747,
+          "scaleY": 0.18149161842941747,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.0892116788321168,
+          "scaleY": 0.0892116788321168,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 1.1102230246251565e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          112.8375015258789,
+          44
+        ],
+        "frame": {
+          "x": 266.4026976449149,
+          "y": 660.7250366210938,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "dpr": 1.0000000149011612,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.29685807150595883,
+          "scaleY": 0.29685807150595883,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.17969065786760158,
+          "scaleY": 0.1796906578676016,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.10009132420091324,
+          "scaleY": 0.10009132420091324,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.18465890464836054,
+          "scaleY": 0.18465890464836057,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.1510207357859532,
+          "scaleY": 0.15102073578595318,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.14730684699915467,
+          "scaleY": 0.1473068469991547,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.06461538461538462,
+          "scaleY": 0.06461538461538462,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          98.63750457763672,
+          44
+        ],
+        "frame": {
+          "x": 452.72768696376255,
+          "y": 227.8249969482422,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        520,
+        480
+      ],
+      "dpr": 1.0000000149011612,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.27085590465872156,
+          "scaleY": 0.27085590465872156,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.1639513301711693,
+          "scaleY": 0.16395133017116933,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.091324200913242,
+          "scaleY": 0.09132420091324202,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.16848440205142384,
+          "scaleY": 0.16848440205142387,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.13779264214046824,
+          "scaleY": 0.13779264214046824,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.13440405748098055,
+          "scaleY": 0.13440405748098055,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.05895564289724873,
+          "scaleY": 0.058955642897248736,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          90,
+          44
+        ],
+        "frame": {
+          "x": 411.5,
+          "y": 300.79337624942553,
+          "width": 90,
+          "height": 42.463235294117645
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1.0000000149011612,
+      "layout": "portrait",
+      "sprites": [
+        {
+          "asset": "room-portrait.webp",
+          "intrinsic": [
+            1000,
+            1573
+          ],
+          "scaleX": 0.34,
+          "scaleY": 0.34,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.2448559670781893,
+          "scaleY": 0.24485596707818932,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.12420091324200912,
+          "scaleY": 0.12420091324200914,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.3362936354561928,
+          "scaleY": 0.33629363545619284,
+          "rotation": 2.0943951023931953
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.1290405117270789,
+          "scaleY": 0.1290405117270789,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.16677894736842105,
+          "scaleY": 0.16677894736842108,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.08197970802919709,
+          "scaleY": 0.08197970802919709,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          103.70000457763672,
+          44
+        ],
+        "frame": {
+          "x": 241.65893086024693,
+          "y": 537.6749877929688,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        260,
+        240
+      ],
+      "dpr": 1.0000000149011612,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.13001083423618634,
+          "scaleY": 0.13001083423618634,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.07869663848216127,
+          "scaleY": 0.07869663848216127,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.04383561643835616,
+          "scaleY": 0.04383561643835616,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.08087251298468344,
+          "scaleY": 0.08087251298468344,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.06614046822742474,
+          "scaleY": 0.06614046822742474,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.06451394759087066,
+          "scaleY": 0.06451394759087066,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.02829870859067939,
+          "scaleY": 0.02829870859067939,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 0,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          90,
+          44
+        ],
+        "frame": {
+          "x": 160,
+          "y": 132.255885404699,
+          "width": 90,
+          "height": 42.463235294117645
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        1440,
+        1000
+      ],
+      "dpr": 1.25,
+      "layout": "desktop",
+      "sprites": [
+        {
+          "asset": "room-desktop.webp",
+          "intrinsic": [
+            1536,
+            1024
+          ],
+          "scaleX": 0.9244791666666666,
+          "scaleY": 0.9244791666666666,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.5583556747095622,
+          "scaleY": 0.5583556747095622,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.48630136986301364,
+          "scaleY": 0.48630136986301364,
+          "rotation": -0.12
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.7702079871138604,
+          "scaleY": 0.7702079871138604,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.3704347826086957,
+          "scaleY": 0.37043478260869567,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.39271062271062274,
+          "scaleY": 0.3927106227106227,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.2629629629629629,
+          "scaleY": 0.2629629629629629,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          248.5,
+          104.125
+        ],
+        "frame": {
+          "x": 1176.942021040483,
+          "y": 845.6875,
+          "width": 220.6909090909091,
+          "height": 104.125
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1.25,
+      "layout": "portrait",
+      "sprites": [
+        {
+          "asset": "room-portrait.webp",
+          "intrinsic": [
+            1000,
+            1573
+          ],
+          "scaleX": 0.36999364272091545,
+          "scaleY": 0.36999364272091545,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.2664563270623877,
+          "scaleY": 0.2664563270623877,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.13515749505786864,
+          "scaleY": 0.13515749505786864,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.36596031531263634,
+          "scaleY": 0.3659603153126364,
+          "rotation": 2.0943951023931953
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.14042402644844978,
+          "scaleY": 0.14042402644844978,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.18149161842941747,
+          "scaleY": 0.18149161842941747,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.0892116788321168,
+          "scaleY": 0.0892116788321168,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 1.1102230246251565e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          112.8375015258789,
+          44
+        ],
+        "frame": {
+          "x": 266.4026976449149,
+          "y": 660.7250366210938,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "dpr": 1.25,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.29685807150595883,
+          "scaleY": 0.29685807150595883,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.17969065786760158,
+          "scaleY": 0.1796906578676016,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.10009132420091324,
+          "scaleY": 0.10009132420091324,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.18465890464836054,
+          "scaleY": 0.18465890464836057,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.1510207357859532,
+          "scaleY": 0.15102073578595318,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.14730684699915467,
+          "scaleY": 0.1473068469991547,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.06461538461538462,
+          "scaleY": 0.06461538461538462,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          98.63750457763672,
+          44
+        ],
+        "frame": {
+          "x": 452.72768696376255,
+          "y": 227.8249969482422,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        520,
+        480
+      ],
+      "dpr": 1.25,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.27085590465872156,
+          "scaleY": 0.27085590465872156,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.1639513301711693,
+          "scaleY": 0.16395133017116933,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.091324200913242,
+          "scaleY": 0.09132420091324202,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.16848440205142384,
+          "scaleY": 0.16848440205142387,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.13779264214046824,
+          "scaleY": 0.13779264214046824,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.13440405748098055,
+          "scaleY": 0.13440405748098055,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.05895564289724873,
+          "scaleY": 0.058955642897248736,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          90,
+          44
+        ],
+        "frame": {
+          "x": 411.5,
+          "y": 300.79337624942553,
+          "width": 90,
+          "height": 42.463235294117645
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1.25,
+      "layout": "portrait",
+      "sprites": [
+        {
+          "asset": "room-portrait.webp",
+          "intrinsic": [
+            1000,
+            1573
+          ],
+          "scaleX": 0.34,
+          "scaleY": 0.34,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.2448559670781893,
+          "scaleY": 0.24485596707818932,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.12420091324200912,
+          "scaleY": 0.12420091324200914,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.3362936354561928,
+          "scaleY": 0.33629363545619284,
+          "rotation": 2.0943951023931953
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.1290405117270789,
+          "scaleY": 0.1290405117270789,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.16677894736842105,
+          "scaleY": 0.16677894736842108,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.08197970802919709,
+          "scaleY": 0.08197970802919709,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          103.70000457763672,
+          44
+        ],
+        "frame": {
+          "x": 241.65893086024693,
+          "y": 537.6749877929688,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        260,
+        240
+      ],
+      "dpr": 1.25,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.13001083423618634,
+          "scaleY": 0.13001083423618634,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.07869663848216127,
+          "scaleY": 0.07869663848216127,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.04383561643835616,
+          "scaleY": 0.04383561643835616,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.08087251298468344,
+          "scaleY": 0.08087251298468344,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.06614046822742474,
+          "scaleY": 0.06614046822742474,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.06451394759087066,
+          "scaleY": 0.06451394759087066,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.02829870859067939,
+          "scaleY": 0.02829870859067939,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 0,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          90,
+          44
+        ],
+        "frame": {
+          "x": 160,
+          "y": 132.255885404699,
+          "width": 90,
+          "height": 42.463235294117645
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        1440,
+        1000
+      ],
+      "dpr": 1.5000000596046448,
+      "layout": "desktop",
+      "sprites": [
+        {
+          "asset": "room-desktop.webp",
+          "intrinsic": [
+            1536,
+            1024
+          ],
+          "scaleX": 0.9244791666666666,
+          "scaleY": 0.9244791666666666,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.5583556747095622,
+          "scaleY": 0.5583556747095622,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.48630136986301364,
+          "scaleY": 0.48630136986301364,
+          "rotation": -0.12
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.7702079871138604,
+          "scaleY": 0.7702079871138604,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.3704347826086957,
+          "scaleY": 0.37043478260869567,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.39271062271062274,
+          "scaleY": 0.3927106227106227,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.2629629629629629,
+          "scaleY": 0.2629629629629629,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          248.5,
+          104.125
+        ],
+        "frame": {
+          "x": 1176.942021040483,
+          "y": 845.6875,
+          "width": 220.6909090909091,
+          "height": 104.125
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 1.5000000596046448,
+      "layout": "portrait",
+      "sprites": [
+        {
+          "asset": "room-portrait.webp",
+          "intrinsic": [
+            1000,
+            1573
+          ],
+          "scaleX": 0.36999364272091545,
+          "scaleY": 0.36999364272091545,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.2664563270623877,
+          "scaleY": 0.2664563270623877,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.13515749505786864,
+          "scaleY": 0.13515749505786864,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.36596031531263634,
+          "scaleY": 0.3659603153126364,
+          "rotation": 2.0943951023931953
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.14042402644844978,
+          "scaleY": 0.14042402644844978,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.18149161842941747,
+          "scaleY": 0.18149161842941747,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.0892116788321168,
+          "scaleY": 0.0892116788321168,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 1.1102230246251565e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          112.8375015258789,
+          44
+        ],
+        "frame": {
+          "x": 266.4026976449149,
+          "y": 660.7250366210938,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "dpr": 1.5000000596046448,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.29685807150595883,
+          "scaleY": 0.29685807150595883,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.17969065786760158,
+          "scaleY": 0.1796906578676016,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.10009132420091324,
+          "scaleY": 0.10009132420091324,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.18465890464836054,
+          "scaleY": 0.18465890464836057,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.1510207357859532,
+          "scaleY": 0.15102073578595318,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.14730684699915467,
+          "scaleY": 0.1473068469991547,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.06461538461538462,
+          "scaleY": 0.06461538461538462,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          98.63750457763672,
+          44
+        ],
+        "frame": {
+          "x": 452.72768696376255,
+          "y": 227.8249969482422,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        520,
+        480
+      ],
+      "dpr": 1.5000000596046448,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.27085590465872156,
+          "scaleY": 0.27085590465872156,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.1639513301711693,
+          "scaleY": 0.16395133017116933,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.091324200913242,
+          "scaleY": 0.09132420091324202,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.16848440205142384,
+          "scaleY": 0.16848440205142387,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.13779264214046824,
+          "scaleY": 0.13779264214046824,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.13440405748098055,
+          "scaleY": 0.13440405748098055,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.05895564289724873,
+          "scaleY": 0.058955642897248736,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          90,
+          44
+        ],
+        "frame": {
+          "x": 411.5,
+          "y": 300.79337624942553,
+          "width": 90,
+          "height": 42.463235294117645
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 1.5000000596046448,
+      "layout": "portrait",
+      "sprites": [
+        {
+          "asset": "room-portrait.webp",
+          "intrinsic": [
+            1000,
+            1573
+          ],
+          "scaleX": 0.34,
+          "scaleY": 0.34,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.2448559670781893,
+          "scaleY": 0.24485596707818932,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.12420091324200912,
+          "scaleY": 0.12420091324200914,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.3362936354561928,
+          "scaleY": 0.33629363545619284,
+          "rotation": 2.0943951023931953
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.1290405117270789,
+          "scaleY": 0.1290405117270789,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.16677894736842105,
+          "scaleY": 0.16677894736842108,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.08197970802919709,
+          "scaleY": 0.08197970802919709,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          103.70000457763672,
+          44
+        ],
+        "frame": {
+          "x": 241.65893086024693,
+          "y": 537.6749877929688,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        260,
+        240
+      ],
+      "dpr": 1.5000000596046448,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.13001083423618634,
+          "scaleY": 0.13001083423618634,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.07869663848216127,
+          "scaleY": 0.07869663848216127,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.04383561643835616,
+          "scaleY": 0.04383561643835616,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.08087251298468344,
+          "scaleY": 0.08087251298468344,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.06614046822742474,
+          "scaleY": 0.06614046822742474,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.06451394759087066,
+          "scaleY": 0.06451394759087066,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.02829870859067939,
+          "scaleY": 0.02829870859067939,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 0,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          90,
+          44
+        ],
+        "frame": {
+          "x": 160,
+          "y": 132.255885404699,
+          "width": 90,
+          "height": 42.463235294117645
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        1440,
+        1000
+      ],
+      "dpr": 2.0000000298023224,
+      "layout": "desktop",
+      "sprites": [
+        {
+          "asset": "room-desktop.webp",
+          "intrinsic": [
+            1536,
+            1024
+          ],
+          "scaleX": 0.9244791666666666,
+          "scaleY": 0.9244791666666666,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.5583556747095622,
+          "scaleY": 0.5583556747095622,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.48630136986301364,
+          "scaleY": 0.48630136986301364,
+          "rotation": -0.12
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.7702079871138604,
+          "scaleY": 0.7702079871138604,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.3704347826086957,
+          "scaleY": 0.37043478260869567,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.39271062271062274,
+          "scaleY": 0.3927106227106227,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.2629629629629629,
+          "scaleY": 0.2629629629629629,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          248.5,
+          104.125
+        ],
+        "frame": {
+          "x": 1176.942021040483,
+          "y": 845.6875,
+          "width": 220.6909090909091,
+          "height": 104.125
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 2.0000000298023224,
+      "layout": "portrait",
+      "sprites": [
+        {
+          "asset": "room-portrait.webp",
+          "intrinsic": [
+            1000,
+            1573
+          ],
+          "scaleX": 0.36999364272091545,
+          "scaleY": 0.36999364272091545,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.2664563270623877,
+          "scaleY": 0.2664563270623877,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.13515749505786864,
+          "scaleY": 0.13515749505786864,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.36596031531263634,
+          "scaleY": 0.3659603153126364,
+          "rotation": 2.0943951023931953
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.14042402644844978,
+          "scaleY": 0.14042402644844978,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.18149161842941747,
+          "scaleY": 0.18149161842941747,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.0892116788321168,
+          "scaleY": 0.0892116788321168,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 1.1102230246251565e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          112.8375015258789,
+          44
+        ],
+        "frame": {
+          "x": 266.4026976449149,
+          "y": 660.7250366210938,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        568,
+        320
+      ],
+      "dpr": 2.0000000298023224,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.29685807150595883,
+          "scaleY": 0.29685807150595883,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.17969065786760158,
+          "scaleY": 0.1796906578676016,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.10009132420091324,
+          "scaleY": 0.10009132420091324,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.18465890464836054,
+          "scaleY": 0.18465890464836057,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.1510207357859532,
+          "scaleY": 0.15102073578595318,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.14730684699915467,
+          "scaleY": 0.1473068469991547,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.06461538461538462,
+          "scaleY": 0.06461538461538462,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          98.63750457763672,
+          44
+        ],
+        "frame": {
+          "x": 452.72768696376255,
+          "y": 227.8249969482422,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        520,
+        480
+      ],
+      "dpr": 2.0000000298023224,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.27085590465872156,
+          "scaleY": 0.27085590465872156,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.1639513301711693,
+          "scaleY": 0.16395133017116933,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.091324200913242,
+          "scaleY": 0.09132420091324202,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.16848440205142384,
+          "scaleY": 0.16848440205142387,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.13779264214046824,
+          "scaleY": 0.13779264214046824,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.13440405748098055,
+          "scaleY": 0.13440405748098055,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.05895564289724873,
+          "scaleY": 0.058955642897248736,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          90,
+          44
+        ],
+        "frame": {
+          "x": 411.5,
+          "y": 300.79337624942553,
+          "width": 90,
+          "height": 42.463235294117645
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        360,
+        640
+      ],
+      "dpr": 2.0000000298023224,
+      "layout": "portrait",
+      "sprites": [
+        {
+          "asset": "room-portrait.webp",
+          "intrinsic": [
+            1000,
+            1573
+          ],
+          "scaleX": 0.34,
+          "scaleY": 0.34,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.2448559670781893,
+          "scaleY": 0.24485596707818932,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.12420091324200912,
+          "scaleY": 0.12420091324200914,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.3362936354561928,
+          "scaleY": 0.33629363545619284,
+          "rotation": 2.0943951023931953
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.1290405117270789,
+          "scaleY": 0.1290405117270789,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.16677894736842105,
+          "scaleY": 0.16677894736842108,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.08197970802919709,
+          "scaleY": 0.08197970802919709,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 2.220446049250313e-16,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          103.70000457763672,
+          44
+        ],
+        "frame": {
+          "x": 241.65893086024693,
+          "y": 537.6749877929688,
+          "width": 93.25714285714285,
+          "height": 44
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    },
+    {
+      "viewport": [
+        260,
+        240
+      ],
+      "dpr": 2.0000000298023224,
+      "layout": "landscape",
+      "sprites": [
+        {
+          "asset": "room-landscape.webp",
+          "intrinsic": [
+            1846,
+            852
+          ],
+          "scaleX": 0.13001083423618634,
+          "scaleY": 0.13001083423618634,
+          "rotation": 0
+        },
+        {
+          "asset": "bowl.webp",
+          "intrinsic": [
+            486,
+            373
+          ],
+          "scaleX": 0.07869663848216127,
+          "scaleY": 0.07869663848216127,
+          "rotation": 0
+        },
+        {
+          "asset": "spoon.webp",
+          "intrinsic": [
+            438,
+            378
+          ],
+          "scaleX": 0.04383561643835616,
+          "scaleY": 0.04383561643835616,
+          "rotation": 0
+        },
+        {
+          "asset": "rolling-pin.webp",
+          "intrinsic": [
+            509,
+            310
+          ],
+          "scaleX": 0.08087251298468344,
+          "scaleY": 0.08087251298468344,
+          "rotation": 0.5969026041820606
+        },
+        {
+          "asset": "curved-knife.webp",
+          "intrinsic": [
+            469,
+            345
+          ],
+          "scaleX": 0.06614046822742474,
+          "scaleY": 0.06614046822742474,
+          "rotation": 0
+        },
+        {
+          "asset": "scraper.webp",
+          "intrinsic": [
+            475,
+            364
+          ],
+          "scaleX": 0.06451394759087066,
+          "scaleY": 0.06451394759087066,
+          "rotation": 0
+        },
+        {
+          "asset": "hand-medallion.webp",
+          "intrinsic": [
+            405,
+            411
+          ],
+          "scaleX": 0.02829870859067939,
+          "scaleY": 0.02829870859067939,
+          "rotation": 0
+        }
+      ],
+      "maxSpriteScaleDrift": 0,
+      "bake": {
+        "backgroundSize": "contain",
+        "intrinsic": [
+          816,
+          385
+        ],
+        "button": [
+          90,
+          44
+        ],
+        "frame": {
+          "x": 160,
+          "y": 132.255885404699,
+          "width": 90,
+          "height": 42.463235294117645
+        },
+        "labelWithinFrame": true,
+        "textWithinFrame": true,
+        "textWithinLabel": true
+      }
+    }
+  ]
+}

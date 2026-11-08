@@ -1,0 +1,12 @@
+{
+  "measurement": "Actual visible Three.js plane edge lengths after model/world/projection transforms, divided by each loaded texture's intrinsic width and height. Native tart preparation reached ready before measuring the visible Finish control.",
+  "reproduce": "Run cookery-aspect-data-qa.js through playwright-cli run-code against the isolated cookery preview. The script returns the complete per-sprite measurements.",
+  "tolerance": { "rasterStretchRatioAbsoluteError": 1e-8, "buttonLayoutRatioAbsoluteError": 0.001 },
+  "observations": [
+    { "viewport": [390, 844], "room": { "intrinsic": [1024, 1536], "projected": [546.6666666666666, 820], "stretchRatio": 1 }, "tartProjected": [347.79999999999995, 347.79999999999995], "finish": { "intrinsic": [816, 385], "box": [135, 63.6875], "layoutRatio": 1.000115453443399, "backgroundSize": "contain" } },
+    { "viewport": [568, 320], "room": { "intrinsic": [1536, 1024], "projected": [548, 365.3333333333333], "stretchRatio": 1 }, "tartProjected": [219.00000000000003, 219.00000000000006], "finish": { "intrinsic": [816, 385], "box": [141, 66.515625], "layoutRatio": 1.00015199878401, "backgroundSize": "contain" } },
+    { "viewport": [520, 480], "room": { "intrinsic": [1536, 1024], "projected": [690, 460], "stretchRatio": 1 }, "tartProjected": [235, 235.00000000000003], "finish": { "intrinsic": [816, 385], "box": [141, 66.515625], "layoutRatio": 1.00015199878401, "backgroundSize": "contain" } },
+    { "family": "preserves", "viewport": [520, 480], "potProjected": [235, 235.00000000000003], "jarProjected": [90.00000000000003, 89.99999999999999], "spoonProjected": [104.99999999999999, 105], "dishProjected": [124.99999999999999, 124.99999999999999], "applePiece": { "intrinsic": [477, 433], "projected": [37.500000000000014, 34.04088050314467], "stretchRatio": 1 } }
+  ],
+  "result": "Every visible room, prop, fruit and pot foreground in all captures preserved intrinsic raster aspect within tolerance. Finish backgrounds use contain, which also removes the tiny CSS box rounding difference from their painted image. Room clipping is intentional cover cropping."
+}

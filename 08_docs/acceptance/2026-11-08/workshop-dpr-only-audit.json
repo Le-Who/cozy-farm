@@ -1,0 +1,103 @@
+{
+  "fixture": "Isolated actual workshop; native CDP touch held throughout same-CSS DPR changes; no farm loaded",
+  "viewport": [
+    390,
+    844
+  ],
+  "samples": [
+    {
+      "dpr": 1.0000000149011612,
+      "css": [
+        10.199999809265137,
+        131,
+        370,
+        582
+      ],
+      "cssClient": [
+        370,
+        582
+      ],
+      "buffer": [
+        370,
+        582
+      ],
+      "mass": "1.93471",
+      "pieces": "2",
+      "touching": "true",
+      "sameCanvas": true,
+      "meshes": [
+        {
+          "mesh": "18404608-dcfa-44be-a83f-58b274ac2da5",
+          "geometry": "dab0af5d-5528-491c-afe3-411820d27320"
+        },
+        {
+          "mesh": "4460875b-41e8-48d5-a05d-419bdaa6cbea",
+          "geometry": "c1067dd0-75eb-4980-bfa6-45515f2e8919"
+        }
+      ]
+    },
+    {
+      "dpr": 1.25,
+      "css": [
+        10.199999809265137,
+        131,
+        370,
+        582
+      ],
+      "cssClient": [
+        370,
+        582
+      ],
+      "buffer": [
+        462,
+        727
+      ],
+      "mass": "1.93471",
+      "pieces": "2",
+      "touching": "true",
+      "sameCanvas": true,
+      "meshes": [
+        {
+          "mesh": "18404608-dcfa-44be-a83f-58b274ac2da5",
+          "geometry": "dab0af5d-5528-491c-afe3-411820d27320"
+        },
+        {
+          "mesh": "4460875b-41e8-48d5-a05d-419bdaa6cbea",
+          "geometry": "c1067dd0-75eb-4980-bfa6-45515f2e8919"
+        }
+      ]
+    },
+    {
+      "dpr": 2.0000000298023224,
+      "css": [
+        10.199999809265137,
+        131,
+        370,
+        582
+      ],
+      "cssClient": [
+        370,
+        582
+      ],
+      "buffer": [
+        740,
+        1164
+      ],
+      "mass": "1.93471",
+      "pieces": "2",
+      "touching": "true",
+      "sameCanvas": true,
+      "meshes": [
+        {
+          "mesh": "18404608-dcfa-44be-a83f-58b274ac2da5",
+          "geometry": "dab0af5d-5528-491c-afe3-411820d27320"
+        },
+        {
+          "mesh": "4460875b-41e8-48d5-a05d-419bdaa6cbea",
+          "geometry": "c1067dd0-75eb-4980-bfa6-45515f2e8919"
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

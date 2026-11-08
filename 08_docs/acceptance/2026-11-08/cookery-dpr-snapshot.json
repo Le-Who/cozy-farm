@@ -1,0 +1,9 @@
+{
+  "verification": "Native pointer placed one fruit before DPR changes. CDP changed only deviceScaleFactor while retaining the 568x320 CSS viewport. Room aspect was measured from actual Three.js projected plane edges; sugar pixelRatio was read from the active Points material.",
+  "samples": [
+    { "dpr": 1, "css": [548, 300], "buffer": [548, 300], "progress": "20", "resizeEvents": 0, "roomAspect": 1.5, "sugarPixelRatio": 1 },
+    { "dpr": 1.25, "css": [548, 300], "buffer": [685, 375], "progress": "20", "resizeEvents": 0, "roomAspect": 1.5, "sugarPixelRatio": 1.25 },
+    { "dpr": 2, "css": [548, 300], "buffer": [1096, 600], "progress": "20", "resizeEvents": 0, "roomAspect": 1.5, "sugarPixelRatio": 2 }
+  ],
+  "result": "Passed: DPR-only changes updated the drawing buffer and sugar granules, preserved the room aspect, and retained real preparation progress."
+}

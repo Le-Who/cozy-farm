@@ -1,0 +1,191 @@
+{
+  "bowl": {
+    "mode": "RGBA",
+    "size": [
+      486,
+      373
+    ],
+    "zeroAlphaPixels": 58860,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 67599,
+    "visibleBBox": [
+      12,
+      12,
+      474,
+      361
+    ]
+  },
+  "spoon": {
+    "mode": "RGBA",
+    "size": [
+      438,
+      378
+    ],
+    "zeroAlphaPixels": 113044,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 119601,
+    "visibleBBox": [
+      12,
+      12,
+      426,
+      366
+    ]
+  },
+  "rollingPin": {
+    "mode": "RGBA",
+    "size": [
+      509,
+      310
+    ],
+    "zeroAlphaPixels": 90696,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 99964,
+    "visibleBBox": [
+      12,
+      12,
+      497,
+      298
+    ]
+  },
+  "curvedKnife": {
+    "mode": "RGBA",
+    "size": [
+      469,
+      345
+    ],
+    "zeroAlphaPixels": 59092,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 65731,
+    "visibleBBox": [
+      12,
+      12,
+      457,
+      333
+    ]
+  },
+  "scraper": {
+    "mode": "RGBA",
+    "size": [
+      475,
+      364
+    ],
+    "zeroAlphaPixels": 41597,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 47056,
+    "visibleBBox": [
+      12,
+      12,
+      463,
+      352
+    ]
+  },
+  "handMedallion": {
+    "mode": "RGBA",
+    "size": [
+      405,
+      411
+    ],
+    "zeroAlphaPixels": 46510,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 51108,
+    "visibleBBox": [
+      12,
+      12,
+      393,
+      399
+    ]
+  },
+  "bakeFrame": {
+    "mode": "RGBA",
+    "size": [
+      816,
+      385
+    ],
+    "zeroAlphaPixels": 66723,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 73910,
+    "visibleBBox": [
+      12,
+      12,
+      804,
+      373
+    ]
+  },
+  "closeMedallion": {
+    "mode": "RGBA",
+    "size": [
+      502,
+      513
+    ],
+    "zeroAlphaPixels": 68260,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 74492,
+    "visibleBBox": [
+      12,
+      12,
+      490,
+      501
+    ]
+  },
+  "mitt": {
+    "mode": "RGBA",
+    "size": [
+      591,
+      675
+    ],
+    "zeroAlphaPixels": 122800,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "alphaBelow16": 137137,
+    "visibleBBox": [
+      12,
+      12,
+      579,
+      663
+    ]
+  }
+}

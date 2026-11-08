@@ -1,0 +1,63 @@
+{
+  "fixture": "Existing progressed save for technical workshop QA; this is not a fresh-progression run",
+  "driver": "Native Chromium CDP Input.dispatchTouchEvent touchStart/touchMove/touchEnd; mobile viewport emulation on desktop hardware",
+  "sourceStatus": "Frozen after board-margin separation fix; final targeted tests 20/20 and tsc --noEmit pass",
+  "orientations": [
+    {
+      "viewport": "390x844",
+      "heldPress": true,
+      "latchedLongDragOutsideInitialContour": true,
+      "persistentRelease": true,
+      "directPin": true,
+      "cutEngine": "worker",
+      "cutPieces": 2,
+      "mass": 1.93471,
+      "cutDriverObservedRoundTripMs": 488.4,
+      "framesRenderedWhileCutPending": 33,
+      "maximumPendingFrameIntervalMs": 7.1,
+      "contextLossRestoreCycles": 2,
+      "glErrorsAfterRestore": [0, 0],
+      "retainedPiecesAndMass": true,
+      "physicalRangeBakeLabelFits": true,
+      "bakeLabelTextPixels": [31.2625, 13.6],
+      "bakeLabelBoxPixels": [78.9875, 18.4875],
+      "bakeTransaction": "2 wheat and 1 egg consumed; 1 batch added",
+      "visibleCutSeparation": true,
+      "video": "dough-hands-mobile-video/page@93f35347e4c9638e9b343b29dac29337.webm"
+    },
+    {
+      "viewport": "568x320",
+      "heldPress": true,
+      "latchedLongDragOutsideInitialContour": true,
+      "persistentRelease": true,
+      "directPin": true,
+      "cutEngine": "worker",
+      "cutPieces": 2,
+      "mass": 1.93471,
+      "cutDriverObservedRoundTripMs": 472.6,
+      "framesRenderedWhileCutPending": 34,
+      "maximumPendingFrameIntervalMs": 8.2,
+      "contextLossRestoreCycles": 2,
+      "glErrorsAfterRestore": [0, 0],
+      "retainedPiecesAndMass": true,
+      "physicalRangeBakeLabelFits": true,
+      "bakeLabelTextPixels": [32.225, 13.6],
+      "bakeLabelBoxPixels": [69.0625, 18.4875],
+      "bakeTransaction": "2 wheat and 1 egg consumed; 1 batch added",
+      "visibleCutSeparation": true,
+      "video": "dough-hands-mobile-video/page@c116864fc13bfd68c0b99319346dcfad.webm"
+    }
+  ],
+  "lifecycle": {
+    "pendingAriaBusy": true,
+    "pendingToolsAndBakeDisabled": true,
+    "lossDuringPendingCancelsCut": true,
+    "lateWorkerResultIgnoredAfterRestore": true,
+    "retryCutWorks": true,
+    "closeDuringPendingTerminatesWorker": true,
+    "reopenHasOneFreshWorkerAndIngredientStage": true,
+    "cancelledDraftResourcesUnchanged": true
+  },
+  "pageErrors": [],
+  "measurementLimits": "Cut driver round-trip includes browser input, driver synchronization and result application; it is not a pure geometry CPU benchmark. Pending frame intervals describe this desktop's emulated viewports, not a physical phone benchmark."
+}

@@ -1,0 +1,567 @@
+{
+  "scope": "Fishing raster proportions and cropped depth travel",
+  "source": "game/src/fishing.ts",
+  "method": "Read loaded native image dimensions, actual plane geometry, one scalar XYZ scale, camera view and fractional CSS frame; compare displayed pixels per source pixel on both axes.",
+  "maxAllowedRelativeAspectError": 1e-10,
+  "shallow": {
+    "errors": [],
+    "reports": [
+      {
+        "width": 390,
+        "height": 844,
+        "variant": "portrait",
+        "native": [
+          724,
+          2172
+        ],
+        "plane": [
+          6.572,
+          19.716
+        ],
+        "scale": [
+          19.716,
+          19.716,
+          19.716
+        ],
+        "view": [
+          6.2,
+          13.711538685065682
+        ],
+        "depthPan": [
+          -2.702007591720444,
+          2.702007591720444
+        ],
+        "css": [
+          374.3999938964844,
+          828
+        ],
+        "pixelsPerSourceX": 0.5481546871965103,
+        "pixelsPerSourceY": 0.5481546871965103,
+        "ratioError": 0,
+        "safeAtBothDepthEnds": true,
+        "dpr": 1.0000000149011612
+      },
+      {
+        "width": 568,
+        "height": 320,
+        "variant": "landscape",
+        "native": [
+          1086,
+          1448
+        ],
+        "plane": [
+          13.568000000000001,
+          18.090666666666667
+        ],
+        "scale": [
+          18.090666666666667,
+          18.090666666666667,
+          18.090666666666667
+        ],
+        "view": [
+          12.8,
+          7.049275362318841
+        ],
+        "depthPan": [
+          -4.9686260869565215,
+          4.9686260869565215
+        ],
+        "css": [
+          552,
+          304
+        ],
+        "pixelsPerSourceX": 0.5387845303867403,
+        "pixelsPerSourceY": 0.5387845303867402,
+        "ratioError": 2.220446049250313e-16,
+        "safeAtBothDepthEnds": true,
+        "dpr": 1.0000000149011612
+      },
+      {
+        "width": 520,
+        "height": 480,
+        "variant": "landscape",
+        "native": [
+          1086,
+          1448
+        ],
+        "plane": [
+          13.568000000000001,
+          18.090666666666667
+        ],
+        "scale": [
+          18.090666666666667,
+          18.090666666666667,
+          18.090666666666667
+        ],
+        "view": [
+          12.8,
+          11.784126984126985
+        ],
+        "depthPan": [
+          -2.837942857142857,
+          2.837942857142857
+        ],
+        "css": [
+          504,
+          464
+        ],
+        "pixelsPerSourceX": 0.4919337016574586,
+        "pixelsPerSourceY": 0.4919337016574586,
+        "ratioError": 0,
+        "safeAtBothDepthEnds": true,
+        "dpr": 1.0000000149011612
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "variant": "landscape",
+        "native": [
+          1086,
+          1448
+        ],
+        "plane": [
+          13.568000000000001,
+          18.090666666666667
+        ],
+        "scale": [
+          18.090666666666667,
+          18.090666666666667,
+          18.090666666666667
+        ],
+        "view": [
+          12.8,
+          10.286545454545456
+        ],
+        "depthPan": [
+          -3.511854545454545,
+          3.511854545454545
+        ],
+        "css": [
+          1100,
+          884
+        ],
+        "pixelsPerSourceX": 1.0736648250460408,
+        "pixelsPerSourceY": 1.0736648250460403,
+        "ratioError": 4.440892098500626e-16,
+        "safeAtBothDepthEnds": true,
+        "dpr": 1.0000000149011612
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "variant": "ultrawide",
+        "native": [
+          1254,
+          1254
+        ],
+        "plane": [
+          13.568000000000001,
+          13.568000000000001
+        ],
+        "scale": [
+          13.568000000000001,
+          13.568000000000001,
+          13.568000000000001
+        ],
+        "view": [
+          12.8,
+          5.787825992602658
+        ],
+        "depthPan": [
+          -3.501078303328805,
+          3.501078303328805
+        ],
+        "css": [
+          828,
+          374.3999938964844
+        ],
+        "pixelsPerSourceX": 0.6999043062200957,
+        "pixelsPerSourceY": 0.6999043062200957,
+        "ratioError": 0,
+        "safeAtBothDepthEnds": true,
+        "dpr": 1.0000000149011612
+      }
+    ]
+  },
+  "rotationDpr2": {
+    "reports": [
+      {
+        "width": 390,
+        "height": 844,
+        "variant": "portrait",
+        "native": [
+          724,
+          2172
+        ],
+        "plane": [
+          6.572,
+          19.716
+        ],
+        "scale": [
+          19.716,
+          19.716,
+          19.716
+        ],
+        "view": [
+          6.2,
+          13.711538685065682
+        ],
+        "depthPan": [
+          -2.702007591720444,
+          2.702007591720444
+        ],
+        "dpr": 2.0000000298023224,
+        "buffer": [
+          561,
+          1242
+        ],
+        "css": [
+          374.3999938964844,
+          828
+        ],
+        "ratioError": 0,
+        "clipped": []
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "variant": "ultrawide",
+        "native": [
+          1254,
+          1254
+        ],
+        "plane": [
+          13.568000000000001,
+          13.568000000000001
+        ],
+        "scale": [
+          13.568000000000001,
+          13.568000000000001,
+          13.568000000000001
+        ],
+        "view": [
+          12.8,
+          5.787825992602658
+        ],
+        "depthPan": [
+          -3.501078303328805,
+          3.501078303328805
+        ],
+        "dpr": 2.0000000298023224,
+        "buffer": [
+          1242,
+          561
+        ],
+        "css": [
+          828,
+          374.3999938964844
+        ],
+        "ratioError": 0,
+        "clipped": []
+      },
+      {
+        "width": 520,
+        "height": 480,
+        "variant": "landscape",
+        "native": [
+          1086,
+          1448
+        ],
+        "plane": [
+          13.568000000000001,
+          18.090666666666667
+        ],
+        "scale": [
+          18.090666666666667,
+          18.090666666666667,
+          18.090666666666667
+        ],
+        "view": [
+          12.8,
+          11.784126984126985
+        ],
+        "depthPan": [
+          -2.837942857142857,
+          2.837942857142857
+        ],
+        "dpr": 2.0000000298023224,
+        "buffer": [
+          756,
+          696
+        ],
+        "css": [
+          504,
+          464
+        ],
+        "ratioError": 0,
+        "clipped": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "variant": "portrait",
+        "native": [
+          724,
+          2172
+        ],
+        "plane": [
+          6.572,
+          19.716
+        ],
+        "scale": [
+          19.716,
+          19.716,
+          19.716
+        ],
+        "view": [
+          6.2,
+          13.711538685065682
+        ],
+        "depthPan": [
+          -2.702007591720444,
+          2.702007591720444
+        ],
+        "dpr": 2.0000000298023224,
+        "buffer": [
+          561,
+          1242
+        ],
+        "css": [
+          374.3999938964844,
+          828
+        ],
+        "ratioError": 0,
+        "clipped": []
+      }
+    ]
+  },
+  "deepNativeCast": {
+    "peak": 118,
+    "reports": [
+      {
+        "width": 390,
+        "height": 844,
+        "variant": "portrait",
+        "native": [
+          724,
+          2172
+        ],
+        "plane": [
+          6.572,
+          19.716
+        ],
+        "scale": [
+          19.716,
+          19.716,
+          19.716
+        ],
+        "view": [
+          6.2,
+          13.711538685065682
+        ],
+        "depthPan": [
+          -2.702007591720444,
+          2.702007591720444
+        ],
+        "depth": 119,
+        "phase": "descending"
+      },
+      {
+        "width": 568,
+        "height": 320,
+        "variant": "landscape",
+        "native": [
+          1086,
+          1448
+        ],
+        "plane": [
+          13.568000000000001,
+          18.090666666666667
+        ],
+        "scale": [
+          18.090666666666667,
+          18.090666666666667,
+          18.090666666666667
+        ],
+        "view": [
+          12.8,
+          7.049275362318841
+        ],
+        "depthPan": [
+          -4.9686260869565215,
+          4.9686260869565215
+        ],
+        "depth": 119,
+        "phase": "ascending"
+      },
+      {
+        "width": 520,
+        "height": 480,
+        "variant": "landscape",
+        "native": [
+          1086,
+          1448
+        ],
+        "plane": [
+          13.568000000000001,
+          18.090666666666667
+        ],
+        "scale": [
+          18.090666666666667,
+          18.090666666666667,
+          18.090666666666667
+        ],
+        "view": [
+          12.8,
+          11.784126984126985
+        ],
+        "depthPan": [
+          -2.837942857142857,
+          2.837942857142857
+        ],
+        "depth": 116,
+        "phase": "ascending"
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "variant": "landscape",
+        "native": [
+          1086,
+          1448
+        ],
+        "plane": [
+          13.568000000000001,
+          18.090666666666667
+        ],
+        "scale": [
+          18.090666666666667,
+          18.090666666666667,
+          18.090666666666667
+        ],
+        "view": [
+          12.8,
+          10.286545454545456
+        ],
+        "depthPan": [
+          -3.511854545454545,
+          3.511854545454545
+        ],
+        "depth": 113,
+        "phase": "ascending"
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "variant": "ultrawide",
+        "native": [
+          1254,
+          1254
+        ],
+        "plane": [
+          13.568000000000001,
+          13.568000000000001
+        ],
+        "scale": [
+          13.568000000000001,
+          13.568000000000001,
+          13.568000000000001
+        ],
+        "view": [
+          12.8,
+          5.787825992602658
+        ],
+        "depthPan": [
+          -3.501078303328805,
+          3.501078303328805
+        ],
+        "depth": 108,
+        "phase": "ascending"
+      }
+    ],
+    "result": "An empty hook\n\n120 m reached · Try steering through the front half of a fish\n\nCast again\nReturn to shore",
+    "pending": null
+  },
+  "reducedMotion": {
+    "reports": [
+      {
+        "viewport": [
+          390,
+          844
+        ],
+        "reducedMotion": true,
+        "frame": {
+          "variant": "portrait",
+          "native": [
+            724,
+            2172
+          ],
+          "plane": [
+            6.572,
+            19.716
+          ],
+          "scale": [
+            19.716,
+            19.716,
+            19.716
+          ],
+          "view": [
+            6.2,
+            13.711538685065682
+          ],
+          "depthPan": [
+            -2.702007591720444,
+            2.702007591720444
+          ]
+        }
+      },
+      {
+        "viewport": [
+          568,
+          320
+        ],
+        "reducedMotion": true,
+        "frame": {
+          "variant": "landscape",
+          "native": [
+            1086,
+            1448
+          ],
+          "plane": [
+            13.568000000000001,
+            18.090666666666667
+          ],
+          "scale": [
+            18.090666666666667,
+            18.090666666666667,
+            18.090666666666667
+          ],
+          "view": [
+            12.8,
+            7.049275362318841
+          ],
+          "depthPan": [
+            -4.9686260869565215,
+            4.9686260869565215
+          ]
+        }
+      }
+    ]
+  },
+  "videos": ["fishing-short-wide-proportions.webm", "fishing-background-motion.webm"],
+  "coverage": {
+    "uniformOverscan": 1.06,
+    "verticalDepthTravelFractionOfOverflow": 0.9,
+    "horizontalParallaxLimitWorldUnits": 0.18,
+    "horizontalParallaxFractionOfOverflow": 0.6
+  },
+  "validation": [
+    "npx tsc --noEmit passed",
+    "node --test tests/fishing.test.ts: 19 passed"
+  ],
+  "notes": [
+    "Deep shots come from a real cast reaching 120 m, with captures at 119,119,116,113 and108 m during descent/ascent.",
+    "All three authored backgrounds were visually reviewed at shallow/deep play scale; no exposed texture edge or globally squashed object proportions observed.",
+    "DPR changes update renderer resolution even when CSS bounds remain unchanged."
+  ]
+}

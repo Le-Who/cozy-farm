@@ -1,0 +1,33 @@
+{
+  "session": "fresh-player",
+  "origin": "http://127.0.0.1:5260/",
+  "source": "Read from localStorage after ordinary native UI play; no injected farm state or resources",
+  "day": 12,
+  "coins": 119,
+  "island": "village",
+  "islandsVisited": ["home", "grove", "cape", "village"],
+  "boatOwned": true,
+  "buildingLevels": {"farmhouse": 3, "coop": 2, "well": 2},
+  "farmhouseSpecialization": "preserves",
+  "projects": {
+    "fair": {"dishes:appleJam": 1, "eggBaskets": 1, "produce:carrot": 4, "produce:wheat": 3},
+    "dock": {"dishes:appleJam": 1, "fruit:pear": 2, "seaSalt": 2}
+  },
+  "harborOrders": {"completed": 2, "deliveredOn": 5},
+  "fairGuestsServed": 3,
+  "village": {
+    "built": true,
+    "supplies": {"handmade:round": 2, "fish:seaBass": 2, "honey": 2},
+    "residents": ["finn", null],
+    "meals": 1,
+    "mealOn": 12,
+    "serviceOn": {"bea": 0, "finn": 0},
+    "scouting": false
+  },
+  "workshopPatterns": ["round"],
+  "bayDiscoveries": ["apple", "orchardTart", "pear", "appleJam", "seaBass", "orchardPreserves", "honey", "honeyCake", "moonfish"],
+  "honeyInStock": 2,
+  "pendingFishingTrip": null,
+  "nextTask": "Return Home and rest before the next shared supper",
+  "unverified": ["Second shared supper", "Second cottage invitation", "Resident services", "Cape level 2/3 upgrades and recipes"]
+}
