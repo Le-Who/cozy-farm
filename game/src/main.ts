@@ -42,6 +42,7 @@ import {
   collectCapeHoney,
   cookDish,
   createFarm,
+  moveHen as moveFarmHen,
   cropDefinitions,
   cropIds,
   deliverHarborOrder,
@@ -91,6 +92,7 @@ import {
   islandIds,
   maxChickenHappiness,
   maxFlockSize,
+  needsSeedChoice,
   orderLanes,
   packEggBasket,
   packEggCrate,
@@ -188,10 +190,12 @@ let marketTab: 'buy' | 'sell' | 'orders' | 'projects' = 'buy'
 let bagTab: 'seeds' | 'harvest' = 'harvest'
 let archiveGroup: ArchiveGroup = 'crops'
 let previewSeed: CropId = farm.selectedSeed
+let seedPickerBed: number | undefined
 let contextBed: number | undefined
 let villageSlot = 0
 let pastryShape: WorkshopShape = farm.workshopPatterns[0] ?? 'round'
 let cookingDish: DishId = 'orchardTart'
+let workshopRecipe: 'pastry' | 'bread' = 'pastry'
 const requirementLinks = new Map<string, Requirement>()
 
 function requirementLink(content: string, requirement: Requirement, className: string, name: string, ready = false) {
@@ -562,15 +566,20 @@ function specializationCards() {
           cost: { icon: 'coin', amount: choice.price } } : {})}</footer>`
 }
 
+function flockFeedRow() {
+  return row('tool-feed', 'Hen feed', farm.chickensFed ? 'Fed today' : 'Feed for morning eggs', farm.chickensFed ? ''
+    : farm.feed > 0 ? button('Feed flock', 'feed')
+      : button('Buy feed', 'buy-feed', farm.coins >= feedBagPrice, {cost:{icon:'coin',amount:feedBagPrice}}))
+}
+
 function seedCards() {
   const seed = cropDefinitions[previewSeed]
-  const selected = previewSeed === farm.selectedSeed
   return `<div class="seed-grid">${cropIds.map((crop) =>
-    `<button class="seed-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${previewSeed === crop}" aria-label="${cropDefinitions[crop].name} seeds, ${farm.seeds[crop]} available">
+    `<button class="seed-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${farm.selectedSeed === crop}" aria-label="${cropDefinitions[crop].name} seeds, ${farm.seeds[crop]} available">
       ${icon(`ui-seed-${crop}`)}<strong>${cropDefinitions[crop].name}</strong><span>×${farm.seeds[crop]}</span>
     </button>`).join('')}</div>
     <section class="seed-detail">${icon(previewSeed)}<div><h2>${seed.name} seeds</h2><p>${quantity(seed.days, 'watered night')}</p>
-      ${farm.seeds[previewSeed]===0?button('Buy seeds','buy-seeds',farm.coins>=seed.seedPrice,{crop:previewSeed,cost:{icon:'coin',amount:seed.seedPrice}}):button(selected?'Selected':'Select','select-seed',!selected,{crop:previewSeed,secondary:selected})}</div></section>`
+      ${farm.seeds[previewSeed]===0?button('Buy seeds','buy-seeds',farm.coins>=seed.seedPrice,{crop:previewSeed,cost:{icon:'coin',amount:seed.seedPrice}}):''}</div></section>`
 }
 
 function stockLabel(item: StockItem): { name: string; image: string } {
@@ -847,7 +856,8 @@ function neighboursCard() {
 type PanelVisit = {
   panel: Panel; marketTab: 'buy'|'sell'|'orders'|'projects'; bagTab: 'seeds'|'harvest'; archiveGroup: ArchiveGroup;
   treeSlot: number; previewSeed: CropId; specializationBuilding: BuildingId; previewSpecialization: BuildingBranch | undefined;
-  irrigationMode: 'row'|'pair'; villageSlot: number; pastryShape: WorkshopShape; scroll: number; focus: string | undefined;
+  irrigationMode: 'row'|'pair'; villageSlot: number; pastryShape: WorkshopShape;
+  workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
 }
 const panelHistory: PanelVisit[] = []
 function focusKey(button:HTMLButtonElement){return ['data-action','data-value','data-crop','data-panel','aria-label'].map(name=>button.getAttribute(name)??'').join('\u001f')}
@@ -855,7 +865,7 @@ function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
   return {panel:panel!,marketTab,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
-    irrigationMode,villageSlot,pastryShape,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
+    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,seedPickerBed,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
   const previous=panelHistory.pop()
@@ -863,6 +873,8 @@ function goBack() {
   marketTab=previous.marketTab;bagTab=previous.bagTab;archiveGroup=previous.archiveGroup;treeSlot=previous.treeSlot
   previewSeed=previous.previewSeed;specializationBuilding=previous.specializationBuilding;previewSpecialization=previous.previewSpecialization
   irrigationMode=previous.irrigationMode;villageSlot=previous.villageSlot;pastryShape=previous.pastryShape
+  workshopRecipe=previous.workshopRecipe;cookingDish=previous.cookingDish
+  seedPickerBed=previous.seedPickerBed
   openPanel(previous.panel,false)
   requestAnimationFrame(()=>{
     dialogContent.scrollTop=previous.scroll
@@ -880,7 +892,8 @@ function drawPanel() {
   backButton.hidden=panelHistory.length===0
   backButton.setAttribute('aria-label',panelHistory.length?`Back to ${panelTitles[panelHistory.at(-1)!.panel]}`:'Back')
   dialog.querySelectorAll<HTMLButtonElement>('.dialog-destinations [data-panel]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.panel===panel)))
-  const title = panel === 'specialize' ? `${buildingDefinitions[specializationBuilding].name} Lv. 3` : panelTitles[panel]
+  const title = panel === 'specialize' ? `${buildingDefinitions[specializationBuilding].name} Lv. 3`
+    : panel === 'workshop' && workshopRecipe === 'bread' ? 'Farmhouse bread' : panelTitles[panel]
   dialogTitle.textContent = panelBanners[panel] ?? title
   dialogTitle.setAttribute('aria-label', title)
   dialog.dataset.panel = panel
@@ -958,8 +971,7 @@ function drawPanel() {
       dialogContent.innerHTML = `<div class="coop-tools"><span aria-label="Flock happiness">${icon('tool-hen')} ${farm.chickenHappiness}/${maxChickenHappiness}</span>
         ${button('Upgrades', 'upgrades', true, { secondary: true })}</div>
         <ul class="dialog-list">
-          ${row('tool-feed', 'Feed', farm.chickensFed ? 'Fed today' : quantity(farm.feed, 'serving'),
-            button('Feed flock', 'feed', !farm.chickensFed && farm.feed > 0))}
+          ${flockFeedRow()}
           ${row('egg', 'Eggs', `×${farm.eggsReady}`, button('Collect eggs', 'collect', farm.eggsReady > 0))}
           ${farm.coopSpecialization === 'hatchery' && farm.flockSize < maxFlockSize
             ? row('egg', 'Incubator', farm.hatchDay === null ? `${farm.eggs}/1 egg` : quantity(farm.hatchDay - farm.day, 'night'),
@@ -976,7 +988,7 @@ function drawPanel() {
         </ul>`
       break
     case 'rest':
-      dialogContent.innerHTML = `<p class="dialog-intro">Watered crops grow overnight, and fed chickens lay eggs by morning.</p>
+      dialogContent.innerHTML = `${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
         ${nav(button('Open kitchen', 'kitchen'), button('Building upgrades', 'upgrades', true, { secondary: true }))}
         <ul class="dialog-list">${row('moon', `Day ${farm.day + 1}`, '', button('Rest until morning', 'sleep'))}</ul>`
       break
@@ -1017,14 +1029,15 @@ function drawPanel() {
       break
     }
     case 'workshop': {
-      const action = getWorkshopAction(farm)
+      const bread = workshopRecipe === 'bread'
+      const action = bread ? getCookAction(farm, 'farmhouseBread') : getWorkshopAction(farm)
       if (!action.available) {
         dialogContent.innerHTML = `<ul class="ingredients">${stockTile({ kind: 'produce', item: 'wheat', quantity: 2 })}${stockTile({ kind: 'eggs', quantity: 1 })}</ul><p class="dialog-status">${action.label}</p>`
         break
       }
       dialogContent.innerHTML = '<div class="workshop-host"></div>'
       workshopGame = createWorkshop(dialogContent.querySelector<HTMLElement>('.workshop-host')!, {
-        onBake(shape) { return perform(() => bakeWorkshop(farm, shape), false, true) }, onCancel: leaveScene,
+        onBake(shape) { return perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true) }, onCancel: leaveScene,
       })
       break
     }
@@ -1149,6 +1162,7 @@ function openPanel(next: Panel, remember = true) {
   if ((next === 'cape-upgrade' || next === 'honey-kitchen') && farm.island !== 'cape') return
   if (next === 'honey-kitchen' && farm.capeLevel < 3) return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
+  if (next !== 'seeds') seedPickerBed = undefined
   if (next !== panel) { stopFishing(); stopWorkshop(); stopCookery() }
   if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = farm.selectedSeed
   if (remember && next !== panel && next === 'irrigation') irrigationMode = farm.wellSpecialization === 'pipes' ? 'pair' : 'row'
@@ -1171,6 +1185,7 @@ function openPanel(next: Panel, remember = true) {
 }
 
 function closeDialog() {
+  seedPickerBed = undefined
   stopFishing()
   stopWorkshop()
   stopCookery()
@@ -1257,6 +1272,9 @@ function updateFieldContext(index: number | undefined) {
 }
 
 const island = createIsland(canvas, {
+  moveHen(index, point) {
+    perform(() => moveFarmHen(farm, index, point), false, true)
+  },
   inspect(target) {
     updateFieldContext(target.kind === 'bed' ? target.index : undefined)
     if (target.kind === 'hen') return `Hen ${target.index + 1} · ${farm.pettedChickens.includes(target.index) ? 'Petted today' : 'Pet the hen'}`
@@ -1318,6 +1336,24 @@ fieldLayout.addEventListener('change', ({ matches }) => {
   if ((matches && farm.island === 'home') !== (fieldViewButton.getAttribute('aria-pressed') === 'true')) toggleFieldView()
 })
 
+function requestSeedChoice(index: number) {
+  island.visit({kind:'bed',index})
+  seedPickerBed = index
+  activeTool = 'seeds'
+  openPanel('seeds')
+}
+
+function chooseSeed(crop: CropId) {
+  previewSeed = crop
+  if (farm.seeds[crop] === 0) { drawPanel(); return }
+  const bed = seedPickerBed
+  activeTool = 'seeds'
+  if (perform(() => selectSeed(farm,crop),false,true) && bed !== undefined) {
+    closeDialog()
+    island.focusTarget({kind:'bed',index:bed})
+  }
+}
+
 function activateTarget(target: IslandTarget) {
   if (island.isCrossing()) return
   if ((farm.island === 'cape' || farm.island === 'village') && (target.kind === 'tree' || target.kind === 'pier' || target.kind === 'salt')) return
@@ -1339,11 +1375,13 @@ function activateTarget(target: IslandTarget) {
   }
   if (target.kind === 'bed') {
     const index = target.index
+    if (needsSeedChoice(farm,index)) { requestSeedChoice(index); return }
     island.workBed(index, () => {
       const action = getBedAction(farm, index)
       return farm.island === 'home' && action.available ? action.kind : 'wait'
     }, () => {
       if (farm.island !== 'home') return
+      if (needsSeedChoice(farm,index)) { requestSeedChoice(index); return }
       const action = getBedAction(farm, index)
       if (action.kind !== 'wait' && action.available) activeTool = bedTools[action.kind]
       perform(() => workBed(farm, index))
@@ -1369,7 +1407,7 @@ function activateTarget(target: IslandTarget) {
     case 'hive': openPanel('hive'); break
     case 'honey-kitchen': openPanel('honey-kitchen'); break
     case 'guest': openPanel('guest'); break
-    case 'workshop': openPanel('workshop'); break
+    case 'workshop': workshopRecipe = 'pastry'; openPanel('workshop'); break
     case 'village': openPanel(farm.island === 'home' ? 'village-project' : 'village'); break
     case 'village-meal': openPanel('village-meal'); break
     case 'village-home': villageSlot = target.index; openPanel('village'); break
@@ -1407,7 +1445,11 @@ function activateTarget(target: IslandTarget) {
 }
 
 function useHotbar(tool: Tool) {
-  if (farm.island === 'village' && tool !== 'boat') { openPanel(tool === 'basket' || tool === 'seeds' ? 'workshop' : 'village'); return }
+  if (farm.island === 'village' && tool !== 'boat') {
+    workshopRecipe = 'pastry'
+    openPanel(tool === 'basket' || tool === 'seeds' ? 'workshop' : 'village')
+    return
+  }
   if (farm.island === 'cape') {
     if (tool === 'basket') { activeTool = tool; status(); activateTarget({ kind: 'hive' }); return }
     if (tool !== 'boat') {
@@ -1564,7 +1606,10 @@ app.addEventListener('click', async (event) => {
     case 'open-panel': if(value&&value in panelTitles)openPanel(value as Panel);break
     case 'field-view': toggleFieldView(); break
     case 'work-context': if (contextBed !== undefined) activateTarget({ kind: 'bed', index: contextBed }); break
-    case 'context-seeds': openPanel('seeds'); break
+    case 'context-seeds':
+      if (contextBed !== undefined) requestSeedChoice(contextBed)
+      else openPanel('seeds')
+      break
     case 'market-tab':
       if ((value === 'buy' || value === 'sell' || value === 'orders' || value === 'projects') && value !== marketTab) {
         marketTab = value
@@ -1603,18 +1648,14 @@ app.addEventListener('click', async (event) => {
       }
       break
     case 'preview-seed':
-      if (value && cropIds.includes(value as CropId)) { previewSeed = value as CropId; drawPanel() }
+      if (value && cropIds.includes(value as CropId)) chooseSeed(value as CropId)
       break
     case 'sell': perform(() => sellProduce(farm), false, farm.progress.sell > 0); break
     case 'sell-item': if (value) perform(() => sellMarketItem(farm, value), false, farm.progress.sell > 0); break
     case 'buy-feed': perform(() => buyFeed(farm)); break
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
-    case 'buy-seeds': if (crop) perform(() => buySeeds(farm, crop)); break
-    case 'select-seed':
-      if (crop) {
-        activeTool = 'seeds'
-        perform(() => selectSeed(farm, crop), false, true)
-      }
+    case 'buy-seeds':
+      if (crop && perform(() => buySeeds(farm,crop)) && panel === 'seeds') chooseSeed(crop)
       break
     case 'feed': perform(() => feedChickens(farm), false, farm.progress.feed > 0); break
     case 'collect': perform(() => collectEggs(farm)); break
@@ -1694,7 +1735,7 @@ app.addEventListener('click', async (event) => {
       openPanel('kitchen')
       break
     case 'close': closeDialog(); break
-    case 'workshop': openPanel('workshop'); break
+    case 'workshop': workshopRecipe = 'pastry'; openPanel('workshop'); break
     case 'open-village': openPanel('village'); break
     case 'village-project': openPanel('village-project'); break
     case 'fair-project': marketTab = 'projects'; openPanel('market'); break
@@ -1754,7 +1795,10 @@ app.addEventListener('click', async (event) => {
     }
     case 'cook': {
       const dish = dishIds.find((id) => id === value)
-      if (dish && ['orchardTart', 'appleJam', 'orchardPreserves'].includes(dish) && getCookAction(farm, dish).available) {
+      if (dish === 'farmhouseBread' && getCookAction(farm, dish).available) {
+        workshopRecipe = 'bread'
+        openPanel('workshop')
+      } else if (dish && ['orchardTart', 'appleJam', 'orchardPreserves'].includes(dish) && getCookAction(farm, dish).available) {
         cookingDish = dish
         openPanel('cookery')
       } else if (dish && farm.island === 'cape' && dishDefinitions[dish].capeLevel) {
@@ -1777,6 +1821,7 @@ dialog.addEventListener('close', () => {
     stopWorkshop()
     stopCookery()
     panel = undefined
+    seedPickerBed = undefined
     panelHistory.length=0
   }
 })

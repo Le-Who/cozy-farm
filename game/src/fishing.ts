@@ -223,13 +223,6 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     });
     backgroundCache.set(`loading:${art.id}`, { art, texture: value });
   }
-  const beamGeometry = ownGeometry(new THREE.PlaneGeometry(1, 52));
-  const beamMaterial = new THREE.MeshBasicMaterial({ color: '#f6f6cf', transparent: true, opacity: .07, depthWrite: false });
-  materials.add(beamMaterial);
-  for (let i = 0; i < 5; i++) {
-    const beam = mesh(beamGeometry, beamMaterial, scene, [-8 + i * 4, -15, -6], [1.1 + i * .1, 1, 1]);
-    beam.rotation.z = -.24;
-  }
   const plantTime = { value: 0 };
   const plantMaterial = new THREE.MeshBasicMaterial({ map: texture('fishing-kelp-v1.png'), transparent: true, alphaTest: .02, depthWrite: false, fog: false });
   plantMaterial.onBeforeCompile = shader => {
@@ -267,18 +260,13 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   const fishGeometry = ownGeometry(new THREE.PlaneGeometry(1.6, .8, 24, 10));
   const deepFishGeometry = ownGeometry(new THREE.PlaneGeometry(2, 2, 24, 16));
   const findGeometry = ownGeometry(new THREE.PlaneGeometry(1.18, 1.18));
-  const warningGeometry = ownGeometry(new THREE.TorusGeometry(.84, .025, 5, 40));
-  const warningMaterial = new THREE.MeshBasicMaterial({ color: '#ffe7a2', transparent: true, opacity: .85, depthWrite: false });
-  materials.add(warningMaterial);
   const fishMeshes = model.fish.map((fish) => {
     const group = new THREE.Group(); scene.add(group);
     const loot = fishingCatchLoot(fish, options.fish);
     const isFish = loot.kind === 'fish';
     mesh(isFish ? fish.rare ? deepFishGeometry : fishGeometry : findGeometry, catchMaterial(loot), group, [0, 0, .2], [1, 1, 1]);
-    const warning = mesh(warningGeometry, warningMaterial, group, [0, 0, .15], [1, .7, 1]);
-    warning.visible = false;
     group.scale.set(isFish ? fish.direction * fishingCatchScale(fish) : 1, fishingCatchScale(fish), 1);
-    return { group, warning, isFish };
+    return { group, isFish };
   });
 
   const hook = new THREE.Group(); scene.add(hook);
@@ -292,15 +280,32 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   const barb = mesh(ownGeometry(new THREE.ConeGeometry(.085, .2, 8)), hookMetal, hook, [.4, .13, 0], [1, 1, 1]); barb.rotation.z = -.15;
   mesh(ownGeometry(new THREE.TorusGeometry(.1, .035, 6, 16)), hookMetal, hook, [0, .76, 0], [1, 1, 1]);
   const bait = mesh(sphere, material('#eea693'), hook, [.3, -.03, .05], [.08, .12, .08]); bait.rotation.z = .3;
-  const hookHalo = mesh(ownGeometry(new THREE.TorusGeometry(.5, .016, 5, 32)), material('#fff4c7', { transparent: true, opacity: .65, depthWrite: false }), hook, [.4, .1, -.06], [1, 1, 1]);
   const lineGeometry = ownGeometry(new THREE.BufferGeometry());
   const linePositions = new Float32Array(20 * 3);
   lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
   const lineMaterial = new THREE.LineBasicMaterial({ color: '#fff3d0', transparent: true, opacity: .9 }); materials.add(lineMaterial);
   scene.add(new THREE.Line(lineGeometry, lineMaterial));
   const surface = new THREE.Group(); scene.add(surface);
-  const foamMaterial = material('#eff5da', { transparent: true, opacity: .7 });
-  for (let i = 0; i < 14; i++) mesh(sphere, foamMaterial, surface, [-6 + i * .9, .9 + Math.sin(i) * .08, -1], [.64, .045, .2]);
+  const rippleMaterial = new THREE.ShaderMaterial({
+    uniforms: { time: waterTime },
+    vertexShader: `varying vec2 rippleUv; void main(){rippleUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader: `uniform float time; varying vec2 rippleUv;
+      float ripple(float radius,float phase){
+        float ring=1.-smoothstep(.018,.065,abs(radius-(.28+phase*.58)));
+        return ring*(1.-phase)*.16;
+      }
+      void main(){
+        vec2 p=(rippleUv-.5)*2.; float angle=atan(p.y,p.x);
+        float radius=length(p)+sin(angle*5.+time*.7)*.018;
+        float alpha=(ripple(radius,fract(time*.28))+ripple(radius,fract(time*.28+.5)));
+        alpha*=1.-smoothstep(.88,1.,radius);
+        gl_FragColor=vec4(vec3(.85,.95,.88),alpha);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    transparent: true, depthWrite: false,
+  }); materials.add(rippleMaterial);
+  const surfaceRipple = mesh(ownGeometry(new THREE.PlaneGeometry(1.35, .22)), rippleMaterial, surface, [0, .86, .65], [1, 1, 1]);
   // The little float marks the connection back to the island at the surface.
   const float = new THREE.Group(); surface.add(float);
   mesh(sphere, pearl, float, [0, .95, .7], [.16, .27, .16]);
@@ -317,6 +322,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   let halfWidth = 5.3;
   let halfHeight = 5.3;
   let calloutUntil = 0;
+  let caughtAt = -Infinity;
   const abort = new AbortController();
   const signal = abort.signal;
 
@@ -415,7 +421,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
         showCallout('↓ Steer around fish');
         announce('Steer around fish. Space reels in early.');
       } else if (model.phase === 'ascending') {
-        action.textContent = 'Reeling in…'; action.disabled = true; directionLabel.textContent = '↑';
+        controls.hidden = true; action.disabled = true; directionLabel.textContent = '↑';
         showCallout('↑ Aim for the front half');
         announce('Coming up. Guide the hook through the front half of fish to catch them.');
       } else if (model.phase === 'done') {
@@ -432,6 +438,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     }
     if (lastCount !== model.caught.length) {
       lastCount = model.caught.length;
+      caughtAt = model.time;
       Array.from(slots.children).forEach((slot, i) => {
         slot.classList.toggle('filled',i<lastCount);
         const found=model.fish.find(fish=>fish.id===model.caught[i]);
@@ -443,7 +450,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       const loot = latest && fishingCatchLoot(latest, options.fish);
       const name = loot ? lootName(loot) : 'Caught!';
       slots.setAttribute('aria-label', `${lastCount} of ${model.capacity} hook spaces filled`);
-      showCallout(lastCount === model.capacity ? `${name} · Hook full — reeling up!` : name);
+      showCallout(name);
       announce(`${name}. ${lastCount} of ${model.capacity} hook spaces filled.`);
     }
     const warning = model.fish.find(fish => fish.dart?.phase === 'warning');
@@ -471,9 +478,9 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     (scene.background as THREE.Color).copy(nearColor).lerp(deepColor, model.depth / fishingDepth);
     hook.position.set(model.x - .4, -model.depth, 1.1);
     hook.rotation.z = reducedMotion.matches ? 0 : (model.targetX - model.x) * -.12 + Math.sin(model.time * 2) * .025;
-    hookHalo.visible = model.phase === 'ascending' && model.caught.length < model.capacity;
-    hookHalo.scale.setScalar(1 + Math.sin(model.time * 4) * .06);
-    hookMetal.color.set(model.flash > 0 ? '#de8990' : '#d1a268');
+    const catchAge = model.time - caughtAt;
+    const catchSpring = reducedMotion.matches || model.phase === 'done' || catchAge < 0 || catchAge > .4 ? 0 : Math.sin(catchAge * 24) * Math.exp(-catchAge * 9) * .12;
+    hookMetal.color.set(model.flash > 0 ? '#de8990' : model.phase !== 'done' && catchAge < .28 ? '#efd18b' : '#d1a268');
     for (let i = 0; i < 20; i++) {
       const t = i / 19;
       const anchorX = (model.x - .4) * .12;
@@ -484,6 +491,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     lineGeometry.attributes.position.needsUpdate = true;
     lineGeometry.computeBoundingSphere();
     float.position.x = (model.x - .4) * .12;
+    surfaceRipple.position.x = float.position.x;
     if (!reducedMotion.matches) float.position.y = Math.sin(model.time * 2) * .045;
     fishTime.value = reducedMotion.matches ? 0 : model.time;
     waterTime.value = plantTime.value = reducedMotion.matches ? 0 : model.time;
@@ -496,14 +504,13 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     backdrop.quaternion.copy(camera.quaternion);
     backdrop.position.copy(camera.position).addScaledVector(backgroundForward, 31)
       .addScaledVector(backgroundUp, backgroundPanY).addScaledVector(backgroundRight, backgroundPanX);
-    fishMeshes.forEach(({ group, warning, isFish }, i) => {
+    fishMeshes.forEach(({ group, isFish }, i) => {
       const fish = model.fish[i];
       const caughtIndex = model.caught.indexOf(fish.id);
       const bodyScale = fishingCatchScale(fish);
-      warning.visible = caughtIndex < 0 && fish.dart?.phase === 'warning';
-      warning.scale.setScalar(reducedMotion.matches ? 1 : 1 + Math.sin(model.time * 9) * .09);
       if (caughtIndex >= 0) {
-        const angle = isFish ? fish.direction * (.95 + Math.sin(model.time * 3 + i) * (reducedMotion.matches ? 0 : .05)) : -.12;
+        const angle = isFish ? fish.direction * (.95 + Math.sin(model.time * 3 + i) * (reducedMotion.matches ? 0 : .05)
+          + (caughtIndex === model.caught.length - 1 ? catchSpring : 0)) : -.12;
         const mouth = fishingCatchMouth(fish);
         const headX = mouth.x * .66, headY = -mouth.depth * .66;
         const clusterX = (caughtIndex - (model.caught.length - 1) / 2) * .28;
@@ -512,6 +519,9 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
         group.scale.set((isFish ? fish.direction : 1) * .66 * bodyScale, .66 * bodyScale, .66);
         group.rotation.z = angle;
       } else {
+        const anticipation = reducedMotion.matches || fish.dart?.phase !== 'warning' ? 0
+          : Math.sin(Math.PI * (1 - fish.dart.remaining / .8)) * .04;
+        group.scale.set((isFish ? fish.direction : 1) * bodyScale * (1 - anticipation * .5), bodyScale * (1 + anticipation), 1);
         group.position.set(fishPosition(fish, model.time), -fish.depth + (reducedMotion.matches || !isFish ? 0 : Math.sin(model.time * 2 + i) * .035), .25);
         group.rotation.z = 0;
       }

@@ -69,7 +69,9 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   let pointerId: number | null = null, drag: Drag | null = null, keyboard = false
   let cursor: CookeryPoint = { x: 0, y: 0 }, selectedFruit = -1, lastDust: CookeryPoint | null = null
   let surface: Ellipse = { cx: 0, cy: 0, rx: 1, ry: 1 }
-  let jarFill = 0, pour = 0
+  let jarFill = 0, pour = 0, flowPhase = 0, flowVelocity = 0, flowTarget = 0, fruitTurn = 0, fruitTurnTarget = 0
+  let lastStirAt = 0, lastStirPoint: CookeryPoint | null = null
+  const brush = new THREE.Vector2(), brushTarget = new THREE.Vector2()
   const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(0, 1, 0, 1, .1, 200)
   camera.position.z = 100
   const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>()
@@ -79,7 +81,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   let liquid: THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial> | null = null
   let sugar: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial> | null = null
   let jarLiquid: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial> | null = null
-  let spoonful: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial> | null = null
+  let spoonful: THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial> | null = null
   let pourStream: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial> | null = null
   let renderer: THREE.WebGLRenderer
   const announce = (text: string) => { live.textContent = text }
@@ -135,6 +137,11 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     const h = size * art.asset.height / art.asset.width
     setRect(art, { x: x - size / 2, y: y - h / 2, width: size, height: h }, rotation)
   }
+  function artPoint(art: Art, u: number, v: number): CookeryPoint {
+    const dx = (u - .5) * art.rect.width, dy = (v - .5) * art.rect.height, angle = art.mesh.rotation.z
+    return { x: art.rect.x + art.rect.width / 2 + Math.cos(angle) * dx - Math.sin(angle) * dy,
+      y: art.rect.y + art.rect.height / 2 + Math.sin(angle) * dx + Math.cos(angle) * dy }
+  }
   function resize() {
     const bounds = cookeryViewport(Math.min(window.innerWidth, window.visualViewport?.width ?? Infinity), Math.min(window.innerHeight, window.visualViewport?.height ?? Infinity))
     root.style.width = `${bounds.width}px`; root.style.height = `${bounds.height}px`
@@ -181,8 +188,8 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     shaker.mesh.visible = model.kind === 'decorate'
     for (const art of artwork.values()) if (art.shadow) art.shadow.visible = art.mesh.visible
     if (liquid) { liquid.position.set(surface.cx, surface.cy, 4); liquid.scale.set(surface.rx, -surface.ry, 1) }
-    if (jarLiquid) { const r = jar.rect; jarLiquid.position.set(r.x + r.width * .5, r.y + r.height * .63, 8.5); jarLiquid.scale.set(r.width * .56, -r.height * .43, 1); jarLiquid.visible = model.kind === 'preserves' }
-    if (pourStream) { const r = jar.rect; pourStream.position.set(r.x + r.width * .5, r.y + r.height * .31, 21); pourStream.scale.set(r.width * .12, -r.height * .42, 1) }
+    if (jarLiquid) { const r = jar.rect; jarLiquid.position.set(r.x + r.width * .5, r.y + r.height * .5, 8.5); jarLiquid.scale.set(r.width, -r.height, 1); jarLiquid.visible = model.kind === 'preserves' }
+    if (pourStream) { const r = jar.rect; pourStream.position.set(r.x + r.width * .5, r.y + r.height * .31, 21); pourStream.scale.set(r.width * .12, -r.height * .30, 1) }
     positionFruit()
     sourceCue.style.left = `${dish.rect.x + dish.rect.width * .5}px`; sourceCue.style.top = `${dish.rect.y + dish.rect.height * .5}px`
     updateToolCue(); updateCursor()
@@ -201,11 +208,12 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
       if (fruit) {
         let x = fruit.x, y = fruit.y
         if (model.kind === 'preserves') {
-          const angle = Math.atan2(y, x) + model.stirred * .6, radius = Math.hypot(x, y) * (1 - stirred * .22)
+          const angle = Math.atan2(y, x) + fruitTurn, radius = Math.hypot(x, y) * (1 - stirred * .12)
           x = Math.cos(angle) * radius; y = Math.sin(angle) * radius
         }
-        locate(art, surface.cx + x * surface.rx, surface.cy + y * surface.ry, surface.rx * (model.kind === 'preserves' ? .47 * (1 - stirred * .58) : .65), fruit.angle + (model.kind === 'preserves' ? model.stirred * .35 : 0))
-        art.mesh.material.opacity = model.kind === 'preserves' ? 1 - stirred * .58 : 1
+        locate(art, surface.cx + x * surface.rx, surface.cy + y * surface.ry, surface.rx * (model.kind === 'preserves' ? .47 * (1 - stirred * .38) : .65), fruit.angle + (model.kind === 'preserves' ? fruitTurn * .55 : 0))
+        art.mesh.material.opacity = model.kind === 'preserves' ? 1 - stirred * .18 : 1
+        if (model.kind === 'preserves') art.mesh.material.color.setRGB(1, 1 - stirred * .035, 1 - stirred * .09)
         art.mesh.position.z = model.kind === 'preserves' ? 5 : 5 + id * .01; art.mesh.renderOrder = art.mesh.position.z
       } else {
         const position = sourcePoint(id)
@@ -227,7 +235,13 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     } else {
       const art = artwork.get(drag.kind)!
       const size = drag.kind === 'spoon' ? Math.min(surface.rx * 1.05, height * .36) : Math.min(surface.rx * .65, height * .25)
-      locate(art, point.x + (drag.kind === 'spoon' ? size * .24 : size * .15), point.y - size * .28, size, drag.kind === 'spoon' ? -.55 : -.4 + Math.sin(elapsed * 20) * (reduced.matches ? 0 : .06))
+      if (drag.kind === 'spoon') {
+        const jar = artwork.get('jar')!, pouring = !drag.loaded && pour > 0 && contains(jar, point, 5)
+        const tip = pouring ? artPoint(jar, .5, .13) : point
+        locate(art, tip.x, tip.y, size, -.55)
+        const bowl = artPoint(art, .285, .745)
+        setRect(art, { ...art.rect, x: art.rect.x + tip.x - bowl.x, y: art.rect.y + tip.y - bowl.y }, -.55)
+      } else locate(art, point.x + size * .15, point.y - size * .28, size, -.4 + Math.sin(elapsed * 20) * (reduced.matches ? 0 : .06))
       art.mesh.position.z = 20; art.mesh.renderOrder = 20
     }
     updateCursor()
@@ -275,7 +289,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
 
   function start(point: CookeryPoint) {
     if (!loaded || contextLost || destroyed || ['committing', 'finished', 'cancelled'].includes(model.stage)) return
-    cursor = point; lastDust = null
+    cursor = point; lastDust = null; lastStirPoint = null
     const canFruit = model.stage === 'fruit' || model.kind === 'decorate'
     if (canFruit) {
       const ordered = [...fruitArt].reverse()
@@ -306,9 +320,19 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     moveHeld(point)
     const normalizedPoint = normalized(point)
     if (drag.kind === 'spoon') {
-      if (model.stage === 'stir') { moveCookeryStroke(model, normalizedPoint); positionFruit() }
+      if (model.stage === 'stir') {
+        const now = performance.now(), previous = lastStirPoint
+        if (previous && inCookerySurface(normalizedPoint, 1.05) && Math.hypot(normalizedPoint.x, normalizedPoint.y) > .2) {
+          const angle = Math.atan2(normalizedPoint.y, normalizedPoint.x) - Math.atan2(previous.y, previous.x)
+          const turn = Math.atan2(Math.sin(angle), Math.cos(angle))
+          if (Math.abs(turn) < .65) { flowTarget = THREE.MathUtils.clamp(turn / Math.max(.016, (now - lastStirAt) / 1000), -4, 4); fruitTurnTarget += turn * .38 }
+        }
+        lastStirPoint = inCookerySurface(normalizedPoint, 1.05) ? { ...normalizedPoint } : null
+        lastStirAt = now; brushTarget.set(normalizedPoint.x, -normalizedPoint.y)
+        moveCookeryStroke(model, normalizedPoint)
+      }
       if (model.stage === 'fill') {
-        if (inCookerySurface(normalizedPoint, .85)) drag.loaded = true
+        if (inCookerySurface(normalizedPoint, .85)) { drag.loaded = true; pour = 0 }
         if (drag.loaded && contains(artwork.get('jar')!, point, 0)) {
           fillCookeryJar(model); drag.loaded = false; pour = 1
           announce(model.scoops >= 3 ? 'The jar is full. Your preserves are ready.' : 'A spoonful in the jar')
@@ -329,7 +353,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (drag.kind === 'fruit') {
       if (placeCookeryFruit(model, drag.id, normalized(cursor))) announce(model.kind === 'preserves' ? 'Fruit added to the pot' : 'Fruit arranged on the pastry')
     }
-    drag = null; lastDust = null; endCookeryStroke(model); layoutArt(); sync()
+    drag = null; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync()
   }
   function eventPoint(event: PointerEvent): CookeryPoint { const bounds = view.getBoundingClientRect(); return { x: event.clientX - bounds.left, y: event.clientY - bounds.top } }
   view.addEventListener('pointerdown', event => {
@@ -342,7 +366,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     for (const sample of samples?.length ? samples : [event]) move(eventPoint(sample))
   }, { signal })
   view.addEventListener('pointerup', event => { if (event.pointerId === pointerId) { move(eventPoint(event)); release(); pointerId = null; if (view.hasPointerCapture(event.pointerId)) view.releasePointerCapture(event.pointerId) } }, { signal })
-  const abandon = () => { drag = null; pointerId = null; lastDust = null; endCookeryStroke(model); layoutArt(); sync() }
+  const abandon = () => { drag = null; pointerId = null; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync() }
   view.addEventListener('pointercancel', abandon, { signal }); view.addEventListener('lostpointercapture', () => { if (pointerId !== null) abandon() }, { signal })
   window.addEventListener('blur', abandon, { signal })
   view.addEventListener('keydown', event => {
@@ -384,7 +408,8 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     const response = await fetch(`${artBase}manifest.json`, { signal })
     if (!response.ok) throw new Error('Kitchen art unavailable')
     const manifest = await response.json() as { items: Record<string, Asset> }
-    const names = ['room', 'room-portrait', 'pot', 'tart', 'jar', 'spoon', 'shaker', 'dish', 'apple-slice', 'apple-piece', 'pear-piece']
+    const preserveNames = ['syrup-surface', 'jam-surface', 'jar-full']
+    const names = ['room', 'room-portrait', 'pot', 'tart', 'jar', 'spoon', 'shaker', 'dish', 'apple-slice', 'apple-piece', 'pear-piece', ...(model.kind === 'preserves' ? preserveNames : [])]
     const assets = await Promise.all(names.map(async name => {
       const asset = manifest.items[name]
       if (!asset) throw new Error(`Missing kitchen art: ${name}`)
@@ -392,7 +417,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     }))
     if (destroyed) return
     for (const { name, asset, texture } of assets) {
-      if (name === 'apple-slice' || name === 'apple-piece' || name === 'pear-piece') continue
+      if (name === 'apple-slice' || name === 'apple-piece' || name === 'pear-piece' || preserveNames.includes(name)) continue
       const z = name.startsWith('room') ? -10 : name === 'pot' || name === 'tart' ? 3 : name === 'dish' ? 8 : name === 'jar' ? 8 : 15
       addArt(name, asset, texture, z)
     }
@@ -407,37 +432,46 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
       const texture = await loadTexture(resolveUrl(pot.foregroundUrl)); if (destroyed) return
       addArt('pot-front', pot, texture, 6)
     }
-    const liquidMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      uniforms: { time: { value: 0 }, stirred: { value: 0 }, stirring: { value: 0 } },
-      vertexShader: `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader: `varying vec2 vUv;uniform float time;uniform float stirred;uniform float stirring;
-        void main(){vec2 p=vUv*2.-1.;float r=length(p);if(r>.99)discard;float a=atan(p.y,p.x);float swirl=sin(a*3.+r*23.-time*(.6+stirring*2.));
-        vec3 amber=mix(vec3(.78,.245,.012),vec3(.54,.105,.006),stirred*.65);float light=(1.-r)*.026+swirl*.009;
-        float ribbon=pow(max(0.,sin(a*2.+r*17.-time*.55)),28.)*.065;float bubble=pow(max(0.,sin(p.x*75.+time)*sin(p.y*67.-time*.4)),25.)*smoothstep(.5,.96,r)*.11;
-        gl_FragColor=vec4(amber+light*vec3(1.,.5,.05)+vec3(1.,.64,.18)*(ribbon+bubble),smoothstep(.995,.95,r)*.97);
-        #include <colorspace_fragment>
-      }` })
-    materials.add(liquidMaterial)
     const liquidGeometry = new THREE.CircleGeometry(1, 96); geometries.add(liquidGeometry)
-    liquid = new THREE.Mesh(liquidGeometry, liquidMaterial); liquid.renderOrder = 4; liquid.visible = model.kind === 'preserves'; scene.add(liquid)
-    const spoonfulMaterial = new THREE.MeshBasicMaterial({ color: '#f5a02d', transparent: true, opacity: .94, depthWrite: false, side: THREE.DoubleSide })
-    materials.add(spoonfulMaterial); spoonful = new THREE.Mesh(liquidGeometry, spoonfulMaterial); spoonful.renderOrder = 21; spoonful.visible = false; scene.add(spoonful)
-    const streamMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      uniforms: { amount: { value: 0 } },
-      vertexShader: `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader: `varying vec2 vUv;uniform float amount;void main(){float w=.38+.08*sin(vUv.y*14.+amount*12.);float a=(1.-smoothstep(w-.15,w,abs(vUv.x-.5)))*smoothstep(0.,.12,vUv.y)*amount;gl_FragColor=vec4(1.,.62,.14,a);}` })
-    materials.add(streamMaterial); pourStream = new THREE.Mesh(plane, streamMaterial); pourStream.renderOrder = 21; pourStream.visible = false; scene.add(pourStream)
-    const jarMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      uniforms: { fill: { value: 0 }, time: { value: 0 } },
-      vertexShader: `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader: `varying vec2 vUv;uniform float fill;uniform float time;void main(){float top=fill*.92;float x=abs(vUv.x-.5)*2.;
-      if(vUv.y>top+sin(vUv.x*9.+time*2.)*.008||x>.97||fill<.01)discard;
-      if(vUv.y<.13&&length(vec2((vUv.x-.5)/.5,(vUv.y-.13)/.13))>1.)discard;
-      float edge=smoothstep(.99,.86,x);float gleam=pow(max(0.,1.-abs(vUv.x-.16)*13.),4.)*.22;
-      gl_FragColor=vec4(vec3(.73,.23,.018)+vec3(.16,.09,.02)*(1.-x)+gleam,edge*.84);
-      #include <colorspace_fragment>
-      }` })
-    materials.add(jarMaterial); jarLiquid = new THREE.Mesh(plane, jarMaterial); jarLiquid.renderOrder = 8.5; scene.add(jarLiquid)
+    if (model.kind === 'preserves') {
+      const syrupMap = assets.find(value => value.name === 'syrup-surface')!.texture, jamMap = assets.find(value => value.name === 'jam-surface')!.texture
+      const vertexShader = `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`
+      const skin = `uniform sampler2D syrupMap;uniform sampler2D jamMap;uniform float cooked;varying vec2 vUv;
+        vec4 preserves(vec2 uv){return mix(texture2D(syrupMap,clamp(uv,.025,.975)),texture2D(jamMap,clamp(uv,.025,.975)),smoothstep(.08,.92,cooked));}`
+      const liquidMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 0 }, brush: { value: brush }, flow: { value: 0 }, phase: { value: 0 }, contact: { value: 0 } },
+        vertexShader,
+        fragmentShader: `${skin}uniform vec2 brush;uniform float flow;uniform float phase;uniform float contact;
+          void main(){vec2 p=vUv*2.-1.;float r=length(p);if(r>.995)discard;
+          float interior=1.-smoothstep(.7,.99,r);float nearby=1.-smoothstep(.12,.85,length(p-brush));
+          vec2 tangent=vec2(-p.y,p.x);vec2 drag=tangent*flow*.009*(.25+nearby*.75)*interior;
+          vec2 fold=vec2(sin(p.y*5.1+p.x*2.3+phase),cos(p.x*4.3-p.y*1.7-phase*.63))*min(abs(flow),1.)*.006*interior;
+          vec4 glaze=preserves(vUv-drag+fold);float furrow=exp(-dot((p-brush)*vec2(7.,10.),(p-brush)*vec2(7.,10.)))*contact;
+          glaze.rgb*=1.-r*r*.045-furrow*.045;gl_FragColor=vec4(glaze.rgb,glaze.a*(1.-smoothstep(.965,.995,r)));
+          #include <colorspace_fragment>
+        }` })
+      materials.add(liquidMaterial); liquid = new THREE.Mesh(liquidGeometry, liquidMaterial); liquid.renderOrder = 4; scene.add(liquid)
+      const spoonfulMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 1 } }, vertexShader,
+        fragmentShader: `${skin}void main(){vec2 p=vUv*2.-1.;float r=length(p);if(r>.99)discard;vec4 glaze=preserves(.5+(vUv-.5)*.45);gl_FragColor=vec4(glaze.rgb*(1.-pow(r,3.)*.16),1.-smoothstep(.88,.99,r));
+        #include <colorspace_fragment>
+        }` })
+      materials.add(spoonfulMaterial); spoonful = new THREE.Mesh(liquidGeometry, spoonfulMaterial); spoonful.renderOrder = 21; spoonful.visible = false; scene.add(spoonful)
+      const streamMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        uniforms: { syrupMap: { value: syrupMap }, jamMap: { value: jamMap }, cooked: { value: 1 }, amount: { value: 0 }, phase: { value: 0 } }, vertexShader,
+        fragmentShader: `${skin}uniform float amount;uniform float phase;void main(){float x=abs(vUv.x-.5)*2.;float width=.34+sin(vUv.y*11.+phase*2.)*.055+pow(1.-vUv.y,3.)*.15;
+        float edge=1.-smoothstep(width-.12,width,x);vec4 glaze=preserves(vec2(.46+vUv.x*.09,.48+sin(vUv.y*2.-phase*.75)*.11));
+        gl_FragColor=vec4(glaze.rgb,edge*smoothstep(0.,.12,vUv.y)*min(1.,amount*3.));
+        #include <colorspace_fragment>
+        }` })
+      materials.add(streamMaterial); pourStream = new THREE.Mesh(plane, streamMaterial); pourStream.renderOrder = 21; pourStream.visible = false; scene.add(pourStream)
+      const jarMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        uniforms: { filledJar: { value: assets.find(value => value.name === 'jar-full')!.texture }, fill: { value: 0 } }, vertexShader,
+        fragmentShader: `uniform sampler2D filledJar;uniform float fill;varying vec2 vUv;void main(){if(fill<.005)discard;vec4 jar=texture2D(filledJar,vUv);float level=mix(.14,.78,fill);float reveal=1.-smoothstep(level-.008,level+.008,vUv.y);gl_FragColor=vec4(jar.rgb,jar.a*reveal);
+        #include <colorspace_fragment>
+        }` })
+      materials.add(jarMaterial); jarLiquid = new THREE.Mesh(plane, jarMaterial); jarLiquid.renderOrder = 8.5; scene.add(jarLiquid)
+    }
     const sugarGeometry = new THREE.BufferGeometry()
     sugarGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(2200 * 3), 3)); sugarGeometry.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(2200), 1)); sugarGeometry.setDrawRange(0, 0)
     geometries.add(sugarGeometry)
@@ -465,22 +499,31 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (destroyed || contextLost) return
     if (renderer.getPixelRatio() !== Math.min(window.devicePixelRatio || 1, 2)) resize()
     const dt = Math.min(.04, Math.max(0, (now - lastTime) / 1000)); lastTime = now; elapsed += dt
+    const stirring = drag?.kind === 'spoon' && model.stage === 'stir' && now - lastStirAt < 140
+    const flowGoal = stirring ? flowTarget : 0
+    flowVelocity += (flowGoal - flowVelocity) * (1 - Math.exp(-dt * (stirring ? 5 : 2.7)))
+    flowPhase += flowVelocity * dt * .55
+    fruitTurn += (fruitTurnTarget - fruitTurn) * (reduced.matches ? 1 : 1 - Math.exp(-dt * 5))
+    brush.lerp(brushTarget, 1 - Math.exp(-dt * 8))
     if (liquid) {
-      liquid.material.uniforms.time.value = reduced.matches ? 0 : elapsed
-      liquid.material.uniforms.stirred.value = model.stirred / STIR_REQUIRED
-      liquid.material.uniforms.stirring.value = drag?.kind === 'spoon' && model.stage === 'stir' ? 1 : 0
+      liquid.material.uniforms.cooked.value = model.stirred / STIR_REQUIRED
+      liquid.material.uniforms.flow.value = reduced.matches ? 0 : -flowVelocity
+      liquid.material.uniforms.phase.value = reduced.matches ? 0 : -flowPhase
+      liquid.material.uniforms.contact.value = stirring ? 1 : 0
+      positionFruit()
     }
     if (jarLiquid) {
       jarFill += (model.scoops / 3 - jarFill) * (reduced.matches ? 1 : Math.min(1, dt * 5))
-      jarLiquid.material.uniforms.fill.value = jarFill; jarLiquid.material.uniforms.time.value = reduced.matches ? 0 : elapsed
+      jarLiquid.material.uniforms.fill.value = jarFill
     }
     if (spoonful) {
       spoonful.visible = drag?.kind === 'spoon' && drag.loaded
-      spoonful.position.set(cursor.x, cursor.y - 3, 21); spoonful.scale.set(surface.rx * .11, -surface.ry * .12, 1)
+      const spoon = artwork.get('spoon')!, bowl = artPoint(spoon, .285, .745)
+      spoonful.position.set(bowl.x, bowl.y, 21); spoonful.scale.set(spoon.rect.width * .125, -spoon.rect.height * .085, 1); spoonful.rotation.z = spoon.mesh.rotation.z - .77
     }
-    if (pourStream) { pourStream.visible = pour > 0; pourStream.material.uniforms.amount.value = reduced.matches ? 0 : pour }
+    if (pourStream) { pourStream.visible = pour > 0; pourStream.material.uniforms.amount.value = reduced.matches ? 0 : pour; pourStream.material.uniforms.phase.value = reduced.matches ? 0 : elapsed }
     pour = Math.max(0, pour - dt * 2)
-    if (drag?.kind === 'shaker') moveHeld(cursor)
+    if (drag?.kind === 'shaker' || drag?.kind === 'spoon' && pour > 0) moveHeld(cursor)
     renderer.render(scene, camera); frame = requestAnimationFrame(animate)
   }
   resize(); sync()

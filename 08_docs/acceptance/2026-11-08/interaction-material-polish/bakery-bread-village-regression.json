@@ -1,0 +1,24 @@
+{
+  "sourceEdits": false,
+  "scope": "Synthetic advanced fixture derived from the genuine day-12 save; native Home bread cancel then Village hotbar regular-pastry regression.",
+  "fixture": {
+    "syntheticFixture": true,
+    "island": "home",
+    "villageBuilt": true,
+    "specialization": "bakery",
+    "wheat": 4,
+    "eggs": 2
+  },
+  "cancelledUnchanged": true,
+  "after": {
+    "island": "village",
+    "bread": 0,
+    "round": 1,
+    "patterns": [
+      "round"
+    ],
+    "wheat": 2,
+    "eggs": 1
+  },
+  "regularWorkshopOpened": true
+}

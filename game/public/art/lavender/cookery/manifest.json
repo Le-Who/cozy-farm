@@ -78,6 +78,21 @@
       "url": "room-portrait.webp",
       "width": 1024,
       "height": 1536
+    },
+    "syrup-surface": {
+      "url": "syrup-surface.webp",
+      "width": 1024,
+      "height": 1024
+    },
+    "jam-surface": {
+      "url": "jam-surface.webp",
+      "width": 1024,
+      "height": 1024
+    },
+    "jar-full": {
+      "url": "jar-full.webp",
+      "width": 512,
+      "height": 512
     }
   }
 }

@@ -1,0 +1,36 @@
+{
+  "bundle": "assets/index-xdYqM0ui.js",
+  "nativeFixture": false,
+  "production": true,
+  "origin": "http://127.0.0.1:5264/",
+  "viewport": {
+    "width": 568,
+    "height": 320
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "controlsHidden": true,
+      "caughtShot": true,
+      "result": "Your catch\n\n78 m reached\n\nMoonfish\nOld boot\nCast again\nReturn to shore",
+      "messages": [
+        "Old boot"
+      ],
+      "stable": true,
+      "pending": null,
+      "fish": {
+        "perch": 0,
+        "seaBass": 0,
+        "moonfish": 1,
+        "lanternfish": 0
+      }
+    }
+  ],
+  "errors": [],
+  "video": "fishing-production-no-duplicates.webm",
+  "screenshots": [
+    "fishing-production-no-duplicates-ascending.png",
+    "fishing-production-no-duplicates-catch.png",
+    "fishing-production-no-duplicates-result.png"
+  ]
+}

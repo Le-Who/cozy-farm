@@ -2,6 +2,7 @@ import { exposedTrait, getClimate, traitIds, traitNames, type Trait } from './cl
 import { shellDefinitions, shellForSpot, shellIds, shellSpotCount, type ShellId } from './tide.ts';
 import { getShoalFindAt, hasShoal, shoalDefinitions, shoalFindIds, type ShoalFindId } from './shoal.ts';
 import { fishingSpecies, type FishingLoot } from './fishing-model.ts';
+import { projectHenToGround, type HenNativePoint } from './hen-roaming.ts';
 
 export const cropIds = ['carrot', 'cabbage', 'beetroot', 'tomato', 'pumpkin', 'wheat', 'leafyGreens'] as const;
 export type CropId = typeof cropIds[number];
@@ -493,6 +494,7 @@ export type FarmState = {
   coopSpecialization: CoopSpecialization | null;
   wellSpecialization: WellSpecialization | null;
   flockSize: number;
+  henPositions: (HenNativePoint | null)[];
   hatchDay: number | null;
   chickenHappiness: number;
   pettedChickens: number[];
@@ -596,6 +598,7 @@ export function createFarm(): FarmState {
     coopSpecialization: null,
     wellSpecialization: null,
     flockSize: chickenCount,
+    henPositions: Array.from({ length: maxFlockSize }, () => null),
     hatchDay: null,
     chickenHappiness: 0,
     pettedChickens: [],
@@ -638,6 +641,11 @@ export function getWaterCapacity(farm: Pick<FarmState, 'canUpgraded'> & Partial<
   const capacity = farm.canUpgraded ? expandedWaterCapacity : waterCapacity;
   const wellBonus = farm.buildingLevels && farm.buildingLevels.well >= 2 ? 2 : 0;
   return capacity + wellBonus + (farm.wellSpecialization === 'rain' ? rainCapacityBonus : 0);
+}
+
+export function needsSeedChoice(farm: FarmState, index: number): boolean {
+  const bed = farm.beds[index];
+  return farm.island === 'home' && !!bed && bed.kind !== 'crop' && farm.seeds[farm.selectedSeed] === 0;
 }
 
 export function getBedAction(farm: FarmState, index: number): BedAction {
@@ -1276,6 +1284,7 @@ export function upgradeBuilding(farm: FarmState, building: BuildingId): ActionRe
   if (farm.coins < definition.upgradePrice) return failure('You need more coins for this upgrade.');
   farm.coins -= definition.upgradePrice;
   farm.buildingLevels[building] = 2;
+  fitHenPositions(farm);
   if (building === 'well') farm.water = getWaterCapacity(farm);
   return { ok: true, message: `${definition.name} upgraded.` };
 }
@@ -1288,6 +1297,7 @@ export function specializeFarmhouse(farm: FarmState, id: SpecializationId): Acti
   if (farm.coins < definition.price) return failure('You need more coins for this specialization.');
   farm.coins -= definition.price;
   farm.buildingLevels.farmhouse = 3;
+  fitHenPositions(farm);
   farm.farmhouseSpecialization = id;
   return { ok: true, message: `${definition.name} opened.` };
 }
@@ -1303,6 +1313,7 @@ export function specializeFacility(farm: FarmState, branch: FacilityBranch): Act
   if (farm.coins < definition.price) return failure('You need more coins for this specialization.');
   farm.coins -= definition.price;
   farm.buildingLevels[building] = 3;
+  fitHenPositions(farm);
   if (coop) farm.coopSpecialization = branch;
   else farm.wellSpecialization = branch;
   return { ok: true, message: `${definition.name} opened.` };
@@ -1423,6 +1434,17 @@ export function deliverMarketOrder(farm: FarmState, lane: OrderLane): ActionResu
   farm.orders[lane].completed += 1;
   farm.orders[lane].deliveredOn = farm.day;
   return record(farm, 'sell', `Delivered for ${order.reward} coins.`);
+}
+
+function fitHenPositions(farm: FarmState): void {
+  farm.henPositions = farm.henPositions.map(point => point && projectHenToGround(point, farm.buildingLevels));
+}
+
+export function moveHen(farm: FarmState, id: number, point: HenNativePoint): ActionResult {
+  if (farm.island !== 'home' || !isChickenId(id, farm.flockSize)
+    || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return failure('Choose one of your hens.');
+  farm.henPositions[id] = projectHenToGround(point, farm.buildingLevels);
+  return { ok: true, message: '' };
 }
 
 export function petChicken(farm: FarmState, id: number): ActionResult {
@@ -1865,6 +1887,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     coopSpecialization = restored.coopSpecialization,
     wellSpecialization = restored.wellSpecialization,
     flockSize = restored.flockSize,
+    henPositions = restored.henPositions,
     hatchDay = restored.hatchDay,
     chickenHappiness = restored.chickenHappiness,
     pettedChickens = restored.pettedChickens,
@@ -1958,6 +1981,11 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   if (!isQuantity(chickenHappiness) || chickenHappiness > maxChickenHappiness) return undefined;
   if (!Array.isArray(pettedChickens) || !Array.from(pettedChickens).every((id) => isChickenId(id, flockSize))
     || new Set(pettedChickens).size !== pettedChickens.length) return undefined;
+  if (!Array.isArray(henPositions) || henPositions.length !== maxFlockSize
+    || !Array.from(henPositions).every((point, index) => point === null || (index < flockSize && isRecord(point)
+      && typeof point.x === 'number' && Number.isFinite(point.x)
+      && typeof point.y === 'number' && Number.isFinite(point.y)))) return undefined;
+  const safeHenPositions = henPositions.map(point => point === null ? null : projectHenToGround(point, buildingLevels));
   for (const { id } of goals) {
     const count = progress[id];
     if (!isQuantity(count)) return undefined;
@@ -2031,6 +2059,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     coopSpecialization,
     wellSpecialization,
     flockSize,
+    henPositions: safeHenPositions,
     hatchDay,
     chickenHappiness,
     pettedChickens: [...pettedChickens],

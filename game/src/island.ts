@@ -7,6 +7,7 @@ import { createWeatherEffects } from './weather-effects';
 import { isLunarTide } from './tide';
 import { hasShoal, shoalFindIds } from './shoal';
 import { createSupportShadow, type SupportShadow } from './support-shadow';
+import { defaultHenPositions, henIdlePoint, projectHenToGround, type HenNativePoint } from './hen-roaming';
 
 export type IslandTarget =
   | { kind: 'bed' | 'tree' | 'hen' | 'flower' | 'village-home'; index: number }
@@ -27,7 +28,8 @@ type CapeWork = { target: { kind: 'flower'; index: number } | { kind: 'hive' | '
 
 const WORLD = { w: 1440, h: 900 };
 const HOME = scenePoint(1174, 585);
-const PEN = { min: scenePoint(196, 609), max: scenePoint(381, 699) };
+const sceneOrigin=scenePoint(0,0);
+const nativeHenPoint=(point:Point):HenNativePoint=>({x:(point.x-sceneOrigin.x)/sceneScale,y:(point.y-sceneOrigin.y)/sceneScale});
 const WORK_MS = { till: 510, plant: 500, water: 680, harvest: 550 } satisfies Record<GestureKind, number>;
 const cropSizes: Record<CropId, [number, number]> = {
   carrot: [81, 89], cabbage: [118, 106], beetroot: [80, 91],
@@ -58,6 +60,8 @@ function orchardAreas(island: 'home' | 'grove'): Area[] {
 }
 
 const homeSites = [...areas, ...orchardAreas('home')];
+const feedStation=scenePoint(345,650);
+const feedStationSite:Area={target:{kind:'coop'},center:{x:feedStation.x,y:feedStation.y-14},stop:areas[3].stop,w:34,h:34};
 const homeWorkshopSite: Area = { target: { kind: 'workshop' }, center: scenePoint(1153, 369),
   stop: scenePoint(1110, 429), w: 75, h: 64 };
 const villageProjectSite: Area = { target: { kind: 'village' }, center: scenePoint(1249, 365),
@@ -301,7 +305,7 @@ function roundTurns(points: Point[]): Point[] {
 
 export function createIsland(
   canvas: HTMLCanvasElement,
-  { inspect, activate }: { inspect: (target: IslandTarget) => string; activate: (target: IslandTarget) => void },
+  { inspect, activate, moveHen }: { inspect: (target: IslandTarget) => string; activate: (target: IslandTarget) => void; moveHen?: (index:number,point:HenNativePoint)=>void },
 ) {
   const hint = document.createElement('div');
   hint.className = 'island-hint';
@@ -337,7 +341,7 @@ export function createIsland(
   let showFocus = false;
   let fieldView = false;
   let pointerStart: { id: number; x: number; y: number } | undefined;
-  let heldHen: { index: number; point: Point; dragging: boolean } | undefined;
+  let heldHen: { index: number; point: Point; offset:Point; dragging: boolean } | undefined;
   let shorePickup: { site: ShoreArea; began?: number; commit: () => boolean } | undefined;
   let shoreReward: { point: Point; icon: string; began: number } | undefined;
   let shoalRequested = false;
@@ -362,9 +366,9 @@ export function createIsland(
   let crossing = false;
   let departure = 0;
   const crabRetreat = spring(0);
-  const hens = [[209, 643], [250, 682], [325, 672], [365, 641], [292, 637]].map(([nativeX, nativeY]) => {
-    const { x, y } = scenePoint(nativeX, nativeY);
-    return { x, y, px: spring(x), py: spring(y), lift: spring(0), excited: 0 };
+  const hens = defaultHenPositions.map((point) => {
+    const { x, y } = scenePoint(point.x,point.y);
+    return { x, y, px: spring(x), py: spring(y), lift: spring(0), excited: 0, saved:undefined as HenNativePoint|null|undefined };
   });
   const boatFloat = spring(0);
   const boatRoll = spring(0);
@@ -495,7 +499,7 @@ export function createIsland(
       if (hasBayDisplay(farm)) sites.push(displaySite);
       return getHarborOrder(farm) ? [harborSite, ...sites] : sites;
     }
-    const sites = [...henSites, ...homeSites];
+    const sites = [...(state&&!state.chickensFed?[feedStationSite]:[]),...henSites, ...homeSites];
     if (state && state.buildingLevels.farmhouse >= 2) sites.push(kitchenSite);
     if (state && getFairGuest(state)?.served === false) sites.unshift(guestSite);
     if (state && isProjectComplete(state, 'fair')) sites.push(homeWorkshopSite, villageProjectSite);
@@ -1243,14 +1247,23 @@ export function createIsland(
         }
       }
     }
+    if(atHome&&state&&!state.chickensFed){
+      const strong=state.eggsReady===0,size=strong?31:26,bob=motion.matches?0:(1+Math.sin(time*2.5))*(strong?.85:.5);
+      world.shape('shade',feedStation.x,feedStation.y,9,3.5,'#725531',.24);
+      art.draw(world,'feed-station',feedStation.x,feedStation.y-bob,size,size,{fullCell:true,baseline:140/144,footY:feedStation.y});
+    }
     henSites = [];
     if (atHome) hens.forEach((hen, index) => {
       if (index >= (state?.flockSize ?? chickenCount)) return;
       const held = heldHen?.index === index && heldHen.dragging ? heldHen : undefined;
-      const targetX = held?.point.x ?? clamp(hen.x + Math.sin(time * 0.83 + index * 2) * 13, PEN.min.x, PEN.max.x);
-      const targetY = held?.point.y ?? clamp(hen.y + Math.cos(time * 0.89 + index) * 8, PEN.min.y, PEN.max.y);
-      const x = clamp(driveSpring(hen.px, targetX, dt, held ? 23 : 14, 0.82), PEN.min.x, PEN.max.x);
-      const y = clamp(driveSpring(hen.py, targetY, dt, held ? 23 : 14, 0.82), PEN.min.y, PEN.max.y);
+      const idle=henIdlePoint(nativeHenPoint(hen),time,index,state?.buildingLevels),target=held?.point??scenePoint(idle.x,idle.y);
+      let x = driveSpring(hen.px, target.x, dt, held ? 23 : 14, 0.82);
+      let y = driveSpring(hen.py, target.y, dt, held ? 23 : 14, 0.82);
+      if(!held&&hen.lift.value<2){
+        const ground=projectHenToGround(nativeHenPoint({x,y}),state?.buildingLevels),safe=scenePoint(ground.x,ground.y);
+        if(Math.abs(safe.x-x)>.001){hen.px.value=x=safe.x;hen.px.speed=0}
+        if(Math.abs(safe.y-y)>.001){hen.py.value=y=safe.y;hen.py.speed=0}
+      }
       const joy = Math.max(0, hen.excited - moment);
       const playful = Boolean(held) || joy > 0;
       const lift = driveSpring(hen.lift, held && !motion.matches ? 20 : 0, dt, 16, 0.61);
@@ -1268,7 +1281,7 @@ export function createIsland(
       const elevation = Math.max(0, lift);
       world.shape('shade', x, y, 10 + elevation * 0.12, 3.9, '#47462a', 0.25 / (1 + elevation * 0.04));
       art.draw(world, 'hen-poses', x, y, 47, 47, { ...pose, angle, scaleY, shadow: true, lift: elevation });
-      art.draw(world, 'hen-poses', x, y - elevation, 47, 47, { ...pose, angle, scaleY, footY: y });
+      art.draw(world, 'hen-poses', x, y - elevation, 47, 47, { ...pose, angle, scaleY, footY: y,layer:held?world.overlay:undefined });
       if (joy) {
         const progress = 1 - joy / 950;
         const pop = 0.72 + 0.42 * Math.sin(Math.min(1, progress * 3.7) * Math.PI * 0.73);
@@ -1363,6 +1376,14 @@ export function createIsland(
   function hit(event: PointerEvent): Area | undefined {
     if (!world.available || crossing) return undefined;
     const { x, y } = location(event);
+    if(state?.island==='home'){
+      const minimum=event.pointerType==='touch'?44/scale:0;
+      const hen=henSites.filter(area=>Math.abs(x-area.center.x)<=Math.max(area.w,minimum)/2&&Math.abs(y-area.center.y)<=Math.max(area.h,minimum)/2)
+        .sort((a,b)=>distance(a.center,{x,y})-distance(b.center,{x,y}))[0];
+      const feed=!state.chickensFed&&Math.abs(x-feedStationSite.center.x)<=Math.max(feedStationSite.w,minimum)/2&&Math.abs(y-feedStationSite.center.y)<=Math.max(feedStationSite.h,minimum)/2;
+      if(feed&&(!hen||distance(feedStationSite.center,{x,y})<distance(hen.center,{x,y})))return feedStationSite;
+      if(hen)return hen;
+    }
     if (fieldView && event.pointerType === 'touch' && state?.island === 'home') {
       const minimum = 44 / scale;
       return areas.slice(4).filter((area) =>
@@ -1402,11 +1423,18 @@ export function createIsland(
   }
 
   const listeners = { signal: abort.signal };
+  function cancelHenGrip():void{
+    const id=pointerStart?.id;
+    if(id===undefined&&!heldHen)return;
+    pointerStart=undefined;heldHen=undefined;canvas.style.cursor='default';
+    if(id!==undefined&&canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
+    requestPaint();
+  }
   canvas.tabIndex = 0;
   canvas.addEventListener('pointermove', (event) => {
     if (heldHen && pointerStart?.id === event.pointerId) {
       const point = location(event);
-      heldHen.point = { x: clamp(point.x, PEN.min.x, PEN.max.x), y: clamp(point.y + 12, PEN.min.y, PEN.max.y) };
+      heldHen.point = { x: point.x+heldHen.offset.x, y:point.y+heldHen.offset.y };
       if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 5) {
         heldHen.dragging = true;
         hovered = undefined;
@@ -1430,16 +1458,17 @@ export function createIsland(
     pointerStart = { id: event.pointerId, x: event.clientX, y: event.clientY };
     const target = hit(event)?.target;
     if (target?.kind === 'hen') {
-      heldHen = { index: target.index, point: location(event), dragging: false };
+      const point=location(event),hen=hens[target.index],foot={x:hen.px.value,y:hen.py.value};
+      heldHen = { index: target.index, point:foot,offset:{x:foot.x-point.x,y:foot.y-point.y}, dragging: false };
       canvas.setPointerCapture(event.pointerId);
     }
   }, listeners);
   canvas.addEventListener('pointercancel', (event) => {
     if (pointerStart?.id !== event.pointerId) return;
-    pointerStart = undefined;
-    heldHen = undefined;
-    requestPaint();
+    cancelHenGrip();
   }, listeners);
+  canvas.addEventListener('lostpointercapture',cancelHenGrip,listeners);
+  window.addEventListener('blur',cancelHenGrip,listeners);
   canvas.addEventListener('pointerup', (event) => {
     const start = pointerStart;
     if (start?.id !== event.pointerId) return;
@@ -1448,7 +1477,10 @@ export function createIsland(
     heldHen = undefined;
     if (held) {
       const hen = hens[held.index];
-      if (held.dragging) Object.assign(hen, held.point);
+      if (held.dragging) {
+        const ground=projectHenToGround(nativeHenPoint(held.point),state?.buildingLevels);
+        Object.assign(hen,scenePoint(ground.x,ground.y));moveHen?.(held.index,ground);
+      }
       activate({ kind: 'hen', index: held.index });
       canvas.style.cursor = 'grab';
       requestPaint();
@@ -1556,6 +1588,7 @@ export function createIsland(
   load('boat', 1, 'home-boat');
   load('farmer-actions', 6);
   load('hen-poses', 8);
+  load('feed-station',1,'tool-feed');
   load('ui-shell', 1);
   load('ui-moon-shell', 1);
   load('shore-crab', 1);
@@ -1639,6 +1672,18 @@ export function createIsland(
     },
     render(next: FarmState): void {
       const moment = performance.now();
+      hens.forEach((hen,index)=>{
+        const saved=next.henPositions?.[index]??null;
+        const changed=hen.saved===undefined||saved?.x!==hen.saved?.x||saved?.y!==hen.saved?.y;
+        if(changed){
+          const point=projectHenToGround(saved??defaultHenPositions[index],next.buildingLevels),anchor=scenePoint(point.x,point.y);
+          Object.assign(hen,anchor);
+          if(hen.saved===undefined){hen.px.value=anchor.x;hen.py.value=anchor.y;hen.px.speed=hen.py.speed=0}
+          hen.saved=saved?{...saved}:null;
+        }else{
+          const safe=projectHenToGround(nativeHenPoint(hen),next.buildingLevels);Object.assign(hen,scenePoint(safe.x,safe.y));
+        }
+      });
       syncVillageResidents(next, moment);
       if (next.village.built && !villageBuiltSeen && state && !motion.matches) villageWelcome = moment;
       villageBuiltSeen = next.village.built;
@@ -1663,6 +1708,7 @@ export function createIsland(
         art.load(shoalPlate.key, shoalPlate.path);
       }
       if (currentIsland !== next.island) {
+        heldHen=undefined;pointerStart=undefined;
         residentClock = 0;
         villageMealCelebration = 0;
         if (next.island === 'village' && !motion.matches) villageWelcome = performance.now();

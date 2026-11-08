@@ -1,0 +1,27 @@
+{
+  "fixture": "Mouse garden drag/reload used the ordinary new save; the isolated touch/travel recording enabled a boat only for travel QA and is not a fresh-progression run",
+  "mouseGardenAnchor": {"x":773.7951392721911,"y":573.8112005702933},
+  "mouseGardenReloadPreservedExactly": true,
+  "nativeCDPTouch": true,
+  "orchardAnchor": {"x":1266.213995672948,"y":705.3553199442935},
+  "waterDropProjectedToSafeShore": {"x":1451.7071067811864,"y":763.2928932188134},
+  "houseDropProjectedToVisibleFrontGround": {"x":358.6451740071164,"y":391},
+  "projectedAnchorReloadPreserved": true,
+  "nativeSailToGroveAndReturnHomePreservedAnchor": true,
+  "reducedMotionNativeTouchAnchor": {"x":1119.9999917154498,"y":601},
+  "draggingLeftFeedAndEggsUnchanged": true,
+  "pageErrors": [],
+  "video": "hen-roaming-video/page@af6d87a109bcc747444d8410f4cd62b0.webm",
+  "feedingCue": {
+    "asset": "art/lavender/tool-feed.webp",
+    "nativeFoot": {"x":345,"y":650},
+    "nativeClickOpenedExistingCoop": true,
+    "nativeFeedFlockActionSucceeded": true,
+    "chickensFed": true,
+    "feedBefore": 2,
+    "feedAfter": 1,
+    "cueVisiblyGoneAfterFeeding": true,
+    "hungryScreenshot": "hen-feed-station-hungry.png",
+    "fedScreenshot": "hen-feed-station-fed-hidden.png"
+  }
+}

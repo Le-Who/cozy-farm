@@ -1,0 +1,16 @@
+{
+  "scope": "Preserves material polish in isolated cookery adapter; native gestures, no farm save or inventory fixtures.",
+  "nativeFlows": [
+    { "viewport": [390, 844], "input": "Native Chromium touchscreen events", "sequence": "5 fruit drops, circular stirring, 3 spoon transfers, finish, repeated Enter", "stage": "finished", "commits": 1 },
+    { "viewport": [568, 320], "input": "Native mouse pointer events", "sequence": "5 fruit drops, circular stirring, 3 spoon transfers, finish, repeated Enter", "stage": "finished", "commits": 1 }
+  ],
+  "dpr": { "css": [548, 300], "ratios": [1, 1.25, 2], "buffers": [[548, 300], [685, 375], [1096, 600]], "resizeEvents": 0, "progress": "20", "projectedRoomAspect": 1.5 },
+  "graphicsRecovery": { "progressBefore": "20", "progressAfter": "20", "restored": true, "cancelled": 1, "commitsAfterCancel": 0, "canvasRemovedAfterDestroy": true },
+  "checks": { "cookeryCpuTests": "7/7 passed", "typescript": "npx tsc --noEmit passed", "newWebglErrorsOrWarnings": 0 },
+  "comparison": {
+    "before": ["cookery-material-before-fruit.png", "cookery-material-before-reduced.png", "cookery-material-before-jar.png"],
+    "afterPortrait": ["cookery-material-after-portrait-fruit.png", "cookery-material-after-portrait-stir.png", "cookery-material-after-portrait-reduced.png", "cookery-material-after-portrait-spoonful.png", "cookery-material-after-portrait-pour.png", "cookery-material-after-portrait-jar.png"],
+    "afterLandscape": ["cookery-material-after-landscape-fruit.png", "cookery-material-after-landscape-stir.png", "cookery-material-after-landscape-reduced.png", "cookery-material-after-landscape-spoonful.png", "cookery-material-after-landscape-pour.png", "cookery-material-after-landscape-jar.png"],
+    "motion": "cookery-material-native-motion-final.webm"
+  }
+}

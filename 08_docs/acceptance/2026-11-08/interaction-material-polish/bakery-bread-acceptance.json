@@ -1,0 +1,135 @@
+{
+  "fixture": {
+    "fixture": {
+      "syntheticFixture": true,
+      "island": "home",
+      "fairComplete": false,
+      "bakery": "bakery",
+      "wheat": 2,
+      "eggs": 1,
+      "bread": 0,
+      "handmade": {
+        "round": 0,
+        "folded": 0,
+        "long": 0
+      },
+      "patterns": []
+    },
+    "kitchen": "‹\nKITCHEN\nIslands\nCollections\nExplore\nFarmhouse bread\nWheat\n2/2\nEgg\n1/1\n\n15\ncoins\n\nCook\nOrchard tart\nApple\n0/2\nWheat\n2/1\nEgg\n1/1\n\n25\ncoins\n\nCook\nGrilled fish\nSea bass\n0/1\nSea salt\n0/1\nCarrot\n0/1\n\n32\ncoins\n\nCook\nApple jam\nApple\n0/2\n\n14\ncoins\n\nCook",
+    "buttons": [
+      {
+        "text": "Cook\n    ",
+        "aria": "Cook, Farmhouse bread",
+        "value": "farmhouseBread",
+        "disabled": false
+      },
+      {
+        "text": "Cook\n    ",
+        "aria": "Cook, Orchard tart",
+        "value": "orchardTart",
+        "disabled": true
+      },
+      {
+        "text": "Cook\n    ",
+        "aria": "Cook, Grilled fish",
+        "value": "grilledFish",
+        "disabled": true
+      },
+      {
+        "text": "Cook\n    ",
+        "aria": "Cook, Apple jam",
+        "value": "appleJam",
+        "disabled": true
+      }
+    ]
+  },
+  "native": {
+    "syntheticFixture": true,
+    "before": {
+      "wheat": 2,
+      "eggs": 1,
+      "bread": 0,
+      "handmade": {
+        "round": 0,
+        "folded": 0,
+        "long": 0
+      },
+      "patterns": [],
+      "coins": 100,
+      "workToday": 0
+    },
+    "entryUnchanged": true,
+    "cancelUnchanged": true,
+    "afterBake": {
+      "wheat": 0,
+      "eggs": 0,
+      "bread": 1,
+      "handmade": {
+        "round": 0,
+        "folded": 0,
+        "long": 0
+      },
+      "patterns": [],
+      "coins": 100,
+      "workToday": 1
+    },
+    "doneUnchanged": true,
+    "restore": {
+      "valid": true,
+      "fairComplete": false,
+      "bread": 1,
+      "patterns": [],
+      "handmade": {
+        "round": 0,
+        "folded": 0,
+        "long": 0
+      }
+    },
+    "afterReload": {
+      "wheat": 0,
+      "eggs": 0,
+      "bread": 1,
+      "handmade": {
+        "round": 0,
+        "folded": 0,
+        "long": 0
+      },
+      "patterns": [],
+      "coins": 100,
+      "workToday": 1
+    },
+    "layout": [
+      {
+        "viewport": [
+          390,
+          844
+        ],
+        "view": [
+          10.199999809265137,
+          131,
+          370,
+          582
+        ],
+        "overflow": false,
+        "clipped": []
+      },
+      {
+        "viewport": [
+          568,
+          320
+        ],
+        "view": [
+          10,
+          33.53750228881836,
+          548,
+          252.91250610351562
+        ],
+        "overflow": false,
+        "clipped": []
+      }
+    ],
+    "errors": []
+  },
+  "sourceEdits": false,
+  "scope": "Bakery farmhouse bread uses the native dough workshop without requiring the Market fair. Synthetic isolated fixture, not the genuine fresh-player run."
+}
