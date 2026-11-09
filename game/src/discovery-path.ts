@@ -1,8 +1,8 @@
 import {
   boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeBloom, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
-  getMarketOrders, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
-  specializationDefinitions, treeDefinitions, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
+  getFestivalStatus, getMarketOrders, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
+  treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
 } from './farm.ts';
 import {ruCount} from './ru.ts';
 
@@ -168,6 +168,13 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
     const arrive = (next: DiscoveryTask): DiscoveryTask => farm.island === 'village' ? next : {
       ...next, action: { label: 'В Лавандовую гавань', target: 'sail', value: 'village' },
     };
+    if (farm.festivals.active) {
+      const festival=getFestivalStatus(farm).active!;
+      const label=festival.waitingNight ? `${festival.name} · день ${festival.readyOn}`
+        : festival.stage===3 ? `Провести: ${festival.name}` : festival.label;
+      return task('festival-preparation',label,festival.editionName,`festivals/${festival.tradition}`,
+        {label:'К программе праздника',target:'open-panel',value:'festival'},festival.stage,3);
+    }
     if (!farm.village.residents.some(Boolean)) return arrive(task('first-neighbour', 'Встретьте первого соседа', 'Пригласите соседа в домик у гавани.', 'ui-bea', { label: 'К первому домику', target: 'visit-cottage', value: '0' }));
     if (farm.village.meals < 2) {
       const shape = workshopShapes.find(shape => farm.handmade[shape] > 0) ?? farm.workshopPatterns[0] ?? 'round';
@@ -182,11 +189,12 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
     if(farm.culinary.recipes.length===0)return arrive(task('own-recipe','Создайте своё угощение','Выберите фрукты, приготовьте угощение вручную и предложите соседям.','ui-signature-bright',{label:'Мои рецепты',target:'open-panel',value:'recipes'}));
     const untasted=farm.village.residents.find(id=>id&&farm.culinary.tastings[id].visits===0);
     if(untasted&&Object.values(farm.culinary.stock).some(count=>count>0))return arrive(task('first-tasting','Угостите соседей по своему рецепту','Соседи запоминают любимые фрукты и способы приготовления.','ui-'+untasted,{label:'Угостить',target:'open-panel',value:'recipes'}));
+    if (!Object.values(farm.festivals.completed).some(Boolean)) return task('first-festival','Выберите праздник гавани','Выберите, что построить вместе с соседями.', 'festivals/lights', {label:'К традициям',target:'open-panel',value:'festival'});
     const service=farm.village.residents.findIndex(id=>id&&getResidentService(farm,id).available);
     if(service>=0){const id=farm.village.residents[service]!;return arrive(task('neighbour-service',id==='bea'?'Испеките вместе с Беа':'Попросите Финна разведать маршрут',id==='bea'?'Принесите продукты, и Беа испечёт целую партию.':'Финн подготовит более вместительную и крепкую снасть к следующей рыбалке.','ui-'+id,{label:'В гости: '+(id==='bea'?'Беа':'Финн'),target:'visit-cottage',value:String(service)}));}
     return undefined;
   }
-  const established = farm.farmhouseSpecialization !== null || farm.orders.harbor.completed > 0 || isProjectComplete(farm, 'fair');
+  const established = farm.farmhouseSpecialization !== null || farm.orders.harbor.completed > 0 || isProjectComplete(farm, 'dock') || isProjectComplete(farm, 'fair');
   const pastStarter = established || farm.boatOwned || buildingIds.some(id => farm.buildingLevels[id] > 1);
   if (!seen.collections && farm.progress.harvest > 0 && !established) return task('collections', 'Посмотрите первые находки', 'В коллекциях записаны собранный урожай и его необычные разновидности.', 'tool-crate', { label: 'Открыть коллекции', target: 'open-panel', value: 'archive' });
   if (!pastStarter) { const first = starter(farm); if (first) return first; }
@@ -200,27 +208,13 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
   if (!established && !farm.bayDiscoveries.includes('pear') && farm.fruit.pear === 0) return supply(farm, { kind: 'fruit', item: 'pear', quantity: 1 }, 'знакомство с Солёной рощей');
   if (farm.buildingLevels.farmhouse < 2) return farm.coins < buildingDefinitions.farmhouse.upgradePrice ? coins(farm, buildingDefinitions.farmhouse.upgradePrice, 'домашняя кухня')
     : home(farm, task('farmhouse-upgrade', 'Улучшите дом', 'Большая кухня открывает новые блюда и выбор специализации.', 'upgrade-farmhouse-card', { label: 'Улучшения', target: 'upgrades' }));
-  if (!farm.farmhouseSpecialization) {
-    const minimum = Math.min(...Object.values(specializationDefinitions).map(value => value.price));
-    return farm.coins < minimum ? coins(farm, minimum, 'специализация дома')
-      : home(farm, task('specialization', 'Выберите специализацию кухни', 'Пекарня и заготовочная открывают свои блюда и заказы.', 'upgrade-farmhouse-card', { label: 'Выбрать специализацию', target: 'specialize', value: 'farmhouse' }));
-  }
   const dock = getProject(farm, 'dock');
   if (!isProjectComplete(farm, 'dock')) {
     if (dock.items.some(item => item.available > 0)) return farm.island !== 'grove'
       ? task('grove', 'Посетите Солёную рощу', 'Привезите припасы к причалу рощи.', 'boat', { label: 'В рощу', target: 'sail', value: 'grove' })
-      : task('dock', 'Постройте причал рощи', 'Доставьте припасы, чтобы открыть заказы гавани.', 'boat', { label: 'Припасы для причала', target: 'project-dock' });
+      : task('dock', 'Постройте причал рощи', 'Доставьте припасы, чтобы открыть путь к цветам и мёду. Специализация кухни позже добавит заказы гавани.', 'boat', { label: 'Припасы для причала', target: 'project-dock' });
     const missing = dock.items.find(({ item, delivered }) => delivered < item.quantity)!;
     return supply(farm, { ...missing.item, quantity: missing.item.quantity - missing.delivered }, 'причал рощи');
-  }
-  if (farm.orders.harbor.completed < 2) {
-    const harbor = getHarborOrder(farm)!;
-    if (harbor.status === 'completed') return rest(farm, 'следующий заказ гавани');
-    if (harbor.items.some(item => item.available > 0)) return farm.island !== 'grove'
-      ? task('harbor-route', 'Вернитесь в гавань рощи', 'Два заказа гавани откроют Цветочный мыс.', 'boat', { label: 'В рощу', target: 'sail', value: 'grove' }, farm.orders.harbor.completed, 2)
-      : task('harbor', 'Снабдите гавань', 'Выполните два заказа гавани в разные дни, чтобы открыть Цветочный мыс.', 'boat', { label: 'Заказ гавани', target: 'visit-harbor' }, farm.orders.harbor.completed, 2);
-    const missing = harbor.items.find(({ item, delivered }) => delivered < item.quantity)!;
-    return supply(farm, { ...missing.item, quantity: missing.item.quantity - missing.delivered }, 'заказ гавани');
   }
   if (!farm.bayDiscoveries.includes('honey') && farm.honey === 0 && farm.capeLevel === 1) return capeHoney(farm, 'первый мёд мыса');
   const nextBuilding = buildingIds.find(id => farm.buildingLevels[id] < 2);
@@ -233,14 +227,14 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
     const missing = fair.items.find(({ item, delivered }) => delivered < item.quantity)!;
     return supply(farm, { ...missing.item, quantity: missing.item.quantity - missing.delivered }, 'ярмарка');
   }
-  if (farm.fairGuestsServed < 3) {
+  if (farm.fairGuestsServed < villageGuestTarget) {
     const guest = getFairGuest(farm)!;
     if (guest.served) return rest(farm, 'следующий гость ярмарки');
     if (ingredientCount(farm, guest.item) < guest.item.quantity) return supply(farm, guest.item, `гость: ${guest.name}`);
-    return home(farm, task('visitors', 'Встречайте гостей ярмарки', 'Угостите трёх гостей в разные дни, чтобы начать строить Лавандовую гавань.', 'ui-market', { label: 'К сегодняшнему гостю', target: 'visit-guest' }, farm.fairGuestsServed, 3));
+    return home(farm, task('visitors', 'Угостите первого гостя ярмарки', 'Первое знакомство откроет проект Лавандовой гавани. Остальные гости будут приходить каждый день.', 'ui-market', { label: 'К сегодняшнему гостю', target: 'visit-guest' }, farm.fairGuestsServed, villageGuestTarget));
   }
   const village = getVillageProject(farm);
-  if (village.items.some(item => item.available > 0) || village.items.every(({ item, delivered }) => delivered === item.quantity) && farm.coins >= village.coins) return home(farm, task('village', 'Постройте Лавандовую гавань', 'Доставьте ручную выпечку, сибаса и мёд, а затем вложите 80 монет в Живую бухту.', 'ui-bea', { label: 'Живая бухта', target: 'village-project' }));
+  if (village.items.some(item => item.available > 0) || village.items.every(({ item, delivered }) => delivered === item.quantity) && farm.coins >= village.coins) return home(farm, task('village', 'Постройте Лавандовую гавань', `Доставьте ручную выпечку, сибаса и мёд, а затем вложите ${village.coins} монет в Живую бухту.`, 'ui-bea', { label: 'Живая бухта', target: 'village-project' }));
   const missing = village.items.find(({ item, delivered }) => delivered < item.quantity);
   return missing ? supply(farm, { ...missing.item, quantity: missing.item.quantity - missing.delivered }, 'Лавандовая гавань') : coins(farm, village.coins, 'Лавандовая гавань');
 }

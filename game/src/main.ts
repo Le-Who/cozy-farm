@@ -1,3 +1,6 @@
+import { renderFestivalPanel } from './bay-festival-ui'
+import { festivalTraditions, type FestivalTradition } from './bay-festival'
+import { beginFestival, contributeFestival, finishFestival, getFestivalChoices, getFestivalStatus, getShellAt } from './farm'
 import { playBaySound } from './game-sound'
 import { reconcileFreightPorts } from './bay-freight-model'
 import { bayAudio } from './bay-audio'
@@ -179,7 +182,7 @@ const farm = loadFarm()
 let saveAvailable = true
 
 function iconUrl(name: string) {
-  if (name.startsWith('bay/')) return import.meta.env.BASE_URL+'art/lavender/'+name+'.webp'
+  if (name.startsWith('bay/') || name.startsWith('festivals/')) return import.meta.env.BASE_URL+'art/lavender/'+name+'.webp'
   if(name==='fish-perch'||name==='fish-seaBass')return `${import.meta.env.BASE_URL}art/lavender/fishing-${name==='fish-perch'?'perch':'sea-bass'}-v1.webp`
   const family = name.startsWith('tool-') || name.startsWith('ui-') || name.startsWith('upgrade-') || name.startsWith('cape-') || name.startsWith('village-') ? 'lavender' : 'icons'
   return `${import.meta.env.BASE_URL}art/${family}/${name}.webp`
@@ -207,12 +210,14 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
 let activeTool: Tool = 'seeds'
 let panel: Panel | undefined
+let celebratedFestival: FestivalTradition | undefined
+let celebrationReceipt: {effect?:string; coins:number} | undefined
 let treeSlot = 0
 let marketTab: 'buy' | 'sell' | 'orders' | 'projects' = 'buy'
 let marketCategory:'seeds'|'trees'|'care'|'buildings'='seeds'
@@ -517,7 +522,7 @@ function status() {
 }
 
 const panelTitles: Record<Panel, string> = {
-  'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
+  festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
   market: 'Рынок',
   inventory: 'Запасы',
   archive: 'Коллекции',
@@ -547,7 +552,7 @@ const panelTitles: Record<Panel, string> = {
 }
 
 const panelEmblems: Record<Panel, string> = {
-  'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
+  festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
   market: 'ui-market', inventory: 'ui-bag', archive: 'orchard', settings: 'gear', journal: 'star', coop: 'tool-hen',
   rest: 'moon', guide: 'island', seeds: 'ui-bag', fishing: 'tool-rod', boat: 'tool-boat',
   orchard: 'orchard', tree: 'orchard', upgrades: 'hammer', kitchen: 'ui-kitchen',
@@ -686,7 +691,7 @@ function seedCards() {
     `<button class="seed-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${farm.selectedSeed === crop}" aria-label="Семена: ${cropDefinitions[crop].name.toLowerCase()}, в наличии: ${farm.seeds[crop]}">
       ${icon(`ui-seed-${crop}`)}<strong>${cropDefinitions[crop].name}</strong><span>×${farm.seeds[crop]}</span>
     </button>`).join('')}</div>
-    <section class="seed-detail">${icon(previewSeed)}<div><h2>Семена: ${seed.name.toLowerCase()}</h2><p>Рост: ${quantity(seed.days, 'ночь')} с поливом</p>
+    <section class="seed-detail">${icon(previewSeed)}<div><h2>Семена: ${seed.name.toLowerCase()}</h2><p>${quantity(seed.days, 'ночь')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p>
       ${farm.seeds[previewSeed]===0?button('Купить семена','buy-seeds',farm.coins>=seed.seedPrice,{crop:previewSeed,cost:{icon:'coin',amount:seed.seedPrice}}):''}</div></section>`
 }
 
@@ -731,11 +736,13 @@ function recipeCards(recipes: readonly DishId[]) {
     const destination = recipeDestination(dish)
     const action = getCookAction(farm, dish, cookingFish)
     const ingredients = getCookIngredients(farm, dish, cookingFish)
+    const rawValue = ingredients.reduce((sum,item)=>sum+item.quantity*unitPrice(item,farm),0)
     const fishChoices = dish === 'grilledFish' ? `<div class="recipe-fish-choices" role="group" aria-label="Рыба для гриля">${fishIds.map(id=>`<button type="button" data-action="grill-fish" data-value="${id}" aria-pressed="${cookingFish===id}" aria-label="${fishDefinitions[id].name}, в наличии ${farm.fish[id]}" title="${fishDefinitions[id].name}">${icon(fishImage(id))}<span>×${farm.fish[id]}</span></button>`).join('')}</div>` : ''
     const locked = recipe.capeLevel ? farm.capeLevel < recipe.capeLevel : farm.buildingLevels.farmhouse < recipe.requiredLevel || !!recipe.specialization && farm.farmhouseSpecialization !== recipe.specialization
-    return `<section class="recipe${locked ? ' recipe-locked' : ''}">${icon(dishIcons[dish], 'recipe-art')}
-      <h2>${recipe.name}</h2>${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>`}
-      <p class="recipe-value">${icon('coin')} ${recipe.sellPrice}<span class="sr-only"> ${ruPlural(recipe.sellPrice, ['монета','монеты','монет'])}</span></p>
+    return `<section class="recipe${locked ? ' recipe-locked' : ''}">
+      <header class="recipe-summary">${icon(dishIcons[dish], 'recipe-art')}<div><h2>${recipe.name}</h2>
+        <p class="recipe-value" title="Стоимость ингредиентов → цена блюда">${icon('tool-crate')} <span class="sr-only">Сырьё: </span>${rawValue} <span aria-hidden="true">→</span> ${icon('coin')} <span class="sr-only">Блюдо: </span><strong>${recipe.sellPrice}</strong></p></div></header>
+      ${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>`}
       ${locked ? `<p class="recipe-reason">${action.label}</p>${button('Улучшения','upgrades',true,{secondary:true})}`
         : farm.island !== destination ? button(destination === 'cape' ? 'На Цветочный мыс' : 'На кухню', 'sail', canSailTo(farm, destination), {value:destination}):button('Готовить', 'cook', action.available, { value: dish, context: recipe.name })}${dish==='orchardTart'?button('Выбрать фрукты','new-signature',true,{value:'tart',secondary:true}):''}</section>`
   }).join('')}</div>`
@@ -819,7 +826,7 @@ function projectCard(id: ProjectId) {
   const reward = `<span class="order-reward">${icon('coin')} ${project.reward}<span class="sr-only"> ${ruPlural(project.reward, ['монета','монеты','монет'])}</span></span>`
   const away=farm.island!==(fair?'home':'grove')
   const action = !complete&&away ? button(`${fair?'Домой':'В рощу'}`,'sail',farm.boatOwned,{value:fair?'home':'grove'}) : complete
-    ? `<p class="order-done">✓ ${fair ? '+1 монета за продажу урожая' : '4 рыбы в день в роще'}</p>`
+    ? `<p class="order-done">✓ ${fair ? '+1 монета за продажу урожая' : '4 рыбы в день в роще'}</p>${!fair && farm.island === 'grove' ? button('На Цветочный мыс','sail',true,{value:'cape'}) : ''}`
     : project.status === 'locked' && fair
       ? button('Улучшения', 'upgrades', true, { secondary: true })
       : button('Доставить', 'deliver-project', project.status === 'ready', { value: id, context: project.name })
@@ -1188,7 +1195,7 @@ function openShopScene(host:HTMLElement) {
   const catalog = harbourGoods(), byId = new Map(catalog.map(row => [row.id,row]))
   const products = ():BayShopStock[] => harbourGoods().map(row => ({...row,
     quantity:row.quantity+(farm.freight.warehouses.village[row.id] ?? 0)})).filter(row => row.quantity>0)
-  const options:BayShopOptions = {state:farm.bayShop,products,
+  const options:BayShopOptions = {state:farm.bayShop,products,catalog,
     takeStock:(id,n)=>{ const reserved=reserveShopGoods(farm,id,n); if(reserved)status(); return reserved },
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('market.sell')},onChange:saveHarbour,onClose:leaveScene,
@@ -1223,7 +1230,7 @@ function openMusicScene(host:HTMLElement) {
   })
 }
 function harbourPlaces() {
-  return nav(button('Своя лавка','open-panel',true,{value:'bay-shop'})+
+  return nav(button('Праздники гавани','open-panel',true,{value:'festival'})+button('Своя лавка','open-panel',true,{value:'bay-shop'})+
     button('Грузовой паром','open-panel',true,{value:'bay-freight'})+
     button('Музыкальный сад','open-panel',true,{value:'bay-music'}))
 }
@@ -1251,6 +1258,9 @@ function drawPanel() {
     : undefined
 
   switch (panel) {
+    case 'festival':
+      dialogContent.innerHTML=renderFestivalPanel(farm,{celebrated:celebratedFestival,celebrationEffect:celebrationReceipt?.effect,celebrationCoins:celebrationReceipt?.coins,icon})
+      break
     case 'bay-shop':
     case 'bay-music': {
       const host=document.createElement('section')
@@ -1399,7 +1409,7 @@ function drawPanel() {
     case 'rest':
       dialogContent.innerHTML = `${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
         ${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}
-        <ul class="dialog-list">${row('moon', `День ${farm.day + 1}`, '', button('До утра', 'sleep'))}</ul>`
+        <ul class="dialog-list">${row('moon', `День ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}`, '', button('До утра', 'sleep'))}</ul>`
       break
     case 'journal': {
       const goal = currentTask()
@@ -1440,9 +1450,11 @@ function drawPanel() {
       }
       if (farm.island === 'grove') places.push(tile('Живая заводь','ui-shell','cove'))
       if (village || home && isProjectComplete(farm,'fair')) places.push(tile('Кондитерская','ui-handmade-round','workshop'))
+      if (village) places.push(tile('Праздники гавани','festivals/lights','festival'))
       if (farm.boatOwned) places.push(tile('Грузовой паром','bay/ferry','bay-freight'))
       const away = [
         ...(!home ? [tile('Рынок дома','ui-market','market','travel-panel')] : []),
+        ...(!village && farm.festivals.active ? [tile('Праздники гавани','festivals/lights','festival')] : []),
         ...(!village && farm.village.built ? [tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music')] : []),
       ]
       dialogContent.innerHTML = `<section class="explore-section"><h2>${islandNames[farm.island]}</h2><div class="explore-grid">${places.join('')}</div></section>
@@ -1631,8 +1643,8 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
 
 function openPanel(next: Panel, remember = true, destinationIsland = farm.island) {
   if (island.isCrossing()) return
-  if ((next==='bay-shop'||next==='bay-music') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
-  if ((next==='bay-shop'||next==='bay-music') && farm.island!=='village') {
+  if ((next==='bay-shop'||next==='bay-music'||next==='festival') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
+  if ((next==='bay-shop'||next==='bay-music'||next==='festival') && farm.island!=='village') {
     void visitPanelAt('village',next)
     return
   }
@@ -1656,6 +1668,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     try { localStorage.setItem(saveKey, JSON.stringify(farm)) } catch { saveAvailable = false }
     status()
   }
+  if (next !== panel && next !== 'festival') celebratedFestival=undefined
   panel = next
   const miniature = next.startsWith('bay-') || next === 'cookery' || next === 'workshop' || next === 'fishing' || next === 'arrangement'
   island.setViewMode(miniature ? 'minigame' : next === 'cove' ? 'world' : 'dialog')
@@ -1678,6 +1691,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
 }
 
 function closeDialog() {
+  celebratedFestival=undefined
   island.setViewMode('world')
   app.dataset.scene=''
   island.setCoveFocus(false)
@@ -2112,6 +2126,60 @@ app.addEventListener('click', async (event) => {
     if (action === 'visit-market' && (value === 'buy' || value === 'sell' || value === 'orders')) {marketTab=value;if(value==='buy')marketCategory=task.id.includes('feed')?'care':'seeds'}
   }
   switch (action) {
+    case 'festival-begin': {
+      const tradition=festivalTraditions.find(id=>id===value)
+      if(tradition){celebratedFestival=undefined; if(perform(()=>beginFestival(farm,tradition),false,true)) playBaySound('ui.confirm')}
+      break
+    }
+    case 'festival-contribute': {
+      const [requirement,alternative]=(value??'').split('|')
+      if(perform(()=>contributeFestival(farm,requirement,alternative),false,true)) playBaySound('freight.crate',.65)
+      break
+    }
+    case 'festival-finish': {
+      const current=farm.festivals.active
+      if(!current)break
+      const effect=getFestivalChoices(farm).find(choice=>choice.id===current.tradition)?.effect
+      const coinsBefore= farm.coins
+      const result=finishFestival(farm)
+      if(result.ok){ celebratedFestival=current.tradition; celebrationReceipt={effect,coins:farm.coins-coinsBefore} }
+      if(perform(()=>result,false,true)) playBaySound('workshop.complete')
+      break
+    }
+    case 'festival-continue': celebratedFestival=undefined;drawPanel();break
+    case 'festival-rest': await visitPanelAt('home','rest');break
+    case 'festival-music': openPanel('bay-music');break
+    case 'festival-freight': openPanel('bay-freight');break
+    case 'festival-source': {
+      const [requirement,id]=(value??'').split('|')
+      const source=getFestivalStatus(farm).active?.requirements.find(row=>row.id===requirement)?.alternatives.find(alt=>alt.id===id)
+      if(source?.item) await showRequirement({kind:'stock',item:{...source.item,quantity:source.quantity}},control)
+      else if(source?.signature) { openPanel('recipes');highlightControl(dialogContent.querySelector(`[data-action="make-signature"][data-value="${CSS.escape(source.signature)}"]`)) }
+      break
+    }
+    case 'festival-activity': {
+      if(value==='bake'){ openPanel('kitchen'); break }
+      if(value==='fish'){ await visitPanelAt('grove','fishing');break }
+      const shore=value==='shore'
+      if(!shore && value!=='harvest')break
+      const destination=shore?'grove':'home'
+      if(farm.island!==destination && !canSailTo(farm,destination))break
+      closeDialog()
+      if(farm.island!==destination)await island.crossIsland(()=>perform(()=>sail(farm,destination),false,true))
+      if(farm.island!==destination)break
+      if(shore) {
+        const index=[0,1,2].find(spot=>getShellAt(farm,spot))
+        if(index!==undefined)island.focusTarget({kind:'shell',index})
+        else { island.focusTarget({kind:'pier'});notify('На берегу всё собрано. На причале можно поймать рыбу.') }
+      } else {
+        const bed=farm.beds.findIndex(b=>getBedStage(b)==='ripe')
+        const tree=farm.trees.home.findIndex(t=>t && t.fruitReady>0)
+        island.focusTarget(bed>=0 ? {kind:'bed',index:bed} : tree>=0 ? {kind:'tree',index:tree} : {kind:'bed',index:0})
+      }
+      break
+    }
+    case 'festival-village': openPanel('village-project');break
+    case 'festival-meal': openPanel('village-meal');break
     case 'freight-unlock': {
       const port=allPorts.find(id=>id===value)
       if(port)openPanel('boat',true,port)

@@ -22,8 +22,7 @@ function capeFarm(completeSecondOrder = true) {
   farm.dishes.farmhouseBread = 2;
   farm.fish.seaBass = 1;
   assert.equal(deliverHarborOrder(farm).ok, true);
-  assert.equal(canSailTo(farm, 'cape'), false);
-  assert.equal(sail(farm, 'cape').ok, false);
+  assert.equal(canSailTo(farm, 'cape'), true);
   sail(farm, 'home');
   endDay(farm);
   sail(farm, 'grove');
@@ -31,7 +30,7 @@ function capeFarm(completeSecondOrder = true) {
   return farm;
 }
 
-test('the second completed harbor order opens Cape without changing existing orchard and fish ledgers', () => {
+test('the restored dock opens Cape without changing existing orchard and fish ledgers', () => {
   const locked = createFarm();
   locked.honey = 1;
   locked.produce.wheat = 2;
@@ -292,7 +291,7 @@ test('Cape cakes, the cake visitor, and Wind honey retain their stock and daily 
   sail(farm, 'home');
   const beforeWindOrder = farm.coins;
   assert.equal(deliverMarketOrder(farm, 'cape').ok, true);
-  assert.equal(farm.coins, beforeWindOrder + 25);
+  assert.equal(farm.coins, beforeWindOrder + 26);
   reload();
   assert.equal(farm.windHoney, 0);
   assert.equal(farm.orders.cape.completed, 2);
@@ -300,7 +299,7 @@ test('Cape cakes, the cake visitor, and Wind honey retain their stock and daily 
   for (const id of ['honey', 'windHoney', 'honeyCake'] as const) assert.equal(farm.bayDiscoveries.includes(id), true);
 });
 
-test('the fair visitor keeps the same daily request when the Cape route opens', () => {
+test('the fair visitor keeps the same daily request when optional harbor orders unlock cake requests', () => {
   for (const unlockDay of [2, 3, 4]) {
     const farm = capeFarm(false);
     sail(farm, 'home');
@@ -314,7 +313,7 @@ test('the fair visitor keeps the same daily request when the Cape route opens', 
     while (farm.day < unlockDay) endDay(farm);
     const guestBeforeUnlock = getFairGuest(farm);
     assert.ok(guestBeforeUnlock);
-    assert.equal(canSailTo(farm, 'cape'), false);
+    assert.equal(canSailTo(farm, 'cape'), true);
     if (unlockDay === 4) {
       assert.equal(guestBeforeUnlock.name, 'Беа');
       assert.deepEqual(guestBeforeUnlock.item, { kind: 'produce', item: 'wheat', quantity: 3 });

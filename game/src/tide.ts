@@ -13,5 +13,14 @@ export function isLunarTide(day: number): boolean {
 }
 
 export function shellForSpot(day: number, spot: number): ShellId {
-  return isLunarTide(day) && dayRoll(day, 300 + spot) < 30 ? 'moon' : 'regular';
+  if (!isLunarTide(day)) return 'regular';
+  const ownRoll = dayRoll(day, 300 + spot);
+  if (ownRoll < 30) return 'moon';
+  // On an otherwise empty tide the lowest roll glows. Break ties by shore position.
+  for (let other = 0; other < shellSpotCount; other++) {
+    if (other === spot) continue;
+    const roll = dayRoll(day, 300 + other);
+    if (roll < ownRoll || roll === ownRoll && other < spot) return 'regular';
+  }
+  return 'moon';
 }

@@ -9,6 +9,7 @@ import {
   getHarborOrder,
   getProject,
   getVillageProject,
+  villageGuestTarget,
   isProjectComplete,
   workshopDefinitions,
   type FarmState,
@@ -73,24 +74,20 @@ export function getIslandJourneys(farm: FarmState): IslandJourney[] {
   const pier = getProject(farm, 'dock');
   const fair = getProject(farm, 'fair');
   const village = getVillageProject(farm);
-  const harbor = getHarborOrder(farm);
   const pierComplete = isProjectComplete(farm, 'dock');
   const fairComplete = isProjectComplete(farm, 'fair');
-  const specialization = requirement('specialization', 'Направление развития дома', 'upgrade-farmhouse-card', Number(farm.farmhouseSpecialization !== null));
+  const kitchen = requirement('building-farmhouse', 'Домашняя кухня · варенье для причала', 'upgrade-farmhouse-card', farm.buildingLevels.farmhouse, 2);
   const pierRequirement = requirement('pier', pier.name, 'boat',
     pier.items.reduce((sum, item) => sum + item.delivered, 0),
     pier.items.reduce((sum, { item }) => sum + item.quantity, 0));
 
   let capeAction: JourneyAction;
   if (!farm.boatOwned) capeAction = buyBoat;
-  else if (!specialization.complete) capeAction = farm.island === 'home'
-    ? open('upgrades', 'Выбрать направление развития дома') : sailTo('home', 'Вернуться на Родной остров');
+  else if (!kitchen.complete) capeAction = farm.island === 'home'
+    ? open('upgrades', 'Улучшить домашнюю кухню') : sailTo('home', 'Вернуться на Родной остров');
   else if (!pierComplete) capeAction = farm.island === 'grove'
     ? open('project-dock', 'Завершить причал Солёной рощи') : sailTo('grove', 'Посетить Солёную рощу');
-  else if (harbor?.status === 'completed') capeAction = farm.island === 'home'
-    ? open('visit-rest', 'Отдохнуть до утра') : sailTo('home', 'Вернуться на Родной остров');
-  else capeAction = farm.island === 'grove'
-    ? open('visit-harbor', 'Открыть заказ причала Солёной рощи') : sailTo('grove', 'Посетить Солёную рощу');
+  else capeAction = sailTo('cape', 'В путь · Цветочный мыс');
 
   let villageAction: JourneyAction;
   if (!farm.boatOwned) villageAction = buyBoat;
@@ -106,7 +103,7 @@ export function getIslandJourneys(farm: FarmState): IslandJourney[] {
     { id: 'grove', name: 'Солёная роща', icon: 'island', description: 'Ловите морского окуня, собирайте соль и выполняйте заказы причала.', requirements: [boat], nextAction: buyBoat },
     {
       id: 'cape', name: 'Цветочный мыс', icon: 'ui-honey', description: 'Выращивайте цветы, собирайте мёд и стройте пасеку.',
-      requirements: [boat, specialization, pierRequirement, requirement('harbor-orders', 'Заказы причала Солёной рощи · один в день', 'boat', farm.orders.harbor.completed, 2)],
+      requirements: [boat, kitchen, pierRequirement],
       nextAction: capeAction,
     },
     {
@@ -115,7 +112,7 @@ export function getIslandJourneys(farm: FarmState): IslandJourney[] {
         boat,
         ...(!fairComplete ? buildingIds.map(id => requirement(`building-${id}`, `Уровень: ${buildingDefinitions[id].name.toLowerCase()}`, `upgrade-${id}-card`, farm.buildingLevels[id], 2)) : []),
         requirement('fair', fair.name, 'ui-market', Number(fairComplete)),
-        requirement('visitors', 'Гости ярмарки обслужены · один в день', 'ui-market', farm.fairGuestsServed, 3),
+        requirement('visitors', 'Первый гость ярмарки', 'ui-market', farm.fairGuestsServed, villageGuestTarget),
         ...village.items.map(({ item, delivered, available }) => villageSupply(item, delivered, available)),
         requirement('village-coins', 'Стоимость строительства Живой бухты', 'coin', farm.village.built ? village.coins : farm.coins, village.coins),
       ],

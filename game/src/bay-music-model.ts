@@ -1,8 +1,9 @@
+export const festivalMelodyNames = ['Вечер садовой сцены', 'Танец лавандовых огней', 'Вальс четырёх островов'] as const
 export const BAY_INSTRUMENT_IDS = ['ceramic', 'marimba', 'handpan', 'harp', 'shaker', 'bass'] as const
 export type BayInstrumentId = typeof BAY_INSTRUMENT_IDS[number]
 export type BayTrack = { steps: number[]; muted: boolean; volume: number }
 export type BayPattern = { name: string; tempo: number; tracks: Record<BayInstrumentId, BayTrack> }
-export type BayMusicState = BayPattern & { level: number; saved: (BayPattern | null)[]; performances: number }
+export type BayMusicState = BayPattern & { level: number; saved: (BayPattern | null)[]; performances: number; festivalUnlocked?: boolean; festivalLevel?: number }
 export const BAY_SCALE = [60, 62, 64, 67, 69, 72, 74, 76] as const
 export const BAY_NOTE_NAMES = ['До', 'Ре', 'Ми', 'Соль', 'Ля', 'До ↑', 'Ре ↑', 'Ми ↑'] as const
 export const BAY_INSTRUMENTS: readonly { id: BayInstrumentId; name: string; level: number; key: string; color: string }[] = [
@@ -29,7 +30,19 @@ export function createBayMusicState(): BayMusicState {
     shaker: [0,-1,0,-1,1,-1,0,-1,0,-1,0,-1,1,-1,0,-1],
     bass: [0,-1,-1,-1,-1,-1,0,-1,3,-1,-1,-1,-1,-1,3,-1],
   }
-  return { name: 'Утро у причала', tempo: 88, level: 0, saved: [null, null, null], performances: 0, tracks: Object.fromEntries(BAY_INSTRUMENT_IDS.map(id => [id, { steps: phrase[id], muted: false, volume: id === 'handpan' ? .48 : .7 }])) as Record<BayInstrumentId, BayTrack> }
+  return { festivalUnlocked: false, festivalLevel: 0, name: 'Утро у причала', tempo: 88, level: 0, saved: [null, null, null], performances: 0, tracks: Object.fromEntries(BAY_INSTRUMENT_IDS.map(id => [id, { steps: phrase[id], muted: false, volume: id === 'handpan' ? .48 : .7 }])) as Record<BayInstrumentId, BayTrack> }
+}
+
+/** A festival score is reusable without occupying or replacing a personal recording. */
+export function bayFestivalPattern(edition = 1): BayPattern {
+  const pattern = cloneBayPattern(createBayMusicState())
+  const tier = Math.max(1, Math.min(3, Math.floor(edition)))
+  pattern.name = festivalMelodyNames[tier - 1]; pattern.tempo = [96, 104, 78][tier - 1]
+  pattern.tracks.marimba.steps = [0,-1,2,-1,4,-1,3,2,0,-1,3,-1,4,3,2,-1]
+  pattern.tracks.harp.steps = [-1,0,-1,2,-1,4,-1,3,-1,0,-1,3,-1,4,2,-1]
+  pattern.tracks.handpan.steps = [0,-1,-1,-1,2,-1,-1,-1,3,-1,-1,-1,4,-1,-1,-1]
+  for (const id of ['marimba', 'harp', 'handpan'] as const) pattern.tracks[id].steps = pattern.tracks[id].steps.map(note => note < 0 ? note : (note + tier - 1) % BAY_SCALE.length)
+  return pattern
 }
 
 /** Save files and local presets are untrusted; keep the scheduler's musical domain bounded. */
@@ -45,7 +58,7 @@ export function normalizeBayMusicState(value: unknown): BayMusicState {
       return [id, { muted: track?.muted === true, volume: clamp(track?.volume, 0, 1, original.volume), steps: Array.from({ length: 16 }, (_, i) => Math.round(clamp(track?.steps?.[i], -1, 7, original.steps[i]))) }]
     })) as Record<BayInstrumentId, BayTrack>,
   })
-  return { ...normalizePattern(source, fallback), level: Math.round(clamp(source.level, 0, 2, 0)), performances: Math.floor(clamp(source.performances, 0, 1e9, 0)), saved: Array.from({ length: 3 }, (_, i) => {
+  return { ...normalizePattern(source, fallback), festivalUnlocked: source.festivalUnlocked === true, festivalLevel: Math.floor(clamp(source.festivalLevel, 0, 3, source.festivalUnlocked ? 1 : 0)), level: Math.round(clamp(source.level, 0, 2, 0)), performances: Math.floor(clamp(source.performances, 0, 1e9, 0)), saved: Array.from({ length: 3 }, (_, i) => {
     const saved = source.saved?.[i]
     return saved && typeof saved === 'object' ? normalizePattern(saved, fallback) : null
   }) }

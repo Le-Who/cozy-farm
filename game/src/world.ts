@@ -1,6 +1,6 @@
 import {
   BufferAttribute, BufferGeometry, Color, DoubleSide, Group, HemisphereLight, DirectionalLight, Line,
-  LineBasicMaterial, LinearFilter, Matrix4, Mesh,
+  LineBasicMaterial, LinearFilter, LinearMipmapLinearFilter, Matrix4, Mesh,
   MeshStandardMaterial, OrthographicCamera, PlaneGeometry, Scene, ShaderMaterial,
   SphereGeometry, SRGBColorSpace, Texture, Vector4, WebGLRenderer,
 } from 'three';
@@ -9,6 +9,7 @@ import { createWaterLayer } from './water';
 type Box = { x: number; y: number; w: number; h: number };
 type Raster = HTMLImageElement | HTMLCanvasElement;
 export type SpriteOptions = {
+  mipmaps?: boolean;
   frame?: number;
   opacity?: number;
   flip?: boolean;
@@ -173,7 +174,7 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
     return value;
   }
 
-  function texture(source: Raster): Texture {
+  function texture(source: Raster, mipmaps = false): Texture {
     let map = textures.get(source);
     if (!map) {
       map = new Texture(source);
@@ -183,6 +184,11 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       map.generateMipmaps = false;
       map.needsUpdate = true;
       textures.set(source, map);
+    }
+    if (mipmaps && !map.generateMipmaps) {
+      map.generateMipmaps = true;
+      map.minFilter = LinearMipmapLinearFilter;
+      map.needsUpdate = true;
     }
     return map;
   }
@@ -223,7 +229,7 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
     const uniforms = node.material.uniforms;
     const sourceWidth = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
     const sourceHeight = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
-    uniforms.uMap.value = texture(source);
+    uniforms.uMap.value = texture(source, options.mipmaps);
     if (src.w === sourceWidth && src.h === sourceHeight) uniforms.uRect.value.set(0, 0, 1, 1);
     else uniforms.uRect.value.set(
       (src.x + 0.5) / sourceWidth, 1 - (src.y + src.h - 0.5) / sourceHeight,

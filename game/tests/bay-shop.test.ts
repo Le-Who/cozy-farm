@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   advanceBayShop, advanceBayShopDay, bayShopInterest, createBayShop, removeBayShopStock, restoreBayShop,
-  setBayShopOpen, setBayShopPrice, stockBayShop, type BayShopProduct, type BayShopState,
+  setBayShopOpen, setBayShopPrice, stockBayShop, syncBayShopProducts, type BayShopProduct, type BayShopState,
 } from '../src/bay-shop-model.ts';
 
 const pear: BayShopProduct = { id: 'signature:s1', identity: 'pear-silky-layout-a', name: 'Грушевое облако',
@@ -134,4 +134,43 @@ test('concert listeners grant finite extra daily visits and visible purchases ne
   const visible = openShop(100); run(visible, 600_000);
   assert.equal(visible.serial, 6); assert.equal(visible.sold, 6);
   assert.equal(advanceBayShopDay(visible, 2).length, 0);
+});
+
+test('taste rewards a curated shelf without doubling value through permanent reputation', () => {
+  const state = openShop(100);
+  assert.equal(bayShopInterest(state, 'bea', state.slots[0]!).willingness, 71);
+  for (let day = 2; day <= 12; day++) advanceBayShopDay(state, day);
+  assert.equal(bayShopInterest(state, 'bea', state.slots[0]!).willingness, 81);
+  setBayShopPrice(state, 0, 90);
+  assert.equal(advanceBayShopDay(state, 13).length, 0);
+  setBayShopPrice(state, 0, 68);
+  assert.ok(advanceBayShopDay(state, 14).some(sale => sale.visitor === 'bea'));
+  assert.ok(restoreBayShop(state, 14));
+});
+
+test('catalog refresh updates saved shelf values while preserving assigned prices and exact stock', () => {
+  const state = openShop(10); setBayShopPrice(state, 0, 65);
+  run(state, 7400);
+  const saved = restoreBayShop(JSON.parse(JSON.stringify(state)))!;
+  assert.ok(syncBayShopProducts(saved, [{ ...pear, basePrice: 60 }]));
+  assert.equal(saved.slots[0]!.product.basePrice, 60);
+  assert.equal(saved.slots[0]!.price, 65);
+  assert.equal(saved.slots[0]!.quantity, 9);
+  assert.equal(saved.revenue, 65);
+  assert.equal(syncBayShopProducts(saved, [{ ...pear, basePrice: 60 }]), false);
+  assert.equal(advanceBayShopDay(saved, 2).length, 2);
+  assert.equal(saved.revenue, 195);
+  assert.equal(advanceBayShopDay(saved, 2).length, 0);
+  assert.ok(restoreBayShop(saved, 2));
+});
+
+test('pier lights keep one to three additional customers without daily music or duplicated settlement', () => {
+  for (const tier of [1, 2, 3]) {
+    const state = openShop(100); state.festivalVisitors = tier;
+    assert.equal(advanceBayShopDay(state, 2).length, 6 + tier);
+    const restored = restoreBayShop(JSON.parse(JSON.stringify(state)), 2)!;
+    assert.ok(restored); assert.equal(restored.festivalVisitors, tier);
+    assert.equal(advanceBayShopDay(restored, 2).length, 0);
+    assert.equal(advanceBayShopDay(restored, 3, 1).length, 8 + tier);
+  }
 });

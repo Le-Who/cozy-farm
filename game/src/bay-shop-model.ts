@@ -22,6 +22,7 @@ export type BayShopVisitor = {
 export type BayShopMemory = { visits: number; purchases: Record<string, { bought: number; liked: number }> };
 export type BayShopReputation = { name: string; sold: number; liked: number; revenue: number };
 export type BayShopState = {
+  festivalVisitors?: number;
   version: 1; open: boolean; slots: BayShopSlot[]; serial: number; waitMs: number;
   businessDay: number; visitsToday: number;
   visitor: BayShopVisitor | null; memories: Record<BayShopVisitorId, BayShopMemory>;
@@ -45,12 +46,12 @@ export function isBayShopProduct(value: unknown): value is BayShopProduct {
     && (value.signature === undefined || typeof value.signature === 'boolean');
 }
 export function createBayShop(day = 1): BayShopState {
-  return { version: 1, open: false, slots: [null, null, null, null], serial: 0, waitMs: 1200, visitor: null, businessDay: day, visitsToday: 0,
+  return { festivalVisitors: 0, version: 1, open: false, slots: [null, null, null, null], serial: 0, waitMs: 1200, visitor: null, businessDay: day, visitsToday: 0,
     memories: Object.fromEntries(bayShopVisitors.map(v => [v.id, { visits: 0, purchases: {} }])) as BayShopState['memories'],
     reputation: {}, sold: 0, revenue: 0 };
 }
-export function bayShopDailyLimit(performanceBonus = 0): number {
-  return 6 + Math.floor(Number.isFinite(performanceBonus) ? Math.max(0, Math.min(3, performanceBonus)) : 0) * 2;
+export function bayShopDailyLimit(performanceBonus = 0, festivalVisitors = 0): number {
+  return 6 + Math.floor(Number.isFinite(performanceBonus) ? Math.max(0, Math.min(3, performanceBonus)) : 0) * 2 + (Number.isFinite(festivalVisitors) ? Math.max(0, Math.min(3, Math.floor(festivalVisitors))) : 0);
 }
 function arrive(state: BayShopState): BayShopVisitor {
   const person = bayShopVisitors[state.serial % bayShopVisitors.length];
@@ -66,6 +67,19 @@ export function stockBayShop(state: BayShopState, index: number, product: BaySho
   if (slot) slot.quantity += quantity;
   else state.slots[index] = { product: copyProduct(product), quantity, price: product.basePrice };
   return true;
+}
+/** Refresh catalog values once at a boundary; the player's shelf price stays theirs. */
+export function syncBayShopProducts(state: BayShopState, products: readonly BayShopProduct[]): boolean {
+  const catalog = new Map(products.filter(isBayShopProduct).map(product => [product.id, product]));
+  let changed = false;
+  for (const slot of state.slots) {
+    if (!slot) continue;
+    const product = catalog.get(slot.product.id);
+    if (!product || slot.product.identity !== product.identity) continue;
+    if (JSON.stringify(slot.product) === JSON.stringify(copyProduct(product))) continue;
+    slot.product = copyProduct(product); changed = true;
+  }
+  return changed;
 }
 export function removeBayShopStock(state: BayShopState, index: number): { id: string; quantity: number } | null {
   if (!integer(index, 3)) return null;
@@ -91,8 +105,8 @@ export function bayShopInterest(state: BayShopState, id: BayShopVisitorId, slot:
   const memory = state.memories[id].purchases[slot.product.identity];
   const reputation = state.reputation[slot.product.identity];
   const familiar = Math.min(3, memory?.liked ?? 0);
-  const known = Math.min(.18, (reputation?.liked ?? 0) * .025);
-  const willingness = Math.round(slot.product.basePrice * (1.05 + matched * .2 + familiar * .1 + known));
+  const known = Math.min(.08, (reputation?.liked ?? 0) * .01);
+  const willingness = Math.round(slot.product.basePrice * (1.05 + Math.min(3, matched) * .12 + familiar * .04 + known));
   return { matched, willingness, returning: Boolean(memory?.bought), liked: matched > 0,
     score: matched * 10 + familiar * 4 + known * 10 + (willingness - slot.price) / slot.product.basePrice * 8 };
 }
@@ -123,7 +137,7 @@ export function advanceBayShop(state: BayShopState, elapsedMs: number, performan
   while (remaining > 0) {
     const visitor = state.visitor;
     if (!visitor) {
-      if (!state.open || state.serial >= 1_000_000 || state.visitsToday >= bayShopDailyLimit(performanceBonus)) break;
+      if (!state.open || state.serial >= 1_000_000 || state.visitsToday >= bayShopDailyLimit(performanceBonus, state.festivalVisitors)) break;
       const step = Math.min(remaining, state.waitMs); state.waitMs -= step; remaining -= step;
       if (state.waitMs > 0) break;
       state.visitor = arrive(state);
@@ -154,7 +168,7 @@ export function advanceBayShopDay(state: BayShopState, newDay: number, performan
     if (state.visitor && state.visitor.outcome === null) {
       const sale = choosePurchase(state, state.visitor); if (sale) sales.push(sale);
     }
-    while (state.open && state.visitsToday < bayShopDailyLimit(performanceBonus) && state.serial < 1_000_000) {
+    while (state.open && state.visitsToday < bayShopDailyLimit(performanceBonus, state.festivalVisitors) && state.serial < 1_000_000) {
       const visitor = arrive(state), sale = choosePurchase(state, visitor); if (sale) sales.push(sale);
     }
   }
@@ -165,9 +179,11 @@ export function restoreBayShop(value: unknown, day = 1): BayShopState | undefine
   if (value === undefined) return createBayShop(day);
   if (!record(value) || value.version !== 1 || typeof value.open !== 'boolean' || !Array.isArray(value.slots) || value.slots.length !== 4
     || !integer(value.serial) || !finite(value.waitMs, 10_000) || !integer(value.sold) || !integer(value.revenue, 10_000_000_000)
-    || !integer(value.businessDay, day) || value.businessDay < 1 || !integer(value.visitsToday, 12) || value.visitsToday > value.serial
+    || value.festivalVisitors !== undefined && !integer(value.festivalVisitors, 3)
+    || !integer(value.businessDay, day) || value.businessDay < 1 || !integer(value.visitsToday, 15) || value.visitsToday > value.serial
     || !record(value.memories) || Object.keys(value.memories).length !== bayShopVisitors.length || !record(value.reputation) || Object.keys(value.reputation).length > Number(value.sold)) return;
   const restored = createBayShop();
+  restored.festivalVisitors = typeof value.festivalVisitors === 'number' ? value.festivalVisitors : 0;
   for (let i = 0; i < 4; i++) {
     const raw = value.slots[i];
     if (raw === null) continue;

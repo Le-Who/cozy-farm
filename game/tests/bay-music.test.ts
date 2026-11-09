@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { BAY_INSTRUMENT_IDS, BAY_MUSIC_EXPANSIONS, bayActiveVoices, bayPerformanceQuality, cloneBayPattern, createBayMusicState, normalizeBayMusicState } from '../src/bay-music-model.ts'
+import { BAY_INSTRUMENT_IDS, BAY_MUSIC_EXPANSIONS, bayActiveVoices, bayFestivalPattern, bayPerformanceQuality, cloneBayPattern, createBayMusicState, normalizeBayMusicState } from '../src/bay-music-model.ts'
 
 test('the starter garden is already a four voice composition with two freight expansions', () => {
   const state = createBayMusicState()
@@ -49,4 +49,18 @@ test('damaged and earlier saves become a finite playable sixteen step score', ()
   for (const id of BAY_INSTRUMENT_IDS) { assert.equal(state.tracks[id].steps.length,16); assert.ok(state.tracks[id].steps.every(note=>Number.isInteger(note)&&note>=-1&&note<=7)) }
   assert.equal(state.saved.length,3); assert.equal(state.saved[0]!.tempo,54); assert.equal(state.saved[0]!.tracks.harp.volume,1)
   assert.deepEqual(normalizeBayMusicState(null),createBayMusicState())
+})
+
+test('three stage celebrations unlock distinct reusable music without consuming personal recordings', () => {
+  const state = createBayMusicState(); state.saved = [cloneBayPattern(state), cloneBayPattern(state), cloneBayPattern(state)]
+  state.festivalUnlocked = true; state.festivalLevel = 3
+  const restored = normalizeBayMusicState(JSON.parse(JSON.stringify(state)))
+  assert.equal(restored.festivalUnlocked, true); assert.equal(restored.festivalLevel, 3)
+  assert.deepEqual(restored.saved, state.saved)
+  const scores = [1, 2, 3].map(bayFestivalPattern)
+  assert.equal(new Set(scores.map(score => score.name)).size, 3)
+  assert.notDeepEqual(scores[0].tracks.marimba.steps, scores[1].tracks.marimba.steps)
+  scores[0].tracks.marimba.steps.fill(-1)
+  assert.ok(bayFestivalPattern(1).tracks.marimba.steps.some(note => note >= 0))
+  assert.deepEqual(restored.saved, state.saved)
 })

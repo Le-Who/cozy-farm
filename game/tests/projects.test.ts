@@ -63,7 +63,7 @@ test('harbor orders hold a partial cargo across travel, mornings, and reloads', 
     assert.equal(deliverHarborOrder(farm).ok, false);
     assert.equal(sail(farm, 'grove').ok, true);
     assert.equal(deliverHarborOrder(farm).ok, true);
-    assert.equal(farm.coins, balance + 36);
+    assert.equal(farm.coins, balance + 42);
     assert.equal(farm.fish.seaBass, 1);
     assert.equal(getHarborOrder(farm)?.status, 'completed');
     assert.equal(deliverHarborOrder(farm).ok, false);
@@ -71,6 +71,7 @@ test('harbor orders hold a partial cargo across travel, mornings, and reloads', 
     assert.equal(sail(farm, 'home').ok, true);
     assert.equal(endDay(farm).ok, true);
     assert.equal(getHarborOrder(farm)?.name, 'Посылка из Солёной рощи');
+    assert.equal(getHarborOrder(farm)?.reward, 40);
     assert.ok(getHarborOrder(farm)?.items.every(({ delivered }) => delivered === 0));
     assert.equal(restoreFarm({ ...farm, harborSupplies: { 'fish:seaBass': 1 } }), undefined);
     assert.equal(restoreFarm({ ...farm, harborSupplies: { seaSalt: 2, [`dishes:${dish}`]: 1 } }), undefined);

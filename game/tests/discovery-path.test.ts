@@ -142,19 +142,12 @@ test('advanced saves skip obsolete starter counters and use the actual dock ingr
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'project-dock');
 });
 
-test('harbor guidance obtains meals at Home and waits for tomorrow at Home after delivery', () => {
+test('the restored dock guides straight to flowers without forcing specialization or orders', () => {
   const farm = established(); complete(farm, 'dock'); farm.island = 'grove';
-  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'home');
-  farm.island = 'home';
-  assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'focus-bed');
-  farm.dishes.farmhouseBread = 1;
-  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'grove');
-  farm.island = 'grove';
-  assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'visit-harbor');
-  farm.orders.harbor.completed = 1; farm.orders.harbor.deliveredOn = farm.day;
-  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'home');
-  farm.island = 'home';
-  assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'visit-rest');
+  farm.farmhouseSpecialization = null; farm.buildingLevels.farmhouse = 2;
+  assert.equal(getDiscoveryTask(farm, seen)?.id, 'cape-flowers');
+  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'cape');
+  assert.equal(farm.orders.harbor.completed, 0);
 });
 
 test('Cape, fair, visitors and Harbour follow real permanent milestones', () => {

@@ -18,6 +18,6 @@ export function getShoalFindAt(
   id: ShoalFindId,
 ): ShoalFindId | undefined {
   if (!hasShoal(farm) || farm.shoalCollectedToday.includes(id)) return undefined;
-  if (id === 'glass' || id === 'pearl' && isLunarTide(farm.day) && dayRoll(farm.day, 340) < 65) return id;
+  if (id === 'glass' || id === 'pearl' && isLunarTide(farm.day) && ((farm.day - 6) % 10 === 5 || dayRoll(farm.day, 340) < 65)) return id;
   return undefined;
 }

@@ -1,4 +1,6 @@
-import { createBayShop, restoreBayShop, advanceBayShopDay, type BayShopState } from './bay-shop-model.ts';
+import { createBayShop, restoreBayShop, advanceBayShopDay, syncBayShopProducts, type BayShopState } from './bay-shop-model.ts';
+import { bayProductId } from './bay-product-id.ts';
+import { createBayFestival, noteFestivalActivity, noteFestivalDelivery, restoreBayFestival, getBayFestivalChoices, getBayFestivalStatus, beginBayFestival, contributeBayFestival, finishBayFestival, type BayFestivalState, type FestivalContext, type FestivalTradition } from './bay-festival.ts';
 import { createFreight, restoreFreight, advanceFreight, type BayFreightState } from './bay-freight-model.ts';
 import { createBayMusicState, normalizeBayMusicState, type BayMusicState } from './bay-music-model.ts';
 import { ruCount, traitLabel } from './ru.ts';
@@ -7,7 +9,7 @@ import { shellDefinitions, shellForSpot, shellIds, shellSpotCount, type ShellId 
 import { getShoalFindAt, hasShoal, shoalDefinitions, shoalFindIds, type ShoalFindId } from './shoal.ts';
 import { fishingSpecies, type FishingLoot } from './fishing-model.ts';
 import { projectHenToGround, type HenNativePoint } from './hen-roaming.ts';
-import {createCulinary,restoreCulinary,isCookeryResult,copyCookeryResult,normalizeSignatureDraft,signatureIdentity,signatureFruitNames,signatureRecipeLimit,validSignatureName,residentTastes,type CulinaryState,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary.ts';
+import {createCulinary,restoreCulinary,isCookeryResult,copyCookeryResult,normalizeSignatureDraft,signatureIdentity,signatureSellPrice,signatureFruitNames,signatureRecipeLimit,validSignatureName,residentTastes,type CulinaryState,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary.ts';
 import {createShoreline,restoreShoreline,settleCove,sameCove,isCoveChoices,getCoveEcology,isCoveFishingHabitat,copyCoveFishingHabitat,covePresets,coveObservationDefinitions,type ShorelineState,type CoveChoices,type CoveFishingHabitat} from './shoreline.ts';
 import { createIntentOrders, restoreIntentOrders, intentIds, currentIntentIds, intentDefinitions, qualityNames, evaluateFood, type IntentId, type IntentOrderState, type FoodDescriptor, type FoodOfferId } from './intent-orders.ts';
 import { createNeighborState, restoreNeighborState, prepareNeighbor, episodeFor, neighborEpisodes, validNeighborAssembly, type NeighborState, type NeighborAssembly } from './neighbor-plans.ts';
@@ -23,6 +25,7 @@ type CropDefinition = {
   name: string;
   days: number;
   seedPrice: number;
+  retainsWater?: boolean;
   sellPrice: number;
   yield: number;
 };
@@ -32,11 +35,11 @@ export const cropDefinitions: Record<CropId, CropDefinition> = {
   cabbage: { name: 'Капуста', days: 2, seedPrice: 6, sellPrice: 5, yield: 2 },
   beetroot: { name: 'Свёкла', days: 2, seedPrice: 5, sellPrice: 4, yield: 2 },
   tomato: { name: 'Помидор', days: 3, seedPrice: 7, sellPrice: 5, yield: 3 },
-  pumpkin: { name: 'Тыква', days: 3, seedPrice: 8, sellPrice: 9, yield: 2 },
+  pumpkin: { name: 'Тыква', days: 3, retainsWater: true, seedPrice: 8, sellPrice: 9, yield: 2 },
   wheat: { name: 'Пшеница', days: 2, seedPrice: 4, sellPrice: 3, yield: 3 },
   leafyGreens: { name: 'Зелень', days: 1, seedPrice: 4, sellPrice: 3, yield: 2 },
   strawberry:{name:'Клубника',days:2,seedPrice:6,sellPrice:5,yield:3},
-  blueberry:{name:'Черника',days:3,seedPrice:7,sellPrice:6,yield:3},
+  blueberry: { name: 'Черника', days: 3, retainsWater: true, seedPrice: 7, sellPrice: 6, yield: 3 },
   raspberry:{name:'Малина',days:2,seedPrice:6,sellPrice:5,yield:3},
 };
 
@@ -51,7 +54,7 @@ export const eggsPerBasket = 3;
 const eggBasketPrice = 13;
 export const eggsPerCrate = 5;
 const eggCratePrice = 24;
-export const boatPrice = 52;
+export const boatPrice = 36;
 export const seaSaltPrice = 4;
 export const treeSlotCount = 3;
 export const chickenCount = 4;
@@ -170,7 +173,7 @@ export type WellSpecialization = typeof wellSpecializationIds[number];
 export type FacilityBranch = typeof facilityBranchIds[number];
 export const facilitySpecializations = {
   coop: {
-    hatchery: { name: 'Инкубатор', price: 48 },
+    hatchery: { name: 'Инкубатор', price: 30 },
     packing: { name: 'Упаковочная', price: 48 },
   },
   well: {
@@ -194,9 +197,9 @@ export const specializationDefinitions: Record<SpecializationId, { name: string;
 export const workshopShapes = ['round', 'folded', 'long'] as const;
 export type WorkshopShape = typeof workshopShapes[number];
 export const workshopDefinitions: Record<WorkshopShape, { name: string; sellPrice: number }> = {
-  round: { name: 'Круглая булочка', sellPrice: 18 },
+  round: { name: 'Круглая булочка', sellPrice: 20 },
   folded: { name: 'Слойка', sellPrice: 20 },
-  long: { name: 'Батон', sellPrice: 22 },
+  long: { name: 'Батон', sellPrice: 20 },
 };
 export const residentIds = ['bea', 'finn'] as const;
 export type ResidentId = typeof residentIds[number];
@@ -263,7 +266,7 @@ export const dishDefinitions: Record<DishId, DishDefinition> = {
     ],
   },
   grilledFish: {
-    name: 'Рыба на гриле', sellPrice: 32, requiredLevel: 2, ingredientLabel: '1 морской окунь, 1 морская соль, 1 морковь',
+    name: 'Рыба на гриле', sellPrice: 38, requiredLevel: 2, ingredientLabel: '1 морской окунь, 1 морская соль, 1 морковь',
     ingredients: [
       { kind: 'fish', item: 'seaBass', quantity: 1 }, { kind: 'seaSalt', quantity: 1 }, { kind: 'produce', item: 'carrot', quantity: 1 },
     ],
@@ -273,11 +276,11 @@ export const dishDefinitions: Record<DishId, DishDefinition> = {
     ingredients: [{ kind: 'fruit', item: 'apple', quantity: 2 }],
   },
   farmhouseBread: {
-    name: 'Домашний хлеб', sellPrice: 15, requiredLevel: 3, specialization: 'bakery', ingredientLabel: '2 пшеницы, 1 яйцо',
+    name: 'Домашний хлеб', sellPrice: 22, requiredLevel: 3, specialization: 'bakery', ingredientLabel: '2 пшеницы, 1 яйцо',
     ingredients: [{ kind: 'produce', item: 'wheat', quantity: 2 }, { kind: 'eggs', quantity: 1 }],
   },
   orchardPreserves: {
-    name: 'Садовый конфитюр', sellPrice: 16, requiredLevel: 3, specialization: 'preserves', ingredientLabel: '1 яблоко, 1 груша',
+    name: 'Садовый конфитюр', sellPrice: 22, requiredLevel: 3, specialization: 'preserves', ingredientLabel: '1 яблоко, 1 груша',
     ingredients: [{ kind: 'fruit', item: 'apple', quantity: 1 }, { kind: 'fruit', item: 'pear', quantity: 1 }],
   },
   honeyCake: {
@@ -518,6 +521,7 @@ export type FarmState = {
   bayShop: BayShopState;
   musicGarden: BayMusicState;
   concertDay: number;
+  festivals: BayFestivalState;
   culinary:CulinaryState;
   intentOrders:IntentOrderState;
   neighbors:NeighborState;
@@ -626,7 +630,7 @@ export function createFarm(): FarmState {
     workshopPatterns: [],
     village: { built: false, supplies: {}, residents: [null, null], meals: 0, mealOn: 0,
       serviceOn: { bea: 0, finn: 0 }, scouting: false },
-    freight: createFreight(), bayShop: createBayShop(), musicGarden: createBayMusicState(), concertDay: 0,
+    freight: createFreight(), bayShop: createBayShop(), musicGarden: createBayMusicState(), concertDay: 0, festivals:createBayFestival(),
     culinary:createCulinary(),shoreline:createShoreline(),intentOrders:createIntentOrders(),neighbors:createNeighborState(),
     fishingTripSerial: 0,
     pendingFishingTrip: null,
@@ -906,6 +910,7 @@ export function catchFish(farm: FarmState, hit: boolean): ActionResult {
   farm.fish[fish] += 1;
   discoverBay(farm, fish);
   farm.fishCaughtToday[farm.island] += 1;
+  noteFestivalActivity(farm.festivals,'fish');
   farm.workToday += 1;
   return { ok: true, message: `Улов: ${fishDefinitions[fish].name.toLowerCase()}.` };
 }
@@ -960,6 +965,8 @@ export function finishFishingTrip(farm: FarmState, token: number, catchResult: n
     } else junk++;
   }
   farm.fishCaughtToday[trip.island] += fishCount;
+  if(fishCount>0)noteFestivalActivity(farm.festivals,'fish');
+  if(catches.some(item=>item.kind==='shell'))noteFestivalActivity(farm.festivals,'shore');
   if (catches.length) farm.workToday += 1;
   const message = brought.length ? `Улов принесён домой: ${brought.join(', ')}.` : junk ? 'Вода стала чище.' : 'Крючок пуст. Попробуйте ещё раз.';
   return { ok: true, message: message + (junk ? ` Убрано: ${ruCount(junk, 'предмет', 'предмета', 'предметов')} мусора.` : '') };
@@ -998,6 +1005,7 @@ export function pickFruit(farm: FarmState, slot: number): ActionResult {
   const quantity = tree.fruitReady;
   const found = collectResources(farm, tree.tree, quantity, tree.trait);
   tree.fruitReady = 0;
+  noteFestivalActivity(farm.festivals,'harvest');
   delete tree.trait;
   farm.workToday += 1;
   return { ok: true, message: `Собраны плоды: ${treeDefinitions[tree.tree].name.toLowerCase()} × ${quantity}.${found}` };
@@ -1046,7 +1054,7 @@ export function buyBoat(farm: FarmState): ActionResult {
 export function sail(farm: FarmState, island: IslandId): ActionResult {
   if (!isId(islandIds, island) || farm.island === island) return failure('Выберите другой остров.');
   if (!farm.boatOwned) return failure('Купите лодку для путешествий.');
-  if (!canSailTo(farm, island)) return failure(island === 'village' ? 'Завершите проект «Живая бухта» на ярмарке Родного острова, чтобы открыть Лавандовую гавань.' : 'Выполните два заказа у причала Солёной рощи, чтобы открыть Цветочный мыс.');
+  if (!canSailTo(farm, island)) return failure(island === 'village' ? 'Завершите проект «Живая бухта» на ярмарке Родного острова, чтобы открыть Лавандовую гавань.' : 'Восстановите причал Солёной рощи, чтобы открыть Цветочный мыс.');
   farm.island = island;
   const messages: Record<IslandId, string> = {
     home: 'С возвращением на ферму!', grove: 'Вы прибыли в Солёную рощу.', cape: 'Вы прибыли на Цветочный мыс. Посадите цветы для пчёл.',
@@ -1055,8 +1063,8 @@ export function sail(farm: FarmState, island: IslandId): ActionResult {
   return { ok: true, message: messages[island] };
 }
 
-export function canSailTo(farm: Pick<FarmState, 'boatOwned' | 'orders'> & Partial<Pick<FarmState, 'village'>>, destination: IslandId): boolean {
-  return isId(islandIds, destination) && farm.boatOwned && (destination !== 'cape' || farm.orders.harbor.completed >= 2)
+export function canSailTo(farm: Pick<FarmState, 'boatOwned' | 'orders'> & Partial<Pick<FarmState, 'village' | 'projects'>>, destination: IslandId): boolean {
+  return isId(islandIds, destination) && farm.boatOwned && (destination !== 'cape' || farm.orders.harbor.completed >= 2 || !!farm.projects && isProjectComplete({ projects: farm.projects }, 'dock'))
     && (destination !== 'village' || farm.village?.built === true);
 }
 
@@ -1142,7 +1150,8 @@ export function hasBayDisplay(farm: Pick<FarmState, 'bayDiscoveries' | 'projects
 export function getFairGuest(farm: FarmState) {
   if (!isProjectComplete(farm, 'fair')) return undefined;
   const harbor = farm.orders.harbor;
-  const capeKnownBeforeToday = canSailTo(farm, 'cape') && (harbor.completed > 2 || harbor.deliveredOn < farm.day);
+  const capeKnownBeforeToday = farm.capeFlowers.some(plantedOn => plantedOn !== null && plantedOn < farm.day)
+    || harbor.completed >= 2 && (harbor.completed > 2 || harbor.deliveredOn < farm.day);
   const requests: readonly { name: string; item: StockItem; crop: CropId }[] = [
     { name: 'Мара', item: { kind: 'fruit', item: 'apple', quantity: 2 }, crop: 'carrot' },
     { name: 'Поппи', item: { kind: 'dishes', item: 'appleJam', quantity: 1 }, crop: 'wheat' },
@@ -1190,6 +1199,7 @@ export function bakeWorkshop(farm: FarmState, shape: WorkshopShape): ActionResul
   if (!action.available) return failure(action.label);
   for (const item of workshopIngredients) removeStock(farm, item);
   farm.handmade[shape] += 1;
+  noteFestivalActivity(farm.festivals,'bake');
   if (!farm.workshopPatterns.includes(shape)) farm.workshopPatterns.push(shape);
   farm.workToday += 1;
   return { ok: true, message: `Готово: ${workshopDefinitions[shape].name.toLowerCase()}. Образец сохранён.` };
@@ -1200,14 +1210,40 @@ const villageRequirements: readonly StockItem[] = [
   { kind: 'fish', item: 'seaBass', quantity: 2 },
   { kind: 'honey', quantity: 2 },
 ];
-const villagePrice = 80;
+export const villagePrice = 48;
+export const villageGuestTarget = 1;
 
 export function getVillageHomeCount(farm: FarmState): number {
   return farm.village.built ? farm.village.meals >= 2 ? 2 : 1 : 0;
 }
 
+function festivalContext(farm:FarmState):FestivalContext {
+  return {...farm,count:item=>ingredientCount(farm,item),take:item=>removeStock(farm,item),value:item=>unitPrice(item,farm)*item.quantity};
+}
+function syncFestivalRewards(farm:FarmState):void {
+  farm.freight.harvestStore=Math.min(3,farm.festivals.completed.harvest);
+  farm.bayShop.festivalVisitors=Math.min(3,farm.festivals.completed.lights);
+  farm.musicGarden.festivalLevel=Math.min(3,farm.festivals.completed.stage);
+  farm.musicGarden.festivalUnlocked=farm.festivals.completed.stage>0;
+}
+export function getFestivalChoices(farm:FarmState) {return getBayFestivalChoices(farm.festivals,festivalContext(farm));}
+export function getFestivalStatus(farm:FarmState) {return getBayFestivalStatus(farm.festivals,festivalContext(farm));}
+export function beginFestival(farm:FarmState,id:FestivalTradition):ActionResult {return beginBayFestival(farm.festivals,festivalContext(farm),id);}
+export function contributeFestival(farm:FarmState,requirementId?:string,alternativeId?:string):ActionResult {
+  const result=contributeBayFestival(farm.festivals,festivalContext(farm),requirementId,alternativeId);
+  if(result.ok)farm.workToday++;
+  return result;
+}
+export function finishFestival(farm:FarmState):ActionResult {
+  const status=getFestivalStatus(farm).active;
+  if(!status?.canFinish||!Number.isSafeInteger(farm.coins+status.reward))return failure('Завершите приготовления и дождитесь следующего утра в гавани.');
+  const result=finishBayFestival(farm.festivals,festivalContext(farm));
+  if(result.ok){farm.coins+=result.reward??0;farm.workToday++;syncFestivalRewards(farm);}
+  return result;
+}
+
 export function getVillageProject(farm: FarmState) {
-  const unlocked = isProjectComplete(farm, 'fair') && farm.fairGuestsServed >= 3;
+  const unlocked = isProjectComplete(farm, 'fair') && farm.fairGuestsServed >= villageGuestTarget;
   const items = supplyProgress(farm, villageRequirements, farm.village.supplies, farm.village.built);
   const supplied = items.every(({ item, delivered }) => delivered === item.quantity);
   const status: 'locked' | 'waiting' | 'ready' | 'completed' = farm.village.built ? 'completed'
@@ -1219,8 +1255,8 @@ export function getVillageProject(farm: FarmState) {
 export function contributeVillage(farm: FarmState): ActionResult {
   const project = getVillageProject(farm);
   if (project.status === 'completed') return failure('Живая бухта уже открыта.');
-  if (project.status === 'locked') return failure('Обслужите трёх гостей ярмарки, затем постройте Живую бухту на Родном острове.');
-  if (project.status !== 'ready') return failure('Принесите недостающие припасы и 80 монет.');
+  if (project.status === 'locked') return failure('Угостите первого гостя ярмарки, затем постройте Живую бухту на Родном острове.');
+  if (project.status !== 'ready') return failure(`Принесите недостающие припасы и ${villagePrice} монет.`);
   const donated = depositSupplies(farm, project.items, farm.village.supplies);
   const supplied = villageRequirements.every((item) => farm.village.supplies[marketKey(item)] === item.quantity);
   if (supplied && farm.coins >= villagePrice) {
@@ -1228,7 +1264,7 @@ export function contributeVillage(farm: FarmState): ActionResult {
     farm.village.built = true;
     return { ok: true, message: 'Живая бухта открыта! Пригласите соседа в первый домик.' };
   }
-  return { ok: true, message: `Доставлено: ${ruCount(donated, 'припас', 'припаса', 'припасов')}.${supplied ? ' Принесите 80 монет, чтобы достроить домики.' : ''}` };
+  return { ok: true, message: `Доставлено: ${ruCount(donated, 'припас', 'припаса', 'припасов')}.${supplied ? ` Принесите ${villagePrice} монет, чтобы достроить домики.` : ''}` };
 }
 
 export function inviteResident(farm: FarmState, id: ResidentId | null, slot: number): ActionResult {
@@ -1326,6 +1362,7 @@ export function collectShell(farm: FarmState, spot: number): ActionResult {
   const shell = getShellAt(farm, spot);
   if (!shell) return failure('На этом участке пляжа всё собрано.');
   farm.shellsCollectedToday.push(spot);
+  noteFestivalActivity(farm.festivals,'shore');
   farm.shells[shell] += 1;
   farm.workToday += 1;
   const discovered = !farm.shellDiscoveries.includes(shell);
@@ -1355,6 +1392,7 @@ export function getCoveHabitat(farm:FarmState):CoveFishingHabitat|undefined{
 export function collectShoalFind(farm: FarmState, id: ShoalFindId): ActionResult {
   if (farm.island !== 'grove' || !getShoalFindAt(farm, id)) return failure('Ищите сокровища на Лунной отмели.');
   farm.shoalCollectedToday.push(id);
+  noteFestivalActivity(farm.festivals,'shore');
   farm.shoalFinds[id] += 1;
   farm.workToday += 1;
   const discovered = !farm.shoalDiscoveries.includes(id);
@@ -1442,6 +1480,7 @@ export function cookDish(farm: FarmState, dish: DishId,result?:CookeryResult): A
   if(!Number.isSafeInteger(farm.dishes[dish]+(bonus?2:1))||!Number.isSafeInteger(farm.workToday+1))return failure('В кладовой пока нет места для нового блюда.');
   for (const ingredient of getCookIngredients(farm, dish, fish)) removeStock(farm, ingredient);
   farm.dishes[dish] += bonus?2:1;
+  noteFestivalActivity(farm.festivals,'bake');
   if(bonus)farm.culinary.picnic=null;
   if(result)farm.culinary.lastDishes[dish]=copyCookeryResult(result);
   discoverBay(farm, dish);
@@ -1473,9 +1512,10 @@ function craftSignature(farm:FarmState,draft:SignatureDraft,result:CookeryResult
   const bonus=farm.culinary.picnic?.day===farm.day&&farm.culinary.picnic.processing==='silky',made=quantity+Number(bonus);
   if(existing&&((farm.culinary.stock[existing.id]??0)+made>1_000_000||existing.batches+quantity>1_000_000))return failure('Для этого блюда больше нет места в кладовой.');
   const processing=result.processing??(normalized.base==='tart'?'chunky':'bright');
-  const recipe:SignatureRecipe=existing??{id:`s${farm.culinary.serial+1}`,name:`${normalized.base==='tart'?'Тарт':'Конфитюр'}: ${normalized.ingredients.map(part=>signatureFruitNames[part.id].toLowerCase()).join(' + ')}`,favorite:false,base:normalized.base,ingredients:normalized.ingredients.map(part=>({...part})),processing,result:copyCookeryResult(result),createdOn:farm.day,batches:0,sellPrice:action.items.reduce((sum,item)=>sum+unitPrice(item,farm)*item.quantity,0)+(normalized.base==='tart'?8:6)};
+  const recipe:SignatureRecipe=existing??{id:`s${farm.culinary.serial+1}`,name:`${normalized.base==='tart'?'Тарт':'Конфитюр'}: ${normalized.ingredients.map(part=>signatureFruitNames[part.id].toLowerCase()).join(' + ')}`,favorite:false,base:normalized.base,ingredients:normalized.ingredients.map(part=>({...part})),processing,result:copyCookeryResult(result),createdOn:farm.day,batches:0,sellPrice:signatureSellPrice(normalized,action.items.reduce((sum,item)=>sum+unitPrice(item,farm)*item.quantity,0))};
   for(const item of items)removeStock(farm,item);
   if(!existing){farm.culinary.serial++;farm.culinary.recipes.push(recipe)}
+  noteFestivalActivity(farm.festivals,'bake');
   recipe.batches+=quantity;recipe.result=copyCookeryResult(result);farm.culinary.stock[recipe.id]=(farm.culinary.stock[recipe.id]??0)+made;
   if(bonus)farm.culinary.picnic=null;
   farm.workToday++;
@@ -1581,7 +1621,7 @@ export function getNeighborPlans(farm: FarmState) {
       food: plan.food ? { ...plan.food, qualities: [...plan.food.qualities] } : null,
       memory: memory ? { ...memory, qualities: [...memory.qualities] } : null,
       memoryCount: history.completed, helpReady: history.helpReady, chips: intentDefinitions[definition.intentId].requiredQualities.map(quality => qualityNames[quality]), requiredQualities: [...intentDefinitions[definition.intentId].requiredQualities],
-      reward: 12, nextAvailableOn: (memory?.day ?? 0) + 1 };
+      reward: plan.food ? (getIntentOffers(farm, definition.intentId).find(offer => offer.id === plan.food!.id)?.sellPrice ?? 0) + 12 : 12, nextAvailableOn: (memory?.day ?? 0) + 1 };
   });
 }
 function availableNeighborPlan(farm: FarmState, id: string) {
@@ -1609,14 +1649,15 @@ export function finishNeighborPlan(farm: FarmState, id: string, assembly: Neighb
   if (!validNeighborAssembly(assembly, view.arrangement)) return failure('Разместите угощение по центру, а чашку и цветы — рядом, без наложений.');
   const history = farm.neighbors[view.resident], offer = getIntentOffers(farm, view.intentId).find(offer => offer.id === view.food!.id);
   if (!offer?.available) return failure('Выбранное угощение закончилось. Приготовьте ещё порцию или выберите другое.');
-  if (history.completed >= 1_000_000 || history.memories.at(-1)?.day === farm.day || !Number.isSafeInteger(farm.coins + 12) || !Number.isSafeInteger(farm.workToday + 1)) return failure('Следующую встречу устроим в другой день.');
+  const reward = offer.sellPrice + 12;
+  if (history.completed >= 1_000_000 || history.memories.at(-1)?.day === farm.day || !Number.isSafeInteger(farm.coins + reward) || !Number.isSafeInteger(farm.workToday + 1)) return failure('Следующую встречу устроим в другой день.');
   const food = { id: offer.id, name: offer.name, qualities: [...offer.qualities] };
   consumeFood(farm, offer);
   history.current = { ...history.current!, phase: 'celebrating', food };
   history.completed++; history.helpReady = true;
   history.memories.push({ day: farm.day, episode: view.episode, foodName: offer.name, qualities: [...offer.qualities] });
   history.memories = history.memories.slice(-12);
-  farm.coins += 12; farm.workToday++;
+  farm.coins += reward; farm.workToday++;
   if (farm.village.mealOn !== farm.day) { farm.village.meals++; farm.village.mealOn = farm.day; }
   return { ok: true, message: `${residentDefinitions[view.resident].name} запомнит «${offer.name}» и вашу встречу. ${view.resident === 'bea' ? 'В следующий раз Беа испечёт на одно изделие больше.' : 'Финн укрепит следующий подготовленный крючок.'}` };
 }
@@ -1673,6 +1714,11 @@ function removeStock(farm: FarmState, item: StockItem): void {
   }
 }
 
+function supplyOrderReward(farm: FarmState, order: Order): number {
+  return Math.max(order.reward, order.items.reduce((sum, item) => sum + unitPrice(item, farm) * item.quantity, 0)
+    + 6 + 2 * new Set(order.items.map(marketKey)).size);
+}
+
 function marketOrder(farm: FarmState, lane: OrderLane, menu: readonly Order[]) {
   const ledger = farm.orders[lane];
   const delivered = ledger.deliveredOn === farm.day;
@@ -1680,7 +1726,7 @@ function marketOrder(farm: FarmState, lane: OrderLane, menu: readonly Order[]) {
   const status: 'delivered' | 'upgrade' | 'ready' | 'waiting' = delivered ? 'delivered'
     : order.upgradedKitchen && farm.buildingLevels.farmhouse < dishDefinitions.grilledFish.requiredLevel ? 'upgrade'
     : order.items.every((item) => ingredientCount(farm, item) >= item.quantity) ? 'ready' : 'waiting';
-  return { ...order, lane, status } as const;
+  return { ...order, reward: supplyOrderReward(farm,order), lane, status } as const;
 }
 
 export function getMarketOrders(farm: FarmState) {
@@ -1837,7 +1883,7 @@ export function getHarborOrder(farm: FarmState) {
   const items = supplyProgress(farm, order.items, farm.harborSupplies, complete);
   const status = complete ? 'completed' : farm.island !== 'grove' ? 'locked'
     : items.some(({ available }) => available > 0) ? 'ready' : 'waiting';
-  return { ...order, items, status } as const;
+  return { ...order, reward: supplyOrderReward(farm,order), items, status } as const;
 }
 
 export function deliverHarborOrder(farm: FarmState): ActionResult {
@@ -1910,7 +1956,8 @@ export function endDay(farm: FarmState): ActionResult {
       delete bed.wateredAt;
       cropsGrew = true;
     }
-    bed.watered = weather === 'rain' && bed.growth < cropDefinitions[bed.crop].days;
+    const crop = cropDefinitions[bed.crop];
+    bed.watered = bed.growth < crop.days && (weather === 'rain' || (crop.retainsWater === true && bed.watered));
     const trait = exposedTrait(tomorrow, weather, index + 1);
     if (!bed.trait && trait) bed.trait = trait;
   }
@@ -1942,7 +1989,10 @@ export function endDay(farm: FarmState): ActionResult {
   farm.chickensFed = false;
   farm.shoreline=settleCove(farm.shoreline,tomorrow);
   farm.culinary.picnic=null;
+  const freightDayBefore= farm.freight.lastDay;
   advanceFreight(farm.freight, tomorrow, islandIds.filter(port => canSailTo(farm, port)), farm.capeLevel >= 2);
+  if(farm.freight.lastDay>freightDayBefore)noteFestivalDelivery(farm.festivals,farm.freight.events.filter(event=>event.kind==='unloading'&&event.port==='village'&&event.day>freightDayBefore).reduce((sum,event)=>sum+event.items.reduce((count,item)=>count+item.quantity,0),0));
+  syncFarmShopPrices(farm);
   for (const sale of advanceBayShopDay(farm.bayShop, tomorrow, Number(farm.concertDay === farm.day))) farm.coins += sale.price;
   farm.day = tomorrow;
   const hatched = farm.hatchDay === farm.day;
@@ -1962,6 +2012,7 @@ export function getGoal(farm: FarmState): (Goal & { progress: number }) | undefi
 }
 
 function record(farm: FarmState, id: GoalId, message: string): ActionResult {
+  if (id === 'harvest') noteFestivalActivity(farm.festivals,'harvest');
   if (id !== 'rest') farm.workToday += 1;
   farm.progress[id] += 1;
   const completed = goals.find((goal) => goal.id === id && goal.target === farm.progress[id]);
@@ -1972,6 +2023,17 @@ function record(farm: FarmState, id: GoalId, message: string): ActionResult {
 
 function failure(message: string): ActionResult {
   return { ok: false, message };
+}
+
+function syncFarmShopPrices(farm: FarmState): void {
+  const products = farm.bayShop.slots.flatMap(slot => {
+    if (!slot) return [];
+    const item = marketStock.find(item => bayProductId(item) === slot.product.id);
+    const recipe = slot.product.id.startsWith('signature:') ? farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === slot.product.id) : undefined;
+    const basePrice = item ? unitPrice(item, farm) : recipe?.sellPrice;
+    return basePrice === undefined ? [] : [{ ...slot.product, basePrice }];
+  });
+  syncBayShopProducts(farm.bayShop, products);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -2104,7 +2166,7 @@ function restoreLivingBay(value: Record<string, unknown>, day: number, fairCompl
     if (!requirement || !isQuantity(count) || count > requirement.quantity) return undefined;
     supplies[key] = count;
   }
-  const unlocked = fairComplete && fairGuestsServed >= 3;
+  const unlocked = fairComplete && fairGuestsServed >= villageGuestTarget;
   if (!unlocked && (Object.keys(supplies).length > 0 || village.built)) return undefined;
   if (village.built && !villageRequirements.every((item) => supplies[marketKey(item)] === item.quantity)) return undefined;
   const residents = village.residents;
@@ -2203,6 +2265,8 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   const projects = restoreProjectLedger(savedProjects);
   const livingBay = projects && restoreLivingBay(value, day, isProjectComplete({ projects }, 'fair'), restored);
   if (!livingBay) return undefined;
+  const festivals=restoreBayFestival(value.festivals,day,livingBay.village.built&&livingBay.village.meals>=1);
+  if(!festivals)return undefined;
   const intentOrders=restoreIntentOrders(value.intentOrders,day),neighbors=restoreNeighborState(value.neighbors,day,livingBay.village.residents);
   if(!intentOrders||!neighbors)return undefined;
   const variants = restoreCollection(savedVariants, traitIds, (entry): entry is number => isQuantity(entry) && entry > 0);
@@ -2231,7 +2295,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   if (!isQuantity(eggCrates) || (eggCrates > 0 && coopSpecialization !== 'packing')) return undefined;
   if (typeof chickensFed !== 'boolean' || !isRecord(progress)) return undefined;
   if (!isId(islandIds, island) || typeof boatOwned !== 'boolean' || (!boatOwned && island !== 'home')) return undefined;
-  const capeUnlocked = canSailTo({ boatOwned, orders }, 'cape');
+  const capeUnlocked = canSailTo({ boatOwned, orders, projects }, 'cape');
   if (!Array.isArray(capeFlowers) || capeFlowers.length !== capeFlowerSlotCount
     || !Array.from(capeFlowers).every((plantedOn) => plantedOn === null || isQuantity(plantedOn) && plantedOn > 0 && plantedOn <= day)) return undefined;
   if (capeLevel !== 1 && capeLevel !== 2 && capeLevel !== 3) return undefined;
@@ -2312,7 +2376,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
       if (count > 0) bayDiscoveries.push(id);
     }
   }
-  return {
+  const result: FarmState = {
     version: 1,
     ...livingBay,
     day,
@@ -2374,6 +2438,9 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     harborSupplies,
     variants,
     discoveries,
-    culinary,shoreline,intentOrders,neighbors,freight,bayShop,musicGarden,concertDay,
+    culinary,shoreline,intentOrders,neighbors,freight,bayShop,musicGarden,concertDay,festivals,
   };
+  syncFestivalRewards(result);
+  syncFarmShopPrices(result);
+  return result;
 }

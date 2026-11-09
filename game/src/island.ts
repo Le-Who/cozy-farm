@@ -10,6 +10,7 @@ import { createWeatherEffects } from './weather-effects';
 import { isLunarTide } from './tide';
 import { hasShoal, shoalFindIds } from './shoal';
 import { createSupportShadow, type SupportShadow } from './support-shadow';
+import { festivalRewardArt } from './festival-art';
 import { defaultHenPositions, henIdlePoint, projectHenToGround, type HenNativePoint } from './hen-roaming';
 import { getCoveEcology } from './shoreline';
 import { createCoveMotion, stepCoveMotion, coveChannelPoint, coveSceneAnchors } from './shoreline-view';
@@ -716,7 +717,35 @@ export function createIsland(
     for (const place of harbourPlacesOnMap) {
       const anchor=scenePoint(place.x,place.y)
       world.shape('shade',anchor.x,anchor.y-3,place.w*sceneScale*.35,place.h*sceneScale*.065,'#686044',.14)
-      art.draw(world,place.art,anchor.x,anchor.y,place.w*sceneScale,place.h*sceneScale,{baseline:.98,footY:anchor.y})
+      art.draw(world,place.art,anchor.x,anchor.y,place.w*sceneScale,place.h*sceneScale,{mipmaps:true,baseline:.98,footY:anchor.y})
+    }
+    for (const tradition of ['harvest', 'lights', 'stage'] as const) {
+      const tier = Math.min(3, farm.festivals.completed[tradition]);
+      if (!tier) continue;
+      const prop = festivalRewardArt[tradition], key = `festival-${tradition}`;
+      const drawReward = (x: number, y: number, size = 1) => {
+        const anchor = scenePoint(x, y), w = prop.w * sceneScale * size, h = prop.h * sceneScale * size;
+        if (!art.image(key)) return;
+        paintSupportShadow(key, prop.shadow, anchor.x, anchor.y, w, h);
+        art.draw(world, key, anchor.x, anchor.y, w, h, { mipmaps: true, fullCell: true, baseline: 1, footY: anchor.y });
+      };
+      drawReward(prop.x, prop.y);
+      if (tradition === 'harvest') {
+        if (tier >= 2) drawReward(470, 705, .6);
+        if (tier >= 3) drawReward(590, 705, .55);
+      } else if (tradition === 'lights') {
+        if (tier >= 2) drawReward(1190, 566, .67);
+        if (tier >= 3) drawReward(1010, 757, .7);
+      } else {
+        for (const [level, instrument, x, y, w, h] of [[2, 'handpan', 715, 418, 46, 39], [3, 'bass', 897, 421, 42, 50]] as const) {
+          if (tier < level) continue;
+          const anchor = scenePoint(x, y);
+          art.draw(world, `festival-${instrument}`, anchor.x, anchor.y, w * sceneScale, h * sceneScale,
+            { mipmaps: true, baseline: 1, footY: anchor.y, shadow: true });
+          art.draw(world, `festival-${instrument}`, anchor.x, anchor.y, w * sceneScale, h * sceneScale,
+            { mipmaps: true, baseline: 1, footY: anchor.y });
+        }
+      }
     }
     const gatheringPlan = getNeighborPlans(farm).find(plan => plan.phase === 'celebrating' || plan.phase === 'arranging');
     const mealActive = villageMealCelebration && moment - villageMealCelebration < 24000;
@@ -1878,6 +1907,10 @@ export function createIsland(
     } else {
       art.load('bay-pavilion','lavender/bay/pavilion',[1,1])
       art.load('bay-pergola','lavender/bay/pergola',[1,1])
+      for (const tradition of ['harvest', 'lights', 'stage'] as const) {
+        if (next.festivals.completed[tradition] > 0) art.load(`festival-${tradition}`, `lavender/festivals/${tradition}`, [1, 1]);
+      }
+      for (const instrument of ['handpan', 'bass']) art.load(`festival-${instrument}`, `lavender/bay/music-${instrument}`, [1, 1]);
       load('village-bea', 6);
       load('village-finn', 6);
       art.load('neighbor-bea-work', 'lavender/community/bea-work', [3, 2]);

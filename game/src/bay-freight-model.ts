@@ -3,6 +3,7 @@ export type FreightPort = typeof freightPorts[number];
 export const freightPortNames: Record<FreightPort, string> = { home: 'Родной остров', grove: 'Солёная роща', cape: 'Цветочный мыс', village: 'Лавандовая гавань' };
 export const warehouseCapacity = 36;
 export const ferryCapacity = 8;
+export const freightProductionBuffer = 8;
 export type FreightStock = Record<string, number>;
 export type FreightItem = { id: string; quantity: number };
 export type FreightCargo = FreightItem & { destination: FreightPort };
@@ -11,6 +12,7 @@ export type FreightShip = { phase: 'docked'; port: FreightPort; cargo: FreightCa
   | { phase: 'sailing'; from: FreightPort; to: FreightPort; arrivesOn: number; cargo: FreightCargo[] };
 export type FreightEvent = { day: number; kind: 'loading' | 'sailing' | 'unloading' | 'production' | 'blocked'; port: FreightPort; items: FreightItem[]; to?: FreightPort };
 export type BayFreightState = {
+  harvestStore?: number;
   warehouses: Record<FreightPort, FreightStock>;
   route: { stops: FreightPort[]; mode: 'mixed' | 'priority'; running: boolean; pickups: Record<FreightPort, FreightPickup> };
   ship: FreightShip;
@@ -28,9 +30,10 @@ const fail = (message: string): FreightResult => ({ ok: false, message });
 
 export function createFreight(day = 1): BayFreightState {
   return {
+    harvestStore: 0,
     warehouses: { home: {}, grove: {}, cape: {}, village: {} },
     route: { stops: ['home', 'village'], mode: 'mixed', running: false, pickups: {
-      home: { destination: 'village', products: ['wheat', 'shells'] },
+      home: { destination: 'village', products: ['wheat'] },
       grove: { destination: 'village', products: ['seaSalt'] },
       cape: { destination: 'village', products: ['beeswax'] },
       village: { destination: 'home', products: ['handmade:round'] },
@@ -45,11 +48,15 @@ export function freightStock(state: BayFreightState, port: FreightPort, id: stri
 export function freightUsed(state: BayFreightState, port: FreightPort): number {
   return Object.values(state.warehouses[port]).reduce((sum, amount) => sum + amount, 0);
 }
+export function freightCapacity(state: BayFreightState, port: FreightPort): number {
+  const tier = Math.max(0, Math.min(3, Math.floor(state.harvestStore ?? 0)));
+  return warehouseCapacity + (port === 'village' && tier > 0 ? 8 + tier * 4 : 0);
+}
 export function ferryUsed(state: BayFreightState): number {
   return state.ship.cargo.reduce((sum, item) => sum + item.quantity, 0);
 }
 export function addFreightStock(state: BayFreightState, port: FreightPort, id: string, quantity: number): boolean {
-  if (!validId(id) || !Number.isSafeInteger(quantity) || quantity <= 0 || freightUsed(state, port) + quantity > warehouseCapacity) return false;
+  if (!validId(id) || !Number.isSafeInteger(quantity) || quantity <= 0 || freightUsed(state, port) + quantity > freightCapacity(state, port)) return false;
   state.warehouses[port][id] = freightStock(state, port, id) + quantity;
   return true;
 }
@@ -70,7 +77,7 @@ export function takeFreightStock(state: BayFreightState, port: FreightPort, id: 
   return consumeFreightStock(state, port, [{ id, quantity }]);
 }
 export function transferFreightStock(state: BayFreightState, from: FreightPort, to: FreightPort, id: string, quantity: number): boolean {
-  if (from === to || !validId(id) || !Number.isSafeInteger(quantity) || quantity <= 0 || freightStock(state, from, id) < quantity || freightUsed(state, to) + quantity > warehouseCapacity) return false;
+  if (from === to || !validId(id) || !Number.isSafeInteger(quantity) || quantity <= 0 || freightStock(state, from, id) < quantity || freightUsed(state, to) + quantity > freightCapacity(state, to)) return false;
   takeFreightStock(state, from, id, quantity);
   addFreightStock(state, to, id, quantity);
   return true;
@@ -89,7 +96,10 @@ export function reconcileFreightPorts(state: BayFreightState, openedPorts: reado
   state.route.stops = [current, ...available.filter(port => port !== current)].slice(0, 2);
   for (const port of state.route.stops) {
     const pickup = state.route.pickups[port];
-    if (!state.route.stops.includes(pickup.destination)) pickup.destination = state.route.stops.find(stop => stop !== port)!;
+    if (!state.route.stops.includes(pickup.destination)) {
+      pickup.destination = state.route.stops.find(stop => stop !== port)!;
+      if (port === 'home' && (pickup.products.join(',') === 'wheat' || pickup.products.join(',') === 'wheat,shells')) pickup.products = [];
+    }
   }
 }
 export function setFreightStops(state: BayFreightState, stops: readonly FreightPort[], openedPorts: readonly FreightPort[]): FreightResult {
@@ -115,7 +125,7 @@ function unload(state: BayFreightState, day: number, port: FreightPort) {
   const unloaded: FreightItem[] = [];
   for (const item of state.ship.cargo) {
     if (item.destination !== port) continue;
-    const quantity = Math.min(item.quantity, warehouseCapacity - freightUsed(state, port));
+    const quantity = Math.min(item.quantity, freightCapacity(state, port) - freightUsed(state, port));
     if (quantity > 0) {
       addFreightStock(state, port, item.id, quantity);
       item.quantity -= quantity;
@@ -177,12 +187,13 @@ export function pauseFreight(state: BayFreightState): FreightResult {
 function produce(state: BayFreightState, day: number, openedPorts: readonly FreightPort[], waxAvailable:boolean) {
   const outputs = [{ port: 'home' as const, id: 'shells', quantity: 1 }, { port: 'grove' as const, id: 'seaSalt', quantity: 2 }, { port: 'cape' as const, id: 'beeswax', quantity: 2 }];
   for (const output of outputs) {
-    if ((output.id!=='beeswax' || waxAvailable) && openedPorts.includes(output.port) && addFreightStock(state, output.port, output.id, output.quantity)) event(state, day, 'production', output.port, [{ id: output.id, quantity: output.quantity }]);
+    const quantity = Math.min(output.quantity, Math.max(0, freightProductionBuffer - freightStock(state, output.port, output.id)), freightCapacity(state, output.port) - freightUsed(state, output.port));
+    if ((output.id!=='beeswax' || waxAvailable) && openedPorts.includes(output.port) && quantity > 0 && addFreightStock(state, output.port, output.id, quantity)) event(state, day, 'production', output.port, [{ id: output.id, quantity }]);
   }
-  if (openedPorts.includes('village') && freightStock(state, 'village', 'wheat') >= 2 && freightUsed(state, 'village') + 1 <= warehouseCapacity) {
+  if (openedPorts.includes('village') && freightStock(state, 'village', 'wheat') >= 2) {
     takeFreightStock(state, 'village', 'wheat', 2);
-    addFreightStock(state, 'village', 'handmade:round', 3);
-    event(state, day, 'production', 'village', [{ id: 'handmade:round', quantity: 3 }]);
+    addFreightStock(state, 'village', 'handmade:round', 1);
+    event(state, day, 'production', 'village', [{ id: 'handmade:round', quantity: 1 }]);
   }
 }
 export function advanceFreight(state: BayFreightState, day: number, openedPorts: readonly FreightPort[], waxAvailable=true): void {
@@ -194,19 +205,20 @@ export function advanceFreight(state: BayFreightState, day: number, openedPorts:
       unload(state, current, port);
     } else if (state.ship.phase === 'docked') {
       unload(state, current, state.ship.port);
-      if (state.route.running) depart(state, current, openedPorts);
     }
     produce(state, current, openedPorts, waxAvailable);
+    if (state.ship.phase === 'docked' && state.route.running) depart(state, current, openedPorts);
     state.lastDay = current;
   }
 }
 
 export function restoreFreight(value: unknown, day = 1): BayFreightState {
   const state = createFreight(day), raw = record(value), stores = record(raw.warehouses), route = record(raw.route), ship = record(raw.ship);
+  state.harvestStore = count(raw.harvestStore, 3);
   state.lastDay = Math.min(state.lastDay, Math.max(1, count(raw.lastDay) || state.lastDay));
   for (const port of freightPorts) {
     for (const [id, amount] of Object.entries(record(stores[port]))) {
-      const quantity = Math.min(count(amount), warehouseCapacity - freightUsed(state, port));
+      const quantity = Math.min(count(amount), freightCapacity(state, port) - freightUsed(state, port));
       if (validId(id) && quantity > 0) addFreightStock(state, port, id, quantity);
     }
   }

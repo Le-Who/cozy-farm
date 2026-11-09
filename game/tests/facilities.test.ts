@@ -39,13 +39,13 @@ test('facility specializations require Level II, are purchased at Home, and pers
   assert.equal(farm.coins, 200);
   farm.island = 'home';
   assert.equal(specializeFacility(farm, 'hatchery').ok, true);
-  assert.equal(farm.coins, 152);
+  assert.equal(farm.coins, 170);
   assert.equal(farm.buildingLevels.coop, 3);
   assert.equal(farm.coopSpecialization, 'hatchery');
   assert.equal(specializeFacility(farm, 'packing').ok, false);
   assert.equal(upgradeBuilding(farm, 'well').ok, true);
   assert.equal(specializeFacility(farm, 'rain').ok, true);
-  assert.equal(farm.coins, 90);
+  assert.equal(farm.coins, 108);
   assert.equal(farm.buildingLevels.well, 3);
   assert.equal(farm.wellSpecialization, 'rain');
   assert.equal(specializeFacility(farm, 'pipes').ok, false);

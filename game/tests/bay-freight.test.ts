@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createFreight, restoreFreight, advanceFreight, freightStock, freightUsed, ferryUsed,
   addFreightStock, takeFreightStock, consumeFreightStock, startFreight, pauseFreight,
-  setFreightStops, setFreightMode, setFreightPickup, reconcileFreightPorts, ferryCapacity, warehouseCapacity } from '../src/bay-freight-model.ts';
+  setFreightStops, setFreightMode, setFreightPickup, reconcileFreightPorts, ferryCapacity, warehouseCapacity, freightCapacity } from '../src/bay-freight-model.ts';
 
 const ports = ['home', 'grove', 'cape', 'village'] as const;
 
@@ -26,16 +26,17 @@ test('saved running ferry loads finite cargo, arrives on played days and baker c
   assert.equal(freightStock(state, 'home', 'wheat'), 12 - ferryCapacity);
   state = restoreFreight(JSON.parse(JSON.stringify(state)), 1);
   advanceFreight(state, 2, ports);
-  assert.equal(state.ship.phase, 'docked');
+  assert.equal(state.ship.phase, 'sailing');
   assert.equal(freightStock(state, 'village', 'wheat'), 6);
-  assert.equal(freightStock(state, 'village', 'handmade:round'), 3);
+  assert.equal(freightStock(state, 'village', 'handmade:round'), 0);
+  assert.deepEqual(state.ship.cargo, [{id:'handmade:round',quantity:1,destination:'home'}]);
   const once = structuredClone(state);
   advanceFreight(state, 2, ports);
   assert.deepEqual(state, once);
   advanceFreight(state, 3, ports);
-  assert.equal(state.ship.phase, 'sailing');
+  assert.equal(freightStock(state, 'home', 'handmade:round'), 1);
   advanceFreight(state, 4, ports);
-  assert.equal(freightStock(state, 'home', 'handmade:round'), 3);
+  assert.equal(freightStock(state, 'home', 'handmade:round'), 1);
 });
 
 test('mixed cargo shares the hold while priority fills the first selected product', () => {
@@ -70,7 +71,7 @@ test('cargo stays aboard at intermediate piers and unloading waits for warehouse
   takeFreightStock(state, 'village', 'shells', 10);
   advanceFreight(state, 5, ports);
   assert.equal(state.ship.cargo.length, 0);
-  assert.equal(freightStock(state, 'village', 'handmade:round'), 3);
+  assert.equal(freightStock(state, 'village', 'handmade:round'), 1);
 });
 
 test('closed ports neither produce nor join a route; pausing completes the current crossing only', () => {
@@ -92,10 +93,14 @@ test('a first boat gets a working route through opened piers without requiring l
   reconcileFreightPorts(state, ['home', 'grove']);
   assert.deepEqual(state.route.stops, ['home', 'grove']);
   assert.equal(state.route.pickups.home.destination, 'grove');
+  assert.deepEqual(state.route.pickups.home.products, []);
   addFreightStock(state, 'home', 'wheat', 2);
   assert.equal(startFreight(state, 1, ['home', 'grove']).ok, true);
   advanceFreight(state, 2, ['home', 'grove']);
-  assert.equal(freightStock(state, 'grove', 'wheat'), 2);
+  assert.equal(freightStock(state, 'grove', 'wheat'), 0);
+  advanceFreight(state, 3, ['home', 'grove']);
+  assert.equal(freightStock(state, 'home', 'seaSalt'), 2);
+  assert.equal(freightStock(state, 'home', 'wheat'), 2);
   const saved = structuredClone(state);
   reconcileFreightPorts(state, ports);
   assert.deepEqual(state, saved);
@@ -139,4 +144,62 @@ test('reloading during a multi-stop repeating route preserves exact stock and de
   assert.equal(freightStock(resumed, 'village', 'signature:s7'), 2);
   assert.equal(freightStock(resumed, 'grove', 'signature:s7'), 0);
   assert.equal(freightStock(resumed, 'cape', 'signature:s7'), 0);
+});
+
+test('automatic sources leave cargo room and replenish only their local buffer', () => {
+  const state = createFreight();
+  advanceFreight(state, 40, ports);
+  assert.equal(freightStock(state, 'home', 'shells'), 8);
+  assert.equal(freightStock(state, 'grove', 'seaSalt'), 8);
+  assert.equal(freightStock(state, 'cape', 'beeswax'), 8);
+  assert.ok(addFreightStock(state, 'grove', 'wheat', 28));
+  takeFreightStock(state, 'grove', 'seaSalt', 1);
+  advanceFreight(state, 41, ports);
+  assert.equal(freightStock(state, 'grove', 'seaSalt'), 8);
+  assert.equal(freightUsed(state, 'grove'), 36);
+  const legacy = restoreFreight({warehouses:{grove:{seaSalt:30}}}, 41);
+  advanceFreight(legacy, 42, ports);
+  assert.equal(freightStock(legacy, 'grove', 'seaSalt'), 30);
+});
+
+test('full village stores can turn grain into bread without needing extra empty slots', () => {
+  const state = createFreight();
+  addFreightStock(state, 'village', 'wheat', 2);
+  addFreightStock(state, 'village', 'shells', 34);
+  advanceFreight(state, 2, ports);
+  assert.equal(freightStock(state, 'village', 'wheat'), 0);
+  assert.equal(freightStock(state, 'village', 'handmade:round'), 1);
+  assert.equal(freightUsed(state, 'village'), 35);
+});
+
+test('a four island delivery crosses one leg per played day and a grain batch returns finite bread', () => {
+  const state = createFreight();
+  setFreightStops(state, ports, ports);
+  addFreightStock(state, 'home', 'wheat', 8);
+  startFreight(state, 1, ports);
+  advanceFreight(state, 3, ports);
+  assert.equal(freightStock(state, 'village', 'wheat'), 0);
+  advanceFreight(state, 4, ports);
+  assert.equal(freightStock(state, 'village', 'wheat'), 6);
+  advanceFreight(state, 5, ports);
+  assert.equal(freightStock(state, 'home', 'handmade:round'), 1);
+  advanceFreight(state, 13, ports);
+  assert.equal(freightStock(state, 'home', 'handmade:round'), 4);
+  assert.equal(freightStock(state, 'village', 'handmade:round'), 0);
+  assert.equal(freightStock(state, 'village', 'wheat'), 0);
+  assert.equal(state.route.running, true);
+});
+
+test('harvest celebrations grow a real village store through three finite upgrades and preserve cargo on reload', () => {
+  const state = createFreight();
+  for (const [tier, capacity] of [[1, 48], [2, 52], [3, 56]]) {
+    state.harvestStore = tier;
+    assert.equal(freightCapacity(state, 'village'), capacity);
+    assert.equal(freightCapacity(state, 'home'), 36);
+  }
+  assert.ok(addFreightStock(state, 'village', 'wheat', 56));
+  assert.equal(addFreightStock(state, 'village', 'wheat', 1), false);
+  const restored = restoreFreight(JSON.parse(JSON.stringify(state)));
+  assert.equal(freightStock(restored, 'village', 'wheat'), 56);
+  assert.equal(freightCapacity(restored, 'village'), 56);
 });

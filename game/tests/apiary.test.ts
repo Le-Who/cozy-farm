@@ -201,9 +201,9 @@ test('beeswax trades in the Apiary lane and both sale entry points retain its ar
   sail(farm, 'home');
   farm.progress.sell = 1;
   const beforeOrder = farm.coins;
-  assertOrderPremium(farm, 'apiary', 8);
+  assertOrderPremium(farm, 'apiary', 10);
   assert.equal(deliverMarketOrder(farm, 'apiary').ok, true);
-  assert.equal(farm.coins, beforeOrder + 40);
+  assert.equal(farm.coins, beforeOrder + 42);
   assert.equal(farm.beeswax, 0);
   farm = reload(farm);
   assert.equal(deliverMarketOrder(farm, 'apiary').ok, false);
@@ -212,9 +212,9 @@ test('beeswax trades in the Apiary lane and both sale entry points retain its ar
   farm.fruit.apple = 2;
   cookDish(farm, 'appleJam');
   const beforeSecond = farm.coins;
-  assertOrderPremium(farm, 'apiary', 8);
+  assertOrderPremium(farm, 'apiary', 10);
   assert.equal(deliverMarketOrder(farm, 'apiary').ok, true);
-  assert.equal(farm.coins, beforeSecond + 34);
+  assert.equal(farm.coins, beforeSecond + 36);
   assert.equal(farm.beeswax, 0);
   assert.equal(farm.dishes.appleJam, 0);
   farm = reload(farm);

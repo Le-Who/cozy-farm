@@ -1,16 +1,8 @@
-import { canSailTo, ingredientCount, islandIds, marketStock, type FarmState, type StockItem } from './farm.ts'
+import { canSailTo, ingredientCount, islandIds, marketStock, type FarmState } from './farm.ts'
 import { addFreightStock, consumeFreightStock, freightStock, takeFreightStock } from './bay-freight-model.ts'
 import { BAY_MUSIC_EXPANSIONS } from './bay-music-model.ts'
-
-export function bayProductId(item: StockItem): string {
-  switch (item.kind) {
-    case 'dishes': return 'dish:' + item.item
-    case 'handmade': return 'handmade:' + item.item
-    case 'variants': return 'variants:' + item.item + ':' + item.trait
-    case 'shells': return item.item === 'regular' ? 'shells' : 'moon-shell'
-    default: return 'item' in item ? item.item : item.kind
-  }
-}
+import { bayProductId } from './bay-product-id.ts'
+export { bayProductId } from './bay-product-id.ts'
 
 const stockItems = new Map(marketStock.map(item => [bayProductId(item), item]))
 export const openedFreightPorts = (farm: FarmState) => islandIds.filter(id => canSailTo(farm,id))

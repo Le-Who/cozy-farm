@@ -24,7 +24,9 @@ test('Saltwind Grove renews shell spots at dawn and tide days can carry moon she
   assert.equal(isLunarTide(farm.day), true);
   assert.deepEqual([0, 1, 2].map((spot) => getShellAt(farm, spot)), ['moon', 'regular', 'regular']);
   assert.equal(isLunarTide(16), true);
-  assert.deepEqual([0, 1, 2].map((spot) => shellForSpot(16, spot)), ['regular', 'regular', 'regular']);
+  for (let day = 6; day < 1000; day += 5) {
+    assert.ok([0, 1, 2].some(spot => shellForSpot(day, spot) === 'moon'), `empty tide on day ${day}`);
+  }
 });
 
 test('shell discoveries survive sale and spots cannot be collected twice after reload', () => {

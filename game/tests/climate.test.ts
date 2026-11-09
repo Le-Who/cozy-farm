@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { exposedTrait, getClimate } from '../src/climate.ts';
+import { exposedTrait, getClimate, nextWeatherDay } from '../src/climate.ts';
 import {
   collectEggs, createFarm, endDay, feedChickens, getArchive, getMarketStock, getSale, pickFruit,
   restoreFarm, sellMarketItem, sellProduce, workBed,
@@ -108,4 +108,19 @@ test('legacy stock seeds ordinary archive entries and malformed traits are rejec
   assert.equal(restoreFarm({ ...oldSave, variants: { apple: { rainbow: -1 } } }), undefined);
   assert.equal(restoreFarm({ ...oldSave, discoveries: { apple: { frozen: true } } }), undefined);
   assert.equal(restoreFarm({ ...oldSave, eggTrait: 'star', eggsReady: 0 }), undefined);
+});
+
+test('a collector can plan the next sky and each tended source gets regular trait opportunities', () => {
+  for (const weather of ['rain','snow','rainbow','stars'] as const) {
+    for (const source of [1,2,3,4,5,6,65,100,101]) {
+      let last = 5;
+      for (let day = 6; day <= 1005; day++) {
+        const next = nextWeatherDay(day, weather);
+        assert.ok(next >= day && next <= day+8);
+        assert.equal(getClimate(next).weather, weather);
+        if (getClimate(day).weather === weather && exposedTrait(day,weather,source)) last = day;
+        assert.ok(day-last < 34, `${weather} at source ${source} on day ${day}`);
+      }
+    }
+  }
 });

@@ -19,6 +19,9 @@ export type CookeryResult={
 }
 export type SignatureIngredient={id:SignatureFruitId;quantity:number;trait?:Trait}
 export type SignatureDraft={base:'preserves'|'tart';ingredients:readonly SignatureIngredient[]}
+export function signatureSellPrice(draft:SignatureDraft,ingredientValue:number):number{
+ return ingredientValue+(draft.base==='tart'?12:6)+(new Set(draft.ingredients.map(part=>part.id)).size>1?3:0)
+}
 export type SignatureRecipe={id:string;name:string;favorite:boolean;base:SignatureDraft['base'];ingredients:SignatureIngredient[];processing:SignatureProcessing;result:CookeryResult;createdOn:number;batches:number;sellPrice:number}
 export type TastingMemory={servedOn:number;visits:number;liked:number;lastRecipeId:string|null;favoriteIds:string[];bonus:boolean}
 export type CulinaryState={serial:number;recipes:SignatureRecipe[];stock:Record<string,number>;tastings:Record<'bea'|'finn',TastingMemory>;picnic:{processing:SignatureProcessing;day:number}|null;lastDishes:Record<string,CookeryResult>}

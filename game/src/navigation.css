@@ -138,3 +138,16 @@
 }
 .journey-details summary { display:list-item; min-height:44px; align-content:center; cursor:pointer; color:var(--plum); font-weight:700; }
 .journey-details summary span { display:inline-block; margin-left:4px; color:var(--muted); font-size:.9em; }
+
+/* Keep the cost and return beside the dish while choosing its ingredients. */
+.recipe:has(> .recipe-summary) { grid-template-columns:minmax(0,1fr); }
+.recipe-summary { display:flex; align-items:center; justify-self:start; gap:10px; text-align:start; }
+.recipe .recipe-summary .recipe-art { width:70px; height:60px; object-fit:contain; }
+.recipe-summary h2 { font-size:clamp(17px,3vw,22px); line-height:1.15; }
+.recipe-summary .recipe-value { margin-top:3px; font-size:14px; }
+.recipe-summary .recipe-value .icon { width:21px; height:21px; }
+@media (max-height:460px) {
+  .recipe:has(> .recipe-summary) { gap:4px; }
+  .recipe .recipe-summary .recipe-art { width:53px; height:44px; }
+  .recipe .recipe-fish-choices { margin:2px 0; }
+}

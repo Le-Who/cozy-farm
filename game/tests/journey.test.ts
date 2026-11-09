@@ -62,7 +62,7 @@ test('a new farm shows every destination and its first reachable action before b
   assert.deepEqual(journey(farm, 'grove').nextAction, { target: 'sail', value: 'grove', label: 'В путь · Солёная роща', enabled: true });
 });
 
-test('Cape explains the hidden specialization and pier requirements and directs travel to their location', () => {
+test('Cape explains the kitchen and pier requirements without demanding specialization', () => {
   const farm = createFarm();
   farm.coins = 500;
   assert.equal(buyBoat(farm).ok, true);
@@ -81,24 +81,21 @@ test('Cape explains the hidden specialization and pier requirements and directs 
   assert.deepEqual([pier.current, pier.target, pier.complete], [1, 5, false]);
 });
 
-test('Cape waits for tomorrow after one harbor order and unlocks only after the second', () => {
+test('restoring the pier opens Cape immediately without a specialization or daily harbor orders', () => {
   const farm = createFarm();
-  prepareHarbor(farm);
-  assert.equal(journey(farm, 'cape').nextAction?.target, 'visit-harbor');
-  farm.dishes.farmhouseBread = 2;
-  farm.fish.seaBass = 1;
-  assert.equal(deliverHarborOrder(farm).ok, true);
-  assert.equal(journey(farm, 'cape').unlocked, false);
-  assert.equal(journey(farm, 'cape').nextAction?.value, 'home');
-  assert.equal(sail(farm, 'home').ok, true);
-  assert.equal(journey(farm, 'cape').nextAction?.target, 'visit-rest');
-  assert.equal(endDay(farm).ok, true);
-  assert.equal(journey(farm, 'cape').nextAction?.value, 'grove');
+  farm.coins = 100;
+  assert.equal(buyBoat(farm).ok, true);
+  assert.equal(upgradeBuilding(farm, 'farmhouse').ok, true);
   assert.equal(sail(farm, 'grove').ok, true);
-  assert.equal(deliverHarborOrder(farm).ok, true);
+  farm.dishes.appleJam = 1; farm.fruit.pear = 2; farm.seaSalt = 2;
+  assert.equal(deliverProject(farm, 'dock').ok, true);
+  assert.equal(farm.farmhouseSpecialization, null);
+  assert.equal(farm.orders.harbor.completed, 0);
   assert.equal(journey(farm, 'cape').unlocked, true);
+  assert.ok(journey(farm, 'cape').requirements.every(item => item.complete));
   assert.equal(journey(farm, 'cape').nextAction?.value, 'cape');
   assert.equal(sail(farm, 'cape').ok, true);
+  assert.ok(restoreFarm(JSON.parse(JSON.stringify(farm))));
   assert.equal(journey(farm, 'cape').nextAction, undefined);
 });
 
@@ -118,9 +115,9 @@ test('Harbour points to fair prerequisites and next-day visitors before requesti
   assert.equal(journey(farm, 'village').nextAction?.target, 'visit-guest');
   farm.fruit.apple = 2;
   assert.equal(serveFairGuest(farm).ok, true);
-  assert.equal(journey(farm, 'village').nextAction?.target, 'visit-rest');
+  assert.equal(journey(farm, 'village').nextAction?.target, 'village-project');
   const visitors = journey(farm, 'village').requirements.find(item => item.id === 'visitors')!;
-  assert.deepEqual([visitors.current, visitors.target], [1, 3]);
+  assert.deepEqual([visitors.current, visitors.target], [1, 1]);
 });
 
 test('Harbour shows partial delivery separately from supplies held and preserves the completed route after spending coins', () => {
@@ -137,7 +134,7 @@ test('Harbour shows partial delivery separately from supplies held and preserves
   assert.deepEqual([pastry.current, pastry.target, pastry.available], [1, 2, 1]);
   farm.fish.seaBass = 2;
   farm.honey = 2;
-  farm.coins = 80;
+  farm.coins = 48;
   assert.equal(contributeVillage(farm).ok, true);
   const card = journey(farm, 'village');
   assert.equal(farm.coins, 0);

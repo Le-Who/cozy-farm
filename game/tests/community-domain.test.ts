@@ -80,7 +80,7 @@ test('cancelled or invalid physical arrangement is free; successful assembly rev
   assert.equal(finishNeighborPlan(f, p.id, assembly('basket')).ok, false); assert.deepEqual(f, snapshot);
   assert.equal(finishNeighborPlan(f, p.id, { ...assembly('table'), placements: assembly('table').placements.map(point => ({ ...point, x: 0, y: 0 })) }).ok, false); assert.deepEqual(f, snapshot);
   f.culinary.stock.s1 = 0; const empty = structuredClone(f); assert.equal(finishNeighborPlan(f, p.id, assembly('table')).ok, false); assert.deepEqual(f, empty);
-  f.culinary.stock.s1 = 2; const coins = f.coins; assert.ok(finishNeighborPlan(f, p.id, assembly('table')).ok); assert.equal(f.culinary.stock.s1, 1); assert.equal(f.coins, coins + 12);
+  f.culinary.stock.s1 = 2; const coins = f.coins; assert.ok(finishNeighborPlan(f, p.id, assembly('table')).ok); assert.equal(f.culinary.stock.s1, 1); assert.equal(f.coins, coins + 30);
   const restored = load(f), settled = structuredClone(restored); assert.ok(restored); assert.equal(getNeighborPlans(restored)[0].phase, 'celebrating');
   assert.equal(finishNeighborPlan(restored, p.id, assembly('table')).ok, false); assert.deepEqual(restored, settled);
 });
@@ -108,6 +108,18 @@ test('remembered gatherings change the next real baking and fishing help and con
   for (const resident of ['bea', 'finn'] as const) { const p = select(f, resident, resident === 'bea' ? 'signature:s1' : 'handmade:round'); assert.ok(finishNeighborPlan(f, p.id, assembly(p.arrangement)).ok); }
   const before = f.handmade.long; assert.ok(runResidentService(f, 'bea', 'long').ok); assert.equal(f.handmade.long, before + 4); assert.equal(f.neighbors.bea.helpReady, false);
   assert.ok(runResidentService(f, 'finn').ok); assert.equal(getFishingTripConfig(f).resilience, 5); assert.ok(load(f));
+});
+
+test('bringing an expensive tart to a neighbor preserves its market value and pays only once', () => {
+  const f = farm(); f.island = 'village';
+  const p = select(f, 'bea', 'dish:strawberryTart'), coins = f.coins;
+  assert.ok(finishNeighborPlan(f, p.id, assembly('table')).ok);
+  assert.equal(f.coins - coins, 45);
+  assert.equal(f.dishes.strawberryTart, 2);
+  assert.equal(f.neighbors.bea.helpReady, true);
+  const settled = structuredClone(f);
+  assert.equal(finishNeighborPlan(f, p.id, assembly('table')).ok, false);
+  assert.deepEqual(f, settled);
 });
 
 test('old saves migrate without losing inventory; malformed community journals and plan states are rejected', () => {

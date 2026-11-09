@@ -68,19 +68,19 @@ test('fair tracks one guest each day and old saves infer their first visit', () 
 
 test('village stores partial supplies and charges its final coins exactly once', () => {
   let farm = villageFarm();
-  farm.coins = 79;
+  farm.coins = 47;
   farm.fish.seaBass = 1;
   assert.equal(contributeVillage(farm).ok, true);
   assert.equal(farm.village.built, false);
   assert.equal(farm.handmade.round, 0);
-  assert.equal(farm.coins, 79);
+  assert.equal(farm.coins, 47);
   const restored = restoreFarm(JSON.parse(JSON.stringify(farm)));
   assert.ok(restored); farm = restored;
   assert.equal(getVillageProject(farm).items[0].delivered, 2);
   farm.fish.seaBass = 1;
   assert.equal(contributeVillage(farm).ok, true);
   assert.equal(farm.village.built, false);
-  farm.coins = 80;
+  farm.coins = 48;
   assert.equal(contributeVillage(farm).ok, true);
   assert.equal(farm.coins, 0);
   assert.equal(farm.village.built, true);

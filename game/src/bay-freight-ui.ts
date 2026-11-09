@@ -1,4 +1,4 @@
-import { freightPorts, freightPortNames, freightStock, freightUsed, ferryUsed, warehouseCapacity, ferryCapacity,
+import { freightPorts, freightPortNames, freightStock, freightUsed, ferryUsed, freightCapacity, ferryCapacity, freightProductionBuffer,
   setFreightStops, setFreightMode, setFreightPickup, startFreight, pauseFreight,
   type BayFreightState, type FreightPort, type FreightResult } from './bay-freight-model.ts';
 import './bay-freight.css';
@@ -56,7 +56,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const from = moorings[at], to = moorings[ship.phase === 'sailing' ? ship.to : ship.port];
   const portStock = state.warehouses[port];
   const ids = [...new Set([...Object.keys(portStock), ...(local ? Object.keys(ctx.carried).filter(id => ctx.carried[id] > 0) : []), ...pickup.products])];
-  const used = freightUsed(state, port);
+  const used = freightUsed(state, port), capacity = freightCapacity(state, port);
   const editable = ship.phase === 'docked' && !state.route.running;
   const status = ship.phase === 'sailing' ? `→ ${positions[ship.to].short} · утром дня ${ship.arrivesOn}`
     : `У причала: ${positions[ship.port].short}`;
@@ -72,9 +72,9 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const warehouseRows = candidateIds.map(id => {
     const item = product(id, ctx), quantity = freightStock(state, port, id), available = local ? ctx.carried[id] ?? 0 : 0;
     const selectedProduct = pickup.products.includes(id);
-    const depositReason = used >= warehouseCapacity ? 'Склад заполнен: заберите припасы' : available < 1 ? 'Нет с собой: привезите или соберите товар' : 'Положить на склад';
+    const depositReason = used >= capacity ? 'Склад заполнен: заберите припасы' : available < 1 ? 'Нет с собой: привезите или соберите товар' : 'Положить на склад';
     return `<div class="bay-freight-stock-row">${picture(id, ctx)}<span class="bay-freight-stock-name">${esc(item.name)}<small>Склад <b>${quantity}</b>${local ? ` · с собой ${available}` : ''}</small></span>
-      ${local ? `<span class="bay-freight-transfer">${button('−', 'freight-withdraw', `${port}|${id}|1`, `title="${quantity ? 'Забрать с собой' : 'Склад пуст'}" aria-label="Забрать: ${esc(item.name)}${quantity ? '' : '. Склад пуст'}" ${quantity ? '' : 'disabled'}`)}${button('+', 'freight-deposit', `${port}|${id}|1`, `title="${depositReason}" aria-label="Положить: ${esc(item.name)}. ${depositReason}" ${available > 0 && used < warehouseCapacity ? '' : 'disabled'}`)}${available >= 5 ? button('+5', 'freight-deposit', `${port}|${id}|5`, `title="Положить пять" aria-label="Положить пять: ${esc(item.name)}" ${used + 5 <= warehouseCapacity ? '' : 'disabled'}`) : ''}</span>` : ''}
+      ${local ? `<span class="bay-freight-transfer">${button('−', 'freight-withdraw', `${port}|${id}|1`, `title="${quantity ? 'Забрать с собой' : 'Склад пуст'}" aria-label="Забрать: ${esc(item.name)}${quantity ? '' : '. Склад пуст'}" ${quantity ? '' : 'disabled'}`)}${button('+', 'freight-deposit', `${port}|${id}|1`, `title="${depositReason}" aria-label="Положить: ${esc(item.name)}. ${depositReason}" ${available > 0 && used < capacity ? '' : 'disabled'}`)}${available >= 5 ? button('+5', 'freight-deposit', `${port}|${id}|5`, `title="Положить пять" aria-label="Положить пять: ${esc(item.name)}" ${used + 5 <= capacity ? '' : 'disabled'}`) : ''}</span>` : ''}
       ${button(selectedProduct ? '✓' : '', 'freight-load', `${port}|${id}`, `class="bay-freight-load" title="${selectedProduct ? 'Убрать из погрузки' : 'Грузить в рейс'}" role="checkbox" aria-label="Грузить в рейс: ${esc(item.name)}" aria-checked="${selectedProduct}"`)}
     </div>`;
   }).join('');
@@ -99,13 +99,13 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
     ${ship.cargo.length ? `<div class="bay-freight-cargo" aria-label="Груз в трюме">${ship.cargo.map(item => `<span>${picture(item.id, ctx)}<b>${item.quantity}</b><small>→ ${positions[item.destination].short}</small></span>`).join('')}</div>` : `<p class="bay-freight-hint">${ship.phase === 'docked' ? `Следующая остановка — ${freightPortNames[nextPort]}.` : 'Трюм пуст. Выберите товары для погрузки у следующего причала.'}</p>`}
     ${ctx.openedPorts.length < freightPorts.length ? `<p class="bay-freight-locked">Закрытые причалы: ${button('Открыть карту', 'open-panel', 'map')}</p>` : ''}
     <details class="bay-freight-log"><summary>Журнал рейсов</summary><ol>${state.events.filter(item => item.kind !== 'production').slice(0, 5).map(item => `<li><small>День ${item.day}</small> ${item.kind === 'sailing' ? `${positions[item.port].short} → ${positions[item.to!].short}` : item.kind === 'blocked' ? `${positions[item.port].short}: склад заполнен, груз остаётся на борту` : `${item.kind === 'loading' ? 'Погружено' : 'Выгружено'}: ${item.items.map(entry => `${esc(product(entry.id, ctx).name)} ×${entry.quantity}`).join(', ')}`}</li>`).join('') || '<li>Первый рейс ещё впереди.</li>'}</ol></details>
-    </div><div class="bay-freight-desk"><div class="bay-freight-warehouse"><header><h3>${positions[port].short}: склад</h3><span>${used}/${warehouseCapacity}</span></header><meter min="0" max="${warehouseCapacity}" value="${used}" aria-label="Заполненность склада"></meter>
+    </div><div class="bay-freight-desk"><div class="bay-freight-warehouse"><header><h3>${positions[port].short}: склад</h3><span>${used}/${capacity}</span></header><meter min="0" max="${capacity}" value="${used}" aria-label="Заполненность склада"></meter>
       <div class="bay-freight-destinations" aria-label="Куда отправлять товары"><strong>Грузить →</strong>${state.route.stops.filter(stop => stop !== port).map(stop => button(positions[stop].short, 'freight-destination', `${port}|${stop}`, `aria-pressed="${pickup.destination === stop}"`)).join('')}</div>
       <div class="bay-freight-stock-label"><span>${local ? '− с собой · + на склад' : 'Передача: посетите остров'}</span><span>В рейс</span></div>
-      ${used >= warehouseCapacity ? '<p class="bay-freight-hint">Склад полон: заберите припасы кнопкой −.</p>' : ''}
+      ${used >= capacity ? '<p class="bay-freight-hint">Склад полон: заберите припасы кнопкой −.</p>' : ''}
       ${needsStock ? `<p class="bay-freight-hint">${port === 'home' ? 'Соберите урожай, затем положите его на склад кнопкой +.' : port === 'village' ? 'Привезите продукты или испеките булочки в гавани.' : 'Соберите местные припасы, затем положите их на склад кнопкой +.'} ${button('К острову', 'close')}</p>` : ''}
       <div class="bay-freight-stock">${warehouseRows || '<p class="bay-freight-hint">Здесь пока нет припасов.</p>'}</div>
-      ${port === 'village' ? `<div class="bay-freight-bakery"><div>${picture('wheat', ctx)}<b>2 →</b>${picture('handmade:round', ctx)}<b>3</b></div><small>${latestProduction?.day === ctx.day ? 'Сегодня испечены' : freightStock(state, 'village', 'wheat') < 2 ? 'Привезите 2 пшеницы' : used >= warehouseCapacity ? 'Освободите склад' : 'Каждое утро'}</small></div>` : `<p class="bay-freight-production">${picture(port === 'home' ? 'shells' : port === 'grove' ? 'seaSalt' : 'beeswax', ctx)}${port === 'cape' && ctx.waxAvailable === false ? 'Улучшите пасеку: 2 воска в день' : `+${port === 'home' ? 1 : 2} каждое утро`}</p>`}
+      ${port === 'village' ? `<div class="bay-freight-bakery"><div>${picture('wheat', ctx)}<b>2 →</b>${picture('handmade:round', ctx)}<b>1</b></div><small>${latestProduction?.day === ctx.day ? 'Сегодня испечена' : freightStock(state, 'village', 'wheat') < 2 ? 'Привезите 2 пшеницы' : 'Каждое утро'}</small></div>` : `<p class="bay-freight-production" title="Добыча приостанавливается при запасе ${freightProductionBuffer}">${picture(port === 'home' ? 'shells' : port === 'grove' ? 'seaSalt' : 'beeswax', ctx)}${port === 'cape' && ctx.waxAvailable === false ? 'Улучшите пасеку: 2 воска в день' : `+${port === 'home' ? 1 : 2} каждое утро`}</p>`}
     </div>
     <details class="bay-freight-plan" ${ctx.routeEditorOpen ? 'open' : ''}><summary>Маршрут <span>${state.route.stops.map(stop => positions[stop].short).join(' → ')} ↻</span></summary>
       <div class="bay-freight-stops" aria-label="Причалы маршрута">${freightPorts.map(stop => button(positions[stop].short, 'freight-route-port', stop, `aria-pressed="${state.route.stops.includes(stop)}" ${editable && (ctx.openedPorts.includes(stop) || state.route.stops.includes(stop)) ? '' : 'disabled'}`)).join('')}</div>

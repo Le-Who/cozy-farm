@@ -1,12 +1,13 @@
 import {
   advanceBayShop, bayShopDailyLimit, bayShopPhaseDuration, bayShopVisitors, removeBayShopStock, setBayShopOpen,
-  setBayShopPrice, stockBayShop, type BayShopProduct, type BayShopState, type BayShopStock,
+  setBayShopPrice, stockBayShop, syncBayShopProducts, type BayShopProduct, type BayShopState, type BayShopStock,
 } from './bay-shop-model.ts';
 import './bay-shop.css';
 import { applyIngredientFinishes } from './ingredient-finish';
 
 export type BayShopOptions = {
   state: BayShopState;
+  catalog?: readonly BayShopProduct[];
   products(): BayShopStock[];
   takeStock(id: string, quantity: number): boolean;
   returnStock(id: string, quantity: number): void;
@@ -28,6 +29,7 @@ const visitorMessages = {
 /** A scene owns its animation; the farm owns inventory, earnings and persistence. */
 export function mountBayShop(host: HTMLElement, options: BayShopOptions): { destroy(): void; refresh(): void } {
   const state = options.state;
+  if (options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
   let tab: 'stock' | 'journal' = 'stock', notice = '', noticeTimer = 0, destroyed = false, frame = 0, lastTime = performance.now();
   let lastPhase = '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
@@ -36,7 +38,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     ?? `<img class="${cls}" src="${escape(product.image)}" alt="" draggable="false">`;
   function visitorSpeech(): string {
     const visitor = state.visitor;
-    if (!visitor) return state.open ? state.visitsToday >= bayShopDailyLimit(options.performanceBonus?.() ?? 0)
+    if (!visitor) return state.open ? state.visitsToday >= bayShopDailyLimit(options.performanceBonus?.() ?? 0, state.festivalVisitors)
       ? 'Новые гости придут завтра.' : ''
       : '';
     const person = bayShopVisitors.find(v => v.id === visitor.id)!;
