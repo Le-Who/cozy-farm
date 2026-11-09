@@ -1,3 +1,4 @@
+import { loadArtTexture } from './art-texture';
 import * as THREE from 'three'
 import type { CookeryOptions } from './cookery'
 import type { CookeryResult } from './culinary'
@@ -65,7 +66,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   function makeRenderer(canvas?: HTMLCanvasElement) { const value = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' }); value.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); value.outputColorSpace = THREE.SRGBColorSpace; value.setClearColor('#aa7852'); value.domElement.setAttribute('aria-hidden', 'true'); return value }
   let renderer: THREE.WebGLRenderer
   try { renderer = makeRenderer(); view.prepend(renderer.domElement) } catch { status.textContent = 'Не удалось открыть медовую кухню. Вернитесь на кухню и попробуйте снова.'; return { destroy() { destroyed = true; abort.abort(); plane.dispose(); root.remove(); previousFocus?.focus({ preventScroll: true }) } } }
-  function texture(url: string): Promise<THREE.Texture> { return new Promise((resolve, reject) => { const value = new THREE.TextureLoader().load(url, loaded => { if (destroyed) { loaded.dispose(); return }; loaded.colorSpace = THREE.SRGBColorSpace; resolve(loaded) }, undefined, reject); textures.add(value) }) }
+  function texture(url: string): Promise<THREE.Texture> { return new Promise((resolve, reject) => { const value = loadArtTexture(url, loaded => { if (destroyed) { loaded.dispose(); reject(new DOMException('Кухня закрыта', 'AbortError')); return }; loaded.colorSpace = THREE.SRGBColorSpace; resolve(loaded) }, reject); textures.add(value) }) }
   const url = (path: string) => /^(?:https?:|data:|\/)/.test(path) ? path : path.startsWith('art/') ? base + path : artBase + path
   function shadow(map: THREE.Texture, geometry?: THREE.BufferGeometry): Shadow {
     const material = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: { map: { value: map }, solid: { value: geometry ? 1 : 0 } },

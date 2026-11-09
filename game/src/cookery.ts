@@ -1,3 +1,4 @@
+import { loadArtTexture } from './art-texture';
 import * as THREE from 'three'
 import { createFruitLanding, createViscousFollower, stepFruitLanding, stepSpring, stepViscousFollower, type FruitLanding, type ViscousFollower } from './food-motion'
 import {
@@ -6,8 +7,7 @@ import {
   moveCookeryStroke, placeCookeryFruit, rotateCookeryFruit, STIR_REQUIRED,
   choosePreserveProcessing, type CookeryKind, type CookeryPoint,
 } from './cookery-model'
-import { createHoneyCookery } from './honey-cookery'
-import { createFishCookery } from './fish-cookery'
+import { lazyScene } from './lazy-scene'
 import type { HoneyFamily } from './honey-cookery-model'
 import type { CookeryResult, SignatureProcessing } from './culinary'
 import { signatureProcessingDefinitions } from './culinary'
@@ -28,6 +28,9 @@ type Rect = { x: number; y: number; width: number; height: number }
 type Art = { mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>; shadow?: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>; asset: Asset; rect: Rect }
 type Drag = { kind: 'fruit'; id: number; source: boolean } | { kind: 'spoon'; loaded: boolean } | { kind: 'shaker' }
 type Fleck = { x: number; y: number; size: number; rotation: number }
+
+const createHoneyCookery = lazyScene(() => import('./honey-cookery').then(m => m.createHoneyCookery))
+const createFishCookery = lazyScene(() => import('./fish-cookery').then(m => m.createFishCookery))
 
 /** Inventory stays in the parent. One scene owns one uncommitted recipe. */
 export function createCookery(host: HTMLElement, options: CookeryOptions): { destroy(): void } {
@@ -135,10 +138,10 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
 
   function loadTexture(url: string): Promise<THREE.Texture> {
     return new Promise((resolve, reject) => {
-      const texture = new THREE.TextureLoader().load(url, result => {
-        if (destroyed) { result.dispose(); return }
+      const texture = loadArtTexture(url, result => {
+        if (destroyed) { result.dispose(); reject(new DOMException('Кухня закрыта', 'AbortError')); return }
         result.colorSpace = THREE.SRGBColorSpace; resolve(result)
-      }, undefined, reject)
+      }, reject)
       textures.add(texture)
     })
   }

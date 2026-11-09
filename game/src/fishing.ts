@@ -1,3 +1,4 @@
+import { loadArtTexture } from './art-texture';
 import { fishDefinitions } from './farm.ts';
 import { shellDefinitions } from './tide.ts';
 import { ruCount, formatRuNumber } from './ru.ts';
@@ -30,7 +31,7 @@ function lootName(loot: FishingLoot): string {
 
 function lootArt(loot: FishingLoot): string {
   const name = loot.kind === 'fish' && (loot.species === 'perch' || loot.species === 'seaBass')
-    ? loot.species === 'seaBass' ? 'fishing-sea-bass-v1.png' : 'fishing-perch-v1.png'
+    ? loot.species === 'seaBass' ? 'fishing-sea-bass-v1.webp' : 'fishing-perch-v1.webp'
     : `fishing-depth/${loot.kind === 'fish' ? loot.species : loot.kind === 'shell' ? 'shell' : loot.item}.webp`;
   return `${import.meta.env.BASE_URL}art/lavender/${name}`;
 }
@@ -131,9 +132,8 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
-  const textureLoader = new THREE.TextureLoader();
   const texture = (name: string, onLoad?: (value: THREE.Texture) => void) => {
-    const value = textureLoader.load(`${import.meta.env.BASE_URL}art/lavender/${name}`, onLoad);
+    const value = loadArtTexture(`${import.meta.env.BASE_URL}art/lavender/${name}`, loaded => { if (destroyed) loaded.dispose(); else onLoad?.(loaded); });
     value.colorSpace = THREE.SRGBColorSpace; textures.add(value); return value;
   };
   const ownGeometry = <T extends THREE.BufferGeometry>(geometry: T): T => { geometries.add(geometry); return geometry; };
@@ -150,7 +150,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   };
 
   const waterTime = { value: 0 };
-  const fallbackBackground: FishingBackgroundArt = { id: 'master', url: 'fishing-underwater-v1.png', width: 749, height: 2098, viewportAspect: .667 };
+  const fallbackBackground: FishingBackgroundArt = { id: 'master', url: 'fishing-underwater-v1.webp', width: 749, height: 2098, viewportAspect: .667 };
   let activeBackground = fallbackBackground;
   let requestedBackground = fallbackBackground.id;
   let backgroundArts: FishingBackgroundArt[] = [];
@@ -228,7 +228,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     backgroundCache.set(`loading:${art.id}`, { art, texture: value });
   }
   const plantTime = { value: 0 };
-  const plantMaterial = new THREE.MeshBasicMaterial({ map: texture('fishing-kelp-v1.png'), transparent: true, alphaTest: .02, depthWrite: false, fog: false });
+  const plantMaterial = new THREE.MeshBasicMaterial({ map: texture('fishing-kelp-v1.webp'), transparent: true, alphaTest: .02, depthWrite: false, fog: false });
   plantMaterial.onBeforeCompile = shader => {
     shader.uniforms.plantTime = plantTime;
     shader.vertexShader = 'uniform float plantTime;\n' + shader.vertexShader.replace('#include <begin_vertex>',
@@ -251,7 +251,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     const cached = catchMaterials.get(key);
     if (cached) return cached;
     const name = loot.kind === 'fish' && (loot.species === 'perch' || loot.species === 'seaBass')
-      ? loot.species === 'seaBass' ? 'fishing-sea-bass-v1.png' : 'fishing-perch-v1.png'
+      ? loot.species === 'seaBass' ? 'fishing-sea-bass-v1.webp' : 'fishing-perch-v1.webp'
       : `fishing-depth/${loot.kind === 'fish' ? loot.species : loot.kind === 'shell' ? 'shell' : loot.item}.webp`;
     const value = new THREE.MeshBasicMaterial({ map: texture(name),
       color: loot.kind === 'shell' && loot.variant === 'moon' ? '#d8c3ff' : '#ffffff',

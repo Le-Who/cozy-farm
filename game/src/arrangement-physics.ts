@@ -185,6 +185,7 @@ export async function createArrangementPhysics(mode: ArrangementMode, pieces: re
     },
     result,
     settledFor: () => settledFor,
+    resting: () => !held && settledFor >= .42 && [...bodies.values()].every(entry => entry.body.isSleeping()),
     dispose() { if (disposed) return; this.release(); disposed = true; world.free() },
   }
 }

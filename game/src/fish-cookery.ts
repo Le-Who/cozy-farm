@@ -10,6 +10,10 @@ import { cancelFish, completeFish, createFishModel, fishProgress, fishSaltCovera
 import './fish-cookery.css'
 
 type Art = { image: HTMLImageElement; texture: THREE.Texture; data: Uint8ClampedArray; width: number; height: number }
+type DecodedArt = Omit<Art, 'texture'>
+const decodedArt = new Map<string, Promise<DecodedArt>>()
+const reliefCache = new Map<string, THREE.BufferGeometry>()
+
 type Body = { mesh: THREE.Mesh; x: { value: number; velocity: number }; z: { value: number; velocity: number }; y: { value: number; velocity: number }; roll: { value: number; velocity: number }; tx: number; tz: number; ty: number; tr: number }
 type Held = { kind: 'fish' | 'salt' | 'spatula' | 'carrot'; body: Body; id: number; lastX: number; lastZ: number; startZ: number; startRoll: number; turn: boolean; grip: THREE.Vector3 }
 const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v))
@@ -58,11 +62,13 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
   const cooking = [{ value: new Float32Array(12) }, { value: new Float32Array(12) }], saltUniform = { value: model.salt }
   const flexUniform={value:0}
   let fish: Body, salt: Body, spatula: Body, board: THREE.Mesh, pan: THREE.Mesh, plate: THREE.Mesh
-  const carrots: Body[] = [], saltGrains: THREE.Mesh[] = []
+  const carrots: Body[] = []
+  let saltGrains: THREE.InstancedMesh | null = null, saltCount=0
+  const saltTransform = new THREE.Object3D()
   let physics: Awaited<ReturnType<typeof createFishPhysics>> | null = null
   let fishVertices = new Float32Array()
   let panView:ReturnType<typeof createFishPanView>|null=null
-  let panTouching=false
+  let panTouching=false, nextSync=0
   let boardPoint = new THREE.Vector3(-2.7,.34,.3), panPoint = new THREE.Vector3(2.4,.44,-.4), platePoint = new THREE.Vector3(2.5,.18,2.6)
   let renderer: THREE.WebGLRenderer
   try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' }) }
@@ -80,16 +86,38 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
   const receiver = new THREE.Mesh(shadowGeo,shadowMat); receiver.rotation.x = -Math.PI/2; receiver.position.y = .015; receiver.receiveShadow = true; scene.add(receiver)
   function texture(image: HTMLImageElement) { const t = new THREE.Texture(image); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8,renderer.capabilities.getMaxAnisotropy()); t.needsUpdate = true; textures.add(t); return t }
   async function load(name: string) {
-    const image = new Image()
-    image.src = (name==='fish-raw'||name==='fish-grilled')&&species!=='seaBass'
+    const url = (name==='fish-raw'||name==='fish-grilled')&&species!=='seaBass'
       ? `${artBase}${species}-${name==='fish-raw'?'raw':'grilled'}.webp`
       : `${artBase}${name==='pan'?'pan-front-wall':name}.webp`
-    await image.decode()
-    const c = document.createElement('canvas'); c.width = image.width; c.height = image.height; const cx = c.getContext('2d',{willReadFrequently:true})!; cx.drawImage(image,0,0)
-    const art = { image, texture: texture(image), data: cx.getImageData(0,0,c.width,c.height).data, width: c.width, height: c.height }; assets.set(name,art); return art
+    let pending = decodedArt.get(url)
+    if (!pending) {
+      pending = (async () => {
+        const image = new Image(); image.src = url; await image.decode()
+        const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height
+        const context = canvas.getContext('2d', {willReadFrequently:true})!; context.drawImage(image,0,0)
+        return {image, data:context.getImageData(0,0,canvas.width,canvas.height).data, width:canvas.width, height:canvas.height}
+      })()
+      decodedArt.set(url,pending)
+      void pending.catch(() => decodedArt.delete(url))
+    }
+    const source = await pending
+    if (destroyed) return
+    const art = {...source, texture:texture(source.image)}; assets.set(name,art); return art
   }
+
   /** Closed, alpha-conforming volume: fins taper to their real silhouette; each side retains its own heat. */
   function relief(art: Art, size: number, depth: number, fishSurface = false, bottom = false): THREE.BufferGeometry {
+    const key = `${art.image.src}:${size}:${depth}:${fishSurface}:${bottom}`
+    let template = reliefCache.get(key)
+    if (!template) {
+      template = buildRelief(art,size,depth,fishSurface,bottom)
+      geometries.delete(template)
+      reliefCache.set(key,template)
+      if (reliefCache.size>24) { const oldest=reliefCache.keys().next().value!; reliefCache.get(oldest)!.dispose(); reliefCache.delete(oldest) }
+    }
+    const geometry=template.clone(); geometries.add(geometry); return geometry
+  }
+  function buildRelief(art: Art, size: number, depth: number, fishSurface = false, bottom = false): THREE.BufferGeometry {
     if(art===assets.get('plate')){
       const positions:number[]=[],uv:number[]=[],indices:number[]=[],rings=28,segments=256,ar=art.height/art.width
       for(let ring=0;ring<=rings;ring++)for(let j=0;j<=segments;j++){const r=ring/rings,a=j/segments*Math.PI*2,x=Math.cos(a)*r,z=Math.sin(a)*r;positions.push(x*size/2,.035+Math.pow(clamp((r-.62)/.38),1.7)*.10,z*size/2*ar);uv.push(.5+x*.5,.5-z*.5)}
@@ -103,21 +131,19 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
       for(let i=0;i<nx;i++)for(let j=0;j<nz;j++){const a=i*(nz+1)+j,b=a+nz+1,c=a+1,d=b+1;if(bottom)indices.push(a,b,c,b,d,c);else indices.push(a,c,b,b,c,d)}
       const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();geometries.add(g);return g
     }
-    const nx = 220, nz = fishSurface ? 88 : 128, ar = art.height/art.width*(fishSurface?1.32:1), positions: number[] = [], uv: number[] = [], indices: number[] = []
-    const solid: boolean[] = [], heights: number[] = []
+    const nx = 96, nz = 56, ar = art.height/art.width, positions: number[] = [], uv: number[] = [], indices: number[] = []
+
     for (let j=0;j<=nz;j++) for(let i=0;i<=nx;i++) {
       const u=i/nx,v=j/nz, px=Math.min(art.width-1,Math.round(u*(art.width-1))),py=Math.min(art.height-1,Math.round(v*(art.height-1)))
-      const a=art.data[(py*art.width+px)*4+3]/255; solid.push(a>.04)
+      const a=art.data[(py*art.width+px)*4+3]/255
       let d=0
       if (a>.1) { for(let r=1;r<=24;r++){let edge=false;for(const [dx,dy] of [[r,0],[-r,0],[0,r],[0,-r]]){const x=px+dx*art.width/nx,y=py+dy*art.height/nz;if(x<0||x>=art.width||y<0||y>=art.height||art.data[(Math.floor(y)*art.width+Math.floor(x))*4+3]<90){edge=true;break}}if(edge)break;d=r} }
       let h=fishSurface ? Math.sqrt(Math.min(1,d/19))*depth : depth*(.55+.45*Math.min(1,d/3))
       if (!fishSurface && art===assets.get('plate')) { const r=Math.hypot((u-.5)*2,(v-.5)*2); h=.045+Math.pow(clamp((r-.65)/.30),1.4)*.10 }
       if (!fishSurface && art===assets.get('pan')) { const rim=Math.max(Math.abs((u-.395)/.355),Math.abs((v-.56)/.43));h=.10+.27*Math.pow(clamp((rim-.78)/.2),1.6);if(u>.79||v<.13)h=.15;else if(rim<.8)h+=Math.pow(Math.max(0,Math.cos(u*116)),14)*.028 }
-      heights.push(h);positions.push((u-.5)*size,(bottom?-1:1)*h,(v-.5)*size*ar);uv.push(u,1-v)
+      positions.push((u-.5)*size,(bottom?-1:1)*h,(v-.5)*size*ar);uv.push(u,1-v)
     }
-    const edges=new Map<string,[number,number]>()
-    const triangle=(a:number,b:number,c:number)=>{indices.push(a,b,c);for(const [s,e] of [[a,b],[b,c],[c,a]]){const k=[Math.min(s,e),Math.max(s,e)].join(':');if(edges.has(k))edges.delete(k);else edges.set(k,[s,e])}}
-    for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;if(bottom){triangle(a,b,c);triangle(b,d,c)}else{triangle(a,c,b);triangle(b,c,d)}}
+    for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;if(bottom)indices.push(a,b,c,b,d,c);else indices.push(a,c,b,b,c,d)}
     const surfaceCount=indices.length
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();g.userData.surfaceCount=surfaceCount;geometries.add(g);return g
   }
@@ -151,9 +177,13 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
     const group=new THREE.Group(),raw=assets.get('fish-raw')!,g=relief(raw,fishWidth,.22,true),gb=relief(raw,fishWidth,.22,true,true)
     const top=new THREE.Mesh(g,fishMaterial(0)),bottom=new THREE.Mesh(gb,fishMaterial(1));top.castShadow=bottom.castShadow=true;top.receiveShadow=bottom.receiveShadow=true;group.add(top,bottom)
     // Thin perimeter closes the two sculpted skins instead of exposing a paper plane on turns.
-    const p=g.getAttribute('position'),u=g.getAttribute('uv'),idx=g.index!,edge=new Map<string,[number,number]>()
-    for(let i=0;i<idx.count;i+=3)for(const [a,b]of [[idx.getX(i),idx.getX(i+1)],[idx.getX(i+1),idx.getX(i+2)],[idx.getX(i+2),idx.getX(i)]]){const key=[Math.min(a,b),Math.max(a,b)].join(':');if(edge.has(key))edge.delete(key);else edge.set(key,[a,b])}
-    const ps:number[]=[],us:number[]=[],ids:number[]=[];for(const[a,b]of edge.values()){const start=ps.length/3;for(const[k,s]of [[a,1],[b,1],[a,-1],[b,-1]]){ps.push(p.getX(k),p.getY(k)*s,p.getZ(k));us.push(u.getX(k),u.getY(k))}ids.push(start,start+1,start+2,start+1,start+3,start+2)}
+    const p=g.getAttribute('position'),u=g.getAttribute('uv'),edge:[number,number][]=[],nx=240,nz=88,stride=nz+1
+    // The sculpted skin is a regular grid; its perimeter is known without scanning every triangle.
+    for(let j=0;j<nz;j++)edge.push([j,j+1])
+    for(let i=0;i<nx;i++)edge.push([i*stride+nz,(i+1)*stride+nz])
+    for(let j=nz;j>0;j--)edge.push([nx*stride+j,nx*stride+j-1])
+    for(let i=nx;i>0;i--)edge.push([i*stride,(i-1)*stride])
+    const ps:number[]=[],us:number[]=[],ids:number[]=[];for(const[a,b]of edge){const start=ps.length/3;for(const[k,s]of [[a,1],[b,1],[a,-1],[b,-1]]){ps.push(p.getX(k),p.getY(k)*s,p.getZ(k));us.push(u.getX(k),u.getY(k))}ids.push(start,start+1,start+2,start+1,start+3,start+2)}
     const sideGeo=new THREE.BufferGeometry();sideGeo.setAttribute('position',new THREE.Float32BufferAttribute(ps,3));sideGeo.setAttribute('uv',new THREE.Float32BufferAttribute(us,2));sideGeo.setIndex(ids);sideGeo.computeVertexNormals();geometries.add(sideGeo)
     const wall=new THREE.Mesh(sideGeo,fishMaterial(0));wall.castShadow=true;group.add(wall);scene.add(group)
     const hull:number[]=[];for(let i=0;i<p.count;i+=5){if(p.getY(i)>.015){hull.push(p.getX(i),p.getY(i),p.getZ(i),p.getX(i),-p.getY(i),p.getZ(i))}}fishVertices=new Float32Array(hull)
@@ -197,7 +227,7 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
     const saved=bodies.map(b=>b.mesh.position.clone())
     bodies.forEach(b=>b.mesh.position.set(b.tx,b.ty,b.tz))
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity
-    for(const object of[board,pan,plate,...bodies.map(b=>b.mesh)]){object.updateMatrixWorld(true);object.traverse(child=>{if(!(child instanceof THREE.Mesh)||!child.geometry.getAttribute('position'))return;child.geometry.computeBoundingBox();const b=child.geometry.boundingBox!;for(const x of[b.min.x,b.max.x])for(const y of[b.min.y,b.max.y])for(const z of[b.min.z,b.max.z]){const p=new THREE.Vector3(x,y,z).applyMatrix4(child.matrixWorld).project(camera);minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y)}})}
+    for(const object of[board,pan,plate,...bodies.map(b=>b.mesh)]){object.updateMatrixWorld(true);object.traverse(child=>{if(!(child instanceof THREE.Mesh)||!child.geometry.getAttribute('position'))return;if(child instanceof THREE.InstancedMesh)child.computeBoundingBox();else if(!child.geometry.boundingBox)child.geometry.computeBoundingBox();const b=(child instanceof THREE.InstancedMesh?child.boundingBox:child.geometry.boundingBox)!;for(const x of[b.min.x,b.max.x])for(const y of[b.min.y,b.max.y])for(const z of[b.min.z,b.max.z]){const p=new THREE.Vector3(x,y,z).applyMatrix4(child.matrixWorld).project(camera);minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y)}})}
     bodies.forEach((b,i)=>b.mesh.position.copy(saved[i]))
     const zoom=1/Math.max(1,(maxX-minX)/1.84,(maxY-minY)/(compact?1.16:1.24)),offsetX=(minX+maxX)*worldWidth/4,offsetY=(minY+maxY)*worldHeight/4+.17*worldHeight/(2*zoom)
     camera.zoom=zoom;camera.left=-worldWidth/2+offsetX;camera.right=worldWidth/2+offsetX;camera.top=worldHeight/2+offsetY;camera.bottom=-worldHeight/2+offsetY;camera.updateProjectionMatrix()
@@ -253,7 +283,7 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
       fish.tr=rotation
     }
     if(h.kind==='carrot'&&commit){const scale=portrait?1.22:1;placeFishGarnish(model,h.id,{x:(b.tx-platePoint.x)/(2.8*scale),y:(b.tz-platePoint.z)/(2.1*scale)},b.mesh.rotation.y)}
-    arrange()
+    arrange();sync()
   }
   view.addEventListener('pointerdown',e=>{
     if((e.target as HTMLElement).closest('button')||!loaded||lost||pointerId!==null)return
@@ -284,8 +314,10 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
   },{signal})
   view.addEventListener('wheel',e=>{if(held?.kind==='carrot'){e.preventDefault();held.body.mesh.rotation.y+=Math.sign(e.deltaY)*.1}},{signal,passive:false})
   function scatterSalt(l:{x:number;y:number}) {
-    if(saltGrains.length>125)return
-    for(let i=0;i<3;i++){const mesh=new THREE.Mesh(new THREE.OctahedronGeometry(.018+Math.random()*.012),new THREE.MeshPhysicalMaterial({color:'#fff1dc',roughness:.28,transmission:.12,thickness:.03}));geometries.add(mesh.geometry);materials.add(mesh.material);mesh.position.set(l.x*fishWidth*.5+(Math.random()-.5)*.30,.28,(l.y*fishHalfDepth())+(Math.random()-.5)*.24);fish.mesh.add(mesh);saltGrains.push(mesh)}
+    if(saltCount>=126)return
+    if(!saltGrains){const geometry=new THREE.OctahedronGeometry(1),material=new THREE.MeshPhysicalMaterial({color:'#fff1dc',roughness:.28,transmission:.12,thickness:.03});geometries.add(geometry);materials.add(material);saltGrains=new THREE.InstancedMesh(geometry,material,126);saltGrains.count=0;saltGrains.frustumCulled=false;fish.mesh.add(saltGrains)}
+    for(let i=0;i<3&&saltCount<126;i++){saltTransform.position.set(l.x*fishWidth*.5+(Math.random()-.5)*.30,.28,l.y*fishHalfDepth()+(Math.random()-.5)*.24);saltTransform.scale.setScalar(.018+Math.random()*.012);saltTransform.updateMatrix();saltGrains.setMatrixAt(saltCount++,saltTransform.matrix)}
+    saltGrains.count=saltCount;saltGrains.instanceMatrix.needsUpdate=true
   }
   const steamGeo=new THREE.PlaneGeometry(1,1);geometries.add(steamGeo)
   const steam:THREE.Mesh<THREE.PlaneGeometry,THREE.ShaderMaterial>[]=[]
@@ -319,7 +351,7 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
     droplets.forEach((d,i)=>{const phase=(elapsed*(.9+i*.017)+i*.17)%1;d.visible=sizzling&&!reduced.matches&&phase<.55;d.position.set(panPoint.x+Math.sin(i*3.9)*(1.3+phase*.35),.20+Math.sin(phase/.55*Math.PI)*(.12+i%3*.05),panPoint.z+Math.cos(i*1.8)*.65);d.scale.setScalar(.65+Math.sin(i)*.28)})
     if(held?.turn&&fish&&held.kind==='spatula'){spatula.mesh.rotation.z=clamp(fish.roll.value-held.startRoll,-.6,.6);spatula.ty=fish.y.value-.20}else if(spatula)spatula.mesh.rotation.z*=Math.exp(-dt*8)
     if(keyboard){const p=cursor.clone().project(camera);cursorElement.style.left=`${(p.x+1)*width/2}px`;cursorElement.style.top=`${(1-p.y)*height/2}px`}
-    sync();renderer.render(scene,camera)
+    if(model.stage!==lastStage||elapsed>=nextSync){nextSync=elapsed+.10;sync()}renderer.render(scene,camera)
   }
   async function init(){
     try{

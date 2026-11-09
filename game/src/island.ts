@@ -400,6 +400,17 @@ export function createIsland(
   let gesture: Gesture | undefined;
   let lastTime = 0;
   let frameId = 0;
+  let viewMode: 'world' | 'dialog' | 'minigame' = 'world';
+  const canAnimate = () => !document.hidden && (viewMode !== 'minigame' || !!gesture || workOrders.length > 0 || !!capeWork || !!shorePickup);
+  function scheduleFrame() {
+    if (!frameId && !abort.signal.aborted && !motion.matches && canAnimate()) frameId = requestAnimationFrame(tick);
+  }
+  function reconcileFrames() {
+    if (frameId) cancelAnimationFrame(frameId);
+    frameId = 0; lastTime = 0; lastPhysics = 0;
+    if (motion.matches) requestPaint();
+    else scheduleFrame();
+  }
   let pixelDensity = window.devicePixelRatio || 1;
   let farmer = { ...HOME };
   let destination = farmer;
@@ -415,6 +426,12 @@ export function createIsland(
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const abort = new AbortController();
   const art = createRasterLibrary((key) => {
+    const occluder = /^(home|grove|cape|village)-occluder-(\d+)$/.exec(key);
+    if (occluder) {
+      const island = occluder[1] as FarmState['island'];
+      const image = art.image(key);
+      if (image) cutouts[island].push({ image, bounds: landscape[island].occluders[Number(occluder[2])] });
+    }
     if (key === 'village-plate') {
       const plate = art.image(key);
       if (plate) {
@@ -1502,20 +1519,21 @@ export function createIsland(
   }
 
   function tick(now: number): void {
-    if (abort.signal.aborted) return;
+    frameId = 0;
+    if (abort.signal.aborted || !canAnimate()) return;
     if (pixelDensity !== (window.devicePixelRatio || 1)) resize();
-    const interval = 1000 / 60;
+    const interval = 1000 / (viewMode === 'dialog' ? 15 : 60);
     const elapsed = now - lastTime;
     if (!motion.matches && elapsed >= interval - 0.5) {
       lastTime = elapsed > 100 ? now : now - Math.max(0, elapsed - interval);
       paint(now / 1000);
     }
-    frameId = requestAnimationFrame(tick);
+    scheduleFrame();
   }
 
   function requestPaint(): void {
     if (abort.signal.aborted) return;
-    if (motion.matches) paint(0);
+    if (motion.matches && canAnimate()) paint(0);
   }
 
   function cameraView(): { scale: number; center: Point } {
@@ -1750,75 +1768,96 @@ export function createIsland(
       workOrders = [];
       if (active && !active.hit) active.order.commit();
       for (const order of queued) order.commit();
-      paint(0);
+      requestPaint();
     }
-    frameId = requestAnimationFrame(tick);
+    reconcileFrames();
   }, listeners);
+  document.addEventListener('visibilitychange', reconcileFrames, listeners);
 
-  for (const island of ['home', 'grove', 'cape', 'village'] as const) {
-    art.load(`${island}-plate`, landscape[island].path);
-    for (const bounds of landscape[island].occluders) {
-      const image = new Image();
-      image.addEventListener('load', () => {
-        cutouts[island].push({ image, bounds });
-        requestPaint();
-      }, { ...listeners, once: true });
-      image.src = bounds.url;
-    }
-  }
-  for (const { patch, mask } of [...buildingUpgrades, ...Object.values(projectStages), ...Object.values(specializationStages)]) {
-    art.load(patch.key, patch.path);
-    art.load(mask.key, mask.path);
-  }
   const load = (key: string, frames: number, path = key) =>
     art.load(key, `lavender/${path}`, [frames, 1]);
-  art.load('windmill-sails', 'lavender/home-mill-sails');
-  load('boat', 1, 'home-boat');
-  load('farmer-actions', 6);
-  load('hen-poses', 8);
-  load('feed-station',1,'tool-feed');
-  load('ui-shell', 1);
-  load('ui-moon-shell', 1);
-  load('shore-crab', 1);
-  load('shore-crab-walk', 4);
-  load('hen-walk-smooth', 8);
-  load('cove-minnow', 4);
-  load('cove-egret', 4);
-  for (const key of ['cove-kelp-right', 'cove-kelp-left', 'cove-meadow', 'cove-rock', 'cove-refuge', 'cove-perch']) load(key, 1);
-  art.load('cove-terrain', 'lavender/cove-terrain');
-  load('ui-sea-glass', 1);
-  load('ui-moon-pearl', 1);
-  load('shoal-starfish', 1);
-  for (const key of ['cape-flowers', 'fair-guest', 'bay-display', 'ui-honey', 'ui-wind-honey']) load(key, 1);
-  for (const key of ['cape-apiary', 'cape-honey-kitchen', 'cape-bee', 'ui-beeswax', 'ui-honey-biscuits', 'ui-honey-pear', 'ui-wind-parfait']) load(key, 1);
-  load('fair-guest-walk', 4);
-  load('village-bea', 6);
-  load('village-finn', 6);
-  art.load('neighbor-bea-work', 'lavender/community/bea-work', [3, 2]);
-  art.load('neighbor-finn-work', 'lavender/community/finn-work', [3, 2]);
-  art.load('neighbor-props', 'lavender/community/props', [2, 2]);
-  for (const key of ['ui-tart', 'ui-strawberry-tart', 'ui-blueberry-tart', 'ui-raspberry-tart',
-    'ui-orchard-preserves', 'ui-apple-jam', 'ui-farmhouse-bread', 'ui-honey-cake']) load(key, 1);
-  for (const key of ['ui-handmade-round', 'ui-handmade-folded', 'ui-handmade-long', 'ui-grilled-fish']) load(key, 1);
-  art.load('guest-apple', 'icons/apple', [1, 1]);
-  load('guest-jam', 1, 'ui-apple-jam');
-  load('guest-cake', 1, 'ui-honey-cake');
-  load('orchard-start', 2);
-  for (const direction of ['left', 'right', 'back']) load(`walk-${direction}`, 4);
-  for (const direction of ['left', 'right', 'back']) load(`walk-${direction}-smooth`, 8);
-  for (const action of ['water', 'till']) load(`work-${action}`, 4);
-  for (const tree of ['apple', 'pear', 'peach']) load(`tree-${tree}`, 2);
-  for (const crop of Object.keys(cropSizes)) load(`crop-${crop}`, 4);
-  for (const key of ['heart', 'salt', 'harvest-marker']) art.load(key, key, [1, 1]);
-  art.load('butterfly', 'butterfly', [2, 2]);
-  for (const crop of Object.keys(cropSizes)) art.load(`item-${crop}`, `icons/${crop}`, [1, 1]);
-  art.load('egg', 'icons/egg', [1, 1]);
+  function loadStage(stage: typeof projectStages.fair): void {
+    art.load(stage.patch.key, stage.patch.path);
+    art.load(stage.mask.key, stage.mask.path);
+  }
+  function loadIslandAssets(next: FarmState): void {
+    const island = next.island;
+    art.load(`${island}-plate`, landscape[island].path);
+    landscape[island].occluders.forEach((bounds, index) => art.loadUrl(`${island}-occluder-${index}`, bounds.url));
+    load('boat', 1, 'home-boat');
+    load('farmer-actions', 6);
+    for (const direction of ['left', 'right', 'back']) {
+      load(`walk-${direction}`, 4);
+      load(`walk-${direction}-smooth`, 8);
+    }
+    art.load('butterfly', 'butterfly', [2, 2]);
+    art.load('heart', 'heart', [1, 1]);
+    if (island === 'home' || island === 'grove') {
+      load('orchard-start', 2);
+      for (const tree of ['apple', 'pear', 'peach']) load(`tree-${tree}`, 2);
+      const project = island === 'home' ? 'fair' : 'dock';
+      if (isProjectComplete(next, project)) loadStage(projectStages[project]);
+    }
+    if (island === 'home') {
+      art.load('windmill-sails', 'lavender/home-mill-sails');
+      load('hen-poses', 8);
+      load('hen-walk-smooth', 8);
+      load('feed-station', 1, 'tool-feed');
+      for (const action of ['water', 'till']) load(`work-${action}`, 4);
+      for (const crop of new Set(next.beds.flatMap(bed => bed.kind === 'crop' ? [bed.crop] : []))) {
+        load(`crop-${crop}`, 4);
+        art.load(`item-${crop}`, `icons/${crop}`, [1, 1]);
+      }
+      art.load('harvest-marker', 'harvest-marker', [1, 1]);
+      art.load('egg', 'icons/egg', [1, 1]);
+      for (const asset of buildingUpgrades) {
+        if (next.buildingLevels[asset.building] < 2) continue;
+        const branch = next[`${asset.building}Specialization`];
+        loadStage(branch ? specializationStages[branch] : asset);
+      }
+      if (getFairGuest(next)) {
+        load('fair-guest', 1);
+        load('fair-guest-walk', 4);
+        art.load('guest-apple', 'icons/apple', [1, 1]);
+        load('guest-jam', 1, 'ui-apple-jam');
+        load('guest-cake', 1, 'ui-honey-cake');
+        art.load('item-wheat', 'icons/wheat', [1, 1]);
+      }
+    } else if (island === 'grove') {
+      if (hasBayDisplay(next)) load('bay-display', 1);
+      for (const key of ['ui-shell', 'ui-moon-shell', 'shore-crab', 'ui-sea-glass', 'ui-moon-pearl', 'shoal-starfish']) load(key, 1);
+      load('shore-crab-walk', 4);
+      load('cove-minnow', 4);
+      load('cove-egret', 4);
+      for (const key of ['cove-kelp-right', 'cove-kelp-left', 'cove-meadow', 'cove-rock', 'cove-refuge', 'cove-perch']) load(key, 1);
+      art.load('cove-terrain', 'lavender/cove-terrain');
+      art.load('salt', 'salt', [1, 1]);
+    } else if (island === 'cape') {
+      for (const key of ['cape-flowers', 'ui-honey', 'ui-wind-honey', 'cape-bee', 'ui-beeswax', 'ui-honey-biscuits', 'ui-honey-pear', 'ui-wind-parfait']) load(key, 1);
+      if (next.capeLevel >= 2) load('cape-apiary', 1);
+      if (next.capeLevel >= 3) load('cape-honey-kitchen', 1);
+    } else {
+      load('village-bea', 6);
+      load('village-finn', 6);
+      art.load('neighbor-bea-work', 'lavender/community/bea-work', [3, 2]);
+      art.load('neighbor-finn-work', 'lavender/community/finn-work', [3, 2]);
+      art.load('neighbor-props', 'lavender/community/props', [2, 2]);
+      for (const key of ['ui-tart', 'ui-strawberry-tart', 'ui-blueberry-tart', 'ui-raspberry-tart',
+        'ui-orchard-preserves', 'ui-apple-jam', 'ui-farmhouse-bread', 'ui-honey-cake',
+        'ui-handmade-round', 'ui-handmade-folded', 'ui-handmade-long', 'ui-grilled-fish']) load(key, 1);
+    }
+  }
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
   describeFocus();
   resize();
-  frameId = requestAnimationFrame(tick);
+  scheduleFrame();
   return {
+    setViewMode(next: typeof viewMode) {
+      if (next === viewMode) return;
+      viewMode = next;
+      reconcileFrames();
+    },
     focusTarget(target: IslandTarget): void {
       const site = currentSites().find(area => sameTarget(area.target, target));
       if (!site) return;
@@ -1856,6 +1895,17 @@ export function createIsland(
         if (abort.signal.aborted) return;
         commit();
         departure = 0;
+        if (state) {
+          const island = state.island;
+          const keys = [`${island}-plate`, ...landscape[island].occluders.map((_, index) => `${island}-occluder-${index}`)];
+          let timeout: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([art.ready(keys), new Promise(resolve => { timeout = setTimeout(resolve, 6000); })]);
+          } finally {
+            clearTimeout(timeout);
+          }
+        }
+        if (abort.signal.aborted) return;
         if (motion.matches) return;
         fade.cancel();
         fade = crossingVeil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, easing: 'ease-in-out', fill: 'forwards' });
@@ -1871,6 +1921,7 @@ export function createIsland(
       }
     },
     render(next: FarmState): void {
+      loadIslandAssets(next);
       const moment = performance.now();
       hens.forEach((hen,index)=>{
         const saved=next.henPositions?.[index]??null;

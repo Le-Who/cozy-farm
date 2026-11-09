@@ -102,7 +102,7 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
   const palette = new Map<string, { rgb: Color; alpha: number }>();
   const pool: Mesh<PlaneGeometry, ShaderMaterial>[] = [];
   let view = { x: 720, y: 450, w: 1440, h: 900 };
-  let active = 0;
+  let active = 0, previousActive = 0;
   let available = Boolean(renderer);
   const light = new DirectionalLight('#fff0c9', 2.4);
   light.position.set(-350, 500, -180);
@@ -203,8 +203,20 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
     );
   }
 
+  // Project the four corners of a unit quad onto the island camera axes.
+  // Using its rotated, sheared matrix also covers wind-bent foliage and long shadows.
+  function inView(matrix: Matrix4): boolean {
+    const m = matrix.elements;
+    const halfWidth = (Math.abs(m[0]) + Math.abs(m[4])) * .5;
+    const halfHeight = (Math.abs(m[2] * sin - m[1] * cos) + Math.abs(m[6] * sin - m[5] * cos)) * .5;
+    const screenY = m[14] * sin - m[13] * cos;
+    return Math.abs(m[12] - view.x) <= view.w * .5 + halfWidth + 1 &&
+      Math.abs(screenY - view.y) <= view.h * .5 + halfHeight + 1;
+  }
+
   function sprite(source: Raster, src: Box, x: number, y: number, w: number, h: number,
     options: SpriteOptions = {}, origin = 0.5): void {
+    if (options.opacity === 0 || !w || !h) return;
     const shadow = options.shadow;
     const layer = options.layer ?? (shadow ? decals : 0);
     const node = mesh(layer);
@@ -243,19 +255,22 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       billboard(node.matrix, x, y, options.footY ?? y, w, displayedHeight, origin, options.baseline ?? 1,
         options.angle ?? 0, options.bend ?? 0, Boolean(options.flip));
     }
+    node.visible = inView(node.matrix);
     node.matrixWorldNeedsUpdate = true;
   }
 
   function shape(kind: Shape, x: number, y: number, w: number, h: number, color: string,
     opacity = 1, layer = decals, angle = 0, footY = y): void {
+    const tint = ink(color);
+    if (opacity <= 0 || tint.alpha === 0 || !w || !h) return;
     const node = mesh(layer);
     const uniforms = node.material.uniforms;
-    const tint = ink(color);
     uniforms.uMode.value = modes[kind];
     uniforms.uEdgeFade.value.set(0, 0, 0, 0);
     uniforms.uColor.value.copy(tint.rgb);
     uniforms.uOpacity.value = opacity * tint.alpha;
     billboard(node.matrix, x, y, footY, w * 2, h * 2, 0.5, 0.5, angle, 0, false);
+    node.visible = inView(node.matrix);
     node.matrixWorldNeedsUpdate = true;
   }
 
@@ -280,7 +295,7 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       water.resize(width, height);
     },
     begin() {
-      active = 0;
+      previousActive = active; active = 0;
       bobber.visible = false;
       line.visible = false;
     },
@@ -314,7 +329,7 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       shape('panel', view.x, view.y, view.w / 2, view.h / 2, color, 1, overlay + 10);
     },
     render() {
-      for (let i = active; i < pool.length && pool[i].visible; i++) pool[i].visible = false;
+      for (let i = active; i < previousActive; i++) pool[i].visible = false;
       if (available) renderer?.render(scene, camera);
     },
     dispose() {

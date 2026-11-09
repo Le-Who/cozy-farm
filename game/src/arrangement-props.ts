@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { loadImage } from './image-assets';
 import type { FoodDescriptor } from './intent-orders';
 
 type Mode = 'table' | 'basket' | 'eggs' | 'crate';
@@ -35,7 +36,7 @@ export async function createArrangementProps(mode: Mode, food?: FoodDescriptor):
   function load(path: string): Promise<Source> {
     let promise = images.get(path);
     if (!promise) {
-      promise = (async () => { const image = new Image(); image.src = `${base}${path}`; await image.decode(); return inspect(image); })();
+      promise = loadImage(`${base}${path}`).then(inspect);
       images.set(path, promise);
     }
     return promise;

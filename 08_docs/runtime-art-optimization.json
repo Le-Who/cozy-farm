@@ -1,0 +1,2653 @@
+{
+  "baselineRevision": "2df0eec51cf842baf63293a6ab70e6560e8f0509",
+  "encoder": "Pillow WebP quality 92 (surface maps 94, fine-detail fallback 96), method 4, exact alpha",
+  "measurement": "Encoded file bytes and width*height*4 decoded RGBA estimate; not measured browser RAM or FPS. Sum includes assets that are not resident together.",
+  "geometry": "Atlases, anchors, room dimensions and registered patch/occlusion RGB are retained. Five loose assembly props are uniformly downsampled; normalized alpha bounds drift is checked below 0.0025.",
+  "changedFiles": 132,
+  "beforeBytes": 58647016,
+  "afterBytes": 14007596,
+  "decodedRgbaBefore": 290054916,
+  "decodedRgbaAfter": 264699444,
+  "files": [
+    {
+      "path": "art/farmer-back.webp",
+      "sourcePath": "art/farmer-back.webp",
+      "beforeBytes": 179294,
+      "afterBytes": 83496,
+      "beforeSize": [
+        576,
+        448
+      ],
+      "afterSize": [
+        576,
+        448
+      ],
+      "decodedRgbaBefore": 1032192,
+      "decodedRgbaAfter": 1032192,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.03
+    },
+    {
+      "path": "art/farmer-idle.webp",
+      "sourcePath": "art/farmer-idle.webp",
+      "beforeBytes": 134958,
+      "afterBytes": 60778,
+      "beforeSize": [
+        384,
+        448
+      ],
+      "afterSize": [
+        384,
+        448
+      ],
+      "decodedRgbaBefore": 688128,
+      "decodedRgbaAfter": 688128,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 38.87
+    },
+    {
+      "path": "art/farmer-walk.webp",
+      "sourcePath": "art/farmer-walk.webp",
+      "beforeBytes": 194176,
+      "afterBytes": 87644,
+      "beforeSize": [
+        576,
+        448
+      ],
+      "afterSize": [
+        576,
+        448
+      ],
+      "decodedRgbaBefore": 1032192,
+      "decodedRgbaAfter": 1032192,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 39.13
+    },
+    {
+      "path": "art/icons/blueberry.webp",
+      "sourcePath": "art/icons/blueberry.webp",
+      "beforeBytes": 170144,
+      "afterBytes": 17550,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        256,
+        256
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 262144,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0019531,
+      "playScaleCompositePsnrDb": 42.78
+    },
+    {
+      "path": "art/icons/raspberry.webp",
+      "sourcePath": "art/icons/raspberry.webp",
+      "beforeBytes": 228524,
+      "afterBytes": 26170,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        256,
+        256
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 262144,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0019531,
+      "playScaleCompositePsnrDb": 37.61
+    },
+    {
+      "path": "art/icons/strawberry.webp",
+      "sourcePath": "art/icons/strawberry.webp",
+      "beforeBytes": 243808,
+      "afterBytes": 93944,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 96,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.0
+    },
+    {
+      "path": "art/lavender/assembly/raster/egg-crate.webp",
+      "sourcePath": "art/lavender/assembly/raster/egg-crate.webp",
+      "beforeBytes": 952882,
+      "afterBytes": 268584,
+      "beforeSize": [
+        1254,
+        1254
+      ],
+      "afterSize": [
+        1254,
+        1254
+      ],
+      "decodedRgbaBefore": 6290064,
+      "decodedRgbaAfter": 6290064,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.19
+    },
+    {
+      "path": "art/lavender/assembly/raster/picnic-basket.webp",
+      "sourcePath": "art/lavender/assembly/raster/picnic-basket.webp",
+      "beforeBytes": 1563466,
+      "afterBytes": 452574,
+      "beforeSize": [
+        1254,
+        1254
+      ],
+      "afterSize": [
+        1254,
+        1254
+      ],
+      "decodedRgbaBefore": 6290064,
+      "decodedRgbaAfter": 6290064,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.79
+    },
+    {
+      "path": "art/lavender/assembly/raster/picnic-cup.webp",
+      "sourcePath": "art/lavender/assembly/raster/picnic-cup.webp",
+      "beforeBytes": 899702,
+      "afterBytes": 93842,
+      "beforeSize": [
+        1254,
+        1254
+      ],
+      "afterSize": [
+        768,
+        768
+      ],
+      "decodedRgbaBefore": 6290064,
+      "decodedRgbaAfter": 2359296,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0005171,
+      "playScaleCompositePsnrDb": 43.97
+    },
+    {
+      "path": "art/lavender/assembly/raster/picnic-napkin.webp",
+      "sourcePath": "art/lavender/assembly/raster/picnic-napkin.webp",
+      "beforeBytes": 1262582,
+      "afterBytes": 172532,
+      "beforeSize": [
+        1254,
+        1254
+      ],
+      "afterSize": [
+        768,
+        768
+      ],
+      "decodedRgbaBefore": 6290064,
+      "decodedRgbaAfter": 2359296,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.000461,
+      "playScaleCompositePsnrDb": 40.43
+    },
+    {
+      "path": "art/lavender/assembly/raster/tea-cup.webp",
+      "sourcePath": "art/lavender/assembly/raster/tea-cup.webp",
+      "beforeBytes": 945838,
+      "afterBytes": 99254,
+      "beforeSize": [
+        1254,
+        1254
+      ],
+      "afterSize": [
+        768,
+        768
+      ],
+      "decodedRgbaBefore": 6290064,
+      "decodedRgbaAfter": 2359296,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0005981,
+      "playScaleCompositePsnrDb": 41.8
+    },
+    {
+      "path": "art/lavender/assembly/raster/tea-flowers.webp",
+      "sourcePath": "art/lavender/assembly/raster/tea-flowers.webp",
+      "beforeBytes": 1093136,
+      "afterBytes": 160766,
+      "beforeSize": [
+        1254,
+        1254
+      ],
+      "afterSize": [
+        768,
+        768
+      ],
+      "decodedRgbaBefore": 6290064,
+      "decodedRgbaAfter": 2359296,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0005794,
+      "playScaleCompositePsnrDb": 40.6
+    },
+    {
+      "path": "art/lavender/assembly/raster/tea-mat.webp",
+      "sourcePath": "art/lavender/assembly/raster/tea-mat.webp",
+      "beforeBytes": 1991196,
+      "afterBytes": 643874,
+      "beforeSize": [
+        2004,
+        785
+      ],
+      "afterSize": [
+        2004,
+        785
+      ],
+      "decodedRgbaBefore": 6292560,
+      "decodedRgbaAfter": 6292560,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.49
+    },
+    {
+      "path": "art/lavender/assembly/raster/tea-tart.webp",
+      "sourcePath": "art/lavender/assembly/raster/tea-tart.webp",
+      "beforeBytes": 1157894,
+      "afterBytes": 134812,
+      "beforeSize": [
+        1254,
+        1254
+      ],
+      "afterSize": [
+        768,
+        768
+      ],
+      "decodedRgbaBefore": 6290064,
+      "decodedRgbaAfter": 2359296,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0006791,
+      "playScaleCompositePsnrDb": 40.77
+    },
+    {
+      "path": "art/lavender/cape-apiary.webp",
+      "sourcePath": "art/lavender/cape-apiary.webp",
+      "beforeBytes": 191636,
+      "afterBytes": 58850,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 39.86
+    },
+    {
+      "path": "art/lavender/cape-honey-kitchen.webp",
+      "sourcePath": "art/lavender/cape-honey-kitchen.webp",
+      "beforeBytes": 202896,
+      "afterBytes": 64742,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 40.85
+    },
+    {
+      "path": "art/lavender/community/bea-work.webp",
+      "sourcePath": "art/lavender/community/bea-work.webp",
+      "beforeBytes": 193756,
+      "afterBytes": 105648,
+      "beforeSize": [
+        768,
+        512
+      ],
+      "afterSize": [
+        768,
+        512
+      ],
+      "decodedRgbaBefore": 1572864,
+      "decodedRgbaAfter": 1572864,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.41
+    },
+    {
+      "path": "art/lavender/community/finn-work.webp",
+      "sourcePath": "art/lavender/community/finn-work.webp",
+      "beforeBytes": 183838,
+      "afterBytes": 91324,
+      "beforeSize": [
+        768,
+        512
+      ],
+      "afterSize": [
+        768,
+        512
+      ],
+      "decodedRgbaBefore": 1572864,
+      "decodedRgbaAfter": 1572864,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.09
+    },
+    {
+      "path": "art/lavender/community/props.webp",
+      "sourcePath": "art/lavender/community/props.webp",
+      "beforeBytes": 776576,
+      "afterBytes": 291016,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.4
+    },
+    {
+      "path": "art/lavender/cookery/apple-piece.webp",
+      "sourcePath": "art/lavender/cookery/apple-piece.webp",
+      "beforeBytes": 193082,
+      "afterBytes": 62404,
+      "beforeSize": [
+        477,
+        433
+      ],
+      "afterSize": [
+        477,
+        433
+      ],
+      "decodedRgbaBefore": 826164,
+      "decodedRgbaAfter": 826164,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 40.23
+    },
+    {
+      "path": "art/lavender/cookery/apple-slice.webp",
+      "sourcePath": "art/lavender/cookery/apple-slice.webp",
+      "beforeBytes": 150404,
+      "afterBytes": 60196,
+      "beforeSize": [
+        520,
+        422
+      ],
+      "afterSize": [
+        520,
+        422
+      ],
+      "decodedRgbaBefore": 877760,
+      "decodedRgbaAfter": 877760,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.36
+    },
+    {
+      "path": "art/lavender/cookery/berry-jar-full.webp",
+      "sourcePath": "art/lavender/cookery/berry-jar-full.webp",
+      "beforeBytes": 129096,
+      "afterBytes": 43072,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 40.09
+    },
+    {
+      "path": "art/lavender/cookery/blueberry.webp",
+      "sourcePath": "art/lavender/cookery/blueberry.webp",
+      "beforeBytes": 170144,
+      "afterBytes": 49690,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.38
+    },
+    {
+      "path": "art/lavender/cookery/dish.webp",
+      "sourcePath": "art/lavender/cookery/dish.webp",
+      "beforeBytes": 110306,
+      "afterBytes": 28552,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.39
+    },
+    {
+      "path": "art/lavender/cookery/honey-biscuit-baked.webp",
+      "sourcePath": "art/lavender/cookery/honey-biscuit-baked.webp",
+      "beforeBytes": 160750,
+      "afterBytes": 49988,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.59
+    },
+    {
+      "path": "art/lavender/cookery/honey-biscuit-dough.webp",
+      "sourcePath": "art/lavender/cookery/honey-biscuit-dough.webp",
+      "beforeBytes": 143256,
+      "afterBytes": 42370,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.89
+    },
+    {
+      "path": "art/lavender/cookery/honey-biscuit-glazed.webp",
+      "sourcePath": "art/lavender/cookery/honey-biscuit-glazed.webp",
+      "beforeBytes": 158532,
+      "afterBytes": 48188,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.15
+    },
+    {
+      "path": "art/lavender/cookery/honey-brush.webp",
+      "sourcePath": "art/lavender/cookery/honey-brush.webp",
+      "beforeBytes": 93534,
+      "afterBytes": 39604,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.56
+    },
+    {
+      "path": "art/lavender/cookery/honey-cake-baked.webp",
+      "sourcePath": "art/lavender/cookery/honey-cake-baked.webp",
+      "beforeBytes": 188158,
+      "afterBytes": 54604,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.05
+    },
+    {
+      "path": "art/lavender/cookery/honey-cake-batter.webp",
+      "sourcePath": "art/lavender/cookery/honey-cake-batter.webp",
+      "beforeBytes": 179860,
+      "afterBytes": 39140,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.35
+    },
+    {
+      "path": "art/lavender/cookery/honey-cake-bowl.webp",
+      "sourcePath": "art/lavender/cookery/honey-cake-bowl.webp",
+      "beforeBytes": 168002,
+      "afterBytes": 48618,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.8
+    },
+    {
+      "path": "art/lavender/cookery/honey-cake-glazed.webp",
+      "sourcePath": "art/lavender/cookery/honey-cake-glazed.webp",
+      "beforeBytes": 186238,
+      "afterBytes": 55682,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.46
+    },
+    {
+      "path": "art/lavender/cookery/honey-glaze.webp",
+      "sourcePath": "art/lavender/cookery/honey-glaze.webp",
+      "beforeBytes": 184784,
+      "afterBytes": 48422,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 39.22
+    },
+    {
+      "path": "art/lavender/cookery/honey-knife.webp",
+      "sourcePath": "art/lavender/cookery/honey-knife.webp",
+      "beforeBytes": 84478,
+      "afterBytes": 36892,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 49.13
+    },
+    {
+      "path": "art/lavender/cookery/honey-parfait-custard.webp",
+      "sourcePath": "art/lavender/cookery/honey-parfait-custard.webp",
+      "beforeBytes": 147060,
+      "afterBytes": 48738,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.45
+    },
+    {
+      "path": "art/lavender/cookery/honey-parfait-empty.webp",
+      "sourcePath": "art/lavender/cookery/honey-parfait-empty.webp",
+      "beforeBytes": 148158,
+      "afterBytes": 49268,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.75
+    },
+    {
+      "path": "art/lavender/cookery/honey-parfait-fruit.webp",
+      "sourcePath": "art/lavender/cookery/honey-parfait-fruit.webp",
+      "beforeBytes": 179958,
+      "afterBytes": 53498,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.0
+    },
+    {
+      "path": "art/lavender/cookery/honey-parfait-full.webp",
+      "sourcePath": "art/lavender/cookery/honey-parfait-full.webp",
+      "beforeBytes": 190968,
+      "afterBytes": 60848,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.8
+    },
+    {
+      "path": "art/lavender/cookery/honey-pear-cut.webp",
+      "sourcePath": "art/lavender/cookery/honey-pear-cut.webp",
+      "beforeBytes": 146108,
+      "afterBytes": 47390,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.59
+    },
+    {
+      "path": "art/lavender/cookery/honey-pear-left.webp",
+      "sourcePath": "art/lavender/cookery/honey-pear-left.webp",
+      "beforeBytes": 143722,
+      "afterBytes": 45814,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.23
+    },
+    {
+      "path": "art/lavender/cookery/honey-pear-right.webp",
+      "sourcePath": "art/lavender/cookery/honey-pear-right.webp",
+      "beforeBytes": 137138,
+      "afterBytes": 42518,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.7
+    },
+    {
+      "path": "art/lavender/cookery/honey-pear-whole.webp",
+      "sourcePath": "art/lavender/cookery/honey-pear-whole.webp",
+      "beforeBytes": 141680,
+      "afterBytes": 46770,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.61
+    },
+    {
+      "path": "art/lavender/cookery/honey-pitcher.webp",
+      "sourcePath": "art/lavender/cookery/honey-pitcher.webp",
+      "beforeBytes": 150388,
+      "afterBytes": 48158,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.91
+    },
+    {
+      "path": "art/lavender/cookery/jam-surface.webp",
+      "sourcePath": "art/lavender/cookery/jam-surface.webp",
+      "beforeBytes": 1039648,
+      "afterBytes": 305768,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 94,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.65
+    },
+    {
+      "path": "art/lavender/cookery/jar-full.webp",
+      "sourcePath": "art/lavender/cookery/jar-full.webp",
+      "beforeBytes": 154180,
+      "afterBytes": 52616,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 39.1
+    },
+    {
+      "path": "art/lavender/cookery/jar.webp",
+      "sourcePath": "art/lavender/cookery/jar.webp",
+      "beforeBytes": 132436,
+      "afterBytes": 43002,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.92
+    },
+    {
+      "path": "art/lavender/cookery/peach-slice.webp",
+      "sourcePath": "art/lavender/cookery/peach-slice.webp",
+      "beforeBytes": 91940,
+      "afterBytes": 32996,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 39.49
+    },
+    {
+      "path": "art/lavender/cookery/pear-piece.webp",
+      "sourcePath": "art/lavender/cookery/pear-piece.webp",
+      "beforeBytes": 179216,
+      "afterBytes": 58106,
+      "beforeSize": [
+        454,
+        464
+      ],
+      "afterSize": [
+        454,
+        464
+      ],
+      "decodedRgbaBefore": 842624,
+      "decodedRgbaAfter": 842624,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.21
+    },
+    {
+      "path": "art/lavender/cookery/pot-foreground.webp",
+      "sourcePath": "art/lavender/cookery/pot-foreground.webp",
+      "beforeBytes": 105474,
+      "afterBytes": 38072,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.86
+    },
+    {
+      "path": "art/lavender/cookery/pot.webp",
+      "sourcePath": "art/lavender/cookery/pot.webp",
+      "beforeBytes": 169714,
+      "afterBytes": 50912,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.76
+    },
+    {
+      "path": "art/lavender/cookery/raspberry.webp",
+      "sourcePath": "art/lavender/cookery/raspberry.webp",
+      "beforeBytes": 228524,
+      "afterBytes": 70140,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 39.66
+    },
+    {
+      "path": "art/lavender/cookery/room-portrait.webp",
+      "sourcePath": "art/lavender/cookery/room-portrait.webp",
+      "beforeBytes": 1671062,
+      "afterBytes": 322316,
+      "beforeSize": [
+        1024,
+        1536
+      ],
+      "afterSize": [
+        1024,
+        1536
+      ],
+      "decodedRgbaBefore": 6291456,
+      "decodedRgbaAfter": 6291456,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.18
+    },
+    {
+      "path": "art/lavender/cookery/room.webp",
+      "sourcePath": "art/lavender/cookery/room.webp",
+      "beforeBytes": 1727648,
+      "afterBytes": 330262,
+      "beforeSize": [
+        1536,
+        1024
+      ],
+      "afterSize": [
+        1536,
+        1024
+      ],
+      "decodedRgbaBefore": 6291456,
+      "decodedRgbaAfter": 6291456,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.1
+    },
+    {
+      "path": "art/lavender/cookery/shaker.webp",
+      "sourcePath": "art/lavender/cookery/shaker.webp",
+      "beforeBytes": 121292,
+      "afterBytes": 37844,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.19
+    },
+    {
+      "path": "art/lavender/cookery/spoon.webp",
+      "sourcePath": "art/lavender/cookery/spoon.webp",
+      "beforeBytes": 81170,
+      "afterBytes": 37202,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.34
+    },
+    {
+      "path": "art/lavender/cookery/strawberry.webp",
+      "sourcePath": "art/lavender/cookery/strawberry.webp",
+      "beforeBytes": 243808,
+      "afterBytes": 77846,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 38.31
+    },
+    {
+      "path": "art/lavender/cookery/syrup-surface.webp",
+      "sourcePath": "art/lavender/cookery/syrup-surface.webp",
+      "beforeBytes": 978940,
+      "afterBytes": 280716,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 94,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.74
+    },
+    {
+      "path": "art/lavender/cookery/tart.webp",
+      "sourcePath": "art/lavender/cookery/tart.webp",
+      "beforeBytes": 187718,
+      "afterBytes": 51938,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.54
+    },
+    {
+      "path": "art/lavender/cove-egret.webp",
+      "sourcePath": "art/lavender/cove-egret.webp",
+      "beforeBytes": 289262,
+      "afterBytes": 133282,
+      "beforeSize": [
+        2048,
+        512
+      ],
+      "afterSize": [
+        2048,
+        512
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 54.18
+    },
+    {
+      "path": "art/lavender/cove-kelp-left.webp",
+      "sourcePath": "art/lavender/cove-kelp-left.webp",
+      "beforeBytes": 105132,
+      "afterBytes": 49160,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.12
+    },
+    {
+      "path": "art/lavender/cove-kelp-right.webp",
+      "sourcePath": "art/lavender/cove-kelp-right.webp",
+      "beforeBytes": 106808,
+      "afterBytes": 48024,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.98
+    },
+    {
+      "path": "art/lavender/cove-meadow.webp",
+      "sourcePath": "art/lavender/cove-meadow.webp",
+      "beforeBytes": 98682,
+      "afterBytes": 47574,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.06
+    },
+    {
+      "path": "art/lavender/cove-minnow.webp",
+      "sourcePath": "art/lavender/cove-minnow.webp",
+      "beforeBytes": 228308,
+      "afterBytes": 94618,
+      "beforeSize": [
+        2048,
+        512
+      ],
+      "afterSize": [
+        2048,
+        512
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 55.08
+    },
+    {
+      "path": "art/lavender/cove-perch.webp",
+      "sourcePath": "art/lavender/cove-perch.webp",
+      "beforeBytes": 76926,
+      "afterBytes": 25580,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.14
+    },
+    {
+      "path": "art/lavender/cove-refuge.webp",
+      "sourcePath": "art/lavender/cove-refuge.webp",
+      "beforeBytes": 119458,
+      "afterBytes": 40896,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.0
+    },
+    {
+      "path": "art/lavender/cove-rock.webp",
+      "sourcePath": "art/lavender/cove-rock.webp",
+      "beforeBytes": 100584,
+      "afterBytes": 34594,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.28
+    },
+    {
+      "path": "art/lavender/cove-terrain.webp",
+      "sourcePath": "art/lavender/cove-terrain.webp",
+      "beforeBytes": 1056030,
+      "afterBytes": 187904,
+      "beforeSize": [
+        1613,
+        975
+      ],
+      "afterSize": [
+        1613,
+        975
+      ],
+      "decodedRgbaBefore": 6290700,
+      "decodedRgbaAfter": 6290700,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.35
+    },
+    {
+      "path": "art/lavender/crop-blueberry.webp",
+      "sourcePath": "art/lavender/crop-blueberry.webp",
+      "beforeBytes": 533272,
+      "afterBytes": 181550,
+      "beforeSize": [
+        2048,
+        512
+      ],
+      "afterSize": [
+        2048,
+        512
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 48.6
+    },
+    {
+      "path": "art/lavender/crop-raspberry.webp",
+      "sourcePath": "art/lavender/crop-raspberry.webp",
+      "beforeBytes": 600256,
+      "afterBytes": 218370,
+      "beforeSize": [
+        2048,
+        512
+      ],
+      "afterSize": [
+        2048,
+        512
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 48.41
+    },
+    {
+      "path": "art/lavender/crop-strawberry.webp",
+      "sourcePath": "art/lavender/crop-strawberry.webp",
+      "beforeBytes": 513304,
+      "afterBytes": 174904,
+      "beforeSize": [
+        2048,
+        512
+      ],
+      "afterSize": [
+        2048,
+        512
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 48.66
+    },
+    {
+      "path": "art/lavender/fair-guest-walk.webp",
+      "sourcePath": "art/lavender/fair-guest-walk.webp",
+      "beforeBytes": 122404,
+      "afterBytes": 55094,
+      "beforeSize": [
+        1024,
+        256
+      ],
+      "afterSize": [
+        1024,
+        256
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.67
+    },
+    {
+      "path": "art/lavender/fish-cookery/lanternfish-grilled.webp",
+      "sourcePath": "art/lavender/fish-cookery/lanternfish-grilled.webp",
+      "beforeBytes": 227104,
+      "afterBytes": 103048,
+      "beforeSize": [
+        755,
+        295
+      ],
+      "afterSize": [
+        755,
+        295
+      ],
+      "decodedRgbaBefore": 890900,
+      "decodedRgbaAfter": 890900,
+      "quality": 96,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 37.2
+    },
+    {
+      "path": "art/lavender/fish-cookery/lanternfish-raw.webp",
+      "sourcePath": "art/lavender/fish-cookery/lanternfish-raw.webp",
+      "beforeBytes": 202776,
+      "afterBytes": 80706,
+      "beforeSize": [
+        755,
+        295
+      ],
+      "afterSize": [
+        755,
+        295
+      ],
+      "decodedRgbaBefore": 890900,
+      "decodedRgbaAfter": 890900,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 40.73
+    },
+    {
+      "path": "art/lavender/fish-cookery/moonfish-grilled.webp",
+      "sourcePath": "art/lavender/fish-cookery/moonfish-grilled.webp",
+      "beforeBytes": 222736,
+      "afterBytes": 98436,
+      "beforeSize": [
+        755,
+        295
+      ],
+      "afterSize": [
+        755,
+        295
+      ],
+      "decodedRgbaBefore": 890900,
+      "decodedRgbaAfter": 890900,
+      "quality": 96,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 37.09
+    },
+    {
+      "path": "art/lavender/fish-cookery/moonfish-raw.webp",
+      "sourcePath": "art/lavender/fish-cookery/moonfish-raw.webp",
+      "beforeBytes": 200638,
+      "afterBytes": 76646,
+      "beforeSize": [
+        755,
+        295
+      ],
+      "afterSize": [
+        755,
+        295
+      ],
+      "decodedRgbaBefore": 890900,
+      "decodedRgbaAfter": 890900,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 40.98
+    },
+    {
+      "path": "art/lavender/fish-cookery/perch-grilled.webp",
+      "sourcePath": "art/lavender/fish-cookery/perch-grilled.webp",
+      "beforeBytes": 214632,
+      "afterBytes": 88730,
+      "beforeSize": [
+        755,
+        295
+      ],
+      "afterSize": [
+        755,
+        295
+      ],
+      "decodedRgbaBefore": 890900,
+      "decodedRgbaAfter": 890900,
+      "quality": 96,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 37.1
+    },
+    {
+      "path": "art/lavender/fish-cookery/perch-raw.webp",
+      "sourcePath": "art/lavender/fish-cookery/perch-raw.webp",
+      "beforeBytes": 189198,
+      "afterBytes": 65014,
+      "beforeSize": [
+        755,
+        295
+      ],
+      "afterSize": [
+        755,
+        295
+      ],
+      "decodedRgbaBefore": 890900,
+      "decodedRgbaAfter": 890900,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 39.72
+    },
+    {
+      "path": "art/lavender/fishing-backgrounds/landscape.webp",
+      "sourcePath": "art/lavender/fishing-backgrounds/landscape.webp",
+      "beforeBytes": 1460540,
+      "afterBytes": 200230,
+      "beforeSize": [
+        1086,
+        1448
+      ],
+      "afterSize": [
+        1086,
+        1448
+      ],
+      "decodedRgbaBefore": 6290112,
+      "decodedRgbaAfter": 6290112,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.98
+    },
+    {
+      "path": "art/lavender/fishing-backgrounds/portrait.webp",
+      "sourcePath": "art/lavender/fishing-backgrounds/portrait.webp",
+      "beforeBytes": 1504986,
+      "afterBytes": 207598,
+      "beforeSize": [
+        724,
+        2172
+      ],
+      "afterSize": [
+        724,
+        2172
+      ],
+      "decodedRgbaBefore": 6290112,
+      "decodedRgbaAfter": 6290112,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.91
+    },
+    {
+      "path": "art/lavender/fishing-backgrounds/ultrawide.webp",
+      "sourcePath": "art/lavender/fishing-backgrounds/ultrawide.webp",
+      "beforeBytes": 1452626,
+      "afterBytes": 186162,
+      "beforeSize": [
+        1254,
+        1254
+      ],
+      "afterSize": [
+        1254,
+        1254
+      ],
+      "decodedRgbaBefore": 6290064,
+      "decodedRgbaAfter": 6290064,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.93
+    },
+    {
+      "path": "art/lavender/fishing-depth/boot.webp",
+      "sourcePath": "art/lavender/fishing-depth/boot.webp",
+      "beforeBytes": 164476,
+      "afterBytes": 54244,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.55
+    },
+    {
+      "path": "art/lavender/fishing-depth/lanternfish.webp",
+      "sourcePath": "art/lavender/fishing-depth/lanternfish.webp",
+      "beforeBytes": 117558,
+      "afterBytes": 48838,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.23
+    },
+    {
+      "path": "art/lavender/fishing-depth/moonfish.webp",
+      "sourcePath": "art/lavender/fishing-depth/moonfish.webp",
+      "beforeBytes": 143550,
+      "afterBytes": 51958,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.57
+    },
+    {
+      "path": "art/lavender/fishing-depth/rock.webp",
+      "sourcePath": "art/lavender/fishing-depth/rock.webp",
+      "beforeBytes": 94490,
+      "afterBytes": 33142,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 49.55
+    },
+    {
+      "path": "art/lavender/fishing-depth/shell.webp",
+      "sourcePath": "art/lavender/fishing-depth/shell.webp",
+      "beforeBytes": 156374,
+      "afterBytes": 46822,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.35
+    },
+    {
+      "path": "art/lavender/fishing-depth/weed.webp",
+      "sourcePath": "art/lavender/fishing-depth/weed.webp",
+      "beforeBytes": 84036,
+      "afterBytes": 43908,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        512,
+        512
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 1048576,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 50.76
+    },
+    {
+      "path": "art/lavender/fishing-kelp-v1.webp",
+      "sourcePath": "art/lavender/fishing-kelp-v1.png",
+      "beforeBytes": 1100647,
+      "afterBytes": 260552,
+      "beforeSize": [
+        1086,
+        1448
+      ],
+      "afterSize": [
+        1086,
+        1448
+      ],
+      "decodedRgbaBefore": 6290112,
+      "decodedRgbaAfter": 6290112,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 51.76
+    },
+    {
+      "path": "art/lavender/fishing-perch-v1.webp",
+      "sourcePath": "art/lavender/fishing-perch-v1.png",
+      "beforeBytes": 1462054,
+      "afterBytes": 243646,
+      "beforeSize": [
+        1774,
+        887
+      ],
+      "afterSize": [
+        1774,
+        887
+      ],
+      "decodedRgbaBefore": 6294152,
+      "decodedRgbaAfter": 6294152,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 49.12
+    },
+    {
+      "path": "art/lavender/fishing-sea-bass-v1.webp",
+      "sourcePath": "art/lavender/fishing-sea-bass-v1.png",
+      "beforeBytes": 1447278,
+      "afterBytes": 230820,
+      "beforeSize": [
+        1774,
+        887
+      ],
+      "afterSize": [
+        1774,
+        887
+      ],
+      "decodedRgbaBefore": 6294152,
+      "decodedRgbaAfter": 6294152,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 50.38
+    },
+    {
+      "path": "art/lavender/fishing-underwater-v1.webp",
+      "sourcePath": "art/lavender/fishing-underwater-v1.png",
+      "beforeBytes": 1909079,
+      "afterBytes": 190392,
+      "beforeSize": [
+        749,
+        2098
+      ],
+      "afterSize": [
+        749,
+        2098
+      ],
+      "decodedRgbaBefore": 6285608,
+      "decodedRgbaAfter": 6285608,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.13
+    },
+    {
+      "path": "art/lavender/hen-walk-smooth.webp",
+      "sourcePath": "art/lavender/hen-walk-smooth.webp",
+      "beforeBytes": 74490,
+      "afterBytes": 38088,
+      "beforeSize": [
+        1024,
+        128
+      ],
+      "afterSize": [
+        1024,
+        128
+      ],
+      "decodedRgbaBefore": 524288,
+      "decodedRgbaAfter": 524288,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.59
+    },
+    {
+      "path": "art/lavender/ui-beeswax.webp",
+      "sourcePath": "art/lavender/ui-beeswax.webp",
+      "beforeBytes": 88240,
+      "afterBytes": 23348,
+      "beforeSize": [
+        384,
+        384
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 589824,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.89
+    },
+    {
+      "path": "art/lavender/ui-honey-biscuits.webp",
+      "sourcePath": "art/lavender/ui-honey-biscuits.webp",
+      "beforeBytes": 116100,
+      "afterBytes": 34512,
+      "beforeSize": [
+        384,
+        384
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 589824,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.82
+    },
+    {
+      "path": "art/lavender/ui-honey-cake.webp",
+      "sourcePath": "art/lavender/ui-honey-cake.webp",
+      "beforeBytes": 117008,
+      "afterBytes": 34824,
+      "beforeSize": [
+        384,
+        384
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 589824,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.53
+    },
+    {
+      "path": "art/lavender/ui-honey-pear.webp",
+      "sourcePath": "art/lavender/ui-honey-pear.webp",
+      "beforeBytes": 116674,
+      "afterBytes": 35356,
+      "beforeSize": [
+        384,
+        384
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 589824,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.55
+    },
+    {
+      "path": "art/lavender/ui-honey.webp",
+      "sourcePath": "art/lavender/ui-honey.webp",
+      "beforeBytes": 129280,
+      "afterBytes": 39722,
+      "beforeSize": [
+        384,
+        384
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 589824,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.58
+    },
+    {
+      "path": "art/lavender/ui-lanternfish.webp",
+      "sourcePath": "art/lavender/ui-lanternfish.webp",
+      "beforeBytes": 117558,
+      "afterBytes": 41752,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0013021,
+      "playScaleCompositePsnrDb": 46.01
+    },
+    {
+      "path": "art/lavender/ui-moonfish.webp",
+      "sourcePath": "art/lavender/ui-moonfish.webp",
+      "beforeBytes": 143550,
+      "afterBytes": 45566,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0013021,
+      "playScaleCompositePsnrDb": 46.79
+    },
+    {
+      "path": "art/lavender/ui-peach-fruit.webp",
+      "sourcePath": "art/lavender/ui-peach-fruit.webp",
+      "beforeBytes": 91940,
+      "afterBytes": 21388,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0019531,
+      "playScaleCompositePsnrDb": 44.16
+    },
+    {
+      "path": "art/lavender/ui-seed-blueberry.webp",
+      "sourcePath": "art/lavender/ui-seed-blueberry.webp",
+      "beforeBytes": 232422,
+      "afterBytes": 47372,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0019531,
+      "playScaleCompositePsnrDb": 42.0
+    },
+    {
+      "path": "art/lavender/ui-seed-raspberry.webp",
+      "sourcePath": "art/lavender/ui-seed-raspberry.webp",
+      "beforeBytes": 226820,
+      "afterBytes": 47010,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.000651,
+      "playScaleCompositePsnrDb": 42.12
+    },
+    {
+      "path": "art/lavender/ui-seed-strawberry.webp",
+      "sourcePath": "art/lavender/ui-seed-strawberry.webp",
+      "beforeBytes": 231730,
+      "afterBytes": 45824,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0019531,
+      "playScaleCompositePsnrDb": 41.47
+    },
+    {
+      "path": "art/lavender/ui-signature-bright.webp",
+      "sourcePath": "art/lavender/ui-signature-bright.webp",
+      "beforeBytes": 126088,
+      "afterBytes": 26966,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0013021,
+      "playScaleCompositePsnrDb": 42.0
+    },
+    {
+      "path": "art/lavender/ui-signature-chunky.webp",
+      "sourcePath": "art/lavender/ui-signature-chunky.webp",
+      "beforeBytes": 128956,
+      "afterBytes": 27924,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0013021,
+      "playScaleCompositePsnrDb": 41.44
+    },
+    {
+      "path": "art/lavender/ui-signature-silky.webp",
+      "sourcePath": "art/lavender/ui-signature-silky.webp",
+      "beforeBytes": 129096,
+      "afterBytes": 27862,
+      "beforeSize": [
+        512,
+        512
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 1048576,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0013021,
+      "playScaleCompositePsnrDb": 42.89
+    },
+    {
+      "path": "art/lavender/ui-wind-honey.webp",
+      "sourcePath": "art/lavender/ui-wind-honey.webp",
+      "beforeBytes": 108544,
+      "afterBytes": 30318,
+      "beforeSize": [
+        384,
+        384
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 589824,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.53
+    },
+    {
+      "path": "art/lavender/ui-wind-parfait.webp",
+      "sourcePath": "art/lavender/ui-wind-parfait.webp",
+      "beforeBytes": 96648,
+      "afterBytes": 27610,
+      "beforeSize": [
+        384,
+        384
+      ],
+      "afterSize": [
+        384,
+        384
+      ],
+      "decodedRgbaBefore": 589824,
+      "decodedRgbaAfter": 589824,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.14
+    },
+    {
+      "path": "art/lavender/village-bea.webp",
+      "sourcePath": "art/lavender/village-bea.webp",
+      "beforeBytes": 222140,
+      "afterBytes": 121760,
+      "beforeSize": [
+        1536,
+        256
+      ],
+      "afterSize": [
+        1536,
+        256
+      ],
+      "decodedRgbaBefore": 1572864,
+      "decodedRgbaAfter": 1572864,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.19
+    },
+    {
+      "path": "art/lavender/village-finn.webp",
+      "sourcePath": "art/lavender/village-finn.webp",
+      "beforeBytes": 195102,
+      "afterBytes": 89460,
+      "beforeSize": [
+        1536,
+        256
+      ],
+      "afterSize": [
+        1536,
+        256
+      ],
+      "decodedRgbaBefore": 1572864,
+      "decodedRgbaAfter": 1572864,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.88
+    },
+    {
+      "path": "art/lavender/walk-back-smooth.webp",
+      "sourcePath": "art/lavender/walk-back-smooth.webp",
+      "beforeBytes": 96884,
+      "afterBytes": 45748,
+      "beforeSize": [
+        1536,
+        160
+      ],
+      "afterSize": [
+        1536,
+        160
+      ],
+      "decodedRgbaBefore": 983040,
+      "decodedRgbaAfter": 983040,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.75
+    },
+    {
+      "path": "art/lavender/walk-left-smooth.webp",
+      "sourcePath": "art/lavender/walk-left-smooth.webp",
+      "beforeBytes": 109246,
+      "afterBytes": 53060,
+      "beforeSize": [
+        1536,
+        160
+      ],
+      "afterSize": [
+        1536,
+        160
+      ],
+      "decodedRgbaBefore": 983040,
+      "decodedRgbaAfter": 983040,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.76
+    },
+    {
+      "path": "art/lavender/walk-right-smooth.webp",
+      "sourcePath": "art/lavender/walk-right-smooth.webp",
+      "beforeBytes": 98134,
+      "afterBytes": 47758,
+      "beforeSize": [
+        1536,
+        160
+      ],
+      "afterSize": [
+        1536,
+        160
+      ],
+      "decodedRgbaBefore": 983040,
+      "decodedRgbaAfter": 983040,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.71
+    },
+    {
+      "path": "art/lavender/workshop-authored/bake-frame.webp",
+      "sourcePath": "art/lavender/workshop-authored/bake-frame.webp",
+      "beforeBytes": 332984,
+      "afterBytes": 84880,
+      "beforeSize": [
+        816,
+        385
+      ],
+      "afterSize": [
+        816,
+        385
+      ],
+      "decodedRgbaBefore": 1256640,
+      "decodedRgbaAfter": 1256640,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.04
+    },
+    {
+      "path": "art/lavender/workshop-authored/bowl-foreground.webp",
+      "sourcePath": "art/lavender/workshop-authored/bowl-foreground.webp",
+      "beforeBytes": 175294,
+      "afterBytes": 32314,
+      "beforeSize": [
+        486,
+        373
+      ],
+      "afterSize": [
+        486,
+        373
+      ],
+      "decodedRgbaBefore": 725112,
+      "decodedRgbaAfter": 725112,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.12
+    },
+    {
+      "path": "art/lavender/workshop-authored/bowl.webp",
+      "sourcePath": "art/lavender/workshop-authored/bowl.webp",
+      "beforeBytes": 179366,
+      "afterBytes": 36154,
+      "beforeSize": [
+        486,
+        373
+      ],
+      "afterSize": [
+        486,
+        373
+      ],
+      "decodedRgbaBefore": 725112,
+      "decodedRgbaAfter": 725112,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.14
+    },
+    {
+      "path": "art/lavender/workshop-authored/close-medallion.webp",
+      "sourcePath": "art/lavender/workshop-authored/close-medallion.webp",
+      "beforeBytes": 248224,
+      "afterBytes": 72372,
+      "beforeSize": [
+        502,
+        513
+      ],
+      "afterSize": [
+        502,
+        513
+      ],
+      "decodedRgbaBefore": 1030104,
+      "decodedRgbaAfter": 1030104,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.59
+    },
+    {
+      "path": "art/lavender/workshop-authored/curved-knife.webp",
+      "sourcePath": "art/lavender/workshop-authored/curved-knife.webp",
+      "beforeBytes": 175812,
+      "afterBytes": 41664,
+      "beforeSize": [
+        469,
+        345
+      ],
+      "afterSize": [
+        469,
+        345
+      ],
+      "decodedRgbaBefore": 647220,
+      "decodedRgbaAfter": 647220,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.18
+    },
+    {
+      "path": "art/lavender/workshop-authored/dough-baked-surface.webp",
+      "sourcePath": "art/lavender/workshop-authored/dough-baked-surface.webp",
+      "beforeBytes": 1683470,
+      "afterBytes": 531112,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 94,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 39.06
+    },
+    {
+      "path": "art/lavender/workshop-authored/dough-cut-surface.webp",
+      "sourcePath": "art/lavender/workshop-authored/dough-cut-surface.webp",
+      "beforeBytes": 1073544,
+      "afterBytes": 196194,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 94,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.22
+    },
+    {
+      "path": "art/lavender/workshop-authored/dough-raw-surface.webp",
+      "sourcePath": "art/lavender/workshop-authored/dough-raw-surface.webp",
+      "beforeBytes": 1168130,
+      "afterBytes": 251076,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 94,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.89
+    },
+    {
+      "path": "art/lavender/workshop-authored/hand-medallion.webp",
+      "sourcePath": "art/lavender/workshop-authored/hand-medallion.webp",
+      "beforeBytes": 178290,
+      "afterBytes": 39030,
+      "beforeSize": [
+        405,
+        411
+      ],
+      "afterSize": [
+        405,
+        411
+      ],
+      "decodedRgbaBefore": 665820,
+      "decodedRgbaAfter": 665820,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.29
+    },
+    {
+      "path": "art/lavender/workshop-authored/mitt.webp",
+      "sourcePath": "art/lavender/workshop-authored/mitt.webp",
+      "beforeBytes": 431386,
+      "afterBytes": 156260,
+      "beforeSize": [
+        591,
+        675
+      ],
+      "afterSize": [
+        591,
+        675
+      ],
+      "decodedRgbaBefore": 1595700,
+      "decodedRgbaAfter": 1595700,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.23
+    },
+    {
+      "path": "art/lavender/workshop-authored/rolling-pin.webp",
+      "sourcePath": "art/lavender/workshop-authored/rolling-pin.webp",
+      "beforeBytes": 145612,
+      "afterBytes": 32634,
+      "beforeSize": [
+        509,
+        310
+      ],
+      "afterSize": [
+        509,
+        310
+      ],
+      "decodedRgbaBefore": 631160,
+      "decodedRgbaAfter": 631160,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 41.85
+    },
+    {
+      "path": "art/lavender/workshop-authored/room-desktop.webp",
+      "sourcePath": "art/lavender/workshop-authored/room-desktop.webp",
+      "beforeBytes": 1741654,
+      "afterBytes": 337564,
+      "beforeSize": [
+        1536,
+        1024
+      ],
+      "afterSize": [
+        1536,
+        1024
+      ],
+      "decodedRgbaBefore": 6291456,
+      "decodedRgbaAfter": 6291456,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.75
+    },
+    {
+      "path": "art/lavender/workshop-authored/room-landscape.webp",
+      "sourcePath": "art/lavender/workshop-authored/room-landscape.webp",
+      "beforeBytes": 1760188,
+      "afterBytes": 373312,
+      "beforeSize": [
+        1846,
+        852
+      ],
+      "afterSize": [
+        1846,
+        852
+      ],
+      "decodedRgbaBefore": 6291168,
+      "decodedRgbaAfter": 6291168,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.46
+    },
+    {
+      "path": "art/lavender/workshop-authored/room-portrait.webp",
+      "sourcePath": "art/lavender/workshop-authored/room-portrait.webp",
+      "beforeBytes": 1700818,
+      "afterBytes": 322118,
+      "beforeSize": [
+        1000,
+        1573
+      ],
+      "afterSize": [
+        1000,
+        1573
+      ],
+      "decodedRgbaBefore": 6292000,
+      "decodedRgbaAfter": 6292000,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 45.73
+    },
+    {
+      "path": "art/lavender/workshop-authored/scraper.webp",
+      "sourcePath": "art/lavender/workshop-authored/scraper.webp",
+      "beforeBytes": 193554,
+      "afterBytes": 43344,
+      "beforeSize": [
+        475,
+        364
+      ],
+      "afterSize": [
+        475,
+        364
+      ],
+      "decodedRgbaBefore": 691600,
+      "decodedRgbaAfter": 691600,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 42.1
+    },
+    {
+      "path": "art/lavender/workshop-authored/spoon.webp",
+      "sourcePath": "art/lavender/workshop-authored/spoon.webp",
+      "beforeBytes": 133752,
+      "afterBytes": 27446,
+      "beforeSize": [
+        438,
+        378
+      ],
+      "afterSize": [
+        438,
+        378
+      ],
+      "decodedRgbaBefore": 662256,
+      "decodedRgbaAfter": 662256,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 43.68
+    },
+    {
+      "path": "art/lavender/workshop-dough.webp",
+      "sourcePath": "art/lavender/workshop-dough.webp",
+      "beforeBytes": 1128510,
+      "afterBytes": 169956,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 44.88
+    },
+    {
+      "path": "art/lavender/workshop-linen.webp",
+      "sourcePath": "art/lavender/workshop-linen.webp",
+      "beforeBytes": 1429938,
+      "afterBytes": 454286,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.68
+    },
+    {
+      "path": "art/lavender/workshop-wood-v2.webp",
+      "sourcePath": "art/lavender/workshop-wood-v2.webp",
+      "beforeBytes": 971494,
+      "afterBytes": 116298,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 47.18
+    },
+    {
+      "path": "art/lavender/workshop-wood.webp",
+      "sourcePath": "art/lavender/workshop-wood.webp",
+      "beforeBytes": 1128266,
+      "afterBytes": 186352,
+      "beforeSize": [
+        1024,
+        1024
+      ],
+      "afterSize": [
+        1024,
+        1024
+      ],
+      "decodedRgbaBefore": 4194304,
+      "decodedRgbaAfter": 4194304,
+      "quality": 92,
+      "alphaExactAfterResize": true,
+      "normalizedAlphaBoundsMaxDrift": 0.0,
+      "playScaleCompositePsnrDb": 46.26
+    }
+  ]
+}

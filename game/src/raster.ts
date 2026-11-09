@@ -1,4 +1,5 @@
 import type { IslandWorld, SpriteOptions } from './world';
+import { loadImage } from './image-assets.ts';
 
 type Box = { x: number; y: number; w: number; h: number };
 type Sheet = {
@@ -8,6 +9,7 @@ type Sheet = {
   maxWidth: number;
   maxHeight: number;
 };
+const measuredSheets = new WeakMap<HTMLImageElement, Map<string, Sheet>>();
 
 function measureFrame(pixels: ImageData, cell: Box): Box {
   let left = cell.x + cell.w;
@@ -28,6 +30,10 @@ function measureFrame(pixels: ImageData, cell: Box): Box {
 }
 
 function readSheet(image: HTMLImageElement, cols: number, rows: number): Sheet {
+  const grid = `${cols}:${rows}`;
+  const previous = measuredSheets.get(image);
+  const measured = previous?.get(grid);
+  if (measured) return measured;
   const scratch = document.createElement('canvas');
   const w = scratch.width = image.naturalWidth;
   const h = scratch.height = image.naturalHeight;
@@ -44,26 +50,46 @@ function readSheet(image: HTMLImageElement, cols: number, rows: number): Sheet {
     };
   });
   const frames = cells.map((cell) => measureFrame(pixels, cell));
-  return {
+  const sheet = {
     image, frames, cells,
     maxWidth: Math.max(1, ...frames.map((box) => box.w)),
     maxHeight: Math.max(1, ...frames.map((box) => box.h)),
   };
+  const grids = previous ?? new Map<string, Sheet>();
+  grids.set(grid, sheet);
+  measuredSheets.set(image, grids);
+  return sheet;
 }
 
 export function createRasterLibrary(onLoad: (key: string) => void, signal: AbortSignal) {
   const images = new Map<string, HTMLImageElement>();
   const sheets = new Map<string, Sheet>();
+  const requests = new Map<string, Promise<boolean>>();
+
+  function loadUrl(key: string, url: string, grid?: readonly [number, number]): void {
+    if (requests.has(key) || signal.aborted) return;
+    const request = loadImage(url).then(image => {
+      if (signal.aborted) return false;
+      if (grid) sheets.set(key, readSheet(image, ...grid));
+      images.set(key, image);
+      onLoad(key);
+      return true;
+    }).catch(() => {
+      // A failed source can be retried when the state is rendered again.
+      requests.delete(key);
+      return false;
+    });
+    requests.set(key, request);
+  }
+  signal.addEventListener('abort', () => { images.clear(); sheets.clear(); requests.clear(); }, { once: true });
 
   return {
     load(key: string, path: string, grid?: readonly [number, number]): void {
-      const image = new Image();
-      image.addEventListener('load', () => {
-        if (grid) sheets.set(key, readSheet(image, ...grid));
-        images.set(key, image);
-        onLoad(key);
-      }, { signal, once: true });
-      image.src = `${import.meta.env.BASE_URL}art/${path}.webp`;
+      loadUrl(key, `${import.meta.env.BASE_URL}art/${path}.webp`, grid);
+    },
+    loadUrl,
+    async ready(keys: readonly string[]): Promise<boolean> {
+      return (await Promise.all(keys.map(key => requests.get(key) ?? Promise.resolve(false)))).every(Boolean);
     },
     image(key: string): HTMLImageElement | undefined {
       return images.get(key);

@@ -141,10 +141,11 @@ import {
   type WorkshopShape,
   type ResidentId, type FoodOfferId, type NeighborAssembly, type PackingResult,
 } from './farm'
-import { createFishingGame } from './fishing'
-import { createWorkshop } from './workshop'
-import { createCookery } from './cookery'
-import { createArrangement } from './arrangement'
+import { lazyScene } from './lazy-scene'
+const createFishingGame = lazyScene(() => import('./fishing').then(m => m.createFishingGame))
+const createWorkshop = lazyScene(() => import('./workshop').then(m => m.createWorkshop))
+const createCookery = lazyScene(() => import('./cookery').then(m => m.createCookery))
+const createArrangement = lazyScene(() => import('./arrangement').then(m => m.createArrangement))
 import { createIsland, type IslandTarget } from './island'
 import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
@@ -166,7 +167,7 @@ const farm = loadFarm()
 let saveAvailable = true
 
 function iconUrl(name: string) {
-  if(name==='fish-perch'||name==='fish-seaBass')return `${import.meta.env.BASE_URL}art/lavender/fishing-${name==='fish-perch'?'perch':'sea-bass'}-v1.png`
+  if(name==='fish-perch'||name==='fish-seaBass')return `${import.meta.env.BASE_URL}art/lavender/fishing-${name==='fish-perch'?'perch':'sea-bass'}-v1.webp`
   const family = name.startsWith('tool-') || name.startsWith('ui-') || name.startsWith('upgrade-') || name.startsWith('cape-') || name.startsWith('village-') ? 'lavender' : 'icons'
   return `${import.meta.env.BASE_URL}art/${family}/${name}.webp`
 }
@@ -1476,6 +1477,8 @@ function openPanel(next: Panel, remember = true) {
     status()
   }
   panel = next
+  const miniature = next === 'cookery' || next === 'workshop' || next === 'fishing' || next === 'arrangement'
+  island.setViewMode(miniature ? 'minigame' : next === 'cove' ? 'world' : 'dialog')
   app.dataset.scene=next==='cove'?'cove':''
   island.setCoveFocus(next==='cove')
   toast.hidden = true
@@ -1492,6 +1495,7 @@ function openPanel(next: Panel, remember = true) {
 }
 
 function closeDialog() {
+  island.setViewMode('world')
   app.dataset.scene=''
   island.setCoveFocus(false)
   seedPickerBed = undefined
@@ -2293,6 +2297,7 @@ dialog.addEventListener('click', (event) => {
 })
 dialog.addEventListener('close', () => {
   if (!dialog.open) {
+    island.setViewMode('world')
     app.dataset.scene=''
     island.setCoveFocus(false)
     stopFishing()

@@ -1,3 +1,4 @@
+import { loadArtTexture } from './art-texture';
 import { ruCount } from './ru.ts'
 import * as THREE from 'three'
 import { doughVolume } from './workshop-geometry'
@@ -218,7 +219,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   const artUrl=(url:string)=>`${base}${url.startsWith('art/')?url:`art/${url}`}`
   function loadTexture(url:string){
     let result=textureCache.get(url)
-    if(!result){result=new Promise<THREE.Texture>((resolve,reject)=>{const texture=new THREE.TextureLoader().load(url,()=>{if(destroyed){texture.dispose();reject(new DOMException('Мастерская закрыта','AbortError'));return}texture.colorSpace=THREE.SRGBColorSpace;resolve(texture)},undefined,reject);resources.push(texture)});textureCache.set(url,result)}
+    if(!result){result=new Promise<THREE.Texture>((resolve,reject)=>{const texture=loadArtTexture(url,()=>{if(destroyed){texture.dispose();reject(new DOMException('Мастерская закрыта','AbortError'));return}texture.colorSpace=THREE.SRGBColorSpace;resolve(texture)},reject);resources.push(texture)});textureCache.set(url,result)}
     return result
   }
   const quad=new THREE.PlaneGeometry(1,1);resources.push(quad)

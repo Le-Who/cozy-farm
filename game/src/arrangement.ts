@@ -43,6 +43,9 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     status.textContent = 'Не удалось открыть стол. Вернитесь и попробуйте снова.'
     return { destroy() { destroyed = true; abort.abort(); selectionGeometry.dispose(); selectionMaterial.dispose(); root.remove() } }
   }
+  function wake() {
+    if (!animation && !destroyed && loaded && !lost && !document.hidden) animation = requestAnimationFrame(frame)
+  }
   function layout() {
     const rect = view.getBoundingClientRect(); width = Math.max(1, rect.width); height = Math.max(1, rect.height)
     root.dataset.portrait = String(width / height < .85); root.dataset.compact = String(height < 480)
@@ -68,7 +71,7 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     camera.left = -halfH * aspect; camera.right = halfH * aspect
     camera.top = halfH + shift; camera.bottom = -halfH + shift
     camera.position.set(0, 10 * Math.sin(pitch), 10 * Math.cos(pitch))
-    camera.lookAt(0, 0, 0); camera.updateProjectionMatrix(); camera.updateMatrixWorld()
+    camera.lookAt(0, 0, 0); camera.updateProjectionMatrix(); camera.updateMatrixWorld(); wake()
 
   }
   function pointerRay(x: number, y: number) { const rect = view.getBoundingClientRect(); pointer.set((x - rect.left) / rect.width * 2 - 1, -(y - rect.top) / rect.height * 2 + 1); ray.setFromCamera(pointer, camera) }
@@ -153,7 +156,10 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
   const resize = new ResizeObserver(layout); resize.observe(view); layout()
   renderer.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); lost = true; release(); finish.disabled = true; status.textContent = 'Возвращаем стол…'; status.hidden = false }, { signal })
   renderer.domElement.addEventListener('webglcontextrestored', () => { lost = false; renderer.resetState(); layout(); status.hidden = loaded; finish.disabled = false }, { signal })
-  document.addEventListener('visibilitychange', () => { previousTime = 0; if (document.hidden) release() }, { signal })
+  for (const name of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture', 'wheel', 'keydown', 'focusin', 'focusout']) {
+    view.addEventListener(name, wake, { capture: true, signal })
+  }
+  document.addEventListener('visibilitychange', () => { previousTime = 0; if (document.hidden) release(); else wake() }, { signal })
   Promise.resolve(createArrangementProps(options.mode, options.food)).then(async result => {
     if (destroyed) { result.dispose(); return }
     props = result; scene.add(result.target)
@@ -197,11 +203,11 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
       if (room.src === source) break
     }
     if (destroyed) return
-    loaded = true; status.hidden = true; view.focus({ preventScroll: true })
+    loaded = true; status.hidden = true; view.focus({ preventScroll: true }); wake()
   }).catch(() => { if (!destroyed) { status.textContent = 'Не удалось накрыть стол. Вернитесь и попробуйте снова.'; status.hidden = false } })
   function frame(time: number) {
     if (destroyed) return
-    animation = requestAnimationFrame(frame)
+    animation = 0
     const dt = previousTime ? Math.min(.05, (time - previousTime) / 1000) : 1 / 60; previousTime = time
     if (!document.hidden && !lost) {
       physics?.step(dt)
@@ -253,9 +259,10 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
         root.dataset.overTarget = String(!!selectedItem?.inside)
       }
       renderer.render(scene, camera)
+      if (physics && !physics.resting()) wake()
+      else previousTime = 0
     }
   }
-  animation = requestAnimationFrame(frame)
   return { destroy() {
     if (destroyed) return; destroyed = true; cancelAnimationFrame(animation); abort.abort(); resize.disconnect(); physics?.dispose(); for (const contact of contacts.values()) { contact.material.dispose(); contact.geometry.dispose() }; props?.dispose(); renderer.dispose(); selectionGeometry.dispose(); selectionMaterial.dispose(); root.remove(); if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus({ preventScroll: true })
   } }

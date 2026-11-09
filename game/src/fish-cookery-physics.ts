@@ -10,15 +10,17 @@ export async function createFishPhysics(vertices: Float32Array) {
   const collider:Collider=world.createCollider(hull.setMass(.55).setFriction(.8).setRestitution(.08),fish)
   const floor=world.createCollider(R.ColliderDesc.cuboid(20,.05,20).setTranslation(0,-.05,0).setFriction(.8))
   const supports=[world.createCollider(R.ColliderDesc.cuboid(3.05,.11,1.3)),world.createCollider(R.ColliderDesc.cuboid(2.4,.08,1.65)),world.createCollider(R.ColliderDesc.cuboid(2.7,.04,1.5))]
-  let accumulator=0,freed=false,scale=1
+  let accumulator=0,freed=false,scale=0
   return {
     fish,
     support(stage:string){supports[0].setEnabled(['season','transfer'].includes(stage));supports[1].setEnabled(['grill','plate'].includes(stage));supports[2].setEnabled(['garnish','ready','committing','finished'].includes(stage))},
     layout(board:V,pan:V,plate:V,size:number){
+      const resized = scale!==size
       scale=size
-      supports[0].setTranslation({x:board.x,y:.11,z:board.z});supports[0].setShape(new R.Cuboid(3.05*(size>1?1.28:1),.11,1.3*(size>1?1.28:1)))
-      supports[1].setTranslation({x:pan.x-.68,y:.08,z:pan.z+.1});supports[1].setShape(new R.Cuboid(2.4*(size>1?1.06:1),.08,1.65*(size>1?1.06:1)))
-      supports[2].setTranslation({x:plate.x,y:.04,z:plate.z});supports[2].setShape(new R.Cuboid(2.7*(size>1?1.22:1),.04,1.5*(size>1?1.22:1)))
+      supports[0].setTranslation({x:board.x,y:.11,z:board.z});if(resized)supports[0].setShape(new R.Cuboid(3.05*(size>1?1.28:1),.11,1.3*(size>1?1.28:1)))
+      supports[1].setTranslation({x:pan.x-.68,y:.08,z:pan.z+.1});if(resized)supports[1].setShape(new R.Cuboid(2.4*(size>1?1.06:1),.08,1.65*(size>1?1.06:1)))
+      supports[2].setTranslation({x:plate.x,y:.04,z:plate.z});if(resized)supports[2].setShape(new R.Cuboid(2.7*(size>1?1.22:1),.04,1.5*(size>1?1.22:1)))
+      if(!resized)return
       const scaled=new Float32Array(vertices.length);for(let i=0;i<vertices.length;i++)scaled[i]=vertices[i]*scale
       const h=R.ColliderDesc.convexHull(scaled);if(h)collider.setShape(h.shape)
     },
