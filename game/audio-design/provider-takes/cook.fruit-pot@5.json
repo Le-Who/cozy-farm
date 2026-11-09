@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot@5",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "One small ripe apple chunk gently enters a thick smooth fruit puree. A short tender rounded low liquid bulb with a soft dense centre and tiny delicate displacement, then a quiet natural release. Intimate gentle food foley, immediate single action.",
+  "generatedAt": "2026-11-09T07:38:24.948Z",
+  "sha256": "fcabba7bd881f3648e588f209abaa1d32d677cf1521556ba8a9de647f232c2ee"
+}

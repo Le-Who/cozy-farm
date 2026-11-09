@@ -1,0 +1,9 @@
+{
+  "id": "cook.preserves-stir@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "A continuous quiet wooden spoon rubbing in slow overlapping circles through thick apple puree inside a heavy copper pan. Dense warm smooth brushing friction, subtle woody bowl body, stable unbroken texture across the entire take. Intimate soothing kitchen foley loop.",
+  "generatedAt": "2026-11-09T07:14:26.267Z",
+  "sha256": "5ed3b03d28ecbb486110807588ad7f564762a4c3a722a0bafe612371081f16c1"
+}

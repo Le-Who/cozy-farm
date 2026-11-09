@@ -1,0 +1,9 @@
+{
+  "id": "build.finish",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.3,
+  "direction": "Final finishing touch on a handmade wooden pier: two neat mallet taps on a hardwood peg, then a tiny brass fixture settles with a warm glint. Short celebratory cadence made of objects, clear beginning and quiet finish. No fanfare, voice or reverb.",
+  "generatedAt": "2026-11-09T07:04:12.911Z",
+  "sha256": "3488560e30bb850abf95c0abac4f781df662fbca831bebdf8f329152febeea87"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-tart@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One ripe peach slice gently presses into soft fruit tart filling. Short mellow rounded moist contact, delicate soft pulp settling, barely audible fine pastry crumbs and a clean quiet release. Intimate gentle food foley.",
+  "generatedAt": "2026-11-09T07:38:35.159Z",
+  "sha256": "a5c7570e479f88e58a1237418e115390721c41105c2c1cd8de10a18e95f1ee76"
+}

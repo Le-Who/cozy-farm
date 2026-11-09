@@ -1,0 +1,9 @@
+{
+  "id": "angling.raise@6",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 4,
+  "direction": "Four seconds of continuous gentle tactile motion: thick cotton cord drawn under a soft weighted suede pad. Dense pillowy low-mid friction, rounded warm fibers, steady diffuse unpitched texture with modest tension. Close dry natural foley. No high hiss, ring, whistle, squeak, motor, ratchet, taps, music, speech or ambience.",
+  "generatedAt": "2026-11-09T07:23:57.192Z",
+  "sha256": "79d40000888fdb94e68c92381b093a4be08e442ea7441eee7b50c3834657204e"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.dough-roll@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 5,
+  "direction": "Continuous steady wooden rolling pin moving over a lightly floured maple board with soft dough. Gentle low rumbling wood contact and fine dry brushing friction, overlapping even slow strokes for the entire recording. Seamless loop.",
+  "generatedAt": "2026-11-09T07:13:39.450Z",
+  "sha256": "9d220788e9ab298204196d19dd8891457fda41873e309a6d8796df55aacb6e47"
+}

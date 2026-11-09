@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "An apple segment drops onto the curved copper wall inside a saucepan. Round low hollow metal tok, a second quieter solid contact as fruit settles. Warm resonant copper body and dry tactile fruit contact. Close kitchen foley.",
+  "generatedAt": "2026-11-09T07:13:04.187Z",
+  "sha256": "73d9922b0a10c713377f794f245dd2e2ce6bf226e4c22eae514e58624bf962cc"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "field.soil-sprinkle",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.95,
+  "direction": "A small watering can makes one gentle short scatter of soft water droplets onto pillowy moist garden earth. A tender enveloping rounded liquid patter, little irregular droplets nestle into the soil. Warm mellow soft attack, close soothing natural Foley, then a few quiet drips. No pressurized spray, shower, cup resonance, hose hiss or metal ring.",
+  "generatedAt": "2026-11-09T07:38:29.635Z",
+  "sha256": "ebc8753bdd42353c9c37dc095a7c340b366f9dc5e97f87294204e55d7badfec2"
+}

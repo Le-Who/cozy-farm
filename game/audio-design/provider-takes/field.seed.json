@@ -1,0 +1,9 @@
+{
+  "id": "field.seed",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.1,
+  "direction": "A small spoonful of dry rice-sized vegetable seeds gently rolls and scatters onto a shallow earthen seed tray. Clear tiny separate grain ticks and a short soft granular rattle. Close dry delicate Foley, warm gentle attack. One small seed spill, then silence.",
+  "generatedAt": "2026-11-09T07:19:40.939Z",
+  "sha256": "405897476bd6202e94a70bd6fa83817077682e2588f95699f355527f8b138c73"
+}

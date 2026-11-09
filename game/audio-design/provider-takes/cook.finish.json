@@ -1,0 +1,9 @@
+{
+  "id": "cook.finish",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "Finished ceramic dessert plate set on wooden mat, linen released. One warm rounded plate contact, tiny cloth movement and clean natural decay. Satisfying complete quiet action. No chime, speech, liquid or repeated impacts.",
+  "generatedAt": "2026-11-09T07:04:01.565Z",
+  "sha256": "014aa22860d2559582a5dc88e31b8627afd59448ff57f8086a0347be17f657eb"
+}

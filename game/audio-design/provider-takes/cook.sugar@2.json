@@ -1,0 +1,9 @@
+{
+  "id": "cook.sugar@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 3.5,
+  "direction": "Fine dry sugar falling steadily onto shortcrust pastry. Warm sandy grain patter with subtle ceramic body. Smooth continuous low stream throughout. No separate shakes, abrupt gaps, clacks or electronic hiss. Loopable.",
+  "generatedAt": "2026-11-09T07:02:53.464Z",
+  "sha256": "4219deec2e432d8bd70c77773416b854101315fa8c014071c8cf1f926e18a036"
+}

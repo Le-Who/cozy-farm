@@ -1,0 +1,9 @@
+{
+  "id": "cook.sugar",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 3.5,
+  "direction": "Continuous fine caster sugar falling from a ceramic shaker onto pastry. Smooth warm silky dry grain patter, minute ceramic hand friction. Even quiet body throughout. No pulses, gaps, scratches, hiss or rattle. Loopable.",
+  "generatedAt": "2026-11-09T07:02:49.542Z",
+  "sha256": "a87e1389bf600821d7e2a5148a2136fa520c6460b5466ea66e6cc9c3dde2a113"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.fish-plate",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "Cooked fish slides from wooden spatula onto glazed plate. Quiet soft solid pat, short wood ceramic tick, gentle release. One complete immediate action. No cup clink, liquid splash or squelch.",
+  "generatedAt": "2026-11-09T07:03:48.345Z",
+  "sha256": "c81baa2727c1a8ac77cb0a442b8657df3bea6e79d6b422d1ed86935b9b47c40b"
+}

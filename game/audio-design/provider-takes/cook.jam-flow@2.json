@@ -1,0 +1,9 @@
+{
+  "id": "cook.jam-flow@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 5,
+  "direction": "Continuous steady stream of smooth warm fruit sauce poured into a thick glass jar. Dense low silky liquid rushing, subtle glass body, sustained even stream contact. Uninterrupted close natural kitchen foley for the entire take. Seamless loop.",
+  "generatedAt": "2026-11-09T07:13:29.817Z",
+  "sha256": "52acfefd6033bba6f8850df4cf04d228af348e717cea6e7be6bf471dd92b442f"
+}

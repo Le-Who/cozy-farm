@@ -1,0 +1,9 @@
+{
+  "id": "angling.raise@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Seamless loop of a soft braided fabric cord steadily drawn across a wool-covered cork guide. Dense pillowy broad low-mid friction around 300 to 1100 Hz, smooth muted fibers with a gentle weight. Dry warm intimate foley. No high hiss, ringing, whistle, pitch, ratchet, machine, squeak, pulses, music, speech or ambience.",
+  "generatedAt": "2026-11-09T07:21:46.539Z",
+  "sha256": "a31d9ec24b708a81b42b9cdc6e1353501208e51ae9bfa6b9d449051c2ed008a4"
+}

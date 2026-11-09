@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-tart@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "Two fingertips gently compress flaky shortcrust pastry crumbs on baking parchment. Tiny fragile dry flakes crunch and crackle, fine crumbs patter, short soft paper friction. One delicate close natural kitchen action with a clean release.",
+  "generatedAt": "2026-11-09T07:16:10.090Z",
+  "sha256": "4479a75664c7eef9c20e840d44b5874641a6b334c84864058140d3ddb33e856b"
+}

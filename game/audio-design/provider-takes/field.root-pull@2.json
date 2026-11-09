@@ -1,0 +1,9 @@
+{
+  "id": "field.root-pull@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A beetroot slowly slips free of moist garden earth, gentle subdued low earthy friction and a soft leafy brush, tiny fine grains settle. Pleasant rounded soft attack and low treble, close intimate hand action. No hard pop, punch, brittle snap, mouth noise or footsteps.",
+  "generatedAt": "2026-11-09T07:15:19.497Z",
+  "sha256": "0e3294504e89dd2981ac710344c9be73e1ae2fd38edfe6a4963a8efc10918849"
+}

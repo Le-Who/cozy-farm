@@ -1,7 +1,70 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { castFishing, createFishingModel, fishPosition, reelFishing, stepFishing, fishingLootAtDepth, fishingCatchMouth, fishingCatchScale } from '../src/fishing-model.ts';
+import { castFishing, createFishingModel, fishPosition, reelFishing, stepFishing, fishingLootAtDepth, fishingCatchMouth, fishingCatchScale, fishingSoundFrame, fishingSoundEvents, fishingCatchSound, type FishingLoot } from '../src/fishing-model.ts';
 import { createShoreline, covePresets, getCoveEcology, settleCove } from '../src/shoreline.ts';
+
+test('fishing sound follows real cast, immersion, retrieval and empty return once', () => {
+  const model = createFishingModel(2); model.fish = [];
+  let previous = fishingSoundFrame(model);
+  const sounds = () => {
+    const next = fishingSoundFrame(model), events = fishingSoundEvents(previous, next);
+    previous = next; return events;
+  };
+  assert.deepEqual(sounds(), []);
+  castFishing(model); assert.deepEqual(sounds(), ['angling.cast']);
+  for (let i = 0; i < 10; i++) stepFishing(model, .05);
+  assert.deepEqual(sounds(), ['angling.submerge']);
+  assert.deepEqual(sounds(), [], 'a stationary or resumed frame never replays immersion');
+  reelFishing(model); assert.deepEqual(sounds(), ['angling.turn']);
+  for (let i = 0; i < 50; i++) stepFishing(model, .05);
+  assert.equal(model.phase, 'done');
+  assert.deepEqual(sounds(), ['angling.empty']);
+  stepFishing(model, .05); assert.deepEqual(sounds(), []);
+});
+
+test('descent contact sounds neutral, immunity is quiet and automatic reversal does not double up', () => {
+  const model = createFishingModel(2); model.resilience = 2;
+  model.fish = [{ id: 0, x: 0, direction: 1, depth: .2, rare: false }];
+  castFishing(model);
+  const beforeContact = fishingSoundFrame(model);
+  stepFishing(model, .01);
+  assert.deepEqual(fishingSoundEvents(beforeContact, fishingSoundFrame(model)), ['angling.brush']);
+  const touching = fishingSoundFrame(model);
+  stepFishing(model, .01);
+  assert.deepEqual(fishingSoundEvents(touching, fishingSoundFrame(model)), []);
+  model.immunity = 0; const beforeReversal = fishingSoundFrame(model);
+  stepFishing(model, .01);
+  assert.equal(model.phase, 'ascending');
+  assert.deepEqual(fishingSoundEvents(beforeReversal, fishingSoundFrame(model)), ['angling.brush']);
+});
+
+test('a secured catch and its surface arrival have distinct cues without repeated rewards', () => {
+  const model = createFishingModel(1); model.phase = 'ascending'; model.depth = model.deepest = 5.1;
+  model.x = model.targetX = .4;
+  model.fish = [{ id: 0, x: 0, direction: 1, depth: 5, rare: false }];
+  const beforeCatch = fishingSoundFrame(model);
+  stepFishing(model, .01);
+  assert.deepEqual(fishingSoundEvents(beforeCatch, fishingSoundFrame(model)), ['angling.snag-fish-heavy']);
+  const secured = fishingSoundFrame(model);
+  for (let i = 0; i < 100; i++) stepFishing(model, .05);
+  assert.deepEqual(fishingSoundEvents(secured, fishingSoundFrame(model)), ['angling.land']);
+  const landed = fishingSoundFrame(model);
+  stepFishing(model, .05);
+  assert.deepEqual(fishingSoundEvents(landed, fishingSoundFrame(model)), []);
+});
+
+test('hook contact follows the captured material and the fish size visible in the scene', () => {
+  const fish = { id: 0, x: 0, direction: 1, depth: 5, rare: false };
+  for (const [loot, sound] of [
+    [{ kind: 'shell', variant: 'regular' }, 'angling.snag-shell'],
+    [{ kind: 'junk', item: 'rock' }, 'angling.snag-stone'],
+    [{ kind: 'junk', item: 'weed' }, 'angling.snag-weed'],
+    [{ kind: 'junk', item: 'boot' }, 'angling.snag-boot'],
+    [{ kind: 'fish', species: 'perch', variant: 'regular' }, 'angling.snag-fish-light'],
+  ] as [FishingLoot, string][]) assert.equal(fishingCatchSound({ ...fish, loot }), sound);
+  assert.equal(fishingCatchSound({ ...fish, id: 1, loot: { kind: 'fish', species: 'seaBass', variant: 'regular' } }), 'angling.snag-fish-heavy');
+  assert.equal(fishingCatchSound({ ...fish, rare: true, loot: { kind: 'fish', species: 'moonfish', variant: 'rare' } }), 'angling.snag-fish-heavy');
+});
 
 test('fishing catches only on ascent and never duplicates or exceeds capacity', () => {
   const model = createFishingModel(1);

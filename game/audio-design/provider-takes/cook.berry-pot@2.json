@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-pot@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "Several fresh blueberries tip from a little wooden bowl into a heavy copper saucepan. A brief cluster of tiny dry muted bead impacts with warm hollow copper resonance. Light delicate naturally spaced kitchen patter, then decay.",
+  "generatedAt": "2026-11-09T07:13:07.410Z",
+  "sha256": "c1e60200d70e657f643bdd42c1c8805d1ce5d386b03e197c2a4b9d1756be661e"
+}

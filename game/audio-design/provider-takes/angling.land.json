@@ -1,0 +1,9 @@
+{
+  "id": "angling.land",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.95,
+  "direction": "A small catch is lifted from calm seawater and settles into a damp wicker basket: a little rounded water lift, three soft drops, a quiet cushioned wicker touch. One modest natural gesture, warm close foley, no large splash, no flourish, no music or voices.",
+  "generatedAt": "2026-11-09T07:01:18.637Z",
+  "sha256": "7978619df447e432e4f5a070662b3dd8f3bd9ca1448f2f81a221170d8f817ba1"
+}

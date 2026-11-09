@@ -1,0 +1,9 @@
+{
+  "id": "page.fold@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A velvet-covered page settling, a soft descending pair of muted wood resonances breathed as one short gesture. Small cosy object, quiet low-mid sound, clean ending into felt. No high frequencies, squeaks, hard clicks or mechanical snap.",
+  "generatedAt": "2026-11-09T07:14:53.672Z",
+  "sha256": "31564fe8193b0894d8e62e4449e7e09532c9d61835e762d799d6ecffcefbe902"
+}

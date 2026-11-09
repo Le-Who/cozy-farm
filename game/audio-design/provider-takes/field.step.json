@@ -1,0 +1,9 @@
+{
+  "id": "field.step",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "One very quiet single soft shoe contact onto thick springy short grass, just a gentle low fabric-like grass compression and tiny release. Muffled warm smooth rounded attack, no audible heel strike, no impact thump, no crunch, no gravel, no foot slap, no repeated step.",
+  "generatedAt": "2026-11-09T07:15:23.774Z",
+  "sha256": "936d97e59bea9907306971f9a7d9798a4e0313198261ca6dfd206ad1830a8aa2"
+}

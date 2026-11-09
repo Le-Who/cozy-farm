@@ -1,0 +1,9 @@
+{
+  "id": "orchard.sapling",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "A small fruit-tree sapling is planted by hand: a brief soft root-ball press into loose earth, light soil brushed inward, thin young leaves flutter once and a tiny wooden support stake touches ground. Intimate gentle short garden action, immediate start, no shovel clang, no footsteps, no ambience.",
+  "generatedAt": "2026-11-09T07:06:38.009Z",
+  "sha256": "3334caa2ea274353d774e0429726013a7a8adfe404f03f284a59f40b718f8ff6"
+}

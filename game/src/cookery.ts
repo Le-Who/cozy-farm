@@ -58,7 +58,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   }
   const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle))
   const abort = new AbortController(), signal = abort.signal
-  prepareBaySoundScene(['kitchen.fruit',options.recipe.kind==='preserves'?'kitchen.stir':'kitchen.sprinkle','workshop.complete'], signal)
+  prepareBaySoundScene(options.recipe.kind==='preserves' ? ['cook.fruit-pot','cook.berry-pot','cook.preserves-stir','cook.jam-scoop','cook.jam-flow','cook.jam-end','cook.finish'] : ['cook.fruit-tart','cook.berry-tart','cook.sugar','cook.finish'], signal)
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL
   const artBase = `${base}art/lavender/cookery/`
@@ -112,6 +112,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   let pointerId: number | null = null, drag: Drag | null = null, keyboard = false
   let cursor: CookeryPoint = { x: 0, y: 0 }, selectedFruit = -1, lastDust: CookeryPoint | null = null
   let surface: Ellipse = { cx: 0, cy: 0, rx: 1, ry: 1 }
+  let lastSugarAt = -Infinity
   let jarFill = 0, pour = 0, flowPhase = 0, flowVelocity = 0, flowTarget = 0, fruitTurn = 0, fruitTurnTarget = 0
   let lastStirAt = 0, lastStirPoint: CookeryPoint | null = null
   const heldFruit = createViscousFollower(), landings = new Map<number, { body: FruitLanding; follow: ViscousFollower }>()
@@ -344,7 +345,8 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         fruitTraitsVersion: 1, fruit: model.fruit.map(fruit => ({ ingredientId: fruitId(fruit.id), ...(fruitTrait(fruit.id) ? {trait:fruitTrait(fruit.id)} : {}), x: fruit.x, y: fruit.y, angle: normalizeAngle(fruit.angle) })),
         steps: model.kind === 'preserves' ? ['add-fruit', `stir-${model.processing}`, 'fill-jar'] : ['arrange-fruit', 'dust-sugar'],
         ...(model.kind === 'preserves' ? { baking: { method: 'stovetop' as const, finish: 'set' as const, seconds: Math.min(1800, elapsed) } } : {}) }
-      if (!completeCookery(model, () => options.onComplete(result)) && model.stage === 'ready') announce('Не хватает ингредиентов. Выберите другой рецепт на кухне.')
+      if (completeCookery(model, () => options.onComplete(result))) playBaySound('cook.finish')
+      else if (model.stage === 'ready') announce('Не хватает ингредиентов. Выберите другой рецепт на кухне.')
     } catch { announce('Не удалось сохранить блюдо. Попробуйте ещё раз.') }
     sync()
   }
@@ -415,7 +417,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     moveHeld(point)
     const normalizedPoint = normalized(point)
     if (drag.kind === 'spoon') {
-      if (model.stage === 'stir') {
+      if (model.stage === 'stir' || model.stage === 'fill') {
         const now = performance.now(), previous = lastStirPoint
         if (previous && inCookerySurface(normalizedPoint, 1.05) && Math.hypot(normalizedPoint.x, normalizedPoint.y) > .2) {
           const angle = Math.atan2(normalizedPoint.y, normalizedPoint.x) - Math.atan2(previous.y, previous.x)
@@ -427,7 +429,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         moveCookeryStroke(model, normalizedPoint)
       }
       if (model.stage === 'fill') {
-        if (inCookerySurface(normalizedPoint, .85)) { drag.loaded = true; pour = 0 }
+        if (inCookerySurface(normalizedPoint, .85) && !drag.loaded) { drag.loaded = true; pour = 0; playBaySound('cook.jam-scoop',.7,300) }
         if (drag.loaded && contains(artwork.get('jar')!, point, 0)) {
           fillCookeryJar(model); drag.loaded = false; pour = 1
           announce(model.scoops >= 3 ? 'Банка полна. Конфитюр готов.' : 'Ложка конфитюра в банке')
@@ -439,7 +441,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         moveCookeryStroke(model, normalizedPoint)
         if (Math.hypot(normalizedPoint.x - previous.x, normalizedPoint.y - previous.y) >= .007) emitDust(previous, normalizedPoint)
         lastDust = normalizedPoint
-        playBaySound('kitchen.sprinkle',.7,720)
+        lastSugarAt = performance.now()
       } else { lastDust = null; beginCookeryStroke(model, normalizedPoint) }
     }
     sync()
@@ -457,8 +459,9 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
           if(length>.975) {drop.x*=.975/length;drop.y*=.975/length}
         }
       }
-      if (placeCookeryFruit(model, drag.id, drop)) { playBaySound('kitchen.fruit'); landings.set(drag.id, { body: createFruitLanding((reduced.matches?2:9)/surface.ry,0), follow: {...heldFruit} }); rotateCookeryFruit(model, drag.id, dragAngle); announce(model.kind === 'preserves' ? 'Фрукт в кастрюле' : 'Фрукт на тарте') }
+      if (placeCookeryFruit(model, drag.id, drop)) { playBaySound(['strawberry','blueberry','raspberry'].includes(fruitId(drag.id)) ? model.kind==='preserves'?'cook.berry-pot':'cook.berry-tart' : model.kind==='preserves'?'cook.fruit-pot':'cook.fruit-tart'); landings.set(drag.id, { body: createFruitLanding((reduced.matches?2:9)/surface.ry,0), follow: {...heldFruit} }); rotateCookeryFruit(model, drag.id, dragAngle); announce(model.kind === 'preserves' ? 'Фрукт в кастрюле' : 'Фрукт на тарте') }
     }
+    setBaySoundContact('cook.sugar',false); setBaySoundContact('cook.preserves-stir',false); lastSugarAt = -Infinity
     drag = null; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync()
   }
   function eventPoint(event: PointerEvent): CookeryPoint { const bounds = view.getBoundingClientRect(); return { x: event.clientX - bounds.left, y: event.clientY - bounds.top } }
@@ -491,7 +494,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (touches.has(event.pointerId)) { touches.delete(event.pointerId); twist = null; if (touches.size) { pointerId = touches.keys().next().value!; return } }
     if (event.pointerId === pointerId) { if (!twistedGesture) move(eventPoint(event)); release(); pointerId = null; twistedGesture = false; if (view.hasPointerCapture(event.pointerId)) view.releasePointerCapture(event.pointerId) }
   }, { signal })
-  const abandon = () => { drag = null; pointerId = null; touches.clear(); twist = null; twistedGesture = false; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync() }
+  const abandon = () => { setBaySoundContact('cook.preserves-stir',false);setBaySoundContact('cook.sugar',false);setBaySoundContact('cook.jam-flow',false);pour=0;lastSugarAt=-Infinity;drag = null; pointerId = null; touches.clear(); twist = null; twistedGesture = false; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync() }
   view.addEventListener('pointercancel', abandon, { signal }); view.addEventListener('lostpointercapture', event => { if (pointerId === event.pointerId && touches.size <= 1) abandon() }, { signal })
   window.addEventListener('blur', abandon, { signal })
   view.addEventListener('keydown', event => {
@@ -627,7 +630,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   }
   const eventCanvas = renderer.domElement
   eventCanvas.addEventListener('webglcontextlost', event => {
-    event.preventDefault(); contextLost = true; setBaySoundContact('kitchen.stir',false); abandon(); cancelAnimationFrame(frame)
+    event.preventDefault(); contextLost = true; setBaySoundContact('cook.preserves-stir',false); abandon(); cancelAnimationFrame(frame)
     status.hidden = false; status.textContent = 'Восстанавливаем кухонный стол…'; finish.disabled = true
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose()); renderer.dispose()
   }, { signal })
@@ -649,8 +652,10 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     for (const [id, impact] of landings) { const fruit=model.fruit.find(value=>value.id===id); if (!fruit) continue;let point={x:fruit.x,y:fruit.y};if(model.kind==='preserves'){const cooked=Math.min(1,model.stirred/model.stirRequired)*(model.processing==='chunky'?.45:model.processing==='bright'?.8:1),turn=Math.atan2(fruit.y,fruit.x)+fruitTurn,radius=Math.hypot(fruit.x,fruit.y)*(1-cooked*.12);point={x:Math.cos(turn)*radius,y:Math.sin(turn)*radius}}const target=pixel(point);stepViscousFollower(impact.follow,target.x,target.y,dt,24);stepFruitLanding(impact.body,dt);const settled=impact.body.settled&&Math.hypot(impact.follow.vx,impact.follow.vy)<.2;physicallySettled=physicallySettled&&settled;if(settled&&Math.hypot(impact.follow.x-target.x,impact.follow.y-target.y)<.02)landings.delete(id) }
     if (loaded) positionFruit()
     if (finish.disabled !== (contextLost || !loaded || !physicallySettled || !!drag)) sync()
-    const stirring = drag?.kind === 'spoon' && model.stage === 'stir' && now - lastStirAt < 140
-    setBaySoundContact('kitchen.stir',stirring,.8)
+    root.dataset.audioProbe=JSON.stringify({stage:model.stage,n:normalized(cursor),age:now-lastStirAt,drag:drag?.kind,flow:flowVelocity,surface})
+    const stirring = drag?.kind === 'spoon' && (model.stage === 'stir' || model.stage === 'fill') && inCookerySurface(normalized(cursor),1.08) && (now-lastStirAt<260 || now-lastStirAt<650 && Math.abs(flowVelocity)>.18)
+    setBaySoundContact('cook.preserves-stir',stirring,.8)
+    setBaySoundContact('cook.sugar',drag?.kind === 'shaker' && now-lastSugarAt<180,.8)
     const flowGoal = stirring ? flowTarget : 0
     flowVelocity += (flowGoal - flowVelocity) * (1 - Math.exp(-dt * (stirring ? 5 : 2.7)))
     flowPhase += flowVelocity * dt * .55
@@ -673,7 +678,10 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
       spoonful.position.set(bowl.x, bowl.y, 21); spoonful.scale.set(spoon.rect.width * .125, -spoon.rect.height * .085, 1); spoonful.rotation.z = spoon.mesh.rotation.z - .77
     }
     if (pourStream) { pourStream.visible = pour > 0; pourStream.material.uniforms.amount.value = reduced.matches ? 0 : pour; pourStream.material.uniforms.phase.value = reduced.matches ? 0 : elapsed }
+    const previousPour=pour
     pour = Math.max(0, pour - dt * 2)
+    setBaySoundContact('cook.jam-flow',pour>.01,.85)
+    if(previousPour>.01&&pour<=.01)playBaySound('cook.jam-end',.7)
     if (drag?.kind === 'shaker' || drag?.kind === 'spoon' && pour > 0) moveHeld(cursor)
     renderer.render(scene, camera); frame = requestAnimationFrame(animate)
   }

@@ -1,0 +1,9 @@
+{
+  "id": "menu.press@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "Same small maple key on a felt-lined wooden desk. Fingertip seats it with a short warm wooden tick. Dry, close, light pressure, rounded attack. One single tap in a quiet room.",
+  "generatedAt": "2026-11-09T07:03:38.220Z",
+  "sha256": "fbff34acf11c542d35f5b18b320ed54b78e5a1a55758e87b44e7cde13e91248f"
+}

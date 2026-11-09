@@ -1,0 +1,9 @@
+{
+  "id": "angling.lower@5",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Seamless loop of a very soft coarse bass friction texture, like a thick felt-covered hand gently sliding across a padded wooden surface. Muffled rounded earthy low-mid sound with irregular fine grain, continuous and quiet. Close dry foley. No high scratching, hiss, whistling, ringing, musical tone, electrical hum, mechanical rhythm, speech or music.",
+  "generatedAt": "2026-11-09T07:23:17.804Z",
+  "sha256": "aee63d321f6edb0cad313df76586fe89ecd14b2576186e05f52ed48ff4765c24"
+}

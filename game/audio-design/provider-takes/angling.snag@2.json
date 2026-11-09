@@ -1,0 +1,9 @@
+{
+  "id": "angling.snag@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "A small fishing hook secures a little underwater catch: one delicate compact watery click with a quick soft fin flutter, then silence. Close warm natural detail, firm but gentle, no alarm, no metallic twang, no tape peel, no chimes.",
+  "generatedAt": "2026-11-09T07:01:16.878Z",
+  "sha256": "a01db3dc5983f7b7dc3527bbf10080b091037925c70abdf0b6a3facc52d7aced"
+}

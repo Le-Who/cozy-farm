@@ -1,0 +1,9 @@
+{
+  "id": "angling.raise",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 3.5,
+  "direction": "Seamless continuous loop of a small hand turned wooden fishing reel slowly retrieving a fine damp line under modest tension. A very quiet warm rounded spindle rub with a denser velvety friction grain than free line release. Smooth and stable close natural foley, no repetitive knocks, clicks, ratchet, electrical motor, whining, whistle, squeal, drips, bubbles, speech, music or ambient bed.",
+  "generatedAt": "2026-11-09T07:11:21.658Z",
+  "sha256": "222dcb2169f7b49837da08637c53dba9f6f7cff66e3562026b5aba174e0dc9a1"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.egg-place",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "One egg set gently into straw lined wooden crate. Tiny soft eggshell tick, quiet straw compression, low wood contact. One complete delicate action. No shell crack, peeping or loud rattle.",
+  "generatedAt": "2026-11-09T07:03:59.486Z",
+  "sha256": "2ad98805a8076143afbc3a2745987ebecf43f02df3eab092b363f59dfaae6721"
+}

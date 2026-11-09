@@ -1,0 +1,9 @@
+{
+  "id": "field.step@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "One gentle muffled shoe contact on a cushioned grassy garden path, a faint soft sole brush and turf compression, very quiet rounded low texture with little treble. No heel impact, no foot slap, no crunchy leaf, no pebble, no hard thud, no extra steps.",
+  "generatedAt": "2026-11-09T07:15:25.864Z",
+  "sha256": "febc8954390804beb757ab0f0c97c486daf1dbd84fd7bd53178988383b26902b"
+}

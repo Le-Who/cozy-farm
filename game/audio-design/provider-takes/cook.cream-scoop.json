@@ -1,0 +1,9 @@
+{
+  "id": "cook.cream-scoop",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "Wooden dessert spoon scoops thick custard from porcelain bowl. Smooth dense creamy friction, tiny rounded rim tick, quiet complete release. One immediate gesture. No slurp, suction, bubbles or squelch.",
+  "generatedAt": "2026-11-09T07:03:12.694Z",
+  "sha256": "ec5e50f4a99fd5c32d7df321a8d62c1196123676dd5af3661e3aaaf63d48ae4d"
+}

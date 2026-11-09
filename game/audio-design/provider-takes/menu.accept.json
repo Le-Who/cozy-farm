@@ -1,0 +1,9 @@
+{
+  "id": "menu.accept",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A small wooden approval stamp lands squarely on a paper order, then its brass spring settles with a soft bright tick. One satisfying decisive action in two joined parts. Warm, close and dry, no coin shower or melody.",
+  "generatedAt": "2026-11-09T07:03:54.599Z",
+  "sha256": "9d573ae89f5d6e3b6436f187786bccaa2b5323ded7b6a081b00f6b9a74cfae13"
+}

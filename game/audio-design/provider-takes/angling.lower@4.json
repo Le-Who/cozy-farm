@@ -1,0 +1,9 @@
+{
+  "id": "angling.lower@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Seamless loop of a broad wool cushion gently rubbing a soft leather surface in steady slow motion. Deep muffled plush friction, dense dull soft body, warm diffuse low-frequency texture, as heard through a folded blanket. Close tactile sound, even and quiet. No bright fibers, hiss, high frequencies, pitch, ringing, motor, pulse, music, voice or ambience.",
+  "generatedAt": "2026-11-09T07:23:13.700Z",
+  "sha256": "8ccab382ad043e2445cf1e1d7a6f269e0d34fd7ce0bb4b8eca0e8b2456fdf3f4"
+}

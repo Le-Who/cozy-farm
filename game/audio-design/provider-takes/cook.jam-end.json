@@ -1,0 +1,9 @@
+{
+  "id": "cook.jam-end",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A thick jam ribbon gently tapers into a glass jar. Final tiny sticky thread separates, soft dense contact and one delicate wooden spoon glass rim tick. Complete subtle natural ending. No suction, bubble, gassy pop or water splash.",
+  "generatedAt": "2026-11-09T07:10:14.710Z",
+  "sha256": "a3007df12d16123c61cbda2bfff6de737eb37994882e8124f5e5e5bab37cc9cb"
+}

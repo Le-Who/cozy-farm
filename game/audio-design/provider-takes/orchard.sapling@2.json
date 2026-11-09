@@ -1,0 +1,9 @@
+{
+  "id": "orchard.sapling@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "One small sapling root-ball settles into a garden planting hole, crumbly earth is gently patted around it and a delicate leaf cluster brushes a sleeve. Close short organic hand foley, immediate onset, no heavy digging, no boot steps or metallic impact.",
+  "generatedAt": "2026-11-09T07:06:40.253Z",
+  "sha256": "0d3669c76e04b7e50eb8ba5ddbf10146e3823ce45ec67dbb0c121731421140aa"
+}

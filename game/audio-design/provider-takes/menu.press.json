@@ -1,0 +1,9 @@
+{
+  "id": "menu.press",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "One tiny press of a rounded maple key against its felt bed. Immediate clean woody tick, quiet upholstered stop, close dry tabletop perspective. One gesture only. Soft upper register, no mechanical snap, reverb or music.",
+  "generatedAt": "2026-11-09T07:03:36.173Z",
+  "sha256": "fa9bf214f9b4e40d6ac81bf089afb167cd17e6d7453cd2329e30e343a004208f"
+}

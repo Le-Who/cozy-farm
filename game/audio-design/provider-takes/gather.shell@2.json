@@ -1,0 +1,17 @@
+{
+  "id": "gather.shell@2",
+  "provider": "ElevenLabs-derived composite",
+  "generatedAt": "2026-11-09T07:28:47.377943+00:00",
+  "recipe": "Accepted hard-object clink at 90% speed with 3.2 kHz lowpass; recorded shell texture at -18.7 dB relative RMS",
+  "components": [
+    {
+      "id": "gather.find@2",
+      "sha256": "3115633889299bebf7e06ac99bf343d36f5f938edcaaad4c556d549fdc6e7856"
+    },
+    {
+      "id": "gather.shell-texture@2",
+      "sha256": "70b90bcb25a0068aea5d0dde3bf56fbbb4aa1d5d83976c3876b22eeb97743f30"
+    }
+  ],
+  "sha256": "97b5f6ce635de9c8df4f35ca22df6fed62b2dcde0d88f7cedbc0f7ae72a37eeb"
+}

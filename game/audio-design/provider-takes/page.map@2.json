@@ -1,0 +1,9 @@
+{
+  "id": "page.map@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.85,
+  "direction": "A gentle two-part opening sound for a handmade toy map. Low soft wood resonance slowly opens into a faint warm humming overtone, like touching felt-covered kalimba tines with the pad of a thumb. Rounded rising contour, clean short end. No metallic attack or high chirp.",
+  "generatedAt": "2026-11-09T07:22:45.578Z",
+  "sha256": "c3e86c7f24684132cc3785b2ab8bd9e3e5a83d223868cb51ce0e84efe732819e"
+}

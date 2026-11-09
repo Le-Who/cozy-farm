@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck@7",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A tiny flexible jelly fruit gently detaches with one soft springy pluck. Rounded warm middle pitched rubbery bonk, subtle short downward pitch glide, tender pillowy attack and mellow quick decay. Cute gentle tactile game Foley. No bass thump, high whistle, chirp, squeak, leaves, mouth or speech.",
+  "generatedAt": "2026-11-09T07:40:48.094Z",
+  "sha256": "4762290e6f0baab1fe4586c35559c3660337882d1efb3d21ffe66950953ba7c6"
+}

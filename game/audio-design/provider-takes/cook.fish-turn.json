@@ -1,0 +1,9 @@
+{
+  "id": "cook.fish-turn",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "Wooden spatula slides under cooked fish and turns it onto warm pan. Soft wooden scrape, subdued moist solid landing, tiny final crackle. One complete gentle turn. No metal clang, slap, air burst or squirt.",
+  "generatedAt": "2026-11-09T07:03:46.335Z",
+  "sha256": "231ef2835d8bcfef5dc942e211ac80c943b1792a2f55deb145e71c303005dccf"
+}

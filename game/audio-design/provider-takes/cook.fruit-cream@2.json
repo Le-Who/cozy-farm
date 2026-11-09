@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-cream@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A peach slice on a small wooden spoon gently touches the inside rim of a thick dessert glass. Warm rounded wooden glass tick, faint fruit fibre brush, quiet padded landing. Solid kitchen object foley with natural decay.",
+  "generatedAt": "2026-11-09T07:13:16.851Z",
+  "sha256": "894eaad6d9ef52a4dcbb4f4e0070fc6e6179e39c14d5c922050507e338380b6c"
+}

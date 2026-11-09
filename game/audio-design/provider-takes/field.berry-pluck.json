@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "One tiny soft elastic berry releases from a flexible stem with a cute rounded mellow pluck. A short warm midrange gel-like pulk with a gentle downwards pitch bend. Smooth soft onset, pleasantly springy, close dry game Foley, then silence. No leaf rustle, bass thump, high chirp, squeak, speech or music.",
+  "generatedAt": "2026-11-09T07:38:21.905Z",
+  "sha256": "eb6592797b6a760a075882251ac5786282079518269cc435576220f5588a5ff9"
+}

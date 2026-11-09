@@ -1,0 +1,9 @@
+{
+  "id": "gather.find",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "Two smooth pieces of sea glass gently touch together once, a distinct clear bright small glass clink with a short delicate ringing decay. Immediate close isolated hand-held hard-object pickup cue. No fabric, earth, footsteps, breaking, shaking, crunch or music.",
+  "generatedAt": "2026-11-09T07:14:06.060Z",
+  "sha256": "d5e4dd610a19f9a12ef517472f334c97bcdb37bd5551c23dc65a6d5487f33e77"
+}

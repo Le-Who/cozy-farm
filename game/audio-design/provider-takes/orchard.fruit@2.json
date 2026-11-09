@@ -1,0 +1,9 @@
+{
+  "id": "orchard.fruit@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "One soft ripe peach gently detaches from its stem with a tiny fibrous tick, nearby leaves brush once, fruit settles quietly against padded wicker. Close clean short picking gesture, immediate onset, no wet squelch, no walking or hard impact.",
+  "generatedAt": "2026-11-09T07:06:47.099Z",
+  "sha256": "91dbfa2374099c4675ebb4909040eb462c90d4be08ad88f38c329c55f35cb2f1"
+}

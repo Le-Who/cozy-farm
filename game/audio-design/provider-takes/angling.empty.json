@@ -1,0 +1,9 @@
+{
+  "id": "angling.empty",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "An empty tiny fishing hook lifts out of still seawater: one delicate water slip and two light droplets dripping back, then a very small soft wooden rod settling. Quiet patient neutral ending, warm close natural foley, no sad music, no failure buzzer or basket impact.",
+  "generatedAt": "2026-11-09T07:01:20.684Z",
+  "sha256": "b59aa7f5ed1d5db87961abafaf87c52d7e3c4a8e2970e947ee55c04a156db4e0"
+}

@@ -28,7 +28,7 @@ type PropKey = 'bowl'|'spoon'|'pin'|'knife'|'scraper'|'hand'
 
 export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { destroy(): void } {
   const abort = new AbortController(), signal = abort.signal
-  prepareBaySoundScene(['workshop.knead','workshop.roll','workshop.cut','workshop.complete','kitchen.stir'], signal)
+  prepareBaySoundScene(['cook.dough-knead','cook.dough-release','cook.dough-roll','cook.dough-cut','cook.batter-stir','cook.oven-in','cook.oven-out'], signal)
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL
   const root = document.createElement('section')
@@ -591,11 +591,12 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     handButton.setAttribute('aria-expanded',String(!handMenu.hidden))
     positionHandMenu();updateCue();fitBakeLabel()
   }
+  let lastMixAt=-Infinity
   function mix(amount: number) {
     if(layoutChanging)return
     if (stage === 'ingredients') stage = 'mixing'
     if (stage !== 'mixing') return
-    if(amount>0)playBaySound('kitchen.stir',.65,750)
+    if(amount>0)lastMixAt=performance.now()
     mixed = Math.min(1, mixed + amount)
     stirring += amount * Math.PI * 5
     if (mixed === 1) {
@@ -666,7 +667,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     if(!result.halves||!result.volumes)return
     const halves=result.halves.map(unpackDoughGeometry),volumes=result.volumes,total=volumes[0]+volumes[1]
     if (volumes.some(volume => volume < total * .075)) { halves.forEach(half => half.dispose()); announce('Оставьте побольше теста с обеих сторон разреза.'); return }
-    playBaySound('workshop.cut',.8)
+    playBaySound('cook.dough-cut',.8)
     const origin = piece.mesh.position.clone()
     const pieceIndex=pieces.indexOf(piece)
     if(pieceIndex<0){halves.forEach(half=>half.dispose());return}
@@ -769,7 +770,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     hand.x = hit.x; hand.z = hit.z
     hand.start.set(hit.x, hit.z)
     hand.down = true
-    if(stage==='working' && ['knead','cup','fold'].includes(activeTool))playBaySound('workshop.knead',.75)
+    if(stage==='working' && ['knead','cup','fold'].includes(activeTool))playBaySound('cook.dough-knead',.75)
     hand.pointerId = event.pointerId
     hand.edge = Math.abs(hit.x - (activePiece()?.mesh.position.x ?? 0)) > .65
     view.setPointerCapture(event.pointerId)
@@ -835,8 +836,9 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   function release(event?: PointerEvent, cancel = false) {
     if (event && event.pointerId !== hand.pointerId) return
     const wasDown = hand.down, pointerId = hand.pointerId
+    if(!cancel&&wasDown&&stage==='working'&&['knead','cup','fold'].includes(activeTool))playBaySound('cook.dough-release',.65)
     hand.down = false
-    setBaySoundContact('workshop.roll',false)
+    setBaySoundContact('cook.dough-roll',false)
     props.pin.mesh.material.uniforms.rollPhase.value=0
     hand.pointerId = null
     grab=null
@@ -897,7 +899,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       hint.textContent = 'Принесите 2 пшеницы и 1 яйцо, затем попробуйте испечь снова.'
       announce('Тесто сохранено на доске. Для выпечки нужны 2 пшеницы и 1 яйцо.'); return
     }
-    committed = true; release(undefined, true)
+    committed = true; playBaySound('cook.oven-in'); release(undefined, true)
     surface.setCrustRoughness(chosenShape==='long'?.65:chosenShape==='round'?.48:.42)
     pieces.forEach(piece=>{piece.dirty=false;piece.offset.fill(0);piece.velocity.fill(0);piece.baking=prepareDoughBaking(piece.mesh.geometry,recognize(piece))})
     hint.textContent = ''; bakeButton.innerHTML = '<span>Выпекаем…</span>';fitBakeLabel()
@@ -932,7 +934,8 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   function tick(now:number){
     if(destroyed)return
     const handDelta=Math.min((now-lastTime)/1000,.1),delta=Math.min(handDelta,.035);lastTime=now;elapsed+=delta
-    setBaySoundContact('workshop.roll',stage==='working'&&hand.down&&activeTool==='roll'&&rollingOwner!==null&&now-lastRollContact<120,.65)
+    setBaySoundContact('cook.batter-stir',stage==='mixing'&&now-lastMixAt<180,.7)
+    setBaySoundContact('cook.dough-roll',stage==='working'&&hand.down&&activeTool==='roll'&&rollingOwner!==null&&now-lastRollContact<120,.65)
     const step=Math.min(1.8,delta*60)
     if(stage==='transferring'){
       transfer=Math.min(1,transfer+delta/.8)
@@ -963,7 +966,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       ovenLight.intensity = Math.sin(amount * Math.PI) * 4
       pieces.forEach(piece => { if(piece.baking)riseDough(piece.mesh.geometry,piece.baking,Math.min(1,amount/ .7)) })
       if (amount === 1) {
-        stage = 'finished'; updateState(); hint.textContent = ''
+        stage = 'finished'; playBaySound('cook.oven-out'); updateState(); hint.textContent = ''
         bakeButton.disabled = contextLost; bakeButton.innerHTML = '<span>Готово</span>'
         fitBakeLabel()
         announce('Выпечка готова и добавлена в запасы фермы.')

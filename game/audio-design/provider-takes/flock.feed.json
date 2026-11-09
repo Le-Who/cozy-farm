@@ -1,0 +1,9 @@
+{
+  "id": "flock.feed",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One handful of small dry grain scatters into a shallow wooden chicken feeder, delicate granular patter then two tiny real beak taps against the grain. Close short satisfying feed placement, immediate start. No gravel footsteps, no coins, no long hen chorus or ambience.",
+  "generatedAt": "2026-11-09T07:06:07.354Z",
+  "sha256": "27f52e8a9c74d9258fae3a7e0649c62b8f497fc4c77f840d40988877712eef44"
+}

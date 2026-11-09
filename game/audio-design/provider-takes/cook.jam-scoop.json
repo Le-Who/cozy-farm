@@ -1,0 +1,9 @@
+{
+  "id": "cook.jam-scoop",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "Wooden spoon lifts one scoop of dense apple preserve from copper pan. Low smooth heavy fruit friction, tiny wooden rim touch, clean release. Immediate tactile action. No suction, slurp, bubbles or gas.",
+  "generatedAt": "2026-11-09T07:02:45.997Z",
+  "sha256": "9177a1cc4dee84cf30060de2d4eb56f130d3cea0a2180c1146cb0050d74aab7c"
+}

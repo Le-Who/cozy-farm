@@ -1,0 +1,9 @@
+{
+  "id": "flock.lift",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "One real tame hen is gently lifted: a short curious rising bwuk and a quick soft wing-feather flutter, close dry individual bird foley. Immediate restrained response, no panic or shriek, no rooster crow, no continuous flapping, no ambience.",
+  "generatedAt": "2026-11-09T07:05:51.292Z",
+  "sha256": "91238ad49aaf26a6ea845e218b73097548a09b814753a104961bd8fa561f8a7f"
+}

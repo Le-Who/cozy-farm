@@ -1,0 +1,9 @@
+{
+  "id": "cook.batter-stir@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "Gentle continuous circular swirling of thick smooth vanilla cake batter. Rich low silky sloshing and soft dense batter folding, broad rounded mellow liquid waves with a supple creamy body. The batter moves slowly and evenly for the entire six seconds, intimate seamless texture.",
+  "generatedAt": "2026-11-09T07:42:40.831Z",
+  "sha256": "a3f9c72e87c355116629f6b7227e663c7c078d40442989163601d252644e1621"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "field.irrigation",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.5,
+  "direction": "One small wooden garden sluice opens with a quiet clack, then a low gentle gurgling stream runs into an earth furrow and stops. Audible close bubbling narrow gravity-fed water channel. Immediate short flow. No shower head, pressurized hiss, broad spray, plumbing, ambience or rain.",
+  "generatedAt": "2026-11-09T07:13:44.438Z",
+  "sha256": "82a6392998dc7c66fdfb96d929488008967b937cab10ce2b3aaa6a9f9025a963"
+}

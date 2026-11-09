@@ -1,0 +1,9 @@
+{
+  "id": "angling.snag-stone",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "A little fishing hook catches against a smooth heavy pebble underwater: one low dull stone tuk and a short restrained gravelly scrape, a little water displacement, then silence. Close warm natural foley, subdued rounded impact, no metallic clang, big rock crash, music or voice.",
+  "generatedAt": "2026-11-09T07:11:05.248Z",
+  "sha256": "159e1f966e4a6cde14a9257043c4dd8c39f2f53b795960ea76c21ebc81811dc1"
+}

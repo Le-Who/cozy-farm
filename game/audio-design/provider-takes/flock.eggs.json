@@ -1,0 +1,9 @@
+{
+  "id": "flock.eggs",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "Two smooth eggs carefully lifted from a straw nest into a padded wicker basket: very delicate hollow eggshell ticks and soft straw threads sliding against wicker. Close clean short hand gesture, immediate onset, no breaking, no crunch, no shoes, no bell.",
+  "generatedAt": "2026-11-09T07:06:13.613Z",
+  "sha256": "94b1897ed26fa19fea9149b35180e9cda23272c98eb14150e7e762883a4e85fc"
+}

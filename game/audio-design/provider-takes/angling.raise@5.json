@@ -1,0 +1,9 @@
+{
+  "id": "angling.raise@5",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Seamless loop of low muffled friction from a very soft brush moving steadily on a large padded bass drum skin. Warm rounded broad texture, gentle dense earthy midrange, quiet continuous unpitched rubbing. Intimate dry studio foley. No taps, hits, rhythm, bright bristles, hiss, whistle, ringing, motor, music or voice.",
+  "generatedAt": "2026-11-09T07:23:26.702Z",
+  "sha256": "806c2f56fdfda1d8457a50fa34656bbb4d97d05f4a04d22962355a94f33b0fef"
+}

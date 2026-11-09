@@ -1,0 +1,11 @@
+{
+  "id": "angling.lower@7",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Seamless loop of a thick wool pad slowly dragging over supple padded suede under gentle weight. Soft deep dense friction with a warm low-mid body, broad muted plush texture and rounded irregular grain. Delicate steady motion, close dry foley. No bright scratch, high frequencies, squeal, hiss, pitch, ringing, machinery, pulses, music or voices.",
+  "generatedAt": "2026-11-09T07:23:22.189Z",
+  "sha256": "b456722e7ea84c6c776626bd1f70afce05113e433e95a48f2ecef838cdfd44f0",
+  "selectedFrom": "angling.raise@4",
+  "selectionReason": "Broad warm wool and suede friction with no high-frequency body; selected as the relaxed line payout texture."
+}

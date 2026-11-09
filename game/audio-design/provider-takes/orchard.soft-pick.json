@@ -1,0 +1,9 @@
+{
+  "id": "orchard.soft-pick",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "A ripe peach gently detaches from a leafy tree branch. Quiet fuzzy peach skin lightly brushes a hand, tiny plant fibers part and soft leaves move once. Intimate close natural fruit-picking Foley, smooth soft attack and mellow treble.",
+  "generatedAt": "2026-11-09T07:18:08.873Z",
+  "sha256": "20c2f6613f3bf68f62ff9bc56e3cc8be4ae7bfe646f2c4c68c03649dce8feabc"
+}

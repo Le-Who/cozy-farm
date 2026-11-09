@@ -1,0 +1,9 @@
+{
+  "id": "angling.raise@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Seamless loop of a thick cotton cord drawn through a snug padded felt sleeve. Warm rounded low-mid velvety rubbing around 300 to 1100 Hz, subdued diffuse cloth fibers, steady unpitched texture with modest tension. Intimate dry soft foley. No reel, ringing, whistle, squeak, pitch, metal, motor, pulses, music, voice or ambience.",
+  "generatedAt": "2026-11-09T07:21:42.415Z",
+  "sha256": "29b141f8e4d544ad41e6e6566d552428851f40ab3e4f0d0385fc9f9eb32636db"
+}

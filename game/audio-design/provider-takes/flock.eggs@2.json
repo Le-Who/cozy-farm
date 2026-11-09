@@ -1,0 +1,9 @@
+{
+  "id": "flock.eggs@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "One gentle egg collection gesture: tiny hollow ceramic-like eggshell contacts softly against another egg, then fine straw and a fabric-lined basket brush. Intimate delicate clean foley, no egg cracking, no footstep, no hard impact or music.",
+  "generatedAt": "2026-11-09T07:06:16.404Z",
+  "sha256": "62f4e42844a85796ee50f4606fce56eb142647c90e78b0ee3662f33b2a6bf282"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.table-food",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "Small pastry on wooden serving board placed onto linen table. Warm quiet wooden tok, tiny dry crust rustle. One cushioned solid impact and short natural decay. No ceramic ring or liquid sound.",
+  "generatedAt": "2026-11-09T07:03:54.699Z",
+  "sha256": "13fc1d593c075aa7fd6c4848936aca64ab94acb0d97a8a7a72f7e136c7c9f606"
+}

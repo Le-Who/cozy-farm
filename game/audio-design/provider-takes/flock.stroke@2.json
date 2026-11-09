@@ -1,0 +1,9 @@
+{
+  "id": "flock.stroke@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "One affectionate real hen makes three quick gentle conversational kuk-kuk-buk notes, low warm and curious, ending with a little satisfied throaty purr. Immediate close single-bird response, no rooster, no flock background, no footsteps or music.",
+  "generatedAt": "2026-11-09T07:05:42.442Z",
+  "sha256": "5149888ef56294c0846ca242280d3d4e7fbf1fcb3e34398d45375d9ba16cc248"
+}

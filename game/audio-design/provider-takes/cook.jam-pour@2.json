@@ -1,0 +1,9 @@
+{
+  "id": "cook.jam-pour@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.3,
+  "direction": "One spoonful of marmalade folds into a glass jar. Quiet dense ribbon lands with a muted pat, delicate glass rim tick at the end. Complete single action. No repeated blobs, sucking or gassy splutter.",
+  "generatedAt": "2026-11-09T07:02:43.633Z",
+  "sha256": "f0ff613fdabf9580bff1145761665333f8a6cdada4cf9576d1157d894dccc5c3"
+}

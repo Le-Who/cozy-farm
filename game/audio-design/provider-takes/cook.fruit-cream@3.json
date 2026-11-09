@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-cream@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A ripe peach slice gently enters thick vanilla custard. One little rounded low creamy contact with a soft padded middle, subtle dense liquid displacement and a short natural decay. Immediate tender intimate food foley.",
+  "generatedAt": "2026-11-09T07:38:37.376Z",
+  "sha256": "d74179fe5d01aeaec8f3f3a51c79047ec62e603fc6d65ee2cc573bb9aa0ba63b"
+}

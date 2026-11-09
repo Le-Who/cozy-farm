@@ -1,0 +1,9 @@
+{
+  "id": "page.unfold@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A little farm storybook opening, imagined as a soft rounded wooden 'woom' that rises and settles. Two warm muted thumb-piano tines played through thick felt, close and almost breathy. Smooth low-mid body, unhurried front edge; barely any treble or tail. One compact welcoming gesture.",
+  "generatedAt": "2026-11-09T07:22:37.256Z",
+  "sha256": "cab08ec189c64edbacc21df701c0feff60fa04b5413b2a329f5fcfe527efae3b"
+}

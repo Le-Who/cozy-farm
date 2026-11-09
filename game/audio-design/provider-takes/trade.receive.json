@@ -1,0 +1,9 @@
+{
+  "id": "trade.receive",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.85,
+  "direction": "A customer drops three small silver coins into a nearly empty leather coin purse. Clear brief cluster of mellow metal edges, last coin muffled by the pouch. One rewarding close dry gesture; no music, paper rustle or cash register.",
+  "generatedAt": "2026-11-09T07:03:59.636Z",
+  "sha256": "ae424e40d421084129675558e28f78d775e634d57535e2e62f7a24873ee87f66"
+}

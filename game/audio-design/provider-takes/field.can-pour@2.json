@@ -1,0 +1,9 @@
+{
+  "id": "field.can-pour@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "A little watering can lets out a few separated drops onto a cabbage leaf, round close watery plip-plip sounds and a brief pause before the last drop. Only discrete droplets with quiet spaces, immediate outdoor plant watering. No shower spray, tap hiss, machinery, can shaking or rain.",
+  "generatedAt": "2026-11-09T07:13:41.860Z",
+  "sha256": "1d1361c6b0f3b8c3139ea602f3f2a7df70797193e6804cd81471af8bce5279ad"
+}

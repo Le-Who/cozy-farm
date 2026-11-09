@@ -1,0 +1,9 @@
+{
+  "id": "field.pumpkin",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.1,
+  "direction": "A small ripe pumpkin is gently lifted from a vine and settled into deep straw. A subdued fibrous stem release, a broad soft leaf brush, a low rounded cushioned fruit contact. Warm soft careful harvest Foley, smooth quiet attack.",
+  "generatedAt": "2026-11-09T07:17:57.438Z",
+  "sha256": "6f81982951daac68845b955536b1df1636efbf9c86c65eeb867a4d8e736d4f75"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-pot@6",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One tender raspberry gently nestled into thick fruit custard. A tiny round soft liquid bulb, warm cushioned centre and brief delicate creamy settling. Single quiet immediate food contact, close intimate recording.",
+  "generatedAt": "2026-11-09T07:38:33.456Z",
+  "sha256": "7b17226530552cf2fb7d0c96663b3eb94636c94e433b4a9c27c8f7c12a5e9981"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-tart",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "One soft raspberry is gently nestled on a baked tart. Tiny cushioned solid berry contact, dry fragile pastry crumb rustle and clean natural release. Quiet intimate single action. No wet plop, juice squirt, bubbles or air noise.",
+  "generatedAt": "2026-11-09T07:10:08.630Z",
+  "sha256": "ea1b6219562735fd175cc3ef4bda0e9d3354407719b4ba4b93115c75d3e279b1"
+}

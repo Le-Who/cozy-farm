@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-pot",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A small handful of fresh raspberries and blueberries gently lands on chopped fruit in a copper preserving pan. Tiny solid padded berry taps, brief leaf-soft rustle and faint pot body. No bubbling, air burst, suction or squirt.",
+  "generatedAt": "2026-11-09T07:10:06.348Z",
+  "sha256": "17ebb14550a85a0737214a0569da0a2d0331d5233979cbc37cf4616ba41bcaa1"
+}

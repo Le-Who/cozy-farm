@@ -1,0 +1,9 @@
+{
+  "id": "cook.sugar@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Continuous fine golden sugar crystals trickling onto pastry. Soft dry granular patter with a few tiny coarse grain taps, warm ceramic shaker body. Smooth even texture throughout. No sharp rattle, clicks, electronic hiss, pulses or gaps. Loopable.",
+  "generatedAt": "2026-11-09T07:10:18.979Z",
+  "sha256": "045b0c1d890c24c05b30616f708be7bfc580e2e23bff1c1234681dc1ffe3ef01"
+}

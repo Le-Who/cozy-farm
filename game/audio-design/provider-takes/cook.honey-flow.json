@@ -1,0 +1,9 @@
+{
+  "id": "cook.honey-flow",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Thin continuous warm honey ribbon drizzling from ceramic jug onto sliced pear. Smooth dense satin sticky friction, very quiet fine thread contact. Even body throughout. No splash, gas, sucking, pops, blobs or gaps. Loopable.",
+  "generatedAt": "2026-11-09T07:03:05.848Z",
+  "sha256": "f5239753af352ca3ac235e1ff6ae2147fca90b3ba84ca366f17049512aa1259a"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "angling.snag-boot",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A hook takes the weight of one old waterlogged leather boot underwater: a soft heavy muffled leather creak with a dull padded tug and a short low liquid displacement, then silence. Close warm natural foley, gentle high frequencies. No squeal, metallic hit, cartoon boing, music or voice.",
+  "generatedAt": "2026-11-09T07:11:12.668Z",
+  "sha256": "a63d067a3e2e53d2f7c9b47d5d5394340c363fa200db84d9294f1f9dbfdeacfc"
+}

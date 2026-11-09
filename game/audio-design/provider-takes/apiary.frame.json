@@ -1,0 +1,9 @@
+{
+  "id": "apiary.frame",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One wooden beehive frame lifted and a small piece of wax released: a light dry wooden joint creak, tiny tacky beeswax peel and a soft glass jar rim touch. Immediate intimate careful hand action, no bees buzzing, no flying insects, no outdoor ambience, no music.",
+  "generatedAt": "2026-11-09T07:06:50.092Z",
+  "sha256": "0c5b13a222102ef672651c08486aa7163a9e033e4f1a523a94cef0b5aec6a10f"
+}

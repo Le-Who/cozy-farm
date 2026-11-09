@@ -1,0 +1,9 @@
+{
+  "id": "harbour.castoff",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.4,
+  "direction": "A tiny wooden ferry easing off a dock. Mooring loop slips cleanly over a wooden cleat, then a short curling lap of harbour water as the bow pulls away. One close soft movement, no motor, horn or ambient bed.",
+  "generatedAt": "2026-11-09T07:04:06.407Z",
+  "sha256": "013f22d9155cb9034e908a2d35f853490c77ddca7ec88731e8df7057a8349662"
+}

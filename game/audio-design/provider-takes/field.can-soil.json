@@ -1,0 +1,17 @@
+{
+  "id": "field.can-soil",
+  "provider": "ElevenLabs-derived composite",
+  "generatedAt": "2026-11-09T07:21:27.347985+00:00",
+  "recipe": "2.2 kHz absorbed droplets, 180\u20131400 Hz loam at -22.8 dB relative RMS, delayed 30 ms",
+  "components": [
+    {
+      "id": "field.can-pour",
+      "sha256": "0f76dd2eb08f178de3e3ab45d64e159da2e9d82590b11351332b660bbed0cd8c"
+    },
+    {
+      "id": "field.till",
+      "sha256": "b7512794251de6c035fa7a3eeaaa0cd5e08286d3920fd89ce08610ffbda17992"
+    }
+  ],
+  "sha256": "8721e3c44f46b928f6745ff69185d0de414051e78297979e0bd0f89637b3df63"
+}

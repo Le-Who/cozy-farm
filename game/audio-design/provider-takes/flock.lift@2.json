@@ -1,0 +1,9 @@
+{
+  "id": "flock.lift@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "A real live domestic hen makes two short questioning chicken clucks, with one gentle wing feather flutter. Actual female poultry voice clearly recognizable, quiet curious response, immediate close natural recording. No human imitation, speech, rubber toy, rooster crow or panic.",
+  "generatedAt": "2026-11-09T07:13:54.923Z",
+  "sha256": "184db16ce1e6c0084b199a065834de83d7e70cdda4192f1899427eddc6581089"
+}

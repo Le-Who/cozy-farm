@@ -1,0 +1,9 @@
+{
+  "id": "angling.snag-shell",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.55,
+  "direction": "A small fishing hook touches and secures one smooth seashell underwater: a tiny rounded porcelain-like shell tick followed by a little muffled liquid lift. Delicate hard shell detail, short clean decay, close warm natural foley. No bright metal ringing, success chime, speech or music.",
+  "generatedAt": "2026-11-09T07:11:02.987Z",
+  "sha256": "90f383132ebd43ddce7c867d1a64c627ff113ef94cc51b771c4a7d228f0e2690"
+}

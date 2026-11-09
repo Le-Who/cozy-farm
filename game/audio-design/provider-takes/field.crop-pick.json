@@ -1,0 +1,9 @@
+{
+  "id": "field.crop-pick",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.55,
+  "direction": "One ripe garden tomato gently twists from its stem: delicate dry stem tick at the start, a short lush leaf brush, a cushioned soft fruit contact against linen. Close intimate organic harvest, one small action only. No walking, no eating, no glass or hard thump.",
+  "generatedAt": "2026-11-09T07:05:01.871Z",
+  "sha256": "48f63afb47737a33914d5541c6524b603a50e0e628a7f0060747c9b856db6328"
+}

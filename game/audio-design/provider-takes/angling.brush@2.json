@@ -1,0 +1,9 @@
+{
+  "id": "angling.brush@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "One little fish brushes past a fishing hook underwater: one soft rounded water knock and a tiny tail flick, then silence. Close warm muffled low-mid liquid detail, subtle variation, no hard slap, no alarm, no chime or musical pitch.",
+  "generatedAt": "2026-11-09T07:01:10.945Z",
+  "sha256": "9d6b5a5609126c24ec789a2b7e2b2e0dbfe4a1c96794bf0d4d6ae113927c7107"
+}

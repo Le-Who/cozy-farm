@@ -1,0 +1,9 @@
+{
+  "id": "field.soil-sprinkle@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.95,
+  "direction": "One brief affectionate garden-watering gesture: a soft cloud of little rounded water drops gently patters on damp yielding earth, a close warm diffuse pit-patter with tiny liquid details and a clean quiet finish. Delicate low-treble water scatter, smooth onset. No shower hiss, faucet, cup plop, plumbing, rainstorm or background.",
+  "generatedAt": "2026-11-09T07:38:31.621Z",
+  "sha256": "dbe8d89b4a7c5c7ef05de23c12ceeb0650da1de636104580d3436da97c46b38e"
+}

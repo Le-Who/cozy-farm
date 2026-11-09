@@ -1,0 +1,9 @@
+{
+  "id": "angling.lower",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 3.5,
+  "direction": "Seamless continuous loop of fine fishing line gently paying out through a smooth damp wooden reel guide. A subdued soft woven friction, slightly airy low-mid rubbing grain, stable and delicate. Close intimate natural foley, steady motion only, no clicks or pulses, no whistle, motor, ratchet, dripping, bubbling, tape ripping, speech, music or outdoor ambience.",
+  "generatedAt": "2026-11-09T07:11:17.336Z",
+  "sha256": "df92dc81742eb92fad1fdb9b59f504b9222ded29a0f9942a6b70cf382ebe1267"
+}

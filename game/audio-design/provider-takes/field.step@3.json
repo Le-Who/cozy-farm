@@ -1,0 +1,9 @@
+{
+  "id": "field.step@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "A single light shoe settles into thick soft meadow turf, a restrained warm grass brush with a smooth low cushioned contact. Very quiet close short foley with no sharp attack or hard impact. No heel thump, no stomping, no snapping leaves, no gravel, no other step.",
+  "generatedAt": "2026-11-09T07:15:28.044Z",
+  "sha256": "63569e82d836841e2a230a47867bd47334ea3dd8ed4becf4bd3d2cd7cf5db55a"
+}

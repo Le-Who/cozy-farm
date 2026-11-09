@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-pot@5",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "Three plump blueberries gently fall into thick berry puree. A small cluster of very soft rounded liquid contacts, cushioned low warm centres, delicate subtle filling displacement and a short calm release. Intimate gentle food foley.",
+  "generatedAt": "2026-11-09T07:38:31.353Z",
+  "sha256": "f16a72e63b7c2d41bebaa7eb6c91c560665833813cef81e2ff627c1fde8d56e7"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "menu.close",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "A small maple recipe box is gently shut on a felt rim. The lid falls a finger-width: short papery flick into one low rounded wooden tuck. Recognisable soft ending, close perspective, no slam, music or reverberation.",
+  "generatedAt": "2026-11-09T07:03:46.025Z",
+  "sha256": "1dcc10c9034e0ec6c5864008512eb2b0f1876eb99fbc14a49aae185904c05774"
+}

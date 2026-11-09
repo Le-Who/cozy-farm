@@ -1,0 +1,9 @@
+{
+  "id": "page.map",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A little painted island appearing: a warm rounded upturn made with a thumb brushing one soft felt-covered bass marimba bar, joined by a quiet lower wooden resonance. Small, curious, gentle and cushioned, starts softly, ends softly. Dry, thick midrange. No hard strike, paper, bell or sparkling highs.",
+  "generatedAt": "2026-11-09T07:22:43.173Z",
+  "sha256": "c4e05483847d9e2e52ee9d6ca8a899c3b3dc60c0e16f404e21ecb53321ce559a"
+}

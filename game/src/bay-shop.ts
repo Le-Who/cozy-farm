@@ -1,3 +1,4 @@
+import { playBaySound } from './game-sound'
 import {
   advanceBayShop, bayShopDailyLimit, bayShopPhaseDuration, bayShopVisitors, removeBayShopStock, setBayShopOpen,
   setBayShopPrice, stockBayShop, syncBayShopProducts, type BayShopProduct, type BayShopState, type BayShopStock,
@@ -154,7 +155,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (button.hasAttribute('data-close')) { options.onClose(); return; }
     if (button.hasAttribute('data-freight')) { options.onOpenFreight?.(); return; }
     if (button.hasAttribute('data-open')) {
-      if (!state.open && !state.slots.some(slot => slot && slot.quantity > 0)) { notice = 'Сначала поставьте хотя бы один товар на прилавок.'; render(); return; }
+      if (!state.open && !state.slots.some(slot => slot && slot.quantity > 0)) { playBaySound('menu.blocked',.8); notice = 'Сначала поставьте хотя бы один товар на прилавок.'; render(); return; }
       setBayShopOpen(state, !state.open); notice = state.open ? 'Лавка открыта' : 'Лавка закрыта'; changed(); return;
     }
     if (button.dataset.slot !== undefined) { selected = Number(button.dataset.slot); tab = 'stock'; notice = ''; render(); return; }
@@ -176,12 +177,12 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       if (slot && (slot.product.id !== product.id || slot.product.identity !== product.identity || slot.quantity >= 999)) {
         const matching = state.slots.findIndex(item => item?.product.id === product.id && item.product.identity === product.identity && item.quantity < 999);
         const empty = state.slots.findIndex(item => item === null);
-        if (matching < 0 && empty < 0) { notice = 'Все места заняты. Уберите товар кнопкой ↶.'; render(); return; }
+        if (matching < 0 && empty < 0) { playBaySound('menu.blocked',.8); notice = 'Все места заняты. Уберите товар кнопкой ↶.'; render(); return; }
         selected = matching >= 0 ? matching : empty;
       }
-      if (!options.takeStock(product.id, 1)) { notice = 'В местном запасе этот товар уже закончился.'; render(); return; }
-      if (!stockBayShop(state, selected, product, 1)) { options.returnStock(product.id, 1); notice = 'Не удалось выставить товар.'; }
-      else notice = '+1 на полке';
+      if (!options.takeStock(product.id, 1)) { playBaySound('menu.blocked',.8); notice = 'В местном запасе этот товар уже закончился.'; render(); return; }
+      if (!stockBayShop(state, selected, product, 1)) { options.returnStock(product.id, 1); playBaySound('menu.blocked',.8); notice = 'Не удалось выставить товар.'; }
+      else { playBaySound('harbour.crate',.6); notice = '+1 на полке'; }
       changed();
     }
   }
@@ -191,7 +192,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!input.matches('[data-price]')) return;
     if (event.type === 'focusout' && input.value === String(state.slots[selected]?.price)) return;
     if (!setBayShopPrice(state, selected, Number(input.value))) {
-      notice = 'Укажите целую цену от 1 до 10 000 монет.';
+      playBaySound('menu.blocked',.8); notice = 'Укажите целую цену от 1 до 10 000 монет.';
       input.value = String(state.slots[selected]?.price ?? 1);
     } else {
       notice = 'Цена сохранена'; options.onChange();

@@ -1,0 +1,9 @@
+{
+  "id": "cook.cream-flow",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 3,
+  "direction": "Continuous thick custard ribbon slips from spoon into dessert glass. Dense satin creamy folding friction, quiet intimate stable body throughout. No water splashes, bubbles, suction, taps, isolated plops or silence. Loopable.",
+  "generatedAt": "2026-11-09T07:03:16.262Z",
+  "sha256": "b3a08f24ff89d0483a495c8cb332b99b0682ba1fee5f66a9af176bae16ecdc8b"
+}

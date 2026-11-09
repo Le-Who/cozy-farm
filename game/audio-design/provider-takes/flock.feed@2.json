@@ -1,0 +1,9 @@
+{
+  "id": "flock.feed@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One brief spill of wheat kernels from a small cloth scoop into a wooden poultry tray, light dry skitter and a short curious soft real hen cluck. Close intimate feed gesture, immediate start and stop, no walking, no heavy knock, no background flock.",
+  "generatedAt": "2026-11-09T07:06:10.494Z",
+  "sha256": "3843cbe9d86b7fe936ccee8f319dff5a23cb7e9119c6491bdda49348e8c28081"
+}

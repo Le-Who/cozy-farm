@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-tart@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "Fingers place raspberries on a flaky shortcrust tart. Fragile dry pastry flakes crackle under the fingertips, a soft low padded contact, tiny crumbs scatter on parchment. One complete delicate kitchen gesture.",
+  "generatedAt": "2026-11-09T07:13:13.319Z",
+  "sha256": "2eaa54ad287689a169b1aae0bb4c8b64037743e866a1459486c070553c16c7b1"
+}

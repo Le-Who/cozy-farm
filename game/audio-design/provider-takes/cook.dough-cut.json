@@ -1,0 +1,9 @@
+{
+  "id": "cook.dough-cut",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "Bench scraper makes one clean cut through soft dough onto floured maple. Quiet dense dough separation then muted short board tok. Complete immediate action. No fruit juice, knife swish or metallic clang.",
+  "generatedAt": "2026-11-09T07:03:30.193Z",
+  "sha256": "6d61cafeb940b6ae374d399cb01f0e2acb3d307a7db0002afe13853111baaf1d"
+}

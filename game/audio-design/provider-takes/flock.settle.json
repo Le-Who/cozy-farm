@@ -1,0 +1,9 @@
+{
+  "id": "flock.settle",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "A tame real hen settles gently after being put down: one short low satisfied cluck and a tiny folding-wing feather ruffle. Immediate quiet close one-shot, single bird, no footstep impact, no rooster, no background flock, no panic.",
+  "generatedAt": "2026-11-09T07:06:01.344Z",
+  "sha256": "bf9f5c1d65cb1bbb9e560468273cd9b11d8c66c110597d30f040fde1932a4c2c"
+}

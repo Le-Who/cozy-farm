@@ -1,0 +1,9 @@
+{
+  "id": "cook.preserves-stir@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "Continuous slow circular motion of thick warm smooth apple puree. Hear only the heavy soft fruit filling folding over itself in rounded overlapping satin liquid waves, with a gentle dense moist centre. Stable unbroken quiet body from beginning to end. Close intimate seamless food texture.",
+  "generatedAt": "2026-11-09T07:38:15.208Z",
+  "sha256": "edbdcf611c741eae773be43fead92d68a61d31488ce1eb1d0b230bba84b3b445"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-pot@7",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A single tiny drop of thick berry sauce landing on soft custard. Clear small liquid plink, short rounded mellow blup with a padded centre, gentle natural resonance fading immediately. Delicate quiet close food foley.",
+  "generatedAt": "2026-11-09T07:40:53.379Z",
+  "sha256": "73e91e2d9edd667dc3cb39cb725e0b6c2198a45b5546da3e668e6125669bcc0f"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "angling.lower@6",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 4,
+  "direction": "Four seconds of continuous soft tactile motion: a thick loose wool ribbon drawn slowly through padded felt. Warm muffled low-mid rubbing, diffuse plush grain, relaxed even friction with a quiet earthy body. Close dry natural foley. No high hiss, pitch, whistle, squeak, motor, ratchet, pulses, music, speech or ambience.",
+  "generatedAt": "2026-11-09T07:23:54.117Z",
+  "sha256": "63029df94dede39886708220e0ebf2665a05ff7d74f74f4a8d1017516036e106"
+}

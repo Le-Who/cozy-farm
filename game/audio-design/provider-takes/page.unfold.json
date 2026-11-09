@@ -1,0 +1,9 @@
+{
+  "id": "page.unfold",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "Soft interface opening for a little storybook farm. A tiny airy brushed-felt upsweep blooms into a low warm marimba overtone, as if a padded page lifts toward you. Feather-light attack, mellow middle register, clear rising contour, settle immediately. One quiet gesture, no hard click, paper crackle, bell or hiss.",
+  "generatedAt": "2026-11-09T07:14:46.128Z",
+  "sha256": "332d1765a58967e9fee5020ab83fc677b7a2c5fa14caeba23f2f59801dac5199"
+}

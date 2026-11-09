@@ -1,0 +1,9 @@
+{
+  "id": "cook.dough-release",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "Fingers release stretched dough onto a floured board. Quiet elastic settling thup and tiny dry powder brush, complete natural decay. One gentle release. No wet squelch, gas, snap or sharp knock.",
+  "generatedAt": "2026-11-09T07:03:24.134Z",
+  "sha256": "fc11d9d56b3f688aab22dcef20ce1fe90d38a06db7c7707c71529902bc25796c"
+}

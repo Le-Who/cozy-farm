@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-tart@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "A small wooden dessert fork gently presses a flaky baked pastry crust. Delicate brittle pastry crackle, muted wooden contact and tiny dry crumbs falling on parchment. One complete quiet tactile kitchen gesture.",
+  "generatedAt": "2026-11-09T07:16:12.467Z",
+  "sha256": "3a104593f47c7497c33c3458ea9e9f151c78b0801765e040d31a39337b340d4c"
+}

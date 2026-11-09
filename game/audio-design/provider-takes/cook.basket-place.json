@@ -1,0 +1,9 @@
+{
+  "id": "cook.basket-place",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "Folded linen and wrapped pastry settle into wicker picnic basket. Compact soft cloth and wicker rustle, low cushioned contact, complete natural settling. No paper crinkle, bag noise, metal or liquid.",
+  "generatedAt": "2026-11-09T07:03:56.597Z",
+  "sha256": "ea66628c4719c4080aa15a2024dfec01e6556fb962c7470f0b55bba63f635a2f"
+}

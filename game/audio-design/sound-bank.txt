@@ -1,41 +1,4 @@
 id|seconds|gain|direction
-ui.tap|0.5|0.32|A single delicate tap of a smooth maple button, tiny rounded felt stop.
-ui.confirm|0.9|0.45|Three soft rising celesta and pizzicato notes D F sharp A, a kind resolution, short airy decay.
-ui.error|0.5|0.26|Two soft low hollow bamboo knocks with a felt fingertip, patient and gentle.
-garden.till|0.9|0.55|A little metal hoe cuts once through soft loam then slides free, earthy and textured.
-garden.plant|0.7|0.55|Three tiny dry seeds roll from a paper packet into soft soil with a brushing fingertip.
-garden.water|1.8|0.54|Gentle shower of water from a small watering can onto leaves and soft earth, delicate individual droplets, clear stop.
-garden.harvest|0.85|0.56|A leafy carrot pulls from soft soil with a moist pop and tender green leaf rustle.
-orchard.pick|0.7|0.5|Short leafy branch rebound and the soft thump of an apple landing in a lined basket.
-well.fill|1.5|0.48|Water glugs into a small copper watering can, hollow warm resonant metal and a final droplet.
-hen.pet|1.1|0.43|Affectionate softly murmuring hen, two low musical clucks and tiny feather shuffle.
-hen.feed|1.0|0.52|A handful of little grains cascades on wood, quiet chicken peck at the end.
-hen.egg|0.65|0.47|A smooth egg settles very gently against straw in a small wicker basket.
-hen.hatch|1.1|0.48|A delicate eggshell crack followed by two gentle chick peeps.
-shore.collect|0.9|0.47|A seashell lifted out of wet shingle, tiny clinks and a retreating water drop.
-apiary.collect|1.5|0.40|A wooden hive frame lifting, light bees hum in summer air, soft beeswax peel.
-fish.cast|1.25|0.58|Light bamboo fishing rod casts, fine line zips and float makes a tiny plop into still water.
-fish.hook|0.65|0.56|Little silvery fish flick, a taut fishing line twang and small water splash.
-fish.land|1.0|0.52|Small catch lifts out of a bay, droplets and a short wet wicker basket rustle.
-ferry.depart|1.6|0.45|Small wooden ferry pushes off from a dock, rope slides then soft low wooden creak with water.
-ferry.arrive|1.4|0.46|Little harbour ferry touches a padded wooden berth, ripples and one gentle brass bell.
-freight.crate|0.8|0.48|A light wooden produce crate set down on a dock, a rounded clunk and subtle straw settling.
-market.buy|0.75|0.45|Two little brass coins slipped onto a wooden counter, warm light clinks decaying naturally.
-market.sell|1.0|0.46|Small cloth purse receives copper coins with a soft jingle and warm wooden counter tap.
-workshop.knead|0.65|0.44|Palm presses soft elastic bread dough into a floured wood board, subdued pillowy slap.
-workshop.roll|1.0|0.42|Wooden rolling pin rolls across floured dough in one smooth stroke, textured low friction.
-workshop.cut|0.6|0.5|One crisp kitchen blade cuts soft fruit on a wooden board, little juicy separation, soft wood contact.
-workshop.complete|1.5|0.48|Happy oven moment, soft tray on wood followed by two warm handmade ceramic bell notes.
-kitchen.stir|1.1|0.46|Wooden spoon makes a single circular sweep in thick simmered fruit preserves, luscious sticky swirl.
-kitchen.fruit|0.6|0.45|A fresh peach slice lands on custard, moist cushioned plop with a tiny ceramic touch.
-kitchen.cream|0.85|0.45|A spoon lifts a thick ribbon of whipped custard, satin wet fold and tiny porcelain click.
-kitchen.honey|1.4|0.43|Short viscous stream of golden syrup drizzles into a soft dessert, intimate and delicate.
-kitchen.sprinkle|0.65|0.43|Fine sugar shakes from a little shaker in a short soft granular sprinkle.
-kitchen.grill|1.45|0.42|One piece of fish meets a warm iron grill, rich gentle fine sizzle that tapers away.
-kitchen.flip|0.8|0.48|A wooden spatula lifts and flips a fish fillet with a gentle hiss and soft landing.
-table.place|0.6|0.44|A small glazed ceramic teacup meets a linen-covered wooden tabletop, close warm muted chink.
-rest.dawn|1.9|0.45|A very short waking-up flourish of warm plucked strings and breathy wooden flute, D major, peaceful ending.
-footsteps.grass|0.55|0.27|A single soft boot step on meadow grass and earth at close range, rustle then cushion.
 instrument.ceramic-low|1.55|0.74|One single soft center hand strike on a small low ceramic udu, warm hollow resonant rounded low D3, audible pot body resonance after skin-like transient. Close dry studio one-shot at the very start, silence after the tail.
 instrument.ceramic-high|1.35|0.72|One single light fingertip rim slap on a glazed ceramic hand drum, a bright but rounded higher pitched tok with warm clay resonance. Natural release.
 instrument.marimba-low|2.2|0.82|One isolated single wooden marimba note, played in the middle register C4 261.63 Hz with a soft yarn mallet, low warm woody resonator and striking bar ringing freely into silence. Dry studio single hit onset immediate. No phrase.
@@ -48,20 +11,3 @@ instrument.shaker-low|0.65|0.48|A single gentle downward shake of one small seed
 instrument.shaker-high|0.65|0.47|One short light upward stroke of a small gourd shaker with tiny seeds. Soft delicate airy rattle then immediate silence, no rhythm sequence.
 instrument.bass-low|2.3|0.82|One plucked D2 note on a rustic acoustic double bass, 73.4 Hz fundamental, a single rounded pizzicato attack, warm woody string and soundboard resonance decaying to silence. Isolated note, no groove.
 instrument.bass-high|2.1|0.77|One isolated mellow G2 pizzicato note on a small upright acoustic bass, a single finger pluck and low rounded woody resonance fading, no percussion or other notes.
-footsteps.grass@2|0.65|0.24|A single slower heel-to-toe step on soft grass under an apple tree, a little dew on the blades. Quiet close-up foley, damp earthy lower frequencies.
-footsteps.grass@3|0.6|0.25|One light shoe settling into springy meadow soil, a delicate dry leaf underneath. Soft short intimate natural transient.
-garden.harvest@2|0.85|0.50|Hands gather a leafy ripe vegetable, a little twist, a muted snap at the stem, leaves brush a wicker basket.
-garden.plant@2|0.75|0.50|Two large seeds drop from fingers, barely tap moist loose earth, then a thumb presses in the soil.
-garden.water@2|1.7|0.46|A fine copper watering-can shower lands on broad leaves, beads briefly roll to earth. Soft watery texture with a quiet finish.
-workshop.knead@2|0.65|0.45|A baker folds soft dough onto a dusted board with a pillowy, low, elastic thump.
-kitchen.fruit@2|0.75|0.42|A soft raspberry presses into pastry cream with a tiny moist release, very intimate, no hard impact.
-ui.tap@2|0.5|0.27|One soft rounded fingertip tap on a carved pearwood toggle with a felt backing, no metallic ringing.
-market.sell@2|0.9|0.39|A little stack of warm brass coins drops into cloth in a wooden drawer, two mellow clinks.
-kitchen.salt|0.65|0.30|One brief shake of fine sea salt falling from a small wooden shaker onto a moist fish fillet. Delicate dry grains, no hard knock, immediate onset, dry intimate foley.
-kitchen.salt@2|0.7|0.28|One tiny pinch of fine salt scattered over fish, soft sand-like grain rustle with a gentle wooden shaker movement. Short close natural foley, no sharp rattle.
-kitchen.flip@2|0.8|0.39|One soft wooden spatula slides under a tender fish fillet and turns it, a muted moist landing and short quiet pan hiss. Immediate action, no metal clang.
-workshop.cut@2|0.65|0.36|One gentle kitchen knife stroke through a juicy pear, close soft skin separation and a subdued wooden board contact. Immediate tactile action, no hard chop or squeak.
-kitchen.grill@2|3.5|0.34|Steady continuous fine gentle sizzling of a small fish fillet on a warm pan. Even restrained quiet frying texture throughout with tiny organic crackles. No initial thump, no crescendo, no fade to silence, no isolated loud pops. Seamless ambient foley texture.
-kitchen.stir@2|2.5|0.35|Continuous slow smooth wooden spoon stirring thick fruit preserves, soft sticky wet friction throughout. Even subdued flowing texture, no pot clinks, no repeated loud impacts, no silence between strokes.
-kitchen.honey@3|3.5|0.32|Completely continuous soft sticky syrup spreading, smooth close wet viscous friction steadily filling the whole recording at one even level. No taps, impacts, initial transient, separated drops, silence or pauses. Constant gentle natural seamless loop texture.
-workshop.roll@2|2.5|0.32|Continuous gentle wooden rolling pin friction on soft floured dough. Even soft low textured rolling and flour brush, close natural foley, no knocks, no squeak, no silence gaps.

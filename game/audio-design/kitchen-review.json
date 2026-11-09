@@ -1,0 +1,43 @@
+{
+  "generatedTakes": 55,
+  "acceptedTakes": 35,
+  "selectionMethod": "Provider recordings compared through decoded waveform/energy metrics and CLAP zero-shot relative-label screening; no human listening claimed. Browser output recorded after shared compressor.",
+  "rejected": {
+    "cook.fruit-pot": "Short mechanical click rather than resonant kitchen object",
+    "cook.fruit-pot@2": "Short mechanical click, weaker material identity",
+    "cook.fruit-pot@3": "Mechanical click and rubbery classifier confusion",
+    "cook.berry-pot": "CLAP strongly rubbery/flatulence",
+    "cook.berry-pot@2": "CLAP rubbery/flatulence greater than material",
+    "cook.berry-pot@3": "CLAP rubbery/flatulence greater than material",
+    "cook.berry-tart": "CLAP strongly rubbery/flatulence",
+    "cook.berry-tart@2": "CLAP strongly rubbery/flatulence",
+    "cook.fruit-tart@2": "CLAP rubbery/flatulence greater than material",
+    "cook.fruit-cream": "CLAP strongly rubbery/flatulence",
+    "cook.salt@2": "CLAP harsh continuous frying hiss .994",
+    "cook.sugar@2": "CLAP harsh continuous frying hiss .987",
+    "cook.jam-pour": "Single action cannot follow visible flow, rubbery classifier confusion",
+    "cook.jam-pour@2": "Late260ms onset and single action cannot follow visible flow",
+    "cook.jam-flow": "21dB 100ms body modulation; poorer liquid identity",
+    "cook.honey-flow": "31dB body modulation, spoon identity instead of pouring",
+    "cook.cream-flow": "27dB body modulation, separate drops instead of stream",
+    "cook.batter-stir": "17dB body modulation and poor stirring identity",
+    "cook.dough-roll": "Replaced with longer sustained five second contact",
+    "cook.preserves-stir@2": "CLAP rubbery .679; original .957 stirring with audible continuous body"
+  },
+  "sources": "Exact provider responses and SHA256 metadata remain in provider-takes. Rejected takes are excluded from kitchen-bank and runtime.",
+  "scenarios": {
+    "preserves": "firm or berry pot contact; sustained stirring while held in pan and moving/physical decay; scoop on loading spoon; jam-flow during visible ribbon and jam-end on final thread; finish after accepted commit",
+    "fruitAndBerryTarts": "firm or berry contact selected from actual ingredient; sustained fine/coarse granular sugar during real swept sprinkle; stop on release; accepted finish",
+    "honeyPear": "actual pear cut contact; syrup stream while contacting pear; final drop on physical settling; accepted finish",
+    "honeyBiscuits": "knead contact and release; oven insertion on actual start, retrieval after bake; honey brush contact over actual dough surface; accepted finish",
+    "honeyCake": "continuous circular batter contact; oven start/end transitions; honey brush during glaze; accepted finish",
+    "windParfait": "custard scoop from bowl; cream-flow tracks actual transferred amount incl release drain; fruit glass contact; syrup stream; final drop; accepted finish",
+    "grilledFish": "salt continuous during actual grain placement; pan contact attack and continuous sizzle only at physics contact; actual turn; plated fish; separate solid carrot garnish; accepted finish",
+    "workshopAndBread": "continuous batter stir on real mixing; knead attack/release; rolling contact only while rolling owner touches and moves; successful geometric dough cut; accepted oven insertion/retrieval",
+    "arrangement": "physics impact material selected from cup/food/egg and table/basket; sounds gated until loaded; accepted completion"
+  },
+  "limits": [
+    "CLAP scores depend on candidate labels and are a screening signal rather than a listener verdict.",
+    "Current jam animation emits a fixed approximately half-second ribbon for each successful scoop, so source is sustained for that exact visible interval; no artificial long pour is added."
+  ]
+}

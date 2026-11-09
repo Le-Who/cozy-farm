@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-cream@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One small drop of cream lands on thick custard. Tiny clear liquid plink at the start, warm short rounded liquid centre and gentle clean decay. A very quiet delicate isolated droplet in close studio foley.",
+  "generatedAt": "2026-11-09T07:40:55.175Z",
+  "sha256": "e946df92ed8f742ea95526156a6f9e86a710a544d44caf7ae3c1f76878285c14"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "flock.hatch",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "One chick hatches in close-up: several extremely fine dry eggshell fractures, a tiny shell piece loosens and two gentle real newborn chick peeps follow. Immediate tender short natural sound, no big crack, no rooster, no adult hen chorus, no music or ambience.",
+  "generatedAt": "2026-11-09T07:06:19.474Z",
+  "sha256": "f24c2234234247bd9fed1b051ffdf906ce2b86f0a89bedd7bc9d2ba9bef086f0"
+}

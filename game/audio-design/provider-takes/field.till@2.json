@@ -1,0 +1,9 @@
+{
+  "id": "field.till@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.55,
+  "direction": "One short hand hoe scrape through crumbly garden earth: dry soil breaks in several tiny grains under a blunt blade, ends with a little falling soil. Close detailed tactile one shot, immediate onset. No shoes, no metal clang, no repeated digging.",
+  "generatedAt": "2026-11-09T07:01:54.251Z",
+  "sha256": "631f2c86d25021fc1337047d87094f37a8744ad746d2f7997c7c09380b6ffb56"
+}

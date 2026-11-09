@@ -1,0 +1,9 @@
+{
+  "id": "flock.settle@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "A real tame domestic hen makes one low natural chicken cluck followed by a brief relaxed poultry murmur and tiny feather shuffle. Clearly a real female bird, immediate close isolated recording. No person speaking, human imitation, rooster, toy, whistle or ambience.",
+  "generatedAt": "2026-11-09T07:13:57.490Z",
+  "sha256": "cb6df0f73401f0e3e12bdae68f777edffe8c55b7dd5a426be0c366759b967fee"
+}

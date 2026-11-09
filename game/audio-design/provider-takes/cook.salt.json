@@ -1,0 +1,9 @@
+{
+  "id": "cook.salt",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 3.5,
+  "direction": "Fine sea salt falls steadily from a wooden shaker onto raw fish. Delicate dry grains on soft flesh, warm fine granular body, minute wood friction. Even continuous contact. No rattle, hiss, clicks, pulses or gaps. Loopable.",
+  "generatedAt": "2026-11-09T07:02:56.981Z",
+  "sha256": "677e3b543c9b9bf172c85103f51fe28b0dce0fbd6d97970b8d6f7754387d0140"
+}

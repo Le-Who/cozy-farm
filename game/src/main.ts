@@ -2,6 +2,7 @@ import { renderFestivalPanel } from './bay-festival-ui'
 import { festivalTraditions, type FestivalTradition } from './bay-festival'
 import { beginFestival, contributeFestival, finishFestival, getFestivalChoices, getFestivalStatus, getShellAt } from './farm'
 import { playBaySound } from './game-sound'
+import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
@@ -26,6 +27,7 @@ import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type Signature
 import { communityBoard, communityIntent, neighborDetail, type CommunityArt } from './community-ui'
 import {
   boatPrice,
+  fishDailyLimit, villageGuestTarget,
   bedsPerRow,
   buildingDefinitions,
   buildingIds,
@@ -809,7 +811,7 @@ function harborCard() {
 
 function groveDockActions() {
   if (farm.island !== 'grove') return ''
-  return nav(button('Проект причала', 'project-dock', true, { secondary: true }),
+  return nav(button('Причал рощи', 'project-dock', true, { secondary: true }),
     getHarborOrder(farm) ? button('Заказы гавани', 'visit-harbor') : '')
 }
 
@@ -825,14 +827,19 @@ function projectCard(id: ProjectId) {
     : deliveryItems(project.items)
   const reward = `<span class="order-reward">${icon('coin')} ${project.reward}<span class="sr-only"> ${ruPlural(project.reward, ['монета','монеты','монет'])}</span></span>`
   const away=farm.island!==(fair?'home':'grove')
-  const action = !complete&&away ? button(`${fair?'Домой':'В рощу'}`,'sail',farm.boatOwned,{value:fair?'home':'grove'}) : complete
-    ? `<p class="order-done">✓ ${fair ? '+1 монета за продажу урожая' : '4 рыбы в день в роще'}</p>${!fair && farm.island === 'grove' ? button('На Цветочный мыс','sail',true,{value:'cape'}) : ''}`
+  const benefit = fair
+    ? (complete ? 'Кондитерская открыта. Урожай на рынке стоит на 1 монету дороже.' : 'Откроет кондитерскую и прибавит 1 монету к цене урожая на рынке.')
+    : (complete ? `Теперь в роще можно поймать до ${getFishLimit(farm,'grove')} рыб за день. Раньше — ${fishDailyLimit}.` : `Откроет путь на Цветочный мыс. В роще можно будет ловить до ${fishDailyLimit+1} рыб за день вместо ${fishDailyLimit}.`)
+  const action = !complete && away && !farm.boatOwned ? button('Как получить лодку','project-boat')
+    : !complete&&away ? button(fair?'К стройке дома':'К причалу рощи','sail',farm.boatOwned,{value:fair?'home':'grove'}) : complete
+    ? (!fair && farm.island === 'grove' ? button('На Цветочный мыс','sail',true,{value:'cape'}) : '')
     : project.status === 'locked' && fair
       ? button('Улучшения', 'upgrades', true, { secondary: true })
-      : button('Доставить', 'deliver-project', project.status === 'ready', { value: id, context: project.name })
+      : button('Внести припасы', 'deliver-project', project.status === 'ready', { value: id, context: project.name })
   return `<section class="market-order project-card" aria-labelledby="${fair ? 'project-fair' : 'dialog-title'}">
     ${fair ? `<header class="order-header"><h2 id="project-fair">${project.name}</h2>${reward}</header>` : ''}
-    <ul class="ingredients project-items">${requirements}</ul>
+    <p class="project-benefit">${complete ? '<b>✓ Построено</b> · ' : ''}${benefit}</p>
+    ${complete ? '' : `<ul class="ingredients project-items">${requirements}</ul>`}
     ${fair || complete ? action : `<footer class="project-footer">${reward}${action}</footer>`}
   </section>`
 }
@@ -865,10 +872,16 @@ function irrigationRows() {
 
 function marketCards() {
   const balance = `<p class="coin-balance" aria-label="${quantity(farm.coins, 'монета')}">${icon('coin')} ${numberFormat.format(farm.coins)}</p>`
-  const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Проекты']])
+  const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
   const controls = `<div class="market-controls">${balance}${tabs}</div>`
   if (marketTab === 'orders') return controls + (isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : '') + marketOrders()
-  if (marketTab === 'projects') return controls + projectCard('fair') + nav(button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair')), button('Живая бухта', 'village-project', true, { secondary: true }), button('Причал', 'project-dock', true, { secondary: true }))
+  if (marketTab === 'projects') {
+    const dockBuilt=isProjectComplete(farm,'dock')
+    return controls + projectCard('fair') + `<ul class="dialog-list building-destinations">
+      ${row('tool-boat','Причал рощи',dockBuilt ? 'Путь на Цветочный мыс открыт' : 'Откроет путь на Цветочный мыс',button(dockBuilt?'К причалу':'Что внести','project-dock',true,{secondary:true}))}
+      ${row('ui-bea','Лавандовая гавань',farm.village.built ? 'Домики соседей построены' : 'Домики для Беа и Финна',button(farm.village.built?'В гавань':'Что внести',farm.village.built?'sail':'village-project',true,{value:farm.village.built?'village':undefined,secondary:true}))}
+    </ul>` + (isProjectComplete(farm,'fair') ? nav(button('Кондитерская','workshop',true,{secondary:true})) : '')
+  }
   if (marketTab === 'sell') {
     const sale = getSale(farm)
     const listings=goods().filter(({count,group})=>count>0&&(marketSellGroup==='all'||group===marketSellGroup))
@@ -1067,7 +1080,7 @@ function mountFishing() {
       fishingToken = undefined
       island.setFishing(false)
       if (token === undefined) return false
-      if(perform(() => finishFishingTrip(farm, token, catches), false, true) && catches.length)playBaySound('fish.land')
+      perform(() => finishFishingTrip(farm, token, catches), false, true)
       return getFishAction(farm).available
     },
   })
@@ -1085,9 +1098,9 @@ function villageProjectCard() {
   const finishing = unlocked && farm.coins >= project.coins && project.items.every(({item, delivered, available}) => delivered + available >= item.quantity)
   const buildAction = finishing || project.items.every(({item, delivered}) => delivered >= item.quantity)
   return `<div class="harbour-preview"><img src="${iconUrl('village-plate')}" alt="Домики, мастерская и стол для ужина в Лавандовой гавани"></div>
-    ${unlocked ? '' : `<ul class="dialog-list">${row('ui-market', 'Гости ярмарки', `${Math.min(3, farm.fairGuestsServed)}/3`)}${isProjectComplete(farm, 'fair') ? '' : row('ui-market', 'Ярмарка', '', button('Проекты', 'fair-project'))}</ul>`}
+    ${unlocked ? '' : `<ul class="dialog-list">${row('ui-market', 'Гости ярмарки', `${Math.min(villageGuestTarget, farm.fairGuestsServed)}/${villageGuestTarget}`)}${isProjectComplete(farm, 'fair') ? '' : row('ui-market', 'Ярмарка', '', button('К стройке', 'fair-project'))}</ul>`}
     <ul class="ingredients">${deliveryItems(project.items)}</ul>
-    ${nav(button(buildAction ? 'Построить' : 'Доставить', 'build-village', project.status === 'ready', buildAction ? { cost: { icon: 'coin', amount: project.coins } } : {}), button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair'), { secondary: true }))}`
+    ${nav(button(buildAction ? 'Построить' : 'Внести припасы', 'build-village', project.status === 'ready', buildAction ? { cost: { icon: 'coin', amount: project.coins } } : {}), button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair'), { secondary: true }))}`
 }
 
 function neighboursCard() {
@@ -1151,7 +1164,7 @@ function goBack() {
   signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;cookingMode=previous.cookingMode
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;signatureFamily=previous.signatureFamily
-  openPanel(previous.panel,false)
+  openPanel(previous.panel,false,farm.island,'page.fold')
   requestAnimationFrame(()=>{
     dialogContent.scrollTop=previous.scroll
     const target=Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('button')).find(button=>focusKey(button)===previous.focus&&!button.disabled)
@@ -1198,7 +1211,7 @@ function openShopScene(host:HTMLElement) {
   const options:BayShopOptions = {state:farm.bayShop,products,catalog,
     takeStock:(id,n)=>{ const reserved=reserveShopGoods(farm,id,n); if(reserved)status(); return reserved },
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
-    onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('market.sell')},onChange:saveHarbour,onClose:leaveScene,
+    onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
     onOpenFreight:()=>openPanel('bay-freight'),
     performanceBonus:()=>Number(farm.concertDay === farm.day),
     renderProduct(product,cls) {
@@ -1225,7 +1238,7 @@ function openMusicScene(host:HTMLElement) {
       saveHarbour()
       return true
     },
-    onRequestMaterials:()=>{const level=installGardenInstrument(farm);if(level!==undefined){saveHarbour();bayAudio.playEvent('ui.confirm')}return level},
+    onRequestMaterials:()=>{const level=installGardenInstrument(farm);if(level!==undefined){saveHarbour();bayAudio.playEvent('menu.accept')}return level},
     onOpenFreight:()=>{selectedWarehouse='village';openPanel('bay-freight')},
   })
 }
@@ -1388,6 +1401,7 @@ function drawPanel() {
       break
     }
     case 'coop':
+      void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
       dialogContent.innerHTML = `<div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>
         ${button('Улучшения', 'upgrades', true, { secondary: true })}</div>
         <ul class="dialog-list">
@@ -1402,7 +1416,7 @@ function drawPanel() {
             button('Упаковать', 'pack-egg-basket', farm.eggs >= eggsPerBasket, { context: 'корзина яиц' })) : ''}
         </ul><div class="hen-grid" role="group" aria-label="Курочки">${Array.from({ length: farm.flockSize }, (_, index) => {
             const petted = farm.pettedChickens.includes(index)
-            return `<button type="button" class="hen-card" data-action="pet" data-value="${index}"${petted?' disabled':''} aria-label="Курочка ${index+1}, ${petted?'сегодня поглажена':'погладить'}">${icon('tool-hen')}<span>${index+1}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
+            return `<button type="button" class="hen-card" data-action="pet" data-value="${index}" aria-label="Курочка ${index+1}, ${petted?'сегодня поглажена, погладить снова':'погладить'}">${icon('tool-hen')}<span>${index+1}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
           }).join('')}
         </div>`
       break
@@ -1414,7 +1428,7 @@ function drawPanel() {
     case 'journal': {
       const goal = currentTask()
       const groveActivities = farm.island === 'grove'
-        ? row('fish', 'Морской окунь', `Сегодня поймано: ${farm.fishCaughtToday.grove} / ${getFishLimit(farm, 'grove')}`)
+        ? row('tool-rod', 'Рыбалка в роще', `Сегодня поймано: ${farm.fishCaughtToday.grove} / ${getFishLimit(farm, 'grove')}`)
           + row('ui-sea-salt', 'Морская соль', farm.saltGatheredToday ? 'Сегодня собрано' : 'Можно собрать на солончаках')
         : ''
       dialogContent.innerHTML = goal
@@ -1473,7 +1487,7 @@ function drawPanel() {
       let made = false
       workshopGame = createWorkshop(dialogContent.querySelector<HTMLElement>('.workshop-host')!, {
         initialShape: bread ? 'long' : pastryShape, recipe: bread ? 'bread' : 'pastry',
-        onBake(shape) { if (made) return true; if (panel !== 'workshop') return false; made = perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true); if(made)playBaySound('workshop.complete'); return made },
+        onBake(shape) { if (made) return true; if (panel !== 'workshop') return false; made = perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true);  return made },
         onCancel() { if (communityRequest) void resumeCommunityRequest(); else leaveScene() },
       })
       break
@@ -1501,7 +1515,7 @@ function drawPanel() {
           const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
           if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
           return receipt
-        },false,true);if(made)playBaySound('workshop.complete');return made},
+        },false,true);return made},
         onCancel(){if(communityRequest)void resumeCommunityRequest();else if(signature&&made){panelHistory.length=0;openPanel('recipes',false)}else leaveScene()},
       })
       break
@@ -1575,7 +1589,7 @@ function drawPanel() {
       if(slot){
         const definition=treeDefinitions[slot.tree],growing=slot.age<definition.days
         dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong>${growing ? 'До зрелости: ' + quantity(definition.days-slot.age,'ночь') : 'Новые плоды завтра'}</strong>`}
-          ${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):button(farm.island==='home'?'До утра':'Домой',farm.island==='home'?'sleep':'sail',true,{value:farm.island==='home'?undefined:'home',secondary:true})}</div>`
+          ${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):''}</div>`
       }else{
         dialogContent.innerHTML=treeSelector()+`<div class="sapling-options">${treeIds.map(tree=>{
           const definition=treeDefinitions[tree],owned=farm.saplings[tree]>0
@@ -1641,7 +1655,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
   openPanel(next,false)
 }
 
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold') {
   if (island.isCrossing()) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival') && farm.island!=='village') {
@@ -1669,6 +1683,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     status()
   }
   if (next !== panel && next !== 'festival') celebratedFestival=undefined
+  if (panel !== next) playBaySound(cue==='page.unfold' && (next==='guide' || next==='boat') ? 'page.map' : cue,.76,0)
   panel = next
   const miniature = next.startsWith('bay-') || next === 'cookery' || next === 'workshop' || next === 'fishing' || next === 'arrangement'
   island.setViewMode(miniature ? 'minigame' : next === 'cove' ? 'world' : 'dialog')
@@ -1715,7 +1730,7 @@ function refresh() {
 
 function perform(action: () => { ok: boolean; message: string }, dismiss = false, resultVisible = false) {
   const result = action()
-  if (!result.ok)playBaySound('ui.error')
+  if (!result.ok)playBaySound('menu.blocked')
   if (result.ok) {
     if (dismiss && dialog.open) dialog.close()
     try {
@@ -1878,14 +1893,14 @@ function chooseSeed(crop: CropId) {
   }
 }
 
-function activateTarget(target: IslandTarget) {
+function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 'stroke') {
   if (island.isCrossing()) return
   if ((farm.island === 'cape' || farm.island === 'village') && (target.kind === 'tree' || target.kind === 'pier' || target.kind === 'salt')) return
   if ((target.kind === 'shell' || target.kind === 'shoal-find' || target.kind === 'salt') && farm.island !== 'grove') return
   if (target.kind === 'flower') {
     if (farm.island !== 'cape') return
     if (getCapeBloom(farm, target.index) === 'empty') {
-      island.workCape({ kind: 'flower', index: target.index }, () => perform(() => plantCapeFlower(farm, target.index)))
+      island.workCape({ kind: 'flower', index: target.index }, () => { const done = perform(() => plantCapeFlower(farm, target.index)); if (done) playBaySound('field.seed', 1, 0); return done })
     } else {
       island.visit(target)
       openPanel('hive')
@@ -1893,11 +1908,13 @@ function activateTarget(target: IslandTarget) {
     return
   }
   if (target.kind === 'shell' || target.kind === 'shoal-find') {
-    island.pickShore(target, () => {const done=perform(() => target.kind === 'shell' ? collectShell(farm, target.index) : collectShoalFind(farm, target.id));if(done)playBaySound('shore.collect');return done})
+    island.pickShore(target, () => {const done=perform(() => target.kind === 'shell' ? collectShell(farm, target.index) : collectShoalFind(farm, target.id));if(done)playBaySound(target.kind === 'shell' ? 'gather.shell' : 'gather.find', 1, 0);return done})
     return
   }
   if (target.kind === 'bed') {
     const index = target.index
+    const upcomingSound = bedWorkSound(farm.beds[index], getBedAction(farm, index).kind)
+    if (upcomingSound) void bayAudio.primeEvents([upcomingSound])
     if (needsSeedChoice(farm,index)) { requestSeedChoice(index); return }
     island.workBed(index, () => {
       const action = getBedAction(farm, index)
@@ -1907,17 +1924,19 @@ function activateTarget(target: IslandTarget) {
       if (needsSeedChoice(farm,index)) { requestSeedChoice(index); return }
       const action = getBedAction(farm, index)
       if (action.kind !== 'wait' && action.available) activeTool = bedTools[action.kind]
-      if(perform(() => workBed(farm,index)) && action.kind!=='wait')playBaySound('garden.'+action.kind)
+      const sound = bedWorkSound(farm.beds[index], action.kind)
+      if(perform(() => workBed(farm,index)) && sound)playBaySound(sound, 1, 0)
     })
     return
   }
   island.visit(target)
   switch (target.kind) {
     case 'well':
+      void bayAudio.primeEvents(['field.refill', 'field.irrigation'])
       activeTool = 'water'
       status()
       if (farm.buildingLevels.well >= 2) openPanel('irrigation')
-      else perform(() => refillWater(farm)) && playBaySound('well.fill')
+      else perform(() => refillWater(farm)) && playBaySound('field.refill', 1, 0)
       break
     case 'coop':
       activeTool = 'coop'
@@ -1956,17 +1975,19 @@ function activateTarget(target: IslandTarget) {
       openPanel('boat')
       break
     case 'tree':
+      void bayAudio.primeEvents(['orchard.sapling', 'orchard.firm-pick', 'orchard.soft-pick'])
       treeSlot = target.index
       openPanel('tree')
       break
     case 'hen':
       if (farm.pettedChickens.includes(target.index)) {
+        playBaySound(henGesture === 'settle' ? 'flock.settle' : 'flock.stroke', 1, 0)
         notify('Курочка снова радостно кудахчет.')
       } else {
-        perform(() => petChicken(farm, target.index), false, true) && playBaySound('hen.pet')
+        perform(() => petChicken(farm, target.index), false, true) && playBaySound(henGesture === 'settle' ? 'flock.settle' : 'flock.stroke', 1, 0)
       }
       break
-    case 'salt': perform(() => gatherSeaSalt(farm)); break
+    case 'salt': if (perform(() => gatherSeaSalt(farm))) playBaySound('gather.salt', 1, 0); break
   }
 }
 
@@ -2007,7 +2028,7 @@ function useHotbar(tool: Tool) {
       break
     case 'feed':
       island.visit({ kind: 'coop' })
-      if(perform(() => feedChickens(farm)))playBaySound('hen.feed')
+      if(perform(() => feedChickens(farm)))playBaySound('flock.feed', 1, 0)
       break
     case 'basket':
       if (farm.island === 'grove') {
@@ -2095,12 +2116,41 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
   if (hint.notice) notify(hint.notice)
 }
 
+// Scene handlers own material sounds. Fill in a quiet control cue only when the
+// completed gesture has produced neither a sound nor a transition of its own.
+app.addEventListener('click',event=>{
+  if (!(event.target instanceof Element) || island.isCrossing()) return
+  const control=event.target.closest<HTMLElement>('button,summary')
+  if (!control || control.matches(':disabled,[data-instrument],[data-note],[data-step],.bay-music-play')) return
+  const serial=bayAudio.cueSequence, opened=dialog.open, currentPanel=panel
+  const choice=control.matches('[aria-pressed],[role="tab"],[role="checkbox"],summary,[data-slot],[data-tool]')
+  window.setTimeout(()=>{
+    if (serial===bayAudio.cueSequence && opened===dialog.open && currentPanel===panel && !island.isCrossing())
+      playBaySound(choice?'menu.choose':'menu.press',.8,0)
+  },0)
+},true)
+app.addEventListener('change',event=>{
+  if (event.target instanceof Element && event.target.matches('select,input[type="checkbox"],input[type="range"]'))
+    playBaySound('menu.choose',.7)
+})
+let blockedControl: {button: HTMLButtonElement; id:number; x:number; y:number} | undefined
+app.addEventListener('pointerdown',event=>{
+  const button=event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button:disabled') : null
+  blockedControl=button ? {button,id:event.pointerId,x:event.clientX,y:event.clientY} : undefined
+},true)
+app.addEventListener('pointerup',event=>{
+  const tap=blockedControl
+  blockedControl=undefined
+  if(tap && tap.id===event.pointerId && event.target instanceof Node && tap.button.contains(event.target) &&
+      Math.hypot(event.clientX-tap.x,event.clientY-tap.y)<7)playBaySound('menu.blocked',.65,200)
+},true)
+app.addEventListener('pointercancel',()=>{blockedControl=undefined},true)
+
 app.addEventListener('click', async (event) => {
   if (island.isCrossing()) return
   if (!(event.target instanceof Element)) return
   const control = event.target.closest<HTMLButtonElement>('button')
   if (!control || control.disabled) return
-  if(control.dataset.panel || control.dataset.action==='open-panel' || control.dataset.tool)playBaySound('ui.tap',.8)
   if (control.dataset.panel) {
     if (control === taskCard && control.dataset.panel === 'market') marketTab = 'orders'
     const next = control.dataset.panel as Panel
@@ -2128,12 +2178,12 @@ app.addEventListener('click', async (event) => {
   switch (action) {
     case 'festival-begin': {
       const tradition=festivalTraditions.find(id=>id===value)
-      if(tradition){celebratedFestival=undefined; if(perform(()=>beginFestival(farm,tradition),false,true)) playBaySound('ui.confirm')}
+      if(tradition){celebratedFestival=undefined; if(perform(()=>beginFestival(farm,tradition),false,true)) playBaySound('menu.accept')}
       break
     }
     case 'festival-contribute': {
       const [requirement,alternative]=(value??'').split('|')
-      if(perform(()=>contributeFestival(farm,requirement,alternative),false,true)) playBaySound('freight.crate',.65)
+      if(perform(()=>contributeFestival(farm,requirement,alternative),false,true)) playBaySound('harbour.crate',.65)
       break
     }
     case 'festival-finish': {
@@ -2143,7 +2193,7 @@ app.addEventListener('click', async (event) => {
       const coinsBefore= farm.coins
       const result=finishFestival(farm)
       if(result.ok){ celebratedFestival=current.tradition; celebrationReceipt={effect,coins:farm.coins-coinsBefore} }
-      if(perform(()=>result,false,true)) playBaySound('workshop.complete')
+      if(perform(()=>result,false,true)) playBaySound('menu.accept')
       break
     }
     case 'festival-continue': celebratedFestival=undefined;drawPanel();break
@@ -2193,12 +2243,12 @@ app.addEventListener('click', async (event) => {
     case 'freight-deposit':
     case 'freight-withdraw': {
       const [port,id,n]=(value ?? '').split('|')
-      if(perform(()=>transferBayGoods(farm,action==='freight-deposit'?'deposit':'withdraw',port,id,Number(n))))bayAudio.playEvent('freight.crate')
+      if(perform(()=>transferBayGoods(farm,action==='freight-deposit'?'deposit':'withdraw',port,id,Number(n))))bayAudio.playEvent('harbour.crate')
       break
     }
     case 'freight-start': case 'freight-pause': case 'freight-mode': case 'freight-route-port':
     case 'freight-load': case 'freight-priority': case 'freight-destination': {
-      if(perform(()=>freightControl(farm.freight,action!,value??'',farm.day,openedFreightPorts(farm))??{ok:false,message:'Выберите рейс.'}) && action==='freight-start')bayAudio.playEvent('ferry.depart')
+      if(perform(()=>freightControl(farm.freight,action!,value??'',farm.day,openedFreightPorts(farm))??{ok:false,message:'Выберите рейс.'}) && action==='freight-start')bayAudio.playEvent('harbour.castoff')
       break
     }
     case 'open-intent': {
@@ -2302,7 +2352,7 @@ app.addEventListener('click', async (event) => {
     case 'batch-signature':if(value)perform(()=>repeatSignature(farm,value!,undefined,3),false,true);break
     case 'favorite-signature':if(value)perform(()=>favoriteSignature(farm,value!),false,true);break
     case 'forget-signature':if(value)perform(()=>forgetSignature(farm,value!),false,true);break
-    case 'sell-signature':if(value)perform(()=>sellSignature(farm,value!),false,true);break
+    case 'sell-signature':if(value && perform(()=>sellSignature(farm,value!),false,true))playBaySound('trade.receive');break
     case 'use-signature':if(value)perform(()=>useSignature(farm,value!),false);break
     case 'taste-signature':{const id=residentIds.find(id=>id===control.dataset.resident);if(value&&id)perform(()=>tasteSignature(farm,value!,id),false);break}
     case 'supper-signature':if(value)perform(()=>deliverSignature(farm,value!),false);break
@@ -2371,16 +2421,20 @@ app.addEventListener('click', async (event) => {
       if (lane) perform(() => deliverMarketOrder(farm, lane), false, farm.progress.sell > 0)
       break
     }
+    case 'project-boat': openPanel('boat',true,'grove');break
     case 'project-dock': openPanel('dock-project');break
     case 'visit-harbor': openPanel('harbor');break
-    case 'deliver-harbor': perform(() => deliverHarborOrder(farm), false, true); break
+    case 'deliver-harbor': if(perform(()=>deliverHarborOrder(farm),false,true))playBaySound(getHarborOrder(farm)?.status==='completed'?'trade.receive':'harbour.crate'); break
     case 'deliver-project': {
       const id = projectIds.find((project) => project === value)
       if (!id) break
       const project = getProject(farm, id)
       const finishing = project.status === 'ready' && project.items.every(({ item, delivered, available }) =>
         delivered + available === item.quantity)
-      if (perform(() => deliverProject(farm, id), finishing, true) && isProjectComplete(farm, id)) island.showProject(id)
+      if (perform(() => deliverProject(farm,id),false,!finishing)) {
+        playBaySound(finishing?'build.finish':'harbour.crate')
+        if(finishing)island.showProject(id)
+      }
       break
     }
     case 'bag-tab':
@@ -2397,15 +2451,15 @@ app.addEventListener('click', async (event) => {
     case 'preview-seed':
       if (value && cropIds.includes(value as CropId)) chooseSeed(value as CropId)
       break
-    case 'sell': if(perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('market.sell'); break
-    case 'sell-item': if (value && perform(() => sellMarketItem(farm,value),false,farm.progress.sell>0))playBaySound('market.sell'); break
-    case 'buy-feed': if(perform(() => buyFeed(farm)))playBaySound('market.buy'); break
+    case 'sell': if(perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('trade.receive'); break
+    case 'sell-item': if (value && perform(() => sellMarketItem(farm,value),false,farm.progress.sell>0))playBaySound('trade.receive'); break
+    case 'buy-feed': if(perform(() => buyFeed(farm)))playBaySound('trade.pay'); break
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
     case 'buy-seeds':
-      if (crop && perform(() => buySeeds(farm,crop))){playBaySound('market.buy');if(panel==='seeds')chooseSeed(crop)}
+      if (crop && perform(() => buySeeds(farm,crop))){playBaySound('trade.pay');if(panel==='seeds')chooseSeed(crop)}
       break
-    case 'feed': if(perform(() => feedChickens(farm), false, farm.progress.feed > 0))playBaySound('hen.feed'); break
-    case 'collect': if(perform(() => collectEggs(farm)))playBaySound('hen.egg'); break
+    case 'feed': if(perform(() => feedChickens(farm), false, farm.progress.feed > 0))playBaySound('flock.feed', 1, 0); break
+    case 'collect': if(perform(() => collectEggs(farm)))playBaySound('flock.eggs', 1, 0); break
     case 'pack-egg-basket': arrangementRequest = { kind: 'packing', mode: 'eggs' }; openPanel('arrangement'); break
     case 'pack-egg-crate': arrangementRequest = { kind: 'packing', mode: 'crate' }; openPanel('arrangement'); break
     case 'incubate-egg': perform(() => incubateEgg(farm)); break
@@ -2414,9 +2468,9 @@ app.addEventListener('click', async (event) => {
       const flockSize = farm.flockSize
       const oldShip=farm.freight.ship
       const rested=perform(() => endDay(farm),true)
-      if(rested){playBaySound(oldShip.phase==='sailing'&&farm.freight.ship.phase==='docked'?'ferry.arrive':'rest.dawn')}
+      if(rested){playBaySound(oldShip.phase==='sailing'&&farm.freight.ship.phase==='docked'?'harbour.berth':'daybreak.shutters')}
       if (rested && farm.flockSize > flockSize) {
-        playBaySound('hen.hatch');island.showHatch()
+        playBaySound('flock.hatch', 1, 0);island.showHatch()
         notify('В стае появилась новая курочка.')
       }
       break
@@ -2424,7 +2478,7 @@ app.addEventListener('click', async (event) => {
     case 'refill':
       island.visit({ kind: 'well' })
       activeTool = 'water'
-      perform(() => refillWater(farm)) && playBaySound('well.fill')
+      perform(() => refillWater(farm)) && playBaySound('field.refill', 1, 0)
       break
     case 'visit-well': activateTarget({ kind: 'well' }); break
     case 'irrigation-mode':
@@ -2435,7 +2489,7 @@ app.addEventListener('click', async (event) => {
       const row = Number(value)
       const pair = control.dataset.action === 'irrigate-pair'
       const { targets } = pair ? getIrrigationPair(farm, row) : getIrrigationRow(farm, row)
-      if (perform(() => pair ? irrigatePair(farm, row) : irrigateRow(farm, row), true)) island.showIrrigation(targets)
+      if (perform(() => pair ? irrigatePair(farm, row) : irrigateRow(farm, row), true)) { island.showIrrigation(targets); playBaySound('field.irrigation', 1, 0) }
       break
     }
     case 'visit-coop': activateTarget({ kind: 'coop' }); break
@@ -2444,12 +2498,12 @@ app.addEventListener('click', async (event) => {
     case 'visit-hive': activateTarget({ kind: 'hive' }); break
     case 'visit-honey-kitchen': activateTarget({ kind: 'honey-kitchen' }); break
     case 'cape-upgrade': openPanel('cape-upgrade'); break
-    case 'build-cape-upgrade': perform(() => upgradeCape(farm), true); break
+    case 'build-cape-upgrade': if(perform(()=>upgradeCape(farm),true))playBaySound('build.finish'); break
     case 'visit-guest': activateTarget({ kind: 'guest' }); break
     case 'bay-display': activateTarget({ kind: 'bay-display' }); break
     case 'collect-honey':
       closeDialog()
-      island.workCape({ kind: 'hive' }, () => {const done=perform(() => collectCapeHoney(farm));if(done)playBaySound('apiary.collect');return done})
+      island.workCape({ kind: 'hive' }, () => {const done=perform(() => collectCapeHoney(farm));if(done)playBaySound('apiary.frame', 1, 0);return done})
       break
     case 'serve-guest': perform(() => serveFairGuest(farm), true); break
     case 'visit-boat': activateTarget({ kind: 'boat' }); break
@@ -2503,7 +2557,7 @@ app.addEventListener('click', async (event) => {
     case 'village-meal':
       if (value && workshopShapes.includes(value as WorkshopShape)) pastryShape = value as WorkshopShape
       openPanel('village-meal'); break
-    case 'build-village': perform(() => contributeVillage(farm), false, true); break
+    case 'build-village': if(perform(()=>contributeVillage(farm),false,true))playBaySound(farm.village.built?'build.finish':'harbour.crate'); break
     case 'village-slot': villageSlot = Number(value) === 1 ? 1 : 0; drawPanel(); dialogContent.scrollTop=0; dialogContent.querySelector<HTMLButtonElement>(`[data-action="village-slot"][data-value="${villageSlot}"]`)?.focus({preventScroll:true}); break
     case 'invite-resident': {
       const id = residentIds.find(id => id === value)
@@ -2526,7 +2580,7 @@ app.addEventListener('click', async (event) => {
       if (id) perform(() => runResidentService(farm, id, pastryShape), true, true)
       break
     }
-    case 'buy-boat': perform(() => buyBoat(farm), false, true); break
+    case 'buy-boat': if(perform(()=>buyBoat(farm),false,true))playBaySound('trade.pay'); break
     case 'sail': {
       const destination = islandIds.find((id) => id === value)
       if (destination && destination !== farm.island && canSailTo(farm, destination)) {
@@ -2542,7 +2596,7 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
-    case 'buy-plant-tree': {const tree=treeIds.find(id=>id===value);if(tree)perform(()=>buyAndPlantTree(farm,treeSlot,tree));break}
+    case 'buy-plant-tree': {const tree=treeIds.find(id=>id===value);if(tree && perform(()=>buyAndPlantTree(farm,treeSlot,tree)))playBaySound('orchard.sapling', 1, 0);break}
     case 'buy-sapling': {
       const tree = treeIds.find((id) => id === value)
       if (tree) perform(() => buySapling(farm, tree))
@@ -2550,13 +2604,17 @@ app.addEventListener('click', async (event) => {
     }
     case 'plant-tree': {
       const tree = treeIds.find((id) => id === value)
-      if (tree) perform(() => plantTree(farm, treeSlot, tree))
+      if (tree && perform(() => plantTree(farm, treeSlot, tree))) playBaySound('orchard.sapling', 1, 0)
       break
     }
-    case 'pick-fruit': if(perform(() => pickFruit(farm, treeSlot)))playBaySound('orchard.pick'); break
+    case 'pick-fruit': {
+      const tree = (farm.island === 'home' || farm.island === 'grove') && farm.trees[farm.island][treeSlot]
+      if(tree && perform(() => pickFruit(farm, treeSlot)))playBaySound(orchardPickSound(tree.tree), 1, 0)
+      break
+    }
     case 'upgrade-building': {
       const building = buildingIds.find((id) => id === value)
-      if (building && perform(() => upgradeBuilding(farm, building), true)) island.showUpgrade(building)
+      if (building && perform(() => upgradeBuilding(farm, building), true)) { island.showUpgrade(building); playBaySound('build.finish') }
       break
     }
     case 'cook': {
@@ -2603,6 +2661,7 @@ dialog.addEventListener('click', (event) => {
 })
 dialog.addEventListener('close', () => {
   if (!dialog.open) {
+    playBaySound('page.fold',.72,0)
     island.setViewMode('world')
     app.dataset.scene=''
     island.setCoveFocus(false)
@@ -2651,7 +2710,7 @@ function activateSound() {
   void bayAudio.unlock().then(ready => {
     if (!ready || firstSoundsPrepared || bayAudio.settings.muted || !bayAudio.settings.effects) return
     firstSoundsPrepared = true
-    return bayAudio.primeEvents(['ui.tap','ui.error','ui.confirm','footsteps.grass'])
+    return bayAudio.primeEvents(['menu.press','menu.choose','page.unfold','page.fold','page.map','menu.blocked','field.step'])
   })
 }
 document.addEventListener('pointerdown',activateSound,{capture:true})

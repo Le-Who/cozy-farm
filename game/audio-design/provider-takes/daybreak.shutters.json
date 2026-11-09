@@ -1,0 +1,9 @@
+{
+  "id": "daybreak.shutters",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.4,
+  "direction": "An affectionate morning transition: a warm, softly brushed window curtain parts, two tiny friendly garden sparrow chirrups outside answer each other. Quiet close cloth and distant birds, one short breath of fresh air. Smooth edges, no sustained ambience, no jingle or alarm.",
+  "generatedAt": "2026-11-09T07:14:55.748Z",
+  "sha256": "abc401de6473c3487f6c0c60714cfe422364f0324aa478679c94be0a97965ab7"
+}

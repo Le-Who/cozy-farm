@@ -1,0 +1,9 @@
+{
+  "id": "trade.pay",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.85,
+  "direction": "Two small copper coins slide off a thumb onto an oiled wooden counter. A soft paired metal clink and immediate felt-damped stop. Modest purchase, warm dry close perspective. No high ringing tail or flourish.",
+  "generatedAt": "2026-11-09T07:03:57.089Z",
+  "sha256": "d6d9c587d07f84c4bb833e21cfff9d5ceace94cf24b75eaacc5fb758539e6158"
+}

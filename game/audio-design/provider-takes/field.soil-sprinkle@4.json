@@ -1,0 +1,9 @@
+{
+  "id": "field.soil-sprinkle@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.95,
+  "direction": "A feather-soft brief watery patter of many little irregular droplets falling onto a patch of damp yielding garden soil. Quiet close liquid detail, a warm diffuse gentle scatter with a smooth rounded onset. One tender watering gesture lasting less than a second, then quiet.",
+  "generatedAt": "2026-11-09T07:42:24.408Z",
+  "sha256": "15f0fe1369702fcb8748edbd07535e5191ed2c0161bd7a042b263ecf6631268e"
+}

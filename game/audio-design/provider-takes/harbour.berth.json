@@ -1,0 +1,9 @@
+{
+  "id": "harbour.berth",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.2,
+  "direction": "A small wooden ferry noses into a rope fender. Gentle low hull knock then water folds back once against the pier. Arrival feels settled and final. Close friendly scale, no seagulls, engine, musical bells or continuous waves.",
+  "generatedAt": "2026-11-09T07:04:08.739Z",
+  "sha256": "018bb141ff0c709545e5c5dac2016884c2727b65f734992932c03c8522069bfb"
+}

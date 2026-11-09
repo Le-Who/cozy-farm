@@ -1,0 +1,9 @@
+{
+  "id": "angling.cast",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "One small bamboo fishing rod makes a relaxed forward casting gesture: a short soft airy swish and a rounded woody flex, finishing quietly. Dry close detail, warm intimate scale. No tape ripping, adhesive peeling, zipper, ratchet, reel whine, metallic twang, splash or cartoon whistle.",
+  "generatedAt": "2026-11-09T07:01:05.321Z",
+  "sha256": "dce5a984be8eff9f8635edb1b94ffff44cbeed60cb942fd336a072109383a70a"
+}

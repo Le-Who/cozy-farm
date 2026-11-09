@@ -1,0 +1,9 @@
+{
+  "id": "field.till",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.55,
+  "direction": "One compact garden hoe stroke: small dull iron edge bites loose dark loam, crisp granular soil fracture then a short gritty pull free. Immediate earthy crunch at the start, weighty but gentle. One stroke only, no footstep, no metallic ring, no swish, no ambience.",
+  "generatedAt": "2026-11-09T07:01:51.319Z",
+  "sha256": "b7512794251de6c035fa7a3eeaaa0cd5e08286d3920fd89ce08610ffbda17992"
+}

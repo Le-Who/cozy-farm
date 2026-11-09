@@ -20,6 +20,38 @@ export type FishingModel = {
 export const fishingDepth = 30;
 export const fishingHalfWidth = 4.8;
 
+export const fishingCatchSounds = ['angling.snag-fish-light', 'angling.snag-fish-heavy', 'angling.snag-shell', 'angling.snag-stone', 'angling.snag-weed', 'angling.snag-boot'] as const;
+export type FishingCatchSound = typeof fishingCatchSounds[number];
+export type FishingSoundFrame = Pick<FishingModel, 'phase' | 'contacts' | 'deepest'> & { catches: FishingCatchSound[] };
+export const fishingSoundBank = ['angling.cast', 'angling.submerge', 'angling.brush', 'angling.turn', ...fishingCatchSounds, 'angling.lower', 'angling.raise', 'angling.land', 'angling.empty'] as const;
+export type FishingSound = typeof fishingSoundBank[number];
+
+export function fishingCatchSound(fish: FishingCatch): FishingCatchSound {
+  const loot = fishingCatchLoot(fish);
+  if (loot.kind === 'shell') return 'angling.snag-shell';
+  if (loot.kind === 'junk') return loot.item === 'rock' ? 'angling.snag-stone' : loot.item === 'weed' ? 'angling.snag-weed' : 'angling.snag-boot';
+  return fishingCatchScale(fish) < 1 ? 'angling.snag-fish-light' : 'angling.snag-fish-heavy';
+}
+
+export function fishingSoundFrame(model: FishingModel): FishingSoundFrame {
+  return { phase: model.phase, contacts: model.contacts, deepest: model.deepest,
+    catches: model.caught.map(id => fishingCatchSound(model.fish.find(fish => fish.id === id)!)) };
+}
+
+/** Physical transitions only: a contact cannot sound like a catch, and a paused frame stays quiet. */
+export function fishingSoundEvents(before: FishingSoundFrame, after: FishingSoundFrame): FishingSound[] {
+  const sounds: FishingSound[] = [];
+  if (before.phase === 'ready' && after.phase === 'descending') sounds.push('angling.cast');
+  if (before.deepest < .65 && after.deepest >= .65) sounds.push('angling.submerge');
+  const contact = after.contacts > before.contacts;
+  if (contact) sounds.push('angling.brush');
+  // A collision already explains an automatic reversal; avoid two competing impacts.
+  if (before.phase === 'descending' && after.phase === 'ascending' && !contact) sounds.push('angling.turn');
+  sounds.push(...after.catches.slice(before.catches.length));
+  if (before.phase !== 'done' && after.phase === 'done') sounds.push(after.catches.length ? 'angling.land' : 'angling.empty');
+  return sounds;
+}
+
 /** Depth is measured in simulation units: four displayed metres per unit. */
 export function fishingLootAtDepth(depth: number, roll: number, common: 'perch' | 'seaBass' = 'perch', habitat?: FishingHabitat): FishingLoot {
   const deep = Math.max(0, Math.min(1, depth / fishingDepth));

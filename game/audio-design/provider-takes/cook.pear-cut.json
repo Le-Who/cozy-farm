@@ -1,0 +1,9 @@
+{
+  "id": "cook.pear-cut",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "One knife stroke cuts a firm ripe pear on wood. Crisp gentle skin break, fine fruit fibre crunch, muted board contact, clean release. One complete immediate action. No wet squelch, slurp, gas or hard chop.",
+  "generatedAt": "2026-11-09T07:03:32.198Z",
+  "sha256": "5186b9ab67ae2daed6d53637e41889dda8beae54b39144f19c6262d9333e02d3"
+}

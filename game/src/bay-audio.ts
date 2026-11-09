@@ -1,6 +1,6 @@
 import type { BayInstrumentId } from './bay-music-model'
 
-export type BaySample = { url: string; rootMidi?: number; gain?: number; tuned?: boolean; loop?: boolean }
+export type BaySample = { url: string; revision?: string; rootMidi?: number; gain?: number; tuned?: boolean; loop?: boolean }
 export type BaySampleManifest = Record<string, BaySample | BaySample[]>
 export type BayAudioSettings = { muted: boolean; volume: number; music: number; effects: number }
 type Voice = { sources: AudioScheduledSourceNode[]; envelope: GainNode; end: number; music: boolean; event?: string }
@@ -18,10 +18,12 @@ export class BayAudio {
   private samples = new Map<string, AudioBuffer>()
   private pending = new Map<string, Promise<void>>()
   private pendingEvents = new Set<string>()
-  private contacts = new Map<string, { intensity: number; voice?: Voice }>()
+  private contacts = new Map<string, { intensity: number; gain?: number; voice?: Voice }>()
   private failed = new Map<string, number>()
   private voices = new Set<Voice>()
-  private variation = new Map<string, number>()
+  private recentTakes = new Map<string, string[]>()
+  private cueSerial = 0
+  get cueSequence(): number { return this.cueSerial }
   private played = 0
   private eventRevision = 0
   private manifestPromise: Promise<boolean> | null = null
@@ -93,13 +95,17 @@ export class BayAudio {
 
   private async fetchManifest(url: string): Promise<boolean> {
     try {
-      const result = await fetch(url)
+      const result = await fetch(url,{cache:'no-cache'})
       if (!result.ok) return false
       const value: unknown = await result.json()
       if (!value || typeof value !== 'object' || Array.isArray(value)) return false
       const valid: BaySampleManifest = {}
       for (const [id, entry] of Object.entries(value)) {
-        const entries = (Array.isArray(entry) ? entry : [entry]).filter((sample): sample is BaySample => !!sample && typeof sample === 'object' && typeof sample.url === 'string').map(sample => ({...sample, url:new URL(sample.url, result.url || new URL(url, location.href).href).href}))
+        const entries = (Array.isArray(entry) ? entry : [entry]).filter((sample): sample is BaySample => !!sample && typeof sample === 'object' && typeof sample.url === 'string').map(sample => {
+          const address=new URL(sample.url, result.url || new URL(url, location.href).href)
+          if(sample.revision)address.searchParams.set('v',sample.revision)
+          return {...sample,url:address.href}
+        })
         if (entries.length) valid[id] = entries
       }
       this.loadSampleManifest(valid)
@@ -155,16 +161,22 @@ export class BayAudio {
     }
     const existing = this.contacts.get(id)
     if (existing) {
-      existing.intensity = finiteLevel(intensity, 1)
+      const next = finiteLevel(intensity,1)
+      if (!existing.voice || existing.gain === undefined) existing.intensity = next
+      else if (Math.abs(next-existing.intensity) > .015) {
+        existing.voice.envelope.gain.setTargetAtTime(next * existing.gain,this.currentTime,.035)
+        existing.intensity = next
+      }
       return
     }
-    const contact: { intensity: number; voice?: Voice } = { intensity: finiteLevel(intensity, 1) }
+    const contact: { intensity: number; gain?: number; voice?: Voice } = { intensity: finiteLevel(intensity, 1) }
     this.contacts.set(id, contact)
     const begin = () => {
       if (this.contacts.get(id) !== contact || this.context?.state !== 'running' || this.settings.muted) return
       const entry = this.manifest[id], takes = (Array.isArray(entry) ? entry : entry ? [entry] : []).filter(sample => sample.loop && this.samples.has(sample.url))
       if (!takes.length) return
       const sample = this.eventTake(id, takes), voice = this.makeVoice(this.currentTime, 8, contact.intensity * .7 * finiteLevel(sample.gain, 1), false)
+      contact.gain = .7 * finiteLevel(sample.gain, 1)
       voice.end = Infinity; voice.event = id; voice.envelope.gain.cancelScheduledValues(this.currentTime)
       voice.envelope.gain.setValueAtTime(0, this.currentTime); voice.envelope.gain.linearRampToValueAtTime(contact.intensity * .7 * finiteLevel(sample.gain, 1), this.currentTime + .035)
       const source = this.context.createBufferSource(); source.buffer = this.samples.get(sample.url)!; source.loop = true
@@ -206,12 +218,17 @@ export class BayAudio {
   }
 
   private eventTake(id: string, takes: BaySample[]): BaySample {
-    const next=(this.variation.get(id) ?? 0) % takes.length
-    this.variation.set(id,next+1)
-    return takes[next]
+    if (takes.length === 1) return takes[0]
+    const recent=this.recentTakes.get(id) ?? []
+    const excluded=recent.slice(takes.length >= 4 ? -2 : -1)
+    const pool=takes.filter(take=>!excluded.includes(take.url))
+    const next=pool[Math.floor(Math.random()*pool.length)] ?? takes[0]
+    this.recentTakes.set(id,[...recent.slice(-1),next.url])
+    return next
   }
 
   playEvent(id: string, intensity = 1, deadline = performance.now() + 160): void {
+    this.cueSerial++
     if (!this.context || this.context.state !== 'running' || this.settings.muted || this.settings.effects === 0 || this.settings.volume === 0) return
     const entry = this.manifest[id], choices = (Array.isArray(entry) ? entry : entry ? [entry] : []).filter(sample => !sample.loop && this.samples.has(sample.url))
     if (choices.length) {
@@ -257,9 +274,21 @@ export class BayAudio {
   private sampleVoice(sample: BaySample, time: number, velocity: number, music: boolean, midi?: number, event?: string): void {
     const ctx = this.context!, buffer = this.samples.get(sample.url)!
     const rate = midi !== undefined && sample.rootMidi !== undefined ? Math.pow(2, (midi - sample.rootMidi) / 12) : 1
-    const duration = Math.min(8, buffer.duration / rate), voice = this.makeVoice(time, duration, velocity * finiteLevel(sample.gain, 1), music)
+    const organic = !music && event && /^(flock\.|field\.|gather\.|orchard\.)/.test(event)
+    const speed = organic ? rate*(.965 + Math.random()*.07) : rate
+    const duration = Math.min(8, buffer.duration / speed), voice = this.makeVoice(time, duration, velocity * finiteLevel(sample.gain, 1), music)
+    if (event?.startsWith('flock.')) {
+      const sounding = [...this.voices].filter(v=>v.event?.startsWith('flock.') && v.end > time+.025)
+      if (sounding.length >= 3) {
+        const oldest=sounding[0]
+        oldest.end=time+.024
+        oldest.envelope.gain.cancelScheduledValues(time)
+        oldest.envelope.gain.setTargetAtTime(0,time,.005)
+        for(const node of oldest.sources) node.stop(oldest.end)
+      }
+    }
     voice.event = event
-    const source = ctx.createBufferSource(); source.buffer = buffer; source.playbackRate.value = rate
+    const source = ctx.createBufferSource(); source.buffer = buffer; source.playbackRate.value = speed
     source.connect(voice.envelope); voice.sources.push(source); source.start(time); source.stop(voice.end)
     source.onended = () => this.releaseVoice(voice)
   }

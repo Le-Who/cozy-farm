@@ -1,0 +1,9 @@
+{
+  "id": "angling.submerge",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "A tiny fishing hook and bait enter still shallow seawater once: one rounded delicate plup followed by two small liquid bubbles sinking and fading. Gentle close watery detail, clear soft onset, no big splash, no continuous bubbling, no music.",
+  "generatedAt": "2026-11-09T07:01:07.344Z",
+  "sha256": "f16b52397afb64e616cca6c4f35d1189a119e4be5d4ad5fe68ecbf07f8a5fc21"
+}

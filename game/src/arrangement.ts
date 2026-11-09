@@ -17,7 +17,7 @@ type Props = Awaited<ReturnType<typeof createArrangementProps>>
 /** A scene is a draft. Only a settled arrangement may cross the inventory boundary. */
 export function createArrangement(host: HTMLElement, options: ArrangementOptions): { destroy(): void } {
   const abort = new AbortController(), signal = abort.signal, previousFocus = document.activeElement
-  prepareBaySoundScene(['table.place'], signal)
+  prepareBaySoundScene(['cook.table-ceramic','cook.table-food','cook.basket-place','cook.egg-place','cook.finish'], signal)
   const root = document.createElement('section'); root.className = 'arrangement-game'; root.dataset.mode = options.mode
   root.innerHTML = `<div class="arrangement-view" tabindex="0" role="application" aria-label="${options.mode === 'table' ? 'Сервировка стола' : 'Сбор корзинки'}" aria-describedby="assembly-controls"><img class="arrangement-room" alt="" fetchpriority="high" decoding="async"><h2 class="arrangement-title"></h2><button type="button" class="arrangement-close" aria-label="Вернуться">×</button><ul class="arrangement-checklist" aria-label="Для укладки"></ul><button type="button" class="arrangement-finish" disabled>Готово</button><div class="arrangement-status" role="status">Накрываем стол…</div><p class="arrangement-sr" id="assembly-controls">Перенесите предметы на салфетку или в корзинку. Берите за любую часть и отпускайте, когда предмет окажется на месте. Колесо мыши или Q и E поворачивают взятый предмет. Клавиатура: цифры от 1 до 5 выбирают предмет, пробел берёт и отпускает, стрелки перемещают, Enter завершает готовую сервировку, Escape возвращается.</p><p class="arrangement-sr" aria-live="polite"></p></div>`
   root.querySelector('h2')!.textContent = options.title; host.append(root)
@@ -142,7 +142,7 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     const packing = options.mode === 'eggs' || options.mode === 'crate'
     const result: NeighborAssembly | PackingResult = packing ? { kind: options.mode === 'crate' ? 'crate' : 'basket', placements: points.map(({ x, y }) => ({ x, y })), settled: true }
       : { kind: options.mode as 'table' | 'basket', placements: points.map(({ slot, x, y }) => ({ slot: slot as 'food' | 'cup' | 'flowers', x, y })), settled: true }
-    if (options.onComplete(result)) { committed = true; finish.hidden = true; live.textContent = 'Готово' }
+    if (options.onComplete(result)) { committed = true; playBaySound('cook.finish'); finish.hidden = true; live.textContent = 'Готово' }
     else { status.textContent = 'Не хватает угощения. Вернитесь к рецепту.'; status.hidden = false }
   }, { signal })
   const checklist = root.querySelector<HTMLUListElement>('.arrangement-checklist')!
@@ -212,7 +212,11 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     animation = 0
     const dt = previousTime ? Math.min(.05, (time - previousTime) / 1000) : 1 / 60; previousTime = time
     if (!document.hidden && !lost) {
-      for (const impact of physics?.step(dt) ?? []) playBaySound('table.place',Math.max(.2,impact.strength)*.75,140)
+      for (const impact of physics?.step(dt) ?? []) {
+        const slot=props?.pieces.find(piece=>piece.id===impact.id)?.slot
+        const sound=slot==='egg'?'cook.egg-place':options.mode!=='table'?'cook.basket-place':slot==='food'?'cook.table-food':'cook.table-ceramic'
+        if(loaded)playBaySound(sound,Math.max(.2,impact.strength)*.75,140)
+      }
       if (props && physics) {
         const poses = physics.poses()
         for (const pose of poses) {

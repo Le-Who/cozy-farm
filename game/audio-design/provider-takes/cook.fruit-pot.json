@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "One firm apple cube drops into a copper saucepan of chopped fruit. Compact solid damp tok, tiny copper resonance, short natural decay. No bubbles, squirt, air burst, wet plop or mouth noise.",
+  "generatedAt": "2026-11-09T07:02:28.203Z",
+  "sha256": "2c6b7a5a0b7feb68b89e9b7624d5d3e73082dfb6861955f8d816511a8929f170"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "flock.stroke",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "One friendly contented real adult hen responds to a gentle pet: a quiet low rounded brr-buk followed by one soft short cluck, with a tiny down feather brush. Immediate expressive poultry voice, intimate and natural, single hen only. No rooster crow, no human imitation, no flock ambience, no long squawk.",
+  "generatedAt": "2026-11-09T07:05:40.000Z",
+  "sha256": "8c2809e5d59e8811ee2ec4a59b743554008dfbd5035d1be876eed3790983c7e0"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "field.can-pour",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "Several distinct irregular water drops fall from a little watering can onto one broad waxy leaf: light liquid plips with clear quiet gaps, then a final separate drip. Close audible leaf patter, immediate start. No sustained spray, shower, faucet, hiss, metal body shake or rattling.",
+  "generatedAt": "2026-11-09T07:13:39.436Z",
+  "sha256": "0f76dd2eb08f178de3e3ab45d64e159da2e9d82590b11351332b660bbed0cd8c"
+}

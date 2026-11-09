@@ -1,0 +1,9 @@
+{
+  "id": "angling.snag-fish-light",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "One small living fish gently catches on a fishing hook underwater: a compact supple wet flick and a tiny light line tug, brief delicate fin flutter, then silence. Close warm natural foley, rounded soft transient. No metallic clang, success chime, tape peel, music or voices.",
+  "generatedAt": "2026-11-09T07:10:58.011Z",
+  "sha256": "c4174f82f15c9f4a0f684fda1addcd43438ca0f27d231d1a63b27e43545deb7e"
+}

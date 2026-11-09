@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot@6",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "A ripe pear piece gently settles into thick applesauce. One small warm cushioned liquid blup, rounded soft middle, subtle fruit mass closing around the piece, short calm decay. Close delicate single food contact with immediate onset.",
+  "generatedAt": "2026-11-09T07:38:27.174Z",
+  "sha256": "2581c131a4ddf9641f1f27af29652100144ed35c48dda8bb4e127c6fc8a9c864"
+}

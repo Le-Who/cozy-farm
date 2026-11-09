@@ -1,0 +1,9 @@
+{
+  "id": "orchard.soft-pick@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.1,
+  "direction": "A ripe peach is gently plucked from a leafy branch. The soft velvet skin quietly rubs against fingers and a delicate leaf brushes once. One close warm soft natural hand Foley gesture with a smooth rounded attack.",
+  "generatedAt": "2026-11-09T07:22:18.668Z",
+  "sha256": "cfcd1ad14abe5e50271d635f2cf53c5c2f6b9577ecc051a5aa485466fb7a9358"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "flock.stroke@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "An actual domestic chicken hen makes three short friendly lower-pitched clucks, clearly recognizable real poultry vocal calls. Intimate close single female bird with natural gravelly throat texture. Immediate onset. No talking, human imitation, rooster, toy squeak, singing or ambient flock.",
+  "generatedAt": "2026-11-09T07:13:50.017Z",
+  "sha256": "023c434267837483f82770a7e95cb63e502641404f9e59364ee6406a1c6806ae"
+}

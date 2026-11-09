@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A small soft silicone berry gently stretches and releases with one warm rounded elastic plup. Short subtle spring-back pitch bend in a mellow middle register, smooth quiet attack and soft quick decay. Friendly miniature tactile game sound. No bass boom, bright squeak, leaf noise, liquid gurgle or speech.",
+  "generatedAt": "2026-11-09T07:38:25.605Z",
+  "sha256": "c54befbccdbf255a1b96e9b624cef8368585dd32a3e4c26b017d116a0f681304"
+}

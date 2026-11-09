@@ -1,0 +1,9 @@
+{
+  "id": "trade.receive@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.85,
+  "direction": "Same soft leather purse, three small coins land together. A quick delicate metal double-clink ends in a lower cushioned tap. Warm close perspective and a short quiet tail, no bell or crowd.",
+  "generatedAt": "2026-11-09T07:04:01.507Z",
+  "sha256": "229453992a34334f17b9affce3149974fb1184db234a55ed0ef7cc484b719cb2"
+}

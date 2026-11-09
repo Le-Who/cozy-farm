@@ -1,0 +1,9 @@
+{
+  "id": "page.fold",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.72,
+  "direction": "A gentle closing gesture for the same small storybook: tiny soft descending wood resonance absorbed into a padded cover. Fuzzy felt stroke, rounded lower ending, extremely soft front edge. No lid slam, chime, beep or trailing room noise.",
+  "generatedAt": "2026-11-09T07:14:51.115Z",
+  "sha256": "783c927e05a45c2547fa7ce056f1ce63aeff6067e8ee5455579223c5b75b8b8d"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "One pear chunk lands on chopped fruit in a copper pan. Muted solid thud, delicate pot tick, little wetness. One immediate impact and natural release. No bubbling, gas, hiss or gurgle.",
+  "generatedAt": "2026-11-09T07:02:30.486Z",
+  "sha256": "5ea3dec5323d207604c37bf7a3dbdd2682d89a501ac39657056d7e388e9ba139"
+}

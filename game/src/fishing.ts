@@ -1,4 +1,4 @@
-import { playBaySound, prepareBaySoundScene } from './game-sound'
+import { playBaySound, prepareBaySoundScene, setBaySoundContact } from './game-sound'
 import { loadArtTexture } from './art-texture';
 import { fishDefinitions } from './farm.ts';
 import { shellDefinitions } from './tide.ts';
@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import {
   castFishing, createFishingModel, fishPosition, fishingDepth, fishingHalfWidth,
   fishingCatchLoot, fishingCatchScale, fishingCatchMouth, reelFishing, stepFishing, type FishingLoot, type FishingHabitat,
+  fishingSoundBank, fishingSoundFrame, fishingSoundEvents,
 } from './fishing-model';
 import './fishing.css';
 
@@ -332,7 +333,12 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   let caughtAt = -Infinity;
   const abort = new AbortController();
   const signal = abort.signal;
-  prepareBaySoundScene(['fish.cast','fish.hook','fish.land'], signal)
+  prepareBaySoundScene(fishingSoundBank, signal)
+  let lastSoundFrame = fishingSoundFrame(model);
+  function stopLineSound(): void {
+    setBaySoundContact('angling.lower', false);
+    setBaySoundContact('angling.raise', false);
+  }
 
   function announce(text: string): void { live.textContent = text; }
   function showCallout(text: string): void {
@@ -344,6 +350,8 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       if (options.onCast?.() === false) return;
       castFishing(model); intro.hidden = true; stage.focus({ preventScroll: true });
     } else if (model.phase === 'descending') reelFishing(model);
+    // Keep a quick cast / early-retrieve pair audible even between animation frames.
+    updateInterface();
   }
   action.addEventListener('click', performAction, { signal });
   again.addEventListener('click', () => { if (finished && !again.disabled) { again.disabled = true; options.onAgain?.(); } }, { signal });
@@ -385,9 +393,9 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   stage.addEventListener('pointerup', releasePointer, { signal });
   stage.addEventListener('pointercancel', releasePointer, { signal });
   stage.addEventListener('lostpointercapture', () => { pointer = undefined; }, { signal });
-  document.addEventListener('visibilitychange', () => { previous = 0; clearKeys(); releasePointer(); }, { signal });
+  document.addEventListener('visibilitychange', () => { previous = 0; clearKeys(); releasePointer(); stopLineSound(); }, { signal });
   renderer.domElement.addEventListener('webglcontextlost', event => {
-    event.preventDefault(); contextLost = true; clearKeys(); releasePointer();
+    event.preventDefault(); contextLost = true; clearKeys(); releasePointer(); stopLineSound();
     // Release listeners tied to the lost GL generation while retaining all CPU art/model data.
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose());
     renderStatus.textContent = 'Изображение приостановлено. Ждём восстановления…'; renderStatus.hidden = false;
@@ -421,6 +429,9 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   }).catch(() => { /* The accepted master remains a proportionate fallback. */ });
 
   function updateInterface(): void {
+    const soundFrame = fishingSoundFrame(model);
+    for (const sound of fishingSoundEvents(lastSoundFrame, soundFrame)) playBaySound(sound);
+    lastSoundFrame = soundFrame;
     depthLabel.textContent = formatRuNumber(Math.round(model.depth / fishingDepth * maxDepth));
     zone.textContent = model.depth > 25.2 ? 'Глубинные огни' : model.depth > 18.6 ? 'Лунные воды'
       : model.habitat ? model.habitat.profile === 'nursery' ? 'Тихие ясли мальков' : 'Приливный проток'
@@ -429,7 +440,6 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     if (lastPhase !== model.phase) {
       lastPhase = model.phase; root.dataset.phase = model.phase;
       if (model.phase === 'descending') {
-        playBaySound('fish.cast')
         action.innerHTML = 'Поднять крючок <span aria-hidden="true">↑</span>';
         showCallout('↓ Обходите рыб');
         announce('Обходите рыб. Пробел — начать подъём раньше.');
@@ -450,7 +460,6 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       announce(`Касания: ${model.contacts} из ${model.resilience}. ${model.phase === 'ascending' ? 'Крючок поднимается.' : 'Обходите рыб.'}`);
     }
     if (lastCount !== model.caught.length) {
-      if(model.caught.length>0 && model.caught.length>lastCount)playBaySound('fish.hook')
       lastCount = model.caught.length;
       caughtAt = model.time;
       Array.from(slots.children).forEach((slot, i) => {
@@ -478,13 +487,19 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   const nearColor = new THREE.Color('#b7e1dc'), deepColor = new THREE.Color('#92b8c9');
   function animate(now: number): void {
     frame = requestAnimationFrame(animate);
-    if (destroyed || document.hidden || contextLost) { previous = 0; return; }
+    if (destroyed || document.hidden || contextLost) { previous = 0; stopLineSound(); return; }
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
     if (Math.abs(renderer.getPixelRatio() - pixelRatio) > .001) renderer.setPixelRatio(pixelRatio);
     const dt = previous ? Math.min((now - previous) / 1000, .05) : 0;
     previous = now;
     if (left !== right) model.targetX += (right ? 1 : -1) * dt * 7;
+    const previousDepth = model.depth;
     stepFishing(model, dt);
+    const moving = dt > 0 && Math.abs(model.depth - previousDepth) > .00001;
+    // Real line travel owns the texture. A bump briefly eases its tension before recovery.
+    const lineStrength = .65 - Math.min(.55, model.flash) * .6;
+    setBaySoundContact('angling.lower', moving && model.phase === 'descending', lineStrength);
+    setBaySoundContact('angling.raise', moving && model.phase === 'ascending', lineStrength);
     updateInterface();
     const viewDepth = model.depth + Math.min(1.8, halfHeight * .25);
     camera.position.y = -viewDepth;
@@ -582,7 +597,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   return {
     destroy() {
       if (destroyed) return;
-      destroyed = true; cancelAnimationFrame(frame); releasePointer(); abort.abort(); resize.disconnect();
+      destroyed = true; cancelAnimationFrame(frame); releasePointer(); stopLineSound(); abort.abort(); resize.disconnect();
       scene.clear(); geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose());
       renderer.dispose(); renderer.forceContextLoss(); root.remove();
     },

@@ -1,0 +1,9 @@
+{
+  "id": "field.grain-pick@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One gentle handful of golden cereal stalks is collected, soft close dry wheat-head brushing and a very light fine seed rattle. Warm subdued organic harvest texture with smooth rounded attack, quiet highs. No hard stem crack, sharp rustle, snipping tool, shoe impact or music.",
+  "generatedAt": "2026-11-09T07:15:33.236Z",
+  "sha256": "0450d1489f16377f5e14d10fdd3ada6726c1c6bb242179925d03dd40b229dd99"
+}

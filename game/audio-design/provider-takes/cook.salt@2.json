@@ -1,0 +1,9 @@
+{
+  "id": "cook.salt@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 3.5,
+  "direction": "A steady fine stream of salt crystals trickles onto soft fish flesh. Tiny dry grain impacts, warm sandy texture, quiet consistent body throughout. No crinkly bag, shaker knocks, pauses or abrupt ending. Loopable.",
+  "generatedAt": "2026-11-09T07:03:01.699Z",
+  "sha256": "13f1aa1a21a02299904f8875bf84a6f2fd02012a727d5c7711b4352576bf64d7"
+}

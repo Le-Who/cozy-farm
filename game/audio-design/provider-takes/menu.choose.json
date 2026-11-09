@@ -1,0 +1,9 @@
+{
+  "id": "menu.choose",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "One small boxwood marker slides a few millimetres into a wooden notch. Brief smooth zip of wood grain resolves into a light high tick. Intimate dry tabletop recording, small scale, no electronics or pitched chime.",
+  "generatedAt": "2026-11-09T07:03:48.235Z",
+  "sha256": "b9ad561455d4bc7e8d80c45d631290045d64e9e4e4523a52a861cf626ee855d2"
+}

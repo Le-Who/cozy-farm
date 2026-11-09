@@ -1,0 +1,9 @@
+{
+  "id": "angling.snag",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "A tiny fish is gently caught on a hook underwater: one small rounded wet tick followed by a brief firm liquid flick, immediate and reassuring. Intimate warm water foley, slightly brighter than a fish brushing past, no sharp metal, no celebratory notes or big splash.",
+  "generatedAt": "2026-11-09T07:01:15.103Z",
+  "sha256": "33be2cf357c4b71439784b8e6df9b38d8f4cd8ecd5d27681d65d3f7d72a93dcf"
+}

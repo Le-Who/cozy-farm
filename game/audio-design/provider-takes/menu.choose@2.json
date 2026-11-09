@@ -1,0 +1,9 @@
+{
+  "id": "menu.choose@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "A single carved wooden tile nudged sideways into a notch. Soft grain brush and a tiny precise maple tick together. Close dry tabletop perspective, gentle attack and quick clean decay.",
+  "generatedAt": "2026-11-09T07:03:50.263Z",
+  "sha256": "699a0e331e82df7e07c58d3cb283414fec6643a1614bd89120e431e9799e81d7"
+}

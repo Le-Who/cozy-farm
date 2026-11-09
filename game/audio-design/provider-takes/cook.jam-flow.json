@@ -1,0 +1,9 @@
+{
+  "id": "cook.jam-flow",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Continuous slow thick apple preserve ribbon sliding from spoon into glass jar. Dense satin sticky friction and soft viscous folding contact inside resonant glass. Even warm body throughout. No bubbles, suction, gassy bursts, separated blobs or gaps. Loopable.",
+  "generatedAt": "2026-11-09T07:10:12.651Z",
+  "sha256": "effbfcdd10989cfba27e66d94db75f655291f7830ccae272fdcff2e4a695f1bb"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A single tender toy-like fruit softly pops off its stalk: one little pillowy elastic bonk, warm and round in the middle frequencies, a tiny relaxed bouncing pitch contour. Gentle tactile playful game Foley. No heavy low impact, sharp attack, high tweet, leaves, mouth sounds, fart, voice or music.",
+  "generatedAt": "2026-11-09T07:38:23.728Z",
+  "sha256": "d7946ff4c2c644698c92acedf5c36a6ddb05040549e4ab66a8db4cdd76720fe1"
+}

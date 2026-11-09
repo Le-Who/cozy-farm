@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "One delicate stylized berry-picking sound: a soft cushioned rubbery pluck with a tiny downward melodic pitch bend, like a little elastic jelly bead coming loose. Warm rounded middle frequencies, gentle playful short bonk, no hard impact. No high chirp, low thud, crinkling leaves, mouth or voice.",
+  "generatedAt": "2026-11-09T07:38:27.656Z",
+  "sha256": "6c566e3f13604cec6f6799264629ccf9c18e9a9c1c3e71a2768e1181e64a1791"
+}

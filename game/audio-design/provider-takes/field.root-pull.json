@@ -1,0 +1,9 @@
+{
+  "id": "field.root-pull",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A carrot is gently loosened from fine damp soil: soft low fibrous earth release, delicate loose soil brushing off the root and a tender green leaf fold. Smooth rounded quiet onset, warm close tactile garden foley. No sharp pop, crack, snap, crunch, eating or footstep.",
+  "generatedAt": "2026-11-09T07:15:16.903Z",
+  "sha256": "aa3923c51a701f732f4bc9ed35d2e83400d3004425c6c98646ffbf15e0f2d743"
+}

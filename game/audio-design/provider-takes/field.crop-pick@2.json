@@ -1,0 +1,9 @@
+{
+  "id": "field.crop-pick@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.55,
+  "direction": "One handful of ripe berries gathered from a garden plant: tiny crisp stem release, soft leafy movement and the lightest padded fruit settling in a cloth-lined basket. Immediate close harvest gesture, no shoes, no squelchy mouth noises, no musical notes.",
+  "generatedAt": "2026-11-09T07:05:05.774Z",
+  "sha256": "facab94a064f9017d2310c36b6ac8ef8cb460d2ef2ee155f0dcea433defdfd65"
+}

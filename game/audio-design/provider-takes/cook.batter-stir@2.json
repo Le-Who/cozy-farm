@@ -1,0 +1,9 @@
+{
+  "id": "cook.batter-stir@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 5,
+  "direction": "Wooden spoon continuously moving around a heavy ceramic mixing bowl of cake batter. Quiet low rounded wooden bowl friction with smooth thick paste brushing. Overlapping steady circles, uninterrupted consistent close foley texture. Seamless loop.",
+  "generatedAt": "2026-11-09T07:13:34.401Z",
+  "sha256": "cd76d05508ba51b5863d9ca25e4a611c8f52bb0cc04b6fff9e067ad75972b330"
+}

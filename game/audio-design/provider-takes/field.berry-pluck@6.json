@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck@6",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A tiny flexible jelly berry gently comes loose with one soft springy bonk. Rounded medium-low pitched rubber pluck, subtle downward pitch glide, tender pillowy attack and a warm quick decay. Mellow game Foley, no heavy bass thump, no high whistle, chirp, squeak, leaf or speech.",
+  "generatedAt": "2026-11-09T07:39:52.924Z",
+  "sha256": "bed0fd1a7e95d9361a185264426509b2d019b65183b37f2d35c2c7a4b9bc01df"
+}

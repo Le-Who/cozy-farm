@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot@7",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One tiny ripe peach segment placed gently into thick yogurt. A very short mellow rounded creamy contact, soft low liquid displacement and a clean delicate finish. Cozy intimate close food foley, one gentle compact action at the start.",
+  "generatedAt": "2026-11-09T07:38:29.290Z",
+  "sha256": "3f56ae90bb3ae107149c6967b18a5c8d20c82c71f83728c187fdb3bf71434b09"
+}

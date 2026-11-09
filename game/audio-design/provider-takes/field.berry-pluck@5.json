@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck@5",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "One small soft toy-like berry detaching: a gentle rounded elastic pulk with a tiny downward pitch bend in a warm middle register around 450 to 700 Hz. Plush pillowy spring-back, smooth quiet attack, short mellow decay. No bass impact, high chirp, squeal, leaf rustle, mouth sound, voice or music.",
+  "generatedAt": "2026-11-09T07:39:51.189Z",
+  "sha256": "ac4865a17c351ec39071960b47e40a8502ed5735918511fc094da162c9b13135"
+}

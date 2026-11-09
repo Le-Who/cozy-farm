@@ -1,0 +1,9 @@
+{
+  "id": "field.leaf-pick",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "Close soft Foley of fresh green spinach leaves being gently gathered by hand. Tender moist leaf blades fold and slide against one another, a tiny green stem release. Delicate lush plant rustling, rounded soft attack, one short gesture.",
+  "generatedAt": "2026-11-09T07:17:59.743Z",
+  "sha256": "4d4d51cbf4a54fb1a538f66edfc36af0967b2896eed8e26710d23620b3ef3326"
+}

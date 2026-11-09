@@ -1,0 +1,9 @@
+{
+  "id": "cook.batter-stir@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "Continuous slow circular movement of thick vanilla cake batter. Hear the soft heavy batter folding in broad satin waves, dense warm mellow liquid rolling with a soft creamy body. Quiet even uninterrupted close food texture for the whole recording. Seamless loop.",
+  "generatedAt": "2026-11-09T07:38:41.186Z",
+  "sha256": "cfba12bfe1e8ff16d80969d3b4d983843b3de85624da79372443b0a0e09b3db3"
+}

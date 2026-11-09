@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-cream",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "One peach slice settles into thick custard in a dessert glass. Tiny cushioned solid tap, soft cream fold, faint glass tone. Immediate contact, short release. No bubbles, squirt or air noise.",
+  "generatedAt": "2026-11-09T07:02:34.466Z",
+  "sha256": "390b5d3c7b8fc8f686f3f7c7f21cab7c5cf5d5e7951887f090f88df6b424414d"
+}

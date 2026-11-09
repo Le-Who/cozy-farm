@@ -1,0 +1,9 @@
+{
+  "id": "angling.turn",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.55,
+  "direction": "A bamboo rod gently takes the weight of a line to begin retrieving a little underwater hook: one short subdued woody flex and soft damp line tension release. Restrained intimate detail with a clear quiet ending. No ratchet, grinding, adhesive peel, zipper, long reel motor or musical twang.",
+  "generatedAt": "2026-11-09T07:01:12.812Z",
+  "sha256": "3eeaefbc402c62bdc01275e8502c2897813e7a428e20a7aa13a59ed987dbc00f"
+}

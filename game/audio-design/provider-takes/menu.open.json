@@ -1,0 +1,9 @@
+{
+  "id": "menu.open",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "A little wooden recipe box opens in one hand: a very short rising brush of vellum followed by a clean restrained maple lid tap. Audible lift and arrival in one fluid motion. Close, warm and dry, no creaky door, no melody.",
+  "generatedAt": "2026-11-09T07:03:40.603Z",
+  "sha256": "f3cd048c2e4be4d8e7158e9248c8c52173fae07b795b3f8fd1c8ed8e074cd848"
+}

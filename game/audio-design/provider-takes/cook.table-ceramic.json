@@ -1,0 +1,9 @@
+{
+  "id": "cook.table-ceramic",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One teacup set gently onto linen over wood. Warm rounded ceramic chink, cushioned low contact, short natural body resonance. One complete immediate impact. No high glass tinkle or music.",
+  "generatedAt": "2026-11-09T07:03:52.891Z",
+  "sha256": "fb1e97703a91925aa96e5eb3332bf715e9b781a302a16c6f0b739236b8aa7e12"
+}

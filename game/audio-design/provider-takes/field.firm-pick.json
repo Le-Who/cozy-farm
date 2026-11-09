@@ -1,0 +1,9 @@
+{
+  "id": "field.firm-pick",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "Close gentle Foley of one ripe tomato picked from a plant. A tiny fibrous stem detaches, a broad green leaf brushes once, then the smooth firm tomato taps softly against another fruit. Rounded soft attack, intimate clear detail, one gesture.",
+  "generatedAt": "2026-11-09T07:17:53.265Z",
+  "sha256": "6e2c7095b9324ca3266a8b6a61e580eca2ad36768274374bba3b65864cb2673d"
+}

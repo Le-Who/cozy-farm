@@ -1,0 +1,9 @@
+{
+  "id": "cook.dough-roll",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Continuous wooden rolling pin on floured dough. Quiet low rounded rolling body and fine dry flour brushing, smooth overlapping strokes with even texture. No impacts, handle knocks, squeaks, pauses or ending clunk. Loopable.",
+  "generatedAt": "2026-11-09T07:03:27.835Z",
+  "sha256": "0eb93baf2eb0020b0c5e9ed238f8c17330e647a08b6588729f989dc1301c40af"
+}

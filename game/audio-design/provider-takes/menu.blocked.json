@@ -1,0 +1,9 @@
+{
+  "id": "menu.blocked",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.72,
+  "direction": "A wooden drawer latch gently meets its felt stop and springs back. Two clearly different knocks, a short hollow tok then a softer lower tuk, with a breath of wood friction between. Friendly blocked-action gesture, close dry and small. No bell, pitch glide or musical note.",
+  "generatedAt": "2026-11-09T07:03:52.365Z",
+  "sha256": "331b1fcac87290d79b2573b0491a237679fd851c4b8f8842d57114c1edac542a"
+}

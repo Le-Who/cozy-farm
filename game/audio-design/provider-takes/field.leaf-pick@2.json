@@ -1,0 +1,9 @@
+{
+  "id": "field.leaf-pick@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "A freshly picked small cabbage is held in two hands. Broad tender green leaves gently bend and brush together, soft leafy friction and a tiny moist stem tick. Close clear natural vegetable Foley with a warm smooth attack.",
+  "generatedAt": "2026-11-09T07:18:01.903Z",
+  "sha256": "6a0dee29cb70a2ca2859d296c7fb74a09ff531bcf01747e6dce0cc55860431f5"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "page.fold@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "A cushioned downward roll of two felt-damped wooden bars, the sound of closing a tiny storybook in a cosy game. Rounded low notes blend together like a soft sigh, the last one shorter. Soft front edge and dry finish. No snap, rustling, or bright ringing.",
+  "generatedAt": "2026-11-09T07:22:40.670Z",
+  "sha256": "b76a76d4457fca3dc000ac897af639890d60c71883e0f34f926a8148776b34c0"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot@8",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.9,
+  "direction": "One tiny water droplet falls into a pool of thick cream. Delicate clear rounded liquid attack followed by a very short soft low blup and tiny natural droplet resonance. Single small gentle liquid contact, immediate onset, quiet complete decay.",
+  "generatedAt": "2026-11-09T07:40:49.628Z",
+  "sha256": "5914b72f1cc0eea00bccf11607819816d6bb94dd6929ed02769635cca00752f5"
+}

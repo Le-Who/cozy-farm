@@ -1,0 +1,9 @@
+{
+  "id": "harbour.crate",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "A shallow wooden fruit crate is set on the wooden dock by hand: two runners land a split second apart, warm hollow wooden thock, fruit settles softly inside. Single compact gesture, close dry sound, no stray footsteps.",
+  "generatedAt": "2026-11-09T07:04:04.162Z",
+  "sha256": "65f1a61d18f0891ee8aded9bf4312a008fd949b8361ac5974fd7d02521627d75"
+}

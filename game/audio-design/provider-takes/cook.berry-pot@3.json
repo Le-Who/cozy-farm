@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-pot@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A pinch of small berries drops from fingers into a metal mixing bowl. Six tiny firm dull taps scattering against resonant metal, soft granular contact then quiet decay. Intimate light kitchen object foley.",
+  "generatedAt": "2026-11-09T07:13:10.645Z",
+  "sha256": "dde075001182dba92e15758fc4d68ae68d2b84d3e742f541fa163b8a22e96f2e"
+}

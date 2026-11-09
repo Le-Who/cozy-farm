@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot@9",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One little piece of ripe fruit drops into a thick smoothie. A tiny bright liquid tick at contact, short mellow round bubble tone, soft dense pulpy settling and quiet release. One gentle compact close food foley action.",
+  "generatedAt": "2026-11-09T07:40:51.617Z",
+  "sha256": "162f812257f2c0d7d62a3a351906a79c8cd1585d41ad392ecc9ecaace98fd354"
+}

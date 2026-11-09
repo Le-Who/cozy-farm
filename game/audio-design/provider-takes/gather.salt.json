@@ -1,0 +1,9 @@
+{
+  "id": "gather.salt",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "One wooden scoop gathers coarse dry sea salt into a little linen bag, fine crystalline grains lightly trickle and settle with a short dry papery rustle. Immediate close small hand gesture, no footstep, no gravel crunch, no coins, no surf, no music.",
+  "generatedAt": "2026-11-09T07:06:33.556Z",
+  "sha256": "2883237883deffab38c6b0f2729104cbf0f4af4f7a22b9ced04852b9f8b08488"
+}

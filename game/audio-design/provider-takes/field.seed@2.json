@@ -1,0 +1,9 @@
+{
+  "id": "field.seed@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.1,
+  "direction": "A pinch of little round dry seeds gently trickles between fingers. Tiny hard grains roll against each other in a short clear delicate rattle and settle. Close warm soft granular Foley with a smooth quiet attack. One very small spill, then silence.",
+  "generatedAt": "2026-11-09T07:19:43.308Z",
+  "sha256": "21261f1e6d718c5b8f041e389c9b39070ed639a2470957d14895994b727f45b1"
+}

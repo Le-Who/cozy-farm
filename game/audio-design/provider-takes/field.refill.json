@@ -1,0 +1,9 @@
+{
+  "id": "field.refill",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.4,
+  "direction": "A narrow gentle stream from a rustic wooden well flows softly into a small watering can, warm low rounded water burble as it fills, then a few soft drops. Smooth immediate onset, close restrained liquid foley. No bucket impact, metal ring, rim clink, cup plop, shower hiss or plumbing.",
+  "generatedAt": "2026-11-09T07:15:21.790Z",
+  "sha256": "d5c868ef43b0b574d9f9aedd621927447b2c1bb03d18f7e963fbcdb47a3b58c6"
+}

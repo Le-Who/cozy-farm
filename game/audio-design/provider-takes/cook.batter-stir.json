@@ -1,0 +1,9 @@
+{
+  "id": "cook.batter-stir",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Continuous wooden spoon stirring thick batter in heavy ceramic bowl. Dense low flour paste friction, overlapping smooth circles, extremely subtle bowl body. Even sound throughout. No slurp, bubbles, gas, clacks or gaps. Loopable.",
+  "generatedAt": "2026-11-09T07:03:20.025Z",
+  "sha256": "d8b60b51d99634b88269eae6ecab176b097b2b35ff88ba7b6f0c87b2ac9ea700"
+}

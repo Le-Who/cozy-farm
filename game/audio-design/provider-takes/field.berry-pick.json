@@ -1,0 +1,17 @@
+{
+  "id": "field.berry-pick",
+  "provider": "ElevenLabs-derived composite",
+  "generatedAt": "2026-11-09T07:29:16.963583+00:00",
+  "recipe": "Half-second tender 400\u20132800 Hz leaf pinch; 150 ms recorded glass tick at -15.1 dB relative RMS; 20 ms soft edges",
+  "components": [
+    {
+      "id": "field.leaf-pick",
+      "sha256": "4d4d51cbf4a54fb1a538f66edfc36af0967b2896eed8e26710d23620b3ef3326"
+    },
+    {
+      "id": "gather.find",
+      "sha256": "d5e4dd610a19f9a12ef517472f334c97bcdb37bd5551c23dc65a6d5487f33e77"
+    }
+  ],
+  "sha256": "d98d339b093002b74fd81a00854dd26318e094e7c29ca99ed72e8fc50392549f"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.preserves-stir@8",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "Thick apple compote flowing slowly in broad circles. Quiet heavy rounded liquid folds, dense soft pulpy texture and mellow cushioned sloshing. Smooth continuous movement of the fruit filling at a stable volume for six seconds. Intimate seamless loop.",
+  "generatedAt": "2026-11-09T07:40:47.663Z",
+  "sha256": "e3ab849fbf677ab9871997460b2a7e15ba564775b1b35a40d34f2d43a14ac93a"
+}

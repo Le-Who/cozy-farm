@@ -1,0 +1,9 @@
+{
+  "id": "cook.honey-end",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.7,
+  "direction": "One last tiny syrup bead drops onto a soft pear slice. Delicate compact damp tick, short sticky thread release, quiet natural finish. No cartoon plop, bubbles, suction or air burst.",
+  "generatedAt": "2026-11-09T07:03:12.523Z",
+  "sha256": "f1f0a02ab15f43d77b7b401b937378836844a2648ee400d205f692fd292118e9"
+}

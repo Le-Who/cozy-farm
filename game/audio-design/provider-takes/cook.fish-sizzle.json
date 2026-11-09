@@ -1,0 +1,9 @@
+{
+  "id": "cook.fish-sizzle",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Small buttered fish fillet cooks quietly in cast iron. Continuous fine natural frying crackle, warm low pan body, even level throughout. No gas roar, steam jet, loud pops, initial impact, fade or silence. Loopable.",
+  "generatedAt": "2026-11-09T07:03:39.869Z",
+  "sha256": "2a7b0905be8ae73b2238fad2ecdc0b00a336b2168dfc786ca233272d4fcb55a1"
+}

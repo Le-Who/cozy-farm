@@ -1,0 +1,9 @@
+{
+  "id": "cook.fish-contact",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "Raw fish fillet meets warm buttered cast iron. One soft solid damp pat, short delicate frying crackle. Immediate gentle tactile contact with natural finish. No loud splash, gas roar or metal clang.",
+  "generatedAt": "2026-11-09T07:03:43.688Z",
+  "sha256": "a52d68ffd5b9aa1b5aa2a0df8c7e309f4e5a60d193f293f609d402a608bf07bd"
+}

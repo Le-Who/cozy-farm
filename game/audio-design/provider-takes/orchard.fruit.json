@@ -1,0 +1,9 @@
+{
+  "id": "orchard.fruit",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "One ripe apple twisted off a leafy branch: a tiny woody stem snap, a quick light leaf rebound, then a rounded cushioned fruit tap in a cloth-lined wicker basket. Immediate close pleasant harvest gesture, no falling tree, no footsteps, no eating, no music.",
+  "generatedAt": "2026-11-09T07:06:42.620Z",
+  "sha256": "ab21e7c31bc3260b95f55bab0d3b787a93724871a953f82915b607bf5ee79a02"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-tart",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.65,
+  "direction": "One apple slice placed onto a baked shortcrust tart. Tiny dry crumb crunch and cushioned solid fleshy tap. Immediate tactile contact and quiet release. No liquid, squelch or cartoon plop.",
+  "generatedAt": "2026-11-09T07:02:32.462Z",
+  "sha256": "80a700cc355ce104640cbbd85f4316ae6deb4216eada79b9540bcbfd91fd5f50"
+}

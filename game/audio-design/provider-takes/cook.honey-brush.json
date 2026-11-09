@@ -1,0 +1,9 @@
+{
+  "id": "cook.honey-brush",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 3.5,
+  "direction": "Continuous pastry brush spreading warm honey on biscuits. Silky bristle friction on tender crust, low smooth syrup body, overlapping slow strokes. Even quiet contact. No coarse scrape, squelch, knocks, gaps or endings. Loopable.",
+  "generatedAt": "2026-11-09T07:03:10.047Z",
+  "sha256": "ec20155b7400905ca03cafdd97faf20baca6988f3be4268323b575fa6c3c9ff9"
+}

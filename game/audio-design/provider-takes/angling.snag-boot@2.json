@@ -1,0 +1,9 @@
+{
+  "id": "angling.snag-boot@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "A clearly audible close foley action: one heavy waterlogged leather boot is tugged up on a fishing hook, a rounded padded leather thud followed by a brief dense wet leather flex. Compact low-mid impact with tangible weight, soft high frequencies and quick decay. No silence, squeal, metallic hit, cartoon boing, speech or music.",
+  "generatedAt": "2026-11-09T07:15:00.551Z",
+  "sha256": "d77b2d2e1242deeff7d8bed9c7172084eb4301908089688282ac84e29a3e5af2"
+}

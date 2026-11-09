@@ -1,0 +1,9 @@
+{
+  "id": "field.firm-pick@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "A single ripe tomato is cupped and gently twisted off a green vine. Delicate plant stem separation, a soft green leaf flick, a quiet rounded fruit-to-fruit touch. Warm low-treble natural hand Foley, one close short action.",
+  "generatedAt": "2026-11-09T07:17:55.293Z",
+  "sha256": "393a77493568e080c7308c465c5667d28554635cc1491c4422652100f3f4e9d4"
+}

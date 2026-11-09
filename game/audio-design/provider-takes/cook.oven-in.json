@@ -1,0 +1,9 @@
+{
+  "id": "cook.oven-in",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.1,
+  "direction": "Small baking tray slides along oven rack, wooden handled oven door closes softly. Warm dull metal slide, padded wooden clunk, brief natural resonance. One complete gentle action. No hiss, flame, bell or music.",
+  "generatedAt": "2026-11-09T07:03:34.079Z",
+  "sha256": "ae13ec2f37e4dce89c637f74e428c74500b80eee15e3138ed2f339161d5fb5b5"
+}

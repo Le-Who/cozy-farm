@@ -1,4 +1,5 @@
 import { playBaySound } from './game-sound'
+import { bayAudio } from './bay-audio'
 import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
 import { cookeryFinishTraits, type SignatureRecipe } from './culinary';
 import { finishedIngredient } from './ingredient-finish';
@@ -178,6 +179,13 @@ const shoreSites: ShoreArea[] = [
 ];
 const pickupDuration = 370;
 
+export const farmSoundEvents = [
+  'field.till', 'field.seed', 'field.can-pour', 'field.can-soil', 'field.irrigation', 'field.root-pull',
+  'field.firm-pick', 'field.pumpkin', 'field.leaf-pick', 'field.grain-pick', 'field.berry-pick',
+  'field.refill', 'field.step', 'flock.stroke', 'flock.lift', 'flock.settle', 'flock.feed', 'flock.eggs',
+  'flock.hatch', 'gather.shell', 'gather.find', 'gather.salt', 'orchard.sapling', 'orchard.firm-pick', 'orchard.soft-pick', 'apiary.frame',
+] as const;
+
 function sameTarget(a: IslandTarget, b: IslandTarget): boolean {
   if (a.kind === 'neighbor') return b.kind === 'neighbor' && a.resident === b.resident;
   if (a.kind === 'shoal-find') return b.kind === 'shoal-find' && a.id === b.id;
@@ -325,7 +333,7 @@ function roundTurns(points: Point[]): Point[] {
 
 export function createIsland(
   canvas: HTMLCanvasElement,
-  { inspect, activate, moveHen }: { inspect: (target: IslandTarget) => string; activate: (target: IslandTarget) => void; moveHen?: (index:number,point:HenNativePoint)=>void },
+  { inspect, activate, moveHen }: { inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
 ) {
   const hint = document.createElement('div');
   hint.className = 'island-hint';
@@ -1373,7 +1381,7 @@ export function createIsland(
       const step = Math.floor(stride * 2);
       if (step !== previousStep && stride > 0.15) {
         const side = step % 2 ? -1 : 1;
-        playBaySound('footsteps.grass',.55,340)
+        playBaySound('field.step',.4,210)
         footfalls.push({ x: farmer.x + side * 5, y: farmer.y, began: moment, side });
         previousStep = step;
       }
@@ -1700,6 +1708,7 @@ export function createIsland(
     const id=pointerStart?.id;
     if(id===undefined&&!heldHen)return;
     pointerStart=undefined;heldHen=undefined;canvas.style.cursor='default';
+    bayAudio.stopEffects(['flock.lift']);
     if(id!==undefined&&canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
     requestPaint();
   }
@@ -1709,6 +1718,7 @@ export function createIsland(
       const point = location(event);
       heldHen.point = { x: point.x+heldHen.offset.x, y:point.y+heldHen.offset.y };
       if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 5) {
+        if (!heldHen.dragging) playBaySound('flock.lift', 1, 0);
         heldHen.dragging = true;
         hovered = undefined;
         canvas.style.cursor = 'grabbing';
@@ -1731,6 +1741,7 @@ export function createIsland(
     pointerStart = { id: event.pointerId, x: event.clientX, y: event.clientY };
     const target = hit(event)?.target;
     if (target?.kind === 'hen') {
+      void bayAudio.primeEvents(['flock.stroke', 'flock.lift', 'flock.settle']);
       const point=location(event),hen=hens[target.index],foot={x:hen.px.value,y:hen.py.value};
       heldHen = { index: target.index, point:foot,offset:{x:foot.x-point.x,y:foot.y-point.y}, dragging: false };
       canvas.setPointerCapture(event.pointerId);
@@ -1754,7 +1765,7 @@ export function createIsland(
         const ground=projectHenToGround(nativeHenPoint(held.point),state?.buildingLevels);
         Object.assign(hen,scenePoint(ground.x,ground.y));moveHen?.(held.index,ground);
       }
-      activate({ kind: 'hen', index: held.index });
+      activate({ kind: 'hen', index: held.index }, held.dragging ? 'settle' : 'stroke');
       canvas.style.cursor = 'grab';
       requestPaint();
       return;
@@ -1929,6 +1940,7 @@ export function createIsland(
   return {
     setViewMode(next: typeof viewMode) {
       if (next === viewMode) return;
+      if (next === 'minigame') { cancelHenGrip(); bayAudio.stopEffects(farmSoundEvents); }
       viewMode = next;
       reconcileFrames();
     },
@@ -1956,6 +1968,8 @@ export function createIsland(
     },
     async crossIsland(commit: () => boolean): Promise<void> {
       if (crossing || abort.signal.aborted) return;
+      cancelHenGrip();
+      bayAudio.stopEffects(farmSoundEvents);
       if (motion.matches) { commit(); return; }
       crossing = true;
       capeWork = undefined;
@@ -2033,6 +2047,7 @@ export function createIsland(
         art.load(shoalPlate.key, shoalPlate.path);
       }
       if (currentIsland !== next.island) {
+        bayAudio.stopEffects(farmSoundEvents);
         if (next.island !== 'grove') { coveFocus = false; coveBlend = 0; }
         heldHen=undefined;pointerStart=undefined;
         residentClock = 0;
@@ -2085,6 +2100,7 @@ export function createIsland(
       const site = shoreSites.find((area) => sameTarget(area.target, target));
       if (!site || state?.island !== 'grove' || target.kind === 'shoal-find' && !islandPlate().expanded
         || !getShoreItem(state, target) || shorePickup?.site === site) return;
+      void bayAudio.primeEvents([target.kind === 'shell' ? 'gather.shell' : 'gather.find']);
       moveTo(site.stop);
       if (motion.matches) commit();
       else shorePickup = { site, commit };
@@ -2152,6 +2168,7 @@ export function createIsland(
       requestPaint();
     },
     destroy(): void {
+      bayAudio.stopEffects(farmSoundEvents);
       cancelAnimationFrame(frameId);
       observer.disconnect();
       abort.abort();

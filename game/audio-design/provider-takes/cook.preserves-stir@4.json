@@ -1,0 +1,9 @@
+{
+  "id": "cook.preserves-stir@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "A dense soft apricot jam filling slowly circulating and folding. Gentle warm low rounded liquid movement with tiny soft fruit grains, supple viscous body and slow continuous overlapping waves. Smooth quiet even close food recording for the entire six seconds, seamless loop.",
+  "generatedAt": "2026-11-09T07:38:18.859Z",
+  "sha256": "cdb2dabbd35f43ed519bf38a788397eb6802f5c5a58b23d12b39a4507e7e39f7"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "cook.cream-flow@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 5,
+  "direction": "Continuous steady pouring of thick double cream from a ceramic jug into a small dessert glass. Smooth low dense liquid stream, soft even contact, muted glass body. Uninterrupted stable close kitchen foley throughout. Seamless loop.",
+  "generatedAt": "2026-11-09T07:13:25.543Z",
+  "sha256": "c4db5601d24bd4c1669057a4939ff66d05a7ee6ff5c35e430a46421a66ba8978"
+}

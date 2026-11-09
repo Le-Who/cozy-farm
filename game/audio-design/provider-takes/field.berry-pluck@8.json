@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck@8",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A tiny flexible jelly berry gently comes loose with one soft springy bonk. Rounded warm midrange rubber pluck, a subtle downward pitch glide, tender pillowy attack and a mellow quick decay. One close gentle tactile game sound at the beginning, then silence.",
+  "generatedAt": "2026-11-09T07:42:20.592Z",
+  "sha256": "0bfc6f0ccca9ffd9ce500567e021c9970516f41ede3e1d6870a59a3603f38dc1"
+}

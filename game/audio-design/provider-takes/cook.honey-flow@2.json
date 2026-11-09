@@ -1,0 +1,9 @@
+{
+  "id": "cook.honey-flow@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 5,
+  "direction": "Continuous steady fine pouring of thick warm syrup from a ceramic pitcher into a glass bowl. Smooth low liquid ribbon with dense satin rushing friction and gentle glass resonance. Stable sustained body for the entire take. Seamless close foley loop.",
+  "generatedAt": "2026-11-09T07:13:21.144Z",
+  "sha256": "bba175c8af163bf752c2b9961dffff1951114e06c8276a379054e2c358ca3ed8"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "orchard.firm-pick",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "One ripe apple twisted from a tree: a tiny woody stem snap, quick leaf rebound, and a clear rounded hard fruit tap against an apple inside a cloth-lined basket. Immediate close careful hand harvest. No biting, footsteps, chopping or musical chime.",
+  "generatedAt": "2026-11-09T07:10:56.566Z",
+  "sha256": "8f7ad54b16fdeab3b2db1a9e8d91636434690f6759faa3768bd02716f8c77d7d"
+}

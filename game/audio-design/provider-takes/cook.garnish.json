@@ -1,0 +1,9 @@
+{
+  "id": "cook.garnish",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.6,
+  "direction": "One cooked carrot slice placed on glazed plate. Tiny soft solid vegetable tap with faint short plate tone. Compact immediate contact and quiet complete tail. No liquid, popping or squelch.",
+  "generatedAt": "2026-11-09T07:03:50.874Z",
+  "sha256": "4732295ae8748293331fb7d86ed0885b2395bfe09824a1c936c2e764c996a327"
+}

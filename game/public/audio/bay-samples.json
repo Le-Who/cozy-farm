@@ -1,310 +1,989 @@
 {
-  "ui.tap": [
+  "field.till": [
     {
-      "url": "./ui.tap.mp3",
-      "gain": 0.32
+      "url": "./field.till.mp3",
+      "gain": 0.65,
+      "revision": "4784a2e444fd"
     },
     {
-      "url": "./ui.tap@2.mp3",
-      "gain": 0.27
+      "url": "./field.till@2.mp3",
+      "gain": 0.62,
+      "revision": "4dc70a8bb85a"
     }
   ],
-  "ui.confirm": [
+  "field.seed": [
     {
-      "url": "./ui.confirm.mp3",
-      "gain": 0.45
-    }
-  ],
-  "ui.error": [
-    {
-      "url": "./ui.error.mp3",
-      "gain": 0.26
-    }
-  ],
-  "garden.till": [
-    {
-      "url": "./garden.till.mp3",
-      "gain": 0.55
-    }
-  ],
-  "garden.plant": [
-    {
-      "url": "./garden.plant.mp3",
-      "gain": 0.55
+      "url": "./field.seed.mp3",
+      "gain": 0.65,
+      "revision": "1bb8a30a0c4b"
     },
     {
-      "url": "./garden.plant@2.mp3",
-      "gain": 0.5
+      "url": "./field.seed@2.mp3",
+      "gain": 0.62,
+      "revision": "a92c6f983420"
     }
   ],
-  "garden.water": [
+  "field.can-pour": [
     {
-      "url": "./garden.water.mp3",
-      "gain": 0.54
+      "url": "./field.can-pour.mp3",
+      "gain": 0.64,
+      "revision": "810d56730dd6"
     },
     {
-      "url": "./garden.water@2.mp3",
-      "gain": 0.46
+      "url": "./field.can-pour@2.mp3",
+      "gain": 0.61,
+      "revision": "f5f2b5f1e10d"
     }
   ],
-  "garden.harvest": [
+  "field.can-soil": [
     {
-      "url": "./garden.harvest.mp3",
-      "gain": 0.56
+      "url": "./field.can-soil.mp3",
+      "gain": 0.64,
+      "revision": "b1bc6afe4e70"
     },
     {
-      "url": "./garden.harvest@2.mp3",
-      "gain": 0.5
+      "url": "./field.can-soil@2.mp3",
+      "gain": 0.62,
+      "revision": "3ff9e552870e"
     }
   ],
-  "orchard.pick": [
+  "field.irrigation": [
     {
-      "url": "./orchard.pick.mp3",
-      "gain": 0.5
+      "url": "./field.irrigation.mp3",
+      "gain": 0.55,
+      "revision": "a4bb1d605132"
     }
   ],
-  "well.fill": [
+  "field.root-pull": [
     {
-      "url": "./well.fill.mp3",
-      "gain": 0.48
-    }
-  ],
-  "hen.pet": [
-    {
-      "url": "./hen.pet.mp3",
-      "gain": 0.43
-    }
-  ],
-  "hen.feed": [
-    {
-      "url": "./hen.feed.mp3",
-      "gain": 0.52
-    }
-  ],
-  "hen.egg": [
-    {
-      "url": "./hen.egg.mp3",
-      "gain": 0.47
-    }
-  ],
-  "hen.hatch": [
-    {
-      "url": "./hen.hatch.mp3",
-      "gain": 0.48
-    }
-  ],
-  "shore.collect": [
-    {
-      "url": "./shore.collect.mp3",
-      "gain": 0.47
-    }
-  ],
-  "apiary.collect": [
-    {
-      "url": "./apiary.collect.mp3",
-      "gain": 0.4
-    }
-  ],
-  "fish.cast": [
-    {
-      "url": "./fish.cast.mp3",
-      "gain": 0.58
-    }
-  ],
-  "fish.hook": [
-    {
-      "url": "./fish.hook.mp3",
-      "gain": 0.56
-    }
-  ],
-  "fish.land": [
-    {
-      "url": "./fish.land.mp3",
-      "gain": 0.52
-    }
-  ],
-  "ferry.depart": [
-    {
-      "url": "./ferry.depart.mp3",
-      "gain": 0.45
-    }
-  ],
-  "ferry.arrive": [
-    {
-      "url": "./ferry.arrive.mp3",
-      "gain": 0.46
-    }
-  ],
-  "freight.crate": [
-    {
-      "url": "./freight.crate.mp3",
-      "gain": 0.48
-    }
-  ],
-  "market.buy": [
-    {
-      "url": "./market.buy.mp3",
-      "gain": 0.45
-    }
-  ],
-  "market.sell": [
-    {
-      "url": "./market.sell.mp3",
-      "gain": 0.46
+      "url": "./field.root-pull.mp3",
+      "gain": 0.66,
+      "revision": "9085c7f289a6"
     },
     {
-      "url": "./market.sell@2.mp3",
-      "gain": 0.39
+      "url": "./field.root-pull@2.mp3",
+      "gain": 0.63,
+      "revision": "f896e9c6fd60"
     }
   ],
-  "workshop.knead": [
+  "field.refill": [
     {
-      "url": "./workshop.knead.mp3",
-      "gain": 0.44
-    },
-    {
-      "url": "./workshop.knead@2.mp3",
-      "gain": 0.45
+      "url": "./field.refill.mp3",
+      "gain": 0.58,
+      "revision": "420f3d2e0aec"
     }
   ],
-  "workshop.roll": [
+  "field.step": [
     {
-      "url": "./workshop.roll.mp3",
-      "gain": 0.42
+      "url": "./field.step.mp3",
+      "gain": 0.22,
+      "revision": "bd6d09ccac2a"
     },
     {
-      "url": "./workshop.roll@2.mp3",
+      "url": "./field.step@2.mp3",
+      "gain": 0.22,
+      "revision": "4a1638633356"
+    },
+    {
+      "url": "./field.step@3.mp3",
+      "gain": 0.22,
+      "revision": "181bf643ef48"
+    }
+  ],
+  "flock.stroke": [
+    {
+      "url": "./flock.stroke.mp3",
+      "gain": 0.65,
+      "revision": "72fd5292db98"
+    },
+    {
+      "url": "./flock.stroke@2.mp3",
+      "gain": 0.65,
+      "revision": "48ac84d9e508"
+    },
+    {
+      "url": "./flock.stroke@3.mp3",
+      "gain": 0.62,
+      "revision": "a1a4b1c0de01"
+    },
+    {
+      "url": "./flock.stroke@4.mp3",
+      "gain": 0.64,
+      "revision": "31a9435de0ce"
+    },
+    {
+      "url": "./flock.stroke@5.mp3",
+      "gain": 0.63,
+      "revision": "befb8b27675d"
+    }
+  ],
+  "flock.lift": [
+    {
+      "url": "./flock.lift.mp3",
+      "gain": 0.62,
+      "revision": "cc463e8360ea"
+    },
+    {
+      "url": "./flock.lift@2.mp3",
+      "gain": 0.6,
+      "revision": "ed657b611222"
+    }
+  ],
+  "flock.settle": [
+    {
+      "url": "./flock.settle.mp3",
+      "gain": 0.6,
+      "revision": "c6bd69e392ca"
+    },
+    {
+      "url": "./flock.settle@2.mp3",
+      "gain": 0.6,
+      "revision": "cdfa1700036a"
+    }
+  ],
+  "flock.feed": [
+    {
+      "url": "./flock.feed.mp3",
+      "gain": 0.63,
+      "revision": "b9bb16c2043e"
+    },
+    {
+      "url": "./flock.feed@2.mp3",
+      "gain": 0.6,
+      "revision": "b97d97a953b1"
+    }
+  ],
+  "flock.eggs": [
+    {
+      "url": "./flock.eggs.mp3",
+      "gain": 0.62,
+      "revision": "9be3c581e852"
+    },
+    {
+      "url": "./flock.eggs@2.mp3",
+      "gain": 0.6,
+      "revision": "34f7bbbe773a"
+    }
+  ],
+  "flock.hatch": [
+    {
+      "url": "./flock.hatch.mp3",
+      "gain": 0.62,
+      "revision": "27ea87a6bb45"
+    }
+  ],
+  "gather.shell": [
+    {
+      "url": "./gather.shell.mp3",
+      "gain": 0.63,
+      "revision": "ab3feba8d17a"
+    },
+    {
+      "url": "./gather.shell@2.mp3",
+      "gain": 0.6,
+      "revision": "4663dcaf3f64"
+    }
+  ],
+  "gather.find": [
+    {
+      "url": "./gather.find.mp3",
+      "gain": 0.61,
+      "revision": "bd0c74fe9fa6"
+    },
+    {
+      "url": "./gather.find@2.mp3",
+      "gain": 0.59,
+      "revision": "366d5f26e901"
+    }
+  ],
+  "gather.salt": [
+    {
+      "url": "./gather.salt.mp3",
+      "gain": 0.6,
+      "revision": "d1414492d89f"
+    }
+  ],
+  "orchard.sapling": [
+    {
+      "url": "./orchard.sapling.mp3",
+      "gain": 0.63,
+      "revision": "e36c80db88f5"
+    },
+    {
+      "url": "./orchard.sapling@2.mp3",
+      "gain": 0.6,
+      "revision": "462917b2215d"
+    }
+  ],
+  "apiary.frame": [
+    {
+      "url": "./apiary.frame.mp3",
+      "gain": 0.53,
+      "revision": "22c8993296f2"
+    }
+  ],
+  "field.firm-pick": [
+    {
+      "url": "./field.firm-pick.mp3",
+      "gain": 0.64,
+      "revision": "3944db439d4a"
+    },
+    {
+      "url": "./field.firm-pick@2.mp3",
+      "gain": 0.62,
+      "revision": "41ded276cf98"
+    }
+  ],
+  "field.pumpkin": [
+    {
+      "url": "./field.pumpkin.mp3",
+      "gain": 0.63,
+      "revision": "2b8e4710b586"
+    }
+  ],
+  "field.leaf-pick": [
+    {
+      "url": "./field.leaf-pick.mp3",
+      "gain": 0.64,
+      "revision": "41b21be10641"
+    },
+    {
+      "url": "./field.leaf-pick@2.mp3",
+      "gain": 0.62,
+      "revision": "986bf9e3a17a"
+    }
+  ],
+  "field.grain-pick": [
+    {
+      "url": "./field.grain-pick.mp3",
+      "gain": 0.64,
+      "revision": "2ac3f0de4643"
+    },
+    {
+      "url": "./field.grain-pick@2.mp3",
+      "gain": 0.62,
+      "revision": "c77963cf4ac0"
+    }
+  ],
+  "field.berry-pick": [
+    {
+      "url": "./field.berry-pick.mp3",
+      "gain": 0.64,
+      "revision": "61429a05b8d2"
+    },
+    {
+      "url": "./field.berry-pick@2.mp3",
+      "gain": 0.62,
+      "revision": "53efe7122d9b"
+    }
+  ],
+  "orchard.firm-pick": [
+    {
+      "url": "./orchard.firm-pick.mp3",
+      "gain": 0.64,
+      "revision": "26f74b106822"
+    },
+    {
+      "url": "./orchard.firm-pick@2.mp3",
+      "gain": 0.62,
+      "revision": "39607e7c0c42"
+    }
+  ],
+  "orchard.soft-pick": [
+    {
+      "url": "./orchard.soft-pick.mp3",
+      "gain": 0.64,
+      "revision": "c87451c77a93"
+    },
+    {
+      "url": "./orchard.soft-pick@2.mp3",
+      "gain": 0.62,
+      "revision": "256597f4eca4"
+    }
+  ],
+  "field.berry-pluck": [
+    {
+      "url": "./field.berry-pluck.mp3",
+      "gain": 0.57,
+      "revision": "865984c836c8"
+    },
+    {
+      "url": "./field.berry-pluck@2.mp3",
+      "gain": 0.57,
+      "revision": "ff7de0de2698"
+    },
+    {
+      "url": "./field.berry-pluck@3.mp3",
+      "gain": 0.57,
+      "revision": "31a80fc7694d"
+    },
+    {
+      "url": "./field.berry-pluck@4.mp3",
+      "gain": 0.57,
+      "revision": "187f05a37de3"
+    },
+    {
+      "url": "./field.berry-pluck@5.mp3",
+      "gain": 0.57,
+      "revision": "d210790733c6"
+    },
+    {
+      "url": "./field.berry-pluck@6.mp3",
+      "gain": 0.57,
+      "revision": "f7eb5636cc6a"
+    },
+    {
+      "url": "./field.berry-pluck@7.mp3",
+      "gain": 0.57,
+      "revision": "de1544750267"
+    },
+    {
+      "url": "./field.berry-pluck@8.mp3",
+      "gain": 0.57,
+      "revision": "e91d437e0f25"
+    },
+    {
+      "url": "./field.berry-pluck@9.mp3",
+      "gain": 0.57,
+      "revision": "77e180cf1a65"
+    }
+  ],
+  "field.soil-sprinkle": [
+    {
+      "url": "./field.soil-sprinkle@3.mp3",
+      "gain": 0.56,
+      "revision": "9eda6b34146d"
+    },
+    {
+      "url": "./field.soil-sprinkle@4.mp3",
+      "gain": 0.56,
+      "revision": "407488d38a59"
+    },
+    {
+      "url": "./field.soil-sprinkle@5.mp3",
+      "gain": 0.56,
+      "revision": "b1de9d894a3f"
+    },
+    {
+      "url": "./field.soil-sprinkle.mp3",
+      "gain": 0.56,
+      "revision": "7f47dda114b1"
+    },
+    {
+      "url": "./field.soil-sprinkle@2.mp3",
+      "gain": 0.56,
+      "revision": "49c2e6738fcc"
+    }
+  ],
+  "angling.cast": [
+    {
+      "url": "./angling.cast.mp3",
+      "gain": 0.4,
+      "revision": "627dbaf70bbe"
+    }
+  ],
+  "angling.submerge": [
+    {
+      "url": "./angling.submerge.mp3",
+      "gain": 0.38,
+      "revision": "ad3101acc50d"
+    }
+  ],
+  "angling.brush": [
+    {
+      "url": "./angling.brush.mp3",
+      "gain": 0.43,
+      "revision": "05d5561f9dac"
+    },
+    {
+      "url": "./angling.brush@2.mp3",
+      "gain": 0.43,
+      "revision": "c2a54d43d1d0"
+    }
+  ],
+  "angling.turn": [
+    {
+      "url": "./angling.turn.mp3",
       "gain": 0.32,
+      "revision": "f4dd8610ada3"
+    }
+  ],
+  "angling.snag-fish-light": [
+    {
+      "url": "./angling.snag-fish-light.mp3",
+      "gain": 0.43,
+      "revision": "6d55301128de"
+    }
+  ],
+  "angling.snag-fish-heavy": [
+    {
+      "url": "./angling.snag-fish-heavy.mp3",
+      "gain": 0.45,
+      "revision": "cc8c7062a78c"
+    }
+  ],
+  "angling.snag-shell": [
+    {
+      "url": "./angling.snag-shell.mp3",
+      "gain": 0.41,
+      "revision": "323899858544"
+    }
+  ],
+  "angling.snag-stone": [
+    {
+      "url": "./angling.snag-stone.mp3",
+      "gain": 0.43,
+      "revision": "aca03dd9dc7f"
+    }
+  ],
+  "angling.snag-weed": [
+    {
+      "url": "./angling.snag-weed.mp3",
+      "gain": 0.4,
+      "revision": "765dc602c72c"
+    }
+  ],
+  "angling.snag-boot": [
+    {
+      "url": "./angling.snag-boot@2.mp3",
+      "gain": 0.45,
+      "revision": "32c215b7b7d7"
+    }
+  ],
+  "angling.raise": [
+    {
+      "url": "./angling.raise@6.mp3",
+      "gain": 0.24,
+      "revision": "588af8d6d5ad",
       "loop": true
     }
   ],
-  "workshop.cut": [
+  "angling.land": [
     {
-      "url": "./workshop.cut.mp3",
-      "gain": 0.5
-    },
-    {
-      "url": "./workshop.cut@2.mp3",
-      "gain": 0.36
+      "url": "./angling.land.mp3",
+      "gain": 0.43,
+      "revision": "f1bee9ba79c0"
     }
   ],
-  "workshop.complete": [
+  "angling.empty": [
     {
-      "url": "./workshop.complete.mp3",
-      "gain": 0.48
+      "url": "./angling.empty.mp3",
+      "gain": 0.32,
+      "revision": "05019dd65047"
     }
   ],
-  "kitchen.stir": [
+  "angling.lower": [
     {
-      "url": "./kitchen.stir.mp3",
-      "gain": 0.46
+      "url": "./angling.lower@7.mp3",
+      "gain": 0.21,
+      "revision": "ef18b78f512b",
+      "loop": true
+    }
+  ],
+  "menu.press": [
+    {
+      "url": "./menu.press.mp3",
+      "gain": 0.4,
+      "revision": "06b1de776512"
     },
     {
-      "url": "./kitchen.stir@2.mp3",
+      "url": "./menu.press@2.mp3",
+      "gain": 0.39,
+      "revision": "12c2f225cf05"
+    }
+  ],
+  "menu.choose": [
+    {
+      "url": "./menu.choose.mp3",
+      "gain": 0.37,
+      "revision": "f2da58823077"
+    },
+    {
+      "url": "./menu.choose@2.mp3",
+      "gain": 0.37,
+      "revision": "79500a958b03"
+    }
+  ],
+  "menu.blocked": [
+    {
+      "url": "./menu.blocked.mp3",
+      "gain": 0.53,
+      "revision": "9034a0d88b05"
+    }
+  ],
+  "menu.accept": [
+    {
+      "url": "./menu.accept.mp3",
+      "gain": 0.48,
+      "revision": "2b5c01f08d36"
+    }
+  ],
+  "trade.pay": [
+    {
+      "url": "./trade.pay.mp3",
+      "gain": 0.48,
+      "revision": "84519604a71c"
+    }
+  ],
+  "trade.receive": [
+    {
+      "url": "./trade.receive.mp3",
+      "gain": 0.52,
+      "revision": "dbe08ca007ff"
+    },
+    {
+      "url": "./trade.receive@2.mp3",
+      "gain": 0.51,
+      "revision": "704038dc3f1a"
+    }
+  ],
+  "harbour.crate": [
+    {
+      "url": "./harbour.crate.mp3",
+      "gain": 0.46,
+      "revision": "6a5705334be9"
+    }
+  ],
+  "harbour.castoff": [
+    {
+      "url": "./harbour.castoff.mp3",
+      "gain": 0.48,
+      "revision": "bc65ac246634"
+    }
+  ],
+  "harbour.berth": [
+    {
+      "url": "./harbour.berth.mp3",
+      "gain": 0.48,
+      "revision": "fa5988ecd766"
+    }
+  ],
+  "build.finish": [
+    {
+      "url": "./build.finish.mp3",
+      "gain": 0.56,
+      "revision": "404a5008f22e"
+    }
+  ],
+  "page.unfold": [
+    {
+      "url": "./page.unfold@2.mp3",
+      "gain": 0.37,
+      "revision": "fc9e9ef046d8"
+    },
+    {
+      "url": "./page.unfold@3.mp3",
+      "gain": 0.39,
+      "revision": "216aceffa2cb"
+    }
+  ],
+  "page.fold": [
+    {
+      "url": "./page.fold.mp3",
       "gain": 0.35,
+      "revision": "d475a5092fb1"
+    },
+    {
+      "url": "./page.fold@3.mp3",
+      "gain": 0.36,
+      "revision": "57cb41fba066"
+    }
+  ],
+  "daybreak.shutters": [
+    {
+      "url": "./daybreak.shutters.mp3",
+      "gain": 0.4,
+      "revision": "c73e68d6af32"
+    }
+  ],
+  "page.map": [
+    {
+      "url": "./page.map.mp3",
+      "gain": 0.38,
+      "revision": "85bc83248878"
+    }
+  ],
+  "cook.fruit-tart": [
+    {
+      "url": "./cook.fruit-tart.mp3",
+      "gain": 0.42,
+      "revision": "55374f38a939"
+    },
+    {
+      "url": "./cook.fruit-tart@3.mp3",
+      "gain": 0.37,
+      "revision": "31ce6cf12742"
+    }
+  ],
+  "cook.preserves-stir": [
+    {
+      "url": "./cook.preserves-stir.mp3",
+      "gain": 0.33,
+      "revision": "113a6aa6ce4c",
+      "loop": true
+    },
+    {
+      "url": "./cook.preserves-stir@3.mp3",
+      "gain": 0.42,
+      "revision": "82459a2a3847",
+      "loop": true
+    },
+    {
+      "url": "./cook.preserves-stir@4.mp3",
+      "gain": 0.42,
+      "revision": "e0983567f8fa",
+      "loop": true
+    },
+    {
+      "url": "./cook.preserves-stir@5.mp3",
+      "gain": 0.42,
+      "revision": "7aee0dce0db2",
+      "loop": true
+    },
+    {
+      "url": "./cook.preserves-stir@6.mp3",
+      "gain": 0.42,
+      "revision": "5a219c996ce4",
+      "loop": true
+    },
+    {
+      "url": "./cook.preserves-stir@7.mp3",
+      "gain": 0.42,
+      "revision": "9075ebd75526",
+      "loop": true
+    },
+    {
+      "url": "./cook.preserves-stir@8.mp3",
+      "gain": 0.42,
+      "revision": "bfb8095bc9ef",
       "loop": true
     }
   ],
-  "kitchen.fruit": [
+  "cook.jam-scoop": [
     {
-      "url": "./kitchen.fruit.mp3",
-      "gain": 0.45
-    },
-    {
-      "url": "./kitchen.fruit@2.mp3",
-      "gain": 0.42
-    }
-  ],
-  "kitchen.cream": [
-    {
-      "url": "./kitchen.cream.mp3",
-      "gain": 0.45
-    }
-  ],
-  "kitchen.honey": [
-    {
-      "url": "./kitchen.honey.mp3",
-      "gain": 0.43
-    },
-    {
-      "url": "./kitchen.honey@3.mp3",
-      "gain": 0.32,
-      "loop": true
-    }
-  ],
-  "kitchen.sprinkle": [
-    {
-      "url": "./kitchen.sprinkle.mp3",
-      "gain": 0.43
-    }
-  ],
-  "kitchen.grill": [
-    {
-      "url": "./kitchen.grill.mp3",
-      "gain": 0.42
-    },
-    {
-      "url": "./kitchen.grill@2.mp3",
+      "url": "./cook.jam-scoop.mp3",
       "gain": 0.34,
+      "revision": "e81da7825430"
+    }
+  ],
+  "cook.sugar": [
+    {
+      "url": "./cook.sugar.mp3",
+      "gain": 0.36,
+      "revision": "9df24aa9624e",
+      "loop": true
+    },
+    {
+      "url": "./cook.sugar@3.mp3",
+      "gain": 0.34,
+      "revision": "4a58b77bfd02",
       "loop": true
     }
   ],
-  "kitchen.flip": [
+  "cook.salt": [
     {
-      "url": "./kitchen.flip.mp3",
-      "gain": 0.48
-    },
-    {
-      "url": "./kitchen.flip@2.mp3",
-      "gain": 0.39
+      "url": "./cook.salt.mp3",
+      "gain": 0.33,
+      "revision": "ac868229f778",
+      "loop": true
     }
   ],
-  "table.place": [
+  "cook.honey-brush": [
     {
-      "url": "./table.place.mp3",
-      "gain": 0.44
+      "url": "./cook.honey-brush.mp3",
+      "gain": 0.33,
+      "revision": "18d1dd7658fc",
+      "loop": true
     }
   ],
-  "rest.dawn": [
+  "cook.honey-end": [
     {
-      "url": "./rest.dawn.mp3",
-      "gain": 0.45
+      "url": "./cook.honey-end.mp3",
+      "gain": 0.28,
+      "revision": "b3279cfb89d1"
     }
   ],
-  "footsteps.grass": [
+  "cook.cream-scoop": [
     {
-      "url": "./footsteps.grass.mp3",
-      "gain": 0.27
+      "url": "./cook.cream-scoop.mp3",
+      "gain": 0.4,
+      "revision": "1073fbcee44e"
+    }
+  ],
+  "cook.dough-knead": [
+    {
+      "url": "./cook.dough-knead.mp3",
+      "gain": 0.42,
+      "revision": "6725225dc8fb"
+    }
+  ],
+  "cook.dough-release": [
+    {
+      "url": "./cook.dough-release.mp3",
+      "gain": 0.26,
+      "revision": "ad31418f749b"
+    }
+  ],
+  "cook.dough-cut": [
+    {
+      "url": "./cook.dough-cut.mp3",
+      "gain": 0.42,
+      "revision": "8b5f4918835e"
+    }
+  ],
+  "cook.pear-cut": [
+    {
+      "url": "./cook.pear-cut.mp3",
+      "gain": 0.43,
+      "revision": "53f3c1310dc4"
+    }
+  ],
+  "cook.oven-in": [
+    {
+      "url": "./cook.oven-in.mp3",
+      "gain": 0.4,
+      "revision": "f5ddf4c4222c"
+    }
+  ],
+  "cook.oven-out": [
+    {
+      "url": "./cook.oven-out.mp3",
+      "gain": 0.42,
+      "revision": "91dfe4c25a1b"
+    }
+  ],
+  "cook.fish-sizzle": [
+    {
+      "url": "./cook.fish-sizzle.mp3",
+      "gain": 0.32,
+      "revision": "50aa5af71628",
+      "loop": true
+    }
+  ],
+  "cook.fish-contact": [
+    {
+      "url": "./cook.fish-contact.mp3",
+      "gain": 0.41,
+      "revision": "70b188e41427"
+    }
+  ],
+  "cook.fish-turn": [
+    {
+      "url": "./cook.fish-turn.mp3",
+      "gain": 0.42,
+      "revision": "09189b2257f5"
+    }
+  ],
+  "cook.fish-plate": [
+    {
+      "url": "./cook.fish-plate.mp3",
+      "gain": 0.39,
+      "revision": "6d5fe88133fa"
+    }
+  ],
+  "cook.garnish": [
+    {
+      "url": "./cook.garnish.mp3",
+      "gain": 0.32,
+      "revision": "22ffcb0ef23c"
+    }
+  ],
+  "cook.table-ceramic": [
+    {
+      "url": "./cook.table-ceramic.mp3",
+      "gain": 0.42,
+      "revision": "68639439906a"
+    }
+  ],
+  "cook.table-food": [
+    {
+      "url": "./cook.table-food.mp3",
+      "gain": 0.34,
+      "revision": "386ad6338693"
+    }
+  ],
+  "cook.basket-place": [
+    {
+      "url": "./cook.basket-place.mp3",
+      "gain": 0.34,
+      "revision": "94c7d4214c50"
+    }
+  ],
+  "cook.egg-place": [
+    {
+      "url": "./cook.egg-place.mp3",
+      "gain": 0.32,
+      "revision": "a992c2e67c93"
+    }
+  ],
+  "cook.finish": [
+    {
+      "url": "./cook.finish.mp3",
+      "gain": 0.36,
+      "revision": "1043a08bbe93"
+    }
+  ],
+  "cook.jam-end": [
+    {
+      "url": "./cook.jam-end.mp3",
+      "gain": 0.33,
+      "revision": "3b241340064e"
+    }
+  ],
+  "cook.fruit-pot": [
+    {
+      "url": "./cook.fruit-pot@4.mp3",
+      "gain": 0.41,
+      "revision": "30238220a937"
     },
     {
-      "url": "./footsteps.grass@2.mp3",
-      "gain": 0.24
+      "url": "./cook.fruit-pot@5.mp3",
+      "gain": 0.41,
+      "revision": "ae2041481932"
     },
     {
-      "url": "./footsteps.grass@3.mp3",
-      "gain": 0.25
+      "url": "./cook.fruit-pot@6.mp3",
+      "gain": 0.41,
+      "revision": "0c151a890d57"
+    },
+    {
+      "url": "./cook.fruit-pot@7.mp3",
+      "gain": 0.41,
+      "revision": "0b601e45133d"
+    },
+    {
+      "url": "./cook.fruit-pot@8.mp3",
+      "gain": 0.39,
+      "revision": "5700ff79cb32"
+    },
+    {
+      "url": "./cook.fruit-pot@9.mp3",
+      "gain": 0.39,
+      "revision": "6e3891a5012c"
+    }
+  ],
+  "cook.fruit-cream": [
+    {
+      "url": "./cook.fruit-cream@2.mp3",
+      "gain": 0.35,
+      "revision": "0066efcb3728"
+    },
+    {
+      "url": "./cook.fruit-cream@3.mp3",
+      "gain": 0.37,
+      "revision": "1ceac7527899"
+    },
+    {
+      "url": "./cook.fruit-cream@4.mp3",
+      "gain": 0.36,
+      "revision": "0c8c46f16cd4"
+    }
+  ],
+  "cook.honey-flow": [
+    {
+      "url": "./cook.honey-flow@2.mp3",
+      "gain": 0.36,
+      "revision": "17b48e5ed3cc",
+      "loop": true
+    }
+  ],
+  "cook.cream-flow": [
+    {
+      "url": "./cook.cream-flow@2.mp3",
+      "gain": 0.35,
+      "revision": "cb6e69b734b0",
+      "loop": true
+    }
+  ],
+  "cook.jam-flow": [
+    {
+      "url": "./cook.jam-flow@2.mp3",
+      "gain": 0.38,
+      "revision": "8e5eb0add49f",
+      "loop": true
+    }
+  ],
+  "cook.batter-stir": [
+    {
+      "url": "./cook.batter-stir@2.mp3",
+      "gain": 0.34,
+      "revision": "43f24a24cc79",
+      "loop": true
+    },
+    {
+      "url": "./cook.batter-stir@3.mp3",
+      "gain": 0.38,
+      "revision": "098c8479e282",
+      "loop": true
+    },
+    {
+      "url": "./cook.batter-stir@4.mp3",
+      "gain": 0.39,
+      "revision": "2448d4927e01",
+      "loop": true
+    }
+  ],
+  "cook.dough-roll": [
+    {
+      "url": "./cook.dough-roll@2.mp3",
+      "gain": 0.32,
+      "revision": "7ce3a6e4b52f",
+      "loop": true
+    }
+  ],
+  "cook.berry-pot": [
+    {
+      "url": "./cook.berry-pot@4.mp3",
+      "gain": 0.35,
+      "revision": "329a31a9daa4"
+    },
+    {
+      "url": "./cook.berry-pot@5.mp3",
+      "gain": 0.37,
+      "revision": "54596cf72176"
+    },
+    {
+      "url": "./cook.berry-pot@6.mp3",
+      "gain": 0.37,
+      "revision": "1b82a147afbd"
+    },
+    {
+      "url": "./cook.berry-pot@7.mp3",
+      "gain": 0.36,
+      "revision": "923ddcf312fe"
+    }
+  ],
+  "cook.berry-tart": [
+    {
+      "url": "./cook.berry-tart@3.mp3",
+      "gain": 0.33,
+      "revision": "d9f81f0abf91"
     }
   ],
   "instrument.ceramic": [
     {
       "url": "./instrument.ceramic-low.mp3",
-      "gain": 0.74
+      "gain": 0.74,
+      "revision": "0ed77700b8f1"
     },
     {
       "url": "./instrument.ceramic-high.mp3",
-      "gain": 0.72
+      "gain": 0.72,
+      "revision": "6dcd3fa362f0"
     }
   ],
   "instrument.marimba": [
     {
       "url": "./instrument.marimba-low.mp3",
       "gain": 0.82,
+      "revision": "80cb9f5208bd",
       "rootMidi": 60.03,
       "tuned": true
     },
     {
       "url": "./instrument.marimba-high.mp3",
       "gain": 0.78,
+      "revision": "037910ef9c1f",
       "rootMidi": 64.959,
       "tuned": true
     }
@@ -313,12 +992,14 @@
     {
       "url": "./instrument.handpan-low.mp3",
       "gain": 0.75,
+      "revision": "c6edaf485d73",
       "rootMidi": 61.954,
       "tuned": true
     },
     {
       "url": "./instrument.handpan-high.mp3",
       "gain": 0.73,
+      "revision": "5f8b62d99b9a",
       "rootMidi": 80.888,
       "tuned": true
     }
@@ -327,12 +1008,14 @@
     {
       "url": "./instrument.harp-low.mp3",
       "gain": 0.78,
+      "revision": "4df00f9bd955",
       "rootMidi": 59.879,
       "tuned": true
     },
     {
       "url": "./instrument.harp-high.mp3",
       "gain": 0.72,
+      "revision": "5efa485a69d8",
       "rootMidi": 76.041,
       "tuned": true
     }
@@ -340,35 +1023,29 @@
   "instrument.shaker": [
     {
       "url": "./instrument.shaker-low.mp3",
-      "gain": 0.48
+      "gain": 0.48,
+      "revision": "acb47e8082a8"
     },
     {
       "url": "./instrument.shaker-high.mp3",
-      "gain": 0.47
+      "gain": 0.47,
+      "revision": "fca004367468"
     }
   ],
   "instrument.bass": [
     {
       "url": "./instrument.bass-low.mp3",
       "gain": 0.82,
+      "revision": "6fee2b3b83ec",
       "rootMidi": 37.946,
       "tuned": true
     },
     {
       "url": "./instrument.bass-high.mp3",
       "gain": 0.77,
+      "revision": "6756af2861d4",
       "rootMidi": 42.859,
       "tuned": true
-    }
-  ],
-  "kitchen.salt": [
-    {
-      "url": "./kitchen.salt.mp3",
-      "gain": 0.3
-    },
-    {
-      "url": "./kitchen.salt@2.mp3",
-      "gain": 0.28
     }
   ]
 }

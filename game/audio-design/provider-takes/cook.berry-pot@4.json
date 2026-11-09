@@ -1,0 +1,9 @@
+{
+  "id": "cook.berry-pot@4",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.1,
+  "direction": "Ten dried mung beans are tipped from a tiny wooden scoop into a copper measuring cup. Small dry beads strike copper in a brief irregular cluster: delicate hollow taps, fine granular scattering and short metallic body resonance. Close intimate foley.",
+  "generatedAt": "2026-11-09T07:16:07.567Z",
+  "sha256": "5b0e31688ed6a7bbd0f74810bc0b6453ecbc9911397f87d03334f6da209180d2"
+}

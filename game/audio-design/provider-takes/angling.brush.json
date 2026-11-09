@@ -1,0 +1,9 @@
+{
+  "id": "angling.brush",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.5,
+  "direction": "One small fish softly bumps a baited hook underwater and slips away: a single muted rounded liquid tuk with a brief muffled fin swish. A clearly audible gentle contact, warm low-mid detail, no sharp impact, no success chime, no alarm, no pain or voice.",
+  "generatedAt": "2026-11-09T07:01:09.177Z",
+  "sha256": "9beb09003e771d08c0247dc6d0ad3994243ddf4fe8f8031759092f870a02e02f"
+}

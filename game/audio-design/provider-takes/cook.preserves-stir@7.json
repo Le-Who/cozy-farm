@@ -1,0 +1,9 @@
+{
+  "id": "cook.preserves-stir@7",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "Very slow continuous folding of thick fruit pudding. Warm soft low creamy slosh, dense supple liquid waves overlapping smoothly, tiny muted pulp movements. Consistent uninterrupted velvety filling texture, close soothing kitchen recording, seamless six second loop.",
+  "generatedAt": "2026-11-09T07:40:43.713Z",
+  "sha256": "e5c1207ece684cd2fd3fcdc7813a05757f300204875a3c7bcd393d31e3b45495"
+}

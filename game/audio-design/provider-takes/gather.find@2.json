@@ -1,0 +1,9 @@
+{
+  "id": "gather.find@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "One tiny polished beach pebble lightly taps a smooth glass trinket, clear high delicate hard clink and a short clean ringing tail. Close immediate isolated collected-object cue. No shoes, gravel, soil, fabric, bag rustling, splash, coins or melody.",
+  "generatedAt": "2026-11-09T07:14:08.262Z",
+  "sha256": "3115633889299bebf7e06ac99bf343d36f5f938edcaaad4c556d549fdc6e7856"
+}

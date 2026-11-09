@@ -1,0 +1,9 @@
+{
+  "id": "field.berry-pluck@9",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "One single gentle rounded elastic pluck, like a little soft gummy berry releasing from its stem. Warm medium pitched springy pulk, delicate cushioned attack, smooth downward pitch bend and short mellow decay. Cute intimate dry game Foley, then silence.",
+  "generatedAt": "2026-11-09T07:42:22.251Z",
+  "sha256": "684504eb29350083c6bf5260fe33a9b014ff71096fa6aa9dae5a581a6e0dcd9e"
+}

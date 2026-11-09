@@ -1,0 +1,9 @@
+{
+  "id": "cook.fruit-pot@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1,
+  "direction": "Close foley: three pieces of diced apple tip from a little wooden board into an empty heavy copper saucepan. Gentle hollow low copper knocks, dry solid fruit impacts, tiny board scrape. Distinct short natural kitchen sequence.",
+  "generatedAt": "2026-11-09T07:13:01.523Z",
+  "sha256": "621a434c8f9be1dadb02939ebd762c99f7033d30f8a7bf1ff301bc002c122493"
+}

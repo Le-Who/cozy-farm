@@ -1,0 +1,9 @@
+{
+  "id": "cook.preserves-stir",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Continuous wooden spoon stirring dense apple preserve in copper. Low smooth wet brushing friction, tiny fruit fibres, overlapping slow circles. Even body throughout. No bubbles, gas, suction, clinks, pauses or ending. Loopable.",
+  "generatedAt": "2026-11-09T07:02:38.421Z",
+  "sha256": "39cb69fdb28e7c12d62c33bfb852903159b69b52b1fdfeed56708c9b8f698987"
+}

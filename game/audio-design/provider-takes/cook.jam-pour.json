@@ -1,0 +1,9 @@
+{
+  "id": "cook.jam-pour",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 1.25,
+  "direction": "One spoonful of thick jam slides into a glass jar: dense satin ribbon, soft heavy pat, final sticky strand separation and tiny spoon rim tick. Complete immediate transfer. No water splash, bubbles, gurgle or air burst.",
+  "generatedAt": "2026-11-09T07:02:40.767Z",
+  "sha256": "79f8e9a1980a9324fff59cdddb0f59f19531bc1ba5c96f8e1fca77f015223c9a"
+}

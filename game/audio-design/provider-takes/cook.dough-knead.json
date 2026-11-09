@@ -1,0 +1,9 @@
+{
+  "id": "cook.dough-knead",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.75,
+  "direction": "One palm presses and folds dough on floured maple board. Low pillowy solid thump, tiny dry flour brush, soft elastic release. One complete immediate gesture. No wet slap, suction or hard knock.",
+  "generatedAt": "2026-11-09T07:03:22.016Z",
+  "sha256": "6a3c5d2f0a6252d9ebb5b411d1348a08a82df265590010e0d38427c55a38077e"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "field.soil-sprinkle@5",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.95,
+  "direction": "Close gentle water Foley: one short soft cloud of fine water drops landing across damp garden earth, a quiet irregular pit-patter and delicate diffuse liquid scatter. Mellow rounded drops, smooth tender onset and a clean quiet finish. Warm intimate natural recording.",
+  "generatedAt": "2026-11-09T07:42:26.791Z",
+  "sha256": "6314e0b2ac6d09d8f84ae77024c39b53fa85f40b952307530a6892d329f4a777"
+}

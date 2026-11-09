@@ -1,0 +1,9 @@
+{
+  "id": "cook.preserves-stir@6",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "Gentle continuous circular swirling of thick smooth strawberry jam. Rich low silky sloshing and soft dense fruit pulp folding, broad rounded mellow liquid waves with a subtle moist grain. The filling moves slowly and evenly for the entire six seconds, intimate seamless texture.",
+  "generatedAt": "2026-11-09T07:40:39.885Z",
+  "sha256": "089e7a6c04e1a5d8a4a74cbdb88973327787a86bd1f19d13e9bfd7e319afe79f"
+}

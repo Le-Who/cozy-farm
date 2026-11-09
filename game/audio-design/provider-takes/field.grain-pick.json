@@ -1,0 +1,9 @@
+{
+  "id": "field.grain-pick",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 0.8,
+  "direction": "A small sheaf of ripe wheat is gathered gently: soft warm dry straw brushing together, a few fine seeds roll quietly into linen. Smooth short restrained papery plant texture, mellow low treble and rounded onset. No brittle snap, metallic snip, scratchy crackle, footsteps or music.",
+  "generatedAt": "2026-11-09T07:15:30.827Z",
+  "sha256": "0dd7dce1de6f476b45cf15a19ab43e9830886d5daf129e53d28ab05c060c350c"
+}

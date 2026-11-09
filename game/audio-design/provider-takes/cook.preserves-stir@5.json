@@ -1,0 +1,9 @@
+{
+  "id": "cook.preserves-stir@5",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 6,
+  "direction": "Thick creamy fruit preserve moving continuously in slow broad circles. Plush soft low liquid rolling and folding, heavy satin waves with a mellow cushioned body. Pure close sound of the fruit mass, consistent smooth texture across the entire recording. Seamless loop.",
+  "generatedAt": "2026-11-09T07:38:22.891Z",
+  "sha256": "9e812a50e1e6facec0363218cf40044c85d242f6d3ee26def3e8085f3897b77f"
+}

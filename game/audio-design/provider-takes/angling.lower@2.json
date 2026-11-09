@@ -1,0 +1,9 @@
+{
+  "id": "angling.lower@2",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v2",
+  "requestedSeconds": 4,
+  "direction": "Seamless loop of a thick loose cotton cord slowly sliding over soft wool felt. Quiet smooth broad low-mid rubbing around 300 to 1100 Hz, diffuse rounded fibers, relaxed steady motion. Dry intimate gentle foley, no pitch, ringing, whistles, squeaks, ratchets, mechanism, pulses, music, speech or background ambience.",
+  "generatedAt": "2026-11-09T07:21:33.717Z",
+  "sha256": "64e419f2bb20e98f47d8f26baf9794f1099c67d8a5e48db6d229b0a90d9ead82"
+}
