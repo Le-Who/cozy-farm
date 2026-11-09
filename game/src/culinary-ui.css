@@ -9,3 +9,5 @@
 .market-empty{min-height:120px;display:flex;align-items:center;justify-content:center;gap:12px;color:#987d69}.market-empty .icon{width:65px;height:65px}
 
 @media(max-height:460px){.recipe-base-tabs{gap:8px;margin-bottom:8px}.recipe-base-tabs .dialog-button{display:flex;align-items:center;gap:5px;min-height:40px;padding:5px 10px}.recipe-base-tabs .icon{width:28px;height:28px}.recipe-portions{margin:8px 0}.recipe-portion{min-height:74px;padding:6px}.recipe-portion .icon{width:48px;height:48px}.recipe-studio footer{padding-top:6px}.recipe-studio footer .dialog-button{min-height:40px;padding:5px 12px}}
+.cove-effect{margin:9px 2px 0;font-size:12px;line-height:1.35;color:#80634f}
+@media(max-height:460px){.cove-effect{margin-top:5px;font-size:11px}}

@@ -1,0 +1,267 @@
+{
+  "version": 2,
+  "generator": "built-in image_gen, transparent_background:true for all cutouts",
+  "reference": "01_primary_target/lavender-bay/community-life/fish/01-fish-kitchen-master.png",
+  "pan": {
+    "url": "pan-front-wall.webp",
+    "source": "08-pan-front-wall.png",
+    "projection": "single camera-facing authored40degree static prop",
+    "cavityAnchor": [
+      0.418,
+      0.596
+    ],
+    "depthWrite": false
+  },
+  "assets": {
+    "fish-raw": {
+      "url": "fish-raw.webp",
+      "width": 755,
+      "height": 295,
+      "alphaZero": 0.47742,
+      "alphaSolid": 0.48836,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "fish-grilled": {
+      "url": "fish-grilled.webp",
+      "width": 755,
+      "height": 295,
+      "alphaZero": 0.47678,
+      "alphaSolid": 0.49101,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "board": {
+      "url": "board.webp",
+      "width": 919,
+      "height": 407,
+      "alphaZero": 0.19742,
+      "alphaSolid": 0.78555,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "plate": {
+      "url": "plate.webp",
+      "width": 1336,
+      "height": 878,
+      "alphaZero": 0.20722,
+      "alphaSolid": 0.7759,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "salt": {
+      "url": "salt.webp",
+      "width": 558,
+      "height": 406,
+      "alphaZero": 0.55479,
+      "alphaSolid": 0.43212,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "spatula": {
+      "url": "spatula.webp",
+      "width": 734,
+      "height": 477,
+      "alphaZero": 0.76333,
+      "alphaSolid": 0.21387,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "carrot-0": {
+      "url": "carrot-0.webp",
+      "width": 262,
+      "height": 295,
+      "alphaZero": 0.61192,
+      "alphaSolid": 0.36279,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "carrot-1": {
+      "url": "carrot-1.webp",
+      "width": 248,
+      "height": 305,
+      "alphaZero": 0.52828,
+      "alphaSolid": 0.44324,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "carrot-2": {
+      "url": "carrot-2.webp",
+      "width": 279,
+      "height": 313,
+      "alphaZero": 0.66512,
+      "alphaSolid": 0.31079,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "pan-front-wall": {
+      "url": "pan-front-wall.webp",
+      "width": 1100,
+      "height": 735,
+      "alphaZero": 0.48641,
+      "alphaSolid": 0.49836,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "perch-raw": {
+      "url": "perch-raw.webp",
+      "width": 755,
+      "height": 295,
+      "alphaZero": 0.52626,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "visibleBounds": [
+        20,
+        26,
+        735,
+        268
+      ]
+    },
+    "perch-grilled": {
+      "url": "perch-grilled.webp",
+      "width": 755,
+      "height": 295,
+      "alphaZero": 0.52522,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "visibleBounds": [
+        20,
+        26,
+        734,
+        268
+      ]
+    },
+    "moonfish-raw": {
+      "url": "moonfish-raw.webp",
+      "width": 755,
+      "height": 295,
+      "alphaZero": 0.52515,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "visibleBounds": [
+        20,
+        22,
+        735,
+        273
+      ]
+    },
+    "moonfish-grilled": {
+      "url": "moonfish-grilled.webp",
+      "width": 755,
+      "height": 295,
+      "alphaZero": 0.52371,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "visibleBounds": [
+        20,
+        22,
+        735,
+        272
+      ]
+    },
+    "lanternfish-raw": {
+      "url": "lanternfish-raw.webp",
+      "width": 755,
+      "height": 295,
+      "alphaZero": 0.53082,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "visibleBounds": [
+        20,
+        28,
+        735,
+        267
+      ]
+    },
+    "lanternfish-grilled": {
+      "url": "lanternfish-grilled.webp",
+      "width": 755,
+      "height": 295,
+      "alphaZero": 0.5272,
+      "cornerAlpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "visibleBounds": [
+        20,
+        27,
+        735,
+        268
+      ]
+    }
+  },
+  "speciesReference": "01_primary_target/lavender-bay/community-life/fish/species",
+  "speciesRegistration": {
+    "perch": {
+      "silhouetteIoU": 0.98752
+    },
+    "moonfish": {
+      "silhouetteIoU": 0.98634
+    },
+    "lanternfish": {
+      "silhouetteIoU": 0.98709
+    }
+  }
+}

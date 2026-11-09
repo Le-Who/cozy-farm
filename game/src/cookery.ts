@@ -7,18 +7,21 @@ import {
   choosePreserveProcessing, type CookeryKind, type CookeryPoint,
 } from './cookery-model'
 import { createHoneyCookery } from './honey-cookery'
+import { createFishCookery } from './fish-cookery'
 import type { HoneyFamily } from './honey-cookery-model'
 import type { CookeryResult, SignatureProcessing } from './culinary'
 import { signatureProcessingDefinitions } from './culinary'
+import type { FishingSpecies } from './fishing-model'
 import './cookery.css'
 
 export type CookeryRecipe = {
-  id: string; name: string; kind: CookeryKind | HoneyFamily; icon?: string; signature?: boolean; processing?: SignatureProcessing;
+  id: string; name: string; kind: CookeryKind | HoneyFamily | 'grilledFish'; icon?: string; signature?: boolean; processing?: SignatureProcessing;
   ingredients?: readonly { name: string; icon?: string; count?: number }[];
   fruitOptions?: readonly { id: string; name: string; art?: string; color?: string }[];
   selectedFruit?: readonly { id: string; quantity: number; trait?: string }[];
+  fishSpecies?: FishingSpecies;
 }
-export type CookeryOptions = { recipe: CookeryRecipe; onComplete: (result: CookeryResult) => boolean; onCancel: () => void }
+export type CookeryOptions = { recipe: CookeryRecipe; onComplete: (result: CookeryResult) => boolean; onCancel: () => void; returnLabel?: string }
 type Ellipse = { cx: number; cy: number; rx: number; ry: number }
 type Asset = { url: string; width: number; height: number; innerRimEllipse?: Ellipse; mixSurfaceEllipse?: Ellipse; foregroundUrl?: string }
 type Rect = { x: number; y: number; width: number; height: number }
@@ -28,6 +31,7 @@ type Fleck = { x: number; y: number; size: number; rotation: number }
 
 /** Inventory stays in the parent. One scene owns one uncommitted recipe. */
 export function createCookery(host: HTMLElement, options: CookeryOptions): { destroy(): void } {
+  if (options.recipe.kind === 'grilledFish') return createFishCookery(host, options)
   if (options.recipe.kind !== 'preserves' && options.recipe.kind !== 'decorate') return createHoneyCookery(host, options)
   const model = createCookeryModel(options.recipe.kind, options.recipe.processing)
   const fruitMix = options.recipe.selectedFruit?.length ? options.recipe.selectedFruit.flatMap(value => Array.from({ length: Math.max(1, Math.min(3, value.quantity)) }, () => value.id))
@@ -63,6 +67,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     <div class="cookery-keyboard-cursor" hidden aria-hidden="true"></div>
     </div><p id="cookery-instructions" class="cookery-sr-only">Переносите фрукты с тарелки. Ложкой перемешивайте конфитюр, сахарницей посыпайте тарт. Клавиатура: F — следующий фрукт, S — ложка или сахарница, стрелки — перемещение, пробел — взять или положить, Q и E — поворот дольки, Esc — на кухню, Enter — завершить готовое блюдо.</p><p class="cookery-live cookery-sr-only" aria-live="polite" aria-atomic="true"></p>`
   host.append(root)
+  root.querySelector('.cookery-close')!.setAttribute('aria-label', options.returnLabel ?? 'На кухню')
   const view = root.querySelector<HTMLElement>('.cookery-view')!
   const status = root.querySelector<HTMLElement>('.cookery-render-status')!
   const hint = root.querySelector<HTMLElement>('.cookery-hint')!
@@ -311,7 +316,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     progress.setAttribute('aria-valuenow', String(value)); progressFill.style.width = `${value}%`
     progress.hidden = model.stage === 'ready' || model.stage === 'finished'
     finish.hidden = model.stage !== 'ready' && model.stage !== 'finished'; finish.disabled = contextLost || !loaded || !physicallySettled || !!drag
-    finish.querySelector('span')!.textContent = model.stage === 'finished' ? 'На кухню' : 'Готово'
+    finish.querySelector('span')!.textContent = model.stage === 'finished' ? options.returnLabel ?? 'На кухню' : 'Готово'
     sourceCue.hidden = model.stage !== 'fruit' || !!drag
     updateToolCue()
     processingControls.hidden = !options.recipe.signature || model.kind !== 'preserves' || model.stage !== 'fruit'

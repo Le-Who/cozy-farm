@@ -1,0 +1,31 @@
+{
+  "commands": {
+    "npm test": "276 tests passed before workshop-baking new test",
+    "node --test tests/workshop-baking.test.ts tests/workshop-sculpt.test.ts": "7 passed after final geometry/scoring change",
+    "npm run build": "passed after final geometry/scoring change; 0 untranslated UI strings",
+    "npx tsc --noEmit": "passed after matte crust addition",
+    "git diff --check -- workshop files": "passed"
+  },
+  "runtime": {
+    "origin": "http://127.0.0.1:5295/",
+    "browser": "Chromium via playwright-cli",
+    "desktop": "ordinary hub entry, explicit loaf selection, mixing, native mouse deformation, proofing/baking, exactly one loaf awarded",
+    "mobile": "native CDP touch events, round/folded selections, mixing, actual touch drag worked=true, baking; each recipe awarded once",
+    "controls": "all button centers hit-test inside viewport at 360x640,390x844,568x320,844x390,520x480; revised landscape44px tools rechecked at568x320",
+    "practice": "built-village fixture, unknown long pattern, explicit practice link, correct long preselected, cut into2 preserving long identity, bake awards1, returns to Bea prior selection with service enabled, service awards3",
+    "console": "0 errors and 0 warnings",
+    "finalScreen": "shape picker, action palette, ingredient counters and hand trigger hidden; final product label and Done visible"
+  },
+  "visual": "Compared assembled workshop to Lavender Bay workshop master at game scale; inspected current desktop loaf, phone round bun and folded pastry. Motion evidence shows rising and browning without replacing outline. Baking test proves X/Z vertices stay exactly equal, cut index unchanged, volume rises and normals stay finite.",
+  "artifacts": [
+    "desktop-loaf-shaped.png",
+    "desktop-loaf-baked.png",
+    "mobile-round-baked.png",
+    "mobile-folded-baked.png",
+    "bea-pattern-locked.png",
+    "bea-pattern-unlocked.png",
+    "loaf-proofing.webm",
+    "touch-bun.webm",
+    "motion-frames/proof-contact-sheet.png"
+  ]
+}

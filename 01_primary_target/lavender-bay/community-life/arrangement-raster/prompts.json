@@ -1,0 +1,29 @@
+{
+  "generator": "built-in image_gen; transparent_background=true",
+  "references": ["../02-table-master.png", "../03-picnic-master.png"],
+  "sharedDirection": "Finished premium authored game cutouts matching the accepted Lavender Bay master. Exquisitely hand painted tactile 3D illustration, rounded substantial silhouettes, fine ceramic/fruit/textile/wicker detail. Fixed orthographic camera looking down 40 degrees. Warm upper-left light, gentle cool fill. Actual alpha zero outside each object and through handle/stem/lace holes. No table, room, backdrop gradient, text or cast ground shadow. Not simplified procedural toy geometry.",
+  "subjects": {
+    "tea-cup": "The master's exact broad round warm ivory porcelain teacup with matching lavender-rimmed saucer, translucent amber tea, substantial curved handle at right, richly painted lavender sprigs, thick polished rim. Complete cup and complete saucer, centered with transparent padding.",
+    "tea-flowers": "The master's exact little cream glazed pitcher with full lush natural lavender bouquet, varied purple flower heads, slender green leaves, painted lavender ornament, gold ribbon bow and substantial right-side handle. Entire vase and bouquet, clear alpha gaps between stems.",
+    "tea-tart": "The master's complete plated strawberry tart: generous rich mound of whole and sliced juicy strawberries, pale seed pockets, tiny green calyxes, three little white daisies, plush vanilla cream, thick rounded golden fluted pastry, cream plate with lavender rim and painted sprigs. Entire food and plate.",
+    "tea-mat": "One entirely EMPTY wide shallow oval lavender-and-cream gingham mat with delicate ivory crochet lace border and woven threads. Physical ground size 3.04 by 1.84, viewed down40 degrees: projected silhouette height0.389 times width. No objects on mat, true transparent lace holes.",
+    "picnic-basket": "One entirely EMPTY open oval golden wicker picnic basket with lavender gingham lining, thick braided lip, small leather clasp, open lined hinged lid behind. Same basket as picnic master, no bun, plate, cup or napkin. Ground footprint3.04 by1.84. Full basket and lid.",
+    "picnic-cup": "One lidded warm ivory travel cup from picnic master: broad rounded body, substantial right-side handle, lavender band and rim, rounded lid with cream knob, rich hand painted lavender sprigs. No plate or other objects.",
+    "picnic-napkin": "One plush folded lavender-and-cream gingham napkin from picnic master, tied with thin golden cord and a natural lavender sprig bouquet tucked into the bow. Entire napkin and attached flowers.",
+    "egg-crate": "One EMPTY honey-wood egg packing crate, rounded corners, brass nails, two low handles, five empty straw-lined compartments in a row with lavender gingham lining, matching the picnic master's palette/material. No eggs. Entire crate and handles."
+  },
+  "runtimeConversion": "PNG to lossless WebP; original alpha and colors preserved, no keying or alpha threshold edits.",
+  "registration": {
+    "cameraPitchDegrees": 40,
+    "matWorldRadii": { "x": 1.52, "z": 0.92 },
+    "matVisiblePixelBounds": [25, 18, 1976, 772],
+    "matProjectedHeightToWidth": 0.3864684777,
+    "basketFloorSourceV": 0.64,
+    "basketFrontClipCurve": { "edgeV": 0.57, "controlV": 0.805 },
+    "crateFloorSourceV": 0.495,
+    "crateFrontClipCurve": { "edgeV": 0.565, "controlV": 0.585 },
+    "cratePhysicalDepthRadius": 0.38,
+    "spriteScale": "One uniform scale from actual alpha bounds; source proportions preserved.",
+    "customFood": "Authored cookery base plus original fruit/garnish cutouts at saved normalized positions and angles in radians."
+  }
+}

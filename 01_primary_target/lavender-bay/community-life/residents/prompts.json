@@ -1,0 +1,25 @@
+{
+  "generator": "built-in image_gen",
+  "acceptedStrategy": "Individual transparent poses registered mechanically; earlier opaque sheet experiments excluded",
+  "sharedPrompt": "Use case: identity-preserve. Production game sprite. ONE single full body character on a TRUE COMPLETELY TRANSPARENT background, isolated clean cutout alpha. Same character as the reference village resident, exact identity, clothing, proportions and soft miniature painted 3D game art. Character faces right in fixed 40-degree orthographic camera. Keep both brown boots planted on the same ground plane. Whole body including hat and both feet visible, generous 10% empty transparent padding. Warm light upper left, cool fill. No ground, no floor, no shadow, no background gradient, no board, no scenery, no text, no color chart, no grid. Every pixel outside the single character and held item must have alpha zero.",
+  "poses": {
+    "bea-reach": "She leans slightly forward and extends her right arm forward at waist height to place a tiny cream ceramic teacup on an unseen table. Left hand rests at apron.",
+    "bea-release": "She leans slightly forward, her right hand open and extended forward at waist height just after releasing a teacup on an unseen table. Empty hands. Left hand rests at apron.",
+    "bea-cloth": "She stands relaxed smoothing a small folded lavender and cream cloth held with both hands at waist height.",
+    "finn-reach": "He leans slightly forward and extends his right arm forward low holding a small wicker basket to set down. Left hand rests at waist.",
+    "finn-release": "He leans slightly forward, right hand empty and open extended forward low just after releasing a basket. No held objects.",
+    "finn-lantern": "He stands relaxed tending a small warm glowing brass lantern held with both hands at waist height."
+  },
+  "propsPrompt": "Use case: stylized-concept. Production props matching the reference Lavender Bay miniature farm village, 40 degree orthographic camera, warm upper-left soft lighting, cool fill, rounded tactile painted 3D textures, cream ceramic, lavender gingham and warm wicker. True transparent alpha. Four isolated groups in a 2x2 square grid: cream pottery tea pot with lavender flowers, two cups and folded napkin on a compact wooden tray; open wicker picnic basket lined with lavender gingham, napkin and ceramic jar; brass shore lantern, rope and rolled sailor cloth on a wood base; cream lavender pitcher and tied folded nautical map on a compact wood tray. Generous transparent padding, no people, labels, text, logos or scenery. Full volume and readable silhouettes at game scale.",
+  "registration": {
+    "script": "register-frames.py",
+    "alphaChanges": false,
+    "cell": [256, 256],
+    "feet": [128, 236],
+    "visiblePoseHeight": 228,
+    "beaReachCupBottom": [244, 126],
+    "runtimeSize": 110,
+    "nativeTeaCupContact": [940, 587],
+    "nativeBeaFoot": [874, 650]
+  }
+}

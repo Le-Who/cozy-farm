@@ -1,0 +1,57 @@
+{
+  "bea": {
+    "grid": [
+      3,
+      2
+    ],
+    "cell": [
+      256,
+      256
+    ],
+    "footBaseline": 236,
+    "alphaOutside": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "finn": {
+    "grid": [
+      3,
+      2
+    ],
+    "cell": [
+      256,
+      256
+    ],
+    "footBaseline": 236,
+    "alphaOutside": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "props": {
+    "grid": [
+      2,
+      2
+    ],
+    "cell": [
+      512,
+      512
+    ],
+    "baseline": 0.94,
+    "frames": [
+      "teaTray",
+      "picnicBasket",
+      "shoreLantern",
+      "memoryPitcher"
+    ]
+  }
+}

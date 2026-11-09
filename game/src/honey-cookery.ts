@@ -167,7 +167,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     hint.textContent = messages[model.stage] ?? ''; if (model.stage !== previousStage) { announce(model.stage === 'ready' ? 'Блюдо готово. Можно завершить приготовление.' : hint.textContent); previousStage = model.stage; updateFoodState(); layout() }
     const value = Math.round(honeyProgress(model) * 100); previousProgress=value; progress.setAttribute('aria-valuenow', String(value)); fill.style.width = `${value}%`; progress.hidden = ['ready', 'finished'].includes(model.stage)
     finish.hidden = !['bake-ready', 'ready', 'finished'].includes(model.stage); finish.disabled = lost || !loaded || model.stage !== 'finished' && (!!held || !physicalQuiet)
-    finish.querySelector('span')!.textContent = model.stage === 'bake-ready' ? 'Испечь' : model.stage === 'finished' ? 'На кухню' : 'Готово'; positionRotation()
+    finish.querySelector('span')!.textContent = model.stage === 'bake-ready' ? 'Испечь' : model.stage === 'finished' ? options.returnLabel ?? 'На кухню' : 'Готово'; positionRotation()
   }
   function finishRecipe() {
     if (destroyed || lost || !loaded) return

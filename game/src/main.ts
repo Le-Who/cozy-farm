@@ -1,12 +1,14 @@
 import './style.css'
+import './navigation.css'
 import { ruPlural } from './ru'
 import { archiveCards } from './archive'
 import { getIslandJourneys } from './journey'
 import { getDiscoveryTask } from './discovery-path'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
-import {signatureBook,signatureStudio,coveControls,signaturePortionStock} from './culinary-ui'
+import {signatureBook,signatureStudio,coveControls,signaturePortionStock,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
+import { communityBoard, communityIntent, neighborDetail, type CommunityArt } from './community-ui'
 import {
   boatPrice,
   bedsPerRow,
@@ -39,6 +41,7 @@ import {
   residentIds,
   getResidentService,
   runResidentService,
+  getCommunityOrders, getIntentOffers, deliverIntentOrder, getNeighborPlans, joinNeighborPlan, serveNeighborPlan, finishNeighborPlan, advanceNeighborPlan,
   collectEggs,
   collectShell,
   collectShoalFind,
@@ -63,6 +66,7 @@ import {
   feedBagSize,
   feedChickens,
   fishDefinitions,
+  fishIds, getGrillFish, getCookIngredients,
   facilitySpecializations,
   gardenRows,
   gatherSeaSalt,
@@ -129,19 +133,22 @@ import {
   type CropId,
   type BuildingId,
   type DishId,
+  type FishId,
   type FacilityBranch,
   type ProjectId,
   type SpecializationId,
   type StockItem,
   type WorkshopShape,
+  type ResidentId, type FoodOfferId, type NeighborAssembly, type PackingResult,
 } from './farm'
 import { createFishingGame } from './fishing'
 import { createWorkshop } from './workshop'
 import { createCookery } from './cookery'
+import { createArrangement } from './arrangement'
 import { createIsland, type IslandTarget } from './island'
 import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
-import { shoalDefinitions } from './shoal'
+import { shoalDefinitions, shoalFindIds, getShoalFindAt } from './shoal'
 
 const saveKey = 'cozy-farm-island-v1'
 
@@ -159,6 +166,7 @@ const farm = loadFarm()
 let saveAvailable = true
 
 function iconUrl(name: string) {
+  if(name==='fish-perch'||name==='fish-seaBass')return `${import.meta.env.BASE_URL}art/lavender/fishing-${name==='fish-perch'?'perch':'sea-bass'}-v1.png`
   const family = name.startsWith('tool-') || name.startsWith('ui-') || name.startsWith('upgrade-') || name.startsWith('cape-') || name.startsWith('village-') ? 'lavender' : 'icons'
   return `${import.meta.env.BASE_URL}art/${family}/${name}.webp`
 }
@@ -187,6 +195,7 @@ const tools = [
 type Tool = (typeof tools)[number]['id']
 type Panel = 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
+  | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
 let activeTool: Tool = 'seeds'
 let panel: Panel | undefined
@@ -194,6 +203,8 @@ let treeSlot = 0
 let marketTab: 'buy' | 'sell' | 'orders' | 'projects' = 'buy'
 let marketCategory:'seeds'|'trees'|'care'|'buildings'='seeds'
 let marketSellGroup:'all'|'harvest'|'kitchen'|'shore'='all'
+let inventoryGroup: 'harvest'|'kitchen'|'shore' = 'harvest'
+let boatIsland = farm.island
 let bagTab: 'seeds' | 'harvest' = 'harvest'
 let archiveGroup: ArchiveGroup = 'crops'
 let previewSeed: CropId = farm.selectedSeed
@@ -202,12 +213,46 @@ let contextBed: number | undefined
 let villageSlot = 0
 let pastryShape: WorkshopShape = farm.workshopPatterns[0] ?? 'round'
 let cookingDish: DishId = 'orchardTart'
+let cookingFish: FishId = getGrillFish(farm)
 let workshopRecipe: 'pastry' | 'bread' = 'pastry'
 let signatureBase: SignatureDraft['base'] = 'preserves'
 let signatureSlots: (SignatureIngredient|null)[] = [null,null]
 let signatureSlot=0
 let signatureRepeatId:string|undefined
 let cookingMode:'dish'|'signature'='dish'
+type KitchenTart = 'orchardTart' | 'strawberryTart' | 'blueberryTart' | 'raspberryTart' | 'mixed'
+type KitchenPreserves = 'appleJam' | 'orchardPreserves' | 'custom'
+type SignatureFamily = 'berries' | 'preserves' | undefined
+let kitchenTart: KitchenTart = 'orchardTart'
+let kitchenPreserves: KitchenPreserves = 'appleJam'
+let signatureFamily: SignatureFamily
+type CommunityRequest = { kind: 'intent'; orderId: string } | { kind: 'neighbor'; resident: ResidentId; planId: string }
+let communityRequest: CommunityRequest | undefined
+let communityOrderId = ''
+let communityResident: ResidentId = 'bea'
+let requestedFood: FoodOfferId | undefined
+let arrangementRequest: { kind: 'neighbor'; id: string } | { kind: 'packing'; mode: 'eggs' | 'crate' } | undefined
+const communitySelectionKey = 'cozy-farm-community-selection-v1'
+try {
+  const saved: unknown = JSON.parse(localStorage.getItem(communitySelectionKey) ?? 'null')
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+    const selection = saved as Record<string, unknown>, raw = selection.request
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const request = raw as Record<string, unknown>
+      if (request.kind === 'intent') {
+        const order = getCommunityOrders(farm).find(order => order.id === request.orderId && order.unlocked && !order.delivered)
+        if (order) communityRequest = { kind: 'intent', orderId: order.id }
+      } else if (request.kind === 'neighbor') {
+        const plan = getNeighborPlans(farm).find(plan => plan.resident === request.resident)
+        if (plan) communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }
+      }
+      const active = communityRequest
+      const current = active?.kind === 'intent' ? getCommunityOrders(farm).find(order => order.id === active.orderId)
+        : active?.kind === 'neighbor' ? getNeighborPlans(farm).find(plan => plan.resident === active.resident) : undefined
+      if (current && typeof selection.food === 'string') requestedFood = getIntentOffers(farm, current.intentId).find(offer => offer.id === selection.food && offer.eligible)?.id
+    }
+  }
+} catch { /* A stale menu selection never prevents loading the farm. */ }
 const requirementLinks = new Map<string, Requirement>()
 
 function requirementLink(content: string, requirement: Requirement, className: string, name: string, ready = false) {
@@ -259,6 +304,7 @@ app.innerHTML = `
     </button>
     <button class="island-location" type="button" data-panel="boat" aria-label="Острова и путешествия" hidden>${icon('island')}<span>Солёная роща</span></button>
     <button class="view-toggle" type="button" data-action="field-view" aria-pressed="false">${icon('field')}<span>Грядки</span></button>
+    <button class="community-resume" type="button" data-action="resume-community" hidden>${icon('ui-signature-bright')}<span>К просьбе</span></button>
     <div class="hud-bottom">
       <button class="hud-hint" hidden type="button" data-panel="guide" aria-label="Открыть путеводитель" aria-describedby="farm-hint-text" aria-keyshortcuts="?" title="Открыть путеводитель">
         <span class="hint-icon">${icon('star')}</span><span class="hint-text" id="farm-hint-text"></span><kbd aria-hidden="true">?</kbd>
@@ -308,6 +354,7 @@ const hintText = app.querySelector<HTMLElement>('.hint-text')!
 const contextCard = app.querySelector<HTMLElement>('.field-context')!
 const contextButton = contextCard.querySelector<HTMLButtonElement>('button')!
 const contextIcon = contextCard.querySelector<HTMLImageElement>('img')!
+const communityResume = app.querySelector<HTMLButtonElement>('.community-resume')!
 const hotbarButtons = Array.from(app.querySelectorAll<HTMLButtonElement>('.hotbar-slot'))
 const marketButton = app.querySelector<HTMLButtonElement>('[data-panel="market"]')!
 const islandLocation = app.querySelector<HTMLElement>('.island-location')!
@@ -376,6 +423,7 @@ function currentTask() {
 }
 
 function status() {
+  updateCommunityReturn()
   const tool = tools.find(({ id }) => id === activeTool)!
   const goal = currentTask()
   const atHome = farm.island === 'home'
@@ -478,7 +526,8 @@ const panelTitles: Record<Panel, string> = {
   'honey-kitchen': 'Медовая кухня',
   guest: 'Гость ярмарки',
   workshop: 'Кондитерская', cookery: 'Кухня', 'village-project': 'Живая бухта', village: 'Соседи', 'village-meal': 'Ужин у воды',
-  recipes:'Мои рецепты',signature:'Мой рецепт',cove:'Живая заводь',
+  recipes:'Мои рецепты',signature:'Мой рецепт',cove:'Живая заводь',shoal:'Лунная отмель',
+  intents: 'Просьбы соседей', intent: 'Угощение для соседей', neighbor: 'Соседская встреча', 'request-food': 'Рецепт угощения', arrangement: 'Готовимся к встрече',
 }
 
 const panelEmblems: Record<Panel, string> = {
@@ -494,7 +543,8 @@ const panelEmblems: Record<Panel, string> = {
   'honey-kitchen': 'ui-honey-biscuits',
   guest: 'ui-market',
   workshop: 'ui-handmade-round', cookery: 'ui-tart', 'village-project': 'island', village: 'ui-bea', 'village-meal': 'ui-grilled-fish',
-  recipes:'ui-signature-bright',signature:'ui-apple-jam',cove:'ui-shell',
+  recipes:'ui-signature-bright',signature:'ui-apple-jam',cove:'ui-shell',shoal:'ui-moon-pearl',
+  intents: 'ui-market', intent: 'ui-handmade-round', neighbor: 'ui-bea', 'request-food': 'ui-kitchen', arrangement: 'ui-egg-basket',
 }
 
 const panelBanners: Partial<Record<Panel, string>> = { inventory: 'Запасы', market: 'Рынок', kitchen: 'Кухня' }
@@ -505,7 +555,23 @@ const dishIcons: Record<DishId, string> = {
   honeyBiscuits: 'ui-honey-biscuits', honeyPear: 'ui-honey-pear', windParfait: 'ui-wind-parfait',
 }
 const pastryIcons = { round: 'ui-handmade-round', folded: 'ui-handmade-folded', long: 'ui-handmade-long' }
+const communityArt: CommunityArt = {
+  icon,
+  offerIcon(offer) {
+    if (offer.source === 'signature') {
+      if (offer.identity === 'preserves') return icon(`ui-signature-${offer.processing}`)
+      const recipe = farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === offer.id)
+      const fruit = recipe?.ingredients.map(part => part.id) ?? []
+      const berry = fruit[0]
+      const base = berry && fruit.every(id => id === berry) && ['strawberry', 'blueberry', 'raspberry'].includes(berry) ? `tart-${berry}` : 'tart'
+      const topping = (id: string) => id === 'apple' ? 'apple-slice' : id === 'pear' ? 'pear-piece' : id === 'peach' ? 'peach-slice' : id
+      return `<span class="signature-tart"><img class="signature-tart-base" src="${import.meta.env.BASE_URL}art/lavender/cookery/${base}.webp" alt="">${recipe?.result.fruit.map(point => `<img class="signature-topping" src="${import.meta.env.BASE_URL}art/lavender/cookery/${topping(point.ingredientId)}.webp" alt="" style="left:${50 + point.x * 27}%;top:${46 + point.y * 18}%;transform:translate(-50%,-50%) rotate(${point.angle}rad)">`).join('') ?? ''}</span>`
+    }
+    return icon(offer.source === 'dish' ? dishIcons[offer.identity as DishId] : pastryIcons[offer.identity as WorkshopShape])
+  },
+}
 const archiveIcons: Record<string, string> = {
+  perch: 'fish-perch', seaBass: 'fish-seaBass',
   ...dishIcons, honey: 'ui-honey', windHoney: 'ui-wind-honey', beeswax: 'ui-beeswax', pear: 'ui-pear', peach: 'ui-peach-fruit',
 }
 type BuildingBranch = SpecializationId | FacilityBranch
@@ -547,8 +613,8 @@ function nav(...buttons: string[]) {
   return `<div class="dialog-grid dialog-nav">${buttons.join('')}</div>`
 }
 
-function panelTabs(action: string, active: string, tabs: ReadonlyArray<readonly [string, string]>) {
-  return `<div class="panel-tabs" role="group" aria-label="Категории">${tabs.map(([id, label]) =>
+function panelTabs(action: string, active: string, tabs: ReadonlyArray<readonly [string, string]>, name = 'Категории') {
+  return `<div class="panel-tabs" role="group" aria-label="${name}">${tabs.map(([id, label]) =>
     `<button type="button" data-action="${action}" data-value="${id}" aria-pressed="${id === active}">${label}</button>`).join('')}</div>`
 }
 
@@ -559,7 +625,18 @@ function goods() {
     const branch = dishDefinitions[item.item].specialization
     return !branch || farm.farmhouseSpecialization === branch
   })
-    .map(({ item, ...listing }) => ({ ...listing, ...stockLabel(item), group:['dishes','handmade','eggBaskets','eggCrates'].includes(item.kind)?'kitchen':['fish','shells','shoalFinds','seaSalt'].includes(item.kind)?'shore':'harvest', trait: item.kind === 'variants' ? item.trait : undefined }))
+    .map(({ item, ...listing }) => ({ ...listing, item, ...stockLabel(item), group:['dishes','handmade','eggBaskets','eggCrates'].includes(item.kind)?'kitchen':['fish','shells','shoalFinds','seaSalt'].includes(item.kind)?'shore':'harvest', trait: item.kind === 'variants' ? item.trait : undefined }))
+}
+
+function fishImage(id: FishId): string { return id === 'perch' || id === 'seaBass' ? `fish-${id}` : `ui-${id}` }
+function fishSource(id: FishId): string {
+  return {perch:'Родной остров · рыбалка',seaBass:'Солёная роща · рыбалка',moonfish:'Глубже 75 м · редкий улов',lanternfish:'Глубже 100 м · редкий улов'}[id]
+}
+
+function inventoryStockRow(listing: ReturnType<typeof goods>[number]): string {
+  const { image, name, count, trait, item, key, price } = listing
+  if(item.kind!=='fish')return row(image,name,`×${count}`,'',trait)
+  return row(image,name,`×${count} · ${fishSource(item.item)}`,button('На гриль','fish-kitchen',true,{value:item.item})+button(`Продать 1 · ${price}`,farm.island==='home'?'sell-item':'fish-market',true,{value:key,secondary:true}))
 }
 
 function specializationCards() {
@@ -603,7 +680,7 @@ function stockLabel(item: StockItem): { name: string; image: string } {
   switch (item.kind) {
     case 'produce': return { name: cropDefinitions[item.item].name, image: item.item }
     case 'fruit': return { name: treeDefinitions[item.item].name, image: item.item === 'apple' ? 'apple' : item.item === 'pear' ? 'ui-pear' : 'ui-peach-fruit' }
-    case 'fish': return { name: fishDefinitions[item.item].name, image: item.item==='moonfish'||item.item==='lanternfish'?`ui-${item.item}`:'fish' }
+    case 'fish': return { name: fishDefinitions[item.item].name, image: fishImage(item.item) }
     case 'handmade': return { name: workshopDefinitions[item.item].name, image: pastryIcons[item.item] }
     case 'dishes': return { name: dishDefinitions[item.item].name, image: dishIcons[item.item] }
     case 'eggs': return { name: 'Яйцо', image: 'egg' }
@@ -629,17 +706,43 @@ function stockTile(item: StockItem) {
   return requirementLink(`${icon(image)}<span>${name}</span><strong>${stock}/${item.quantity}</strong>`, {kind:'stock',item}, 'ingredient', `${name}, ${stock} из ${item.quantity}`, stock >= item.quantity)
 }
 
+function recipeDestination(dish: DishId) {
+  if (dishDefinitions[dish].capeLevel) return 'cape' as const
+  return farm.island === 'village' && farm.village.built ? 'village' as const : 'home' as const
+}
+
 function recipeCards(recipes: readonly DishId[]) {
   return `<div class="recipe-list">${recipes.map((dish) => {
     const recipe = dishDefinitions[dish]
-    const action = getCookAction(farm, dish)
-    const locked = recipe.capeLevel ? farm.capeLevel < recipe.capeLevel : farm.buildingLevels.farmhouse < recipe.requiredLevel
+    const destination = recipeDestination(dish)
+    const action = getCookAction(farm, dish, cookingFish)
+    const ingredients = getCookIngredients(farm, dish, cookingFish)
+    const fishChoices = dish === 'grilledFish' ? `<div class="recipe-fish-choices" role="group" aria-label="Рыба для гриля">${fishIds.map(id=>`<button type="button" data-action="grill-fish" data-value="${id}" aria-pressed="${cookingFish===id}" aria-label="${fishDefinitions[id].name}, в наличии ${farm.fish[id]}" title="${fishDefinitions[id].name}">${icon(fishImage(id))}<span>×${farm.fish[id]}</span></button>`).join('')}</div>` : ''
+    const locked = recipe.capeLevel ? farm.capeLevel < recipe.capeLevel : farm.buildingLevels.farmhouse < recipe.requiredLevel || !!recipe.specialization && farm.farmhouseSpecialization !== recipe.specialization
     return `<section class="recipe${locked ? ' recipe-locked' : ''}">${icon(dishIcons[dish], 'recipe-art')}
-      <h2>${recipe.name}</h2>${locked ? '' : `<ul class="ingredients">${recipe.ingredients.map(stockTile).join('')}</ul>`}
+      <h2>${recipe.name}</h2>${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>`}
       <p class="recipe-value">${icon('coin')} ${recipe.sellPrice}<span class="sr-only"> ${ruPlural(recipe.sellPrice, ['монета','монеты','монет'])}</span></p>
       ${locked ? `<p class="recipe-reason">${action.label}</p>${button('Улучшения','upgrades',true,{secondary:true})}`
-        : !action.available&&farm.island!==(recipe.capeLevel?'cape':'home')?button(recipe.capeLevel?'На Цветочный мыс':'Домой','sail',canSailTo(farm,recipe.capeLevel?'cape':'home'),{value:recipe.capeLevel?'cape':'home'}):button('Готовить', 'cook', action.available, { value: dish, context: recipe.name })}${dish==='orchardTart'?button('Выбрать фрукты','new-signature',true,{value:'tart',secondary:true}):''}</section>`
+        : farm.island !== destination ? button(destination === 'cape' ? 'На Цветочный мыс' : 'На кухню', 'sail', canSailTo(farm, destination), {value:destination}):button('Готовить', 'cook', action.available, { value: dish, context: recipe.name })}${dish==='orchardTart'?button('Выбрать фрукты','new-signature',true,{value:'tart',secondary:true}):''}</section>`
   }).join('')}</div>`
+}
+
+function kitchenFamilies() {
+  const familyChoices = (group: 'tart' | 'preserves', selected: string, choices: readonly { id: string; image: string; name: string }[]) => `<div class="recipe-family-choices" role="group" aria-label="${group === 'tart' ? 'Фрукты для пирога' : 'Фрукты для варенья'}">${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}</button>`).join('')}</div>`
+  const tarts = familyChoices('tart', kitchenTart, [{ id: 'orchardTart', image: 'apple', name: 'Яблочный пирог' }, { id: 'strawberryTart', image: 'strawberry', name: 'Клубничный тарт' }, { id: 'blueberryTart', image: 'blueberry', name: 'Черничный тарт' }, { id: 'raspberryTart', image: 'raspberry', name: 'Малиновый тарт' }, { id: 'mixed', image: 'ui-tart', name: 'Ягодный тарт: выбрать сочетание' }])
+  const preserves = familyChoices('preserves', kitchenPreserves, [{ id: 'appleJam', image: 'apple', name: 'Яблочное варенье' }, { id: 'orchardPreserves', image: 'ui-pear', name: 'Садовый конфитюр' }, { id: 'custom', image: 'ui-signature-bright', name: 'Варенье: выбрать фрукты' }])
+  const tartCard = kitchenTart === 'mixed' ? `<section class="recipe">${icon('ui-tart', 'recipe-art')}<h2>Ягодный тарт</h2>${button('Выбрать ягоды', 'family-signature', true, { value: 'berries' })}</section>` : recipeCards([kitchenTart])
+  const preservesCard = kitchenPreserves === 'custom' ? `<section class="recipe">${icon('ui-apple-jam', 'recipe-art')}<h2>Фруктовое варенье</h2>${button('Выбрать фрукты', 'family-signature', true, { value: 'preserves' })}</section>` : recipeCards([kitchenPreserves])
+  const others = dishIds.filter(dish => !isTartDish(dish) && dish !== 'appleJam' && dish !== 'orchardPreserves' && !dishDefinitions[dish].capeLevel && (dish !== 'honeyCake' || canSailTo(farm, 'cape')) && (!dishDefinitions[dish].specialization || dishDefinitions[dish].specialization === farm.farmhouseSpecialization))
+  return `<div class="kitchen-family-list"><div class="recipe-family">${tarts}${tartCard}</div><div class="recipe-family">${preserves}${preservesCard}</div>${recipeCards(others)}</div>`
+}
+function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily): string | undefined {
+  if (!family) return undefined
+  const fruits = [...new Set(draft.ingredients.map(part => part.id))]
+  const berry = fruits.every(id => ['strawberry', 'blueberry', 'raspberry'].includes(id))
+  const names = draft.base === 'tart' ? { apple: 'Яблочный тарт', pear: 'Грушевый тарт', peach: 'Персиковый тарт', strawberry: 'Клубничный тарт', blueberry: 'Черничный тарт', raspberry: 'Малиновый тарт' }
+    : { apple: 'Яблочное варенье', pear: 'Грушевый конфитюр', peach: 'Персиковое варенье', strawberry: 'Клубничное варенье', blueberry: 'Черничное варенье', raspberry: 'Малиновое варенье' }
+  return fruits.length === 1 ? names[fruits[0]] : draft.base === 'tart' ? berry ? 'Ягодный тарт' : 'Фруктовый тарт' : berry ? 'Ягодное варенье' : 'Фруктовый конфитюр'
 }
 
 function marketOrders() {
@@ -743,8 +846,8 @@ function marketCards() {
   const balance = `<p class="coin-balance" aria-label="${quantity(farm.coins, 'монета')}">${icon('coin')} ${numberFormat.format(farm.coins)}</p>`
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Проекты']])
   const controls = `<div class="market-controls">${balance}${tabs}</div>`
-  if (marketTab === 'orders') return controls + marketOrders()
-  if (marketTab === 'projects') return controls + projectCard('fair') + nav(button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair')), button('Живая бухта', 'village-project', true, { secondary: true }))
+  if (marketTab === 'orders') return controls + (isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : '') + marketOrders()
+  if (marketTab === 'projects') return controls + projectCard('fair') + nav(button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair')), button('Живая бухта', 'village-project', true, { secondary: true }), button('Причал', 'project-dock', true, { secondary: true }))
   if (marketTab === 'sell') {
     const sale = getSale(farm)
     const listings=goods().filter(({count,group})=>count>0&&(marketSellGroup==='all'||group===marketSellGroup))
@@ -756,11 +859,11 @@ function marketCards() {
       ${marketSellGroup==='all'?`<section class="market-total">${icon('tool-crate')}<div><strong>${sale.items ? `${quantity(sale.items, 'предмет')} · ${quantity(sale.coins, 'монета')}` : 'Корзина пуста'}</strong>${button('Продать всё', 'sell', sale.items > 0)}</div></section>`:''}
       ${farm.culinary.recipes.length?nav(button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}`
   }
-  const categories=panelTabs('market-category',marketCategory,[['seeds','Семена'],['trees','Деревья'],['care','Уход'],['buildings','Постройки']])
+  const categories=`<nav class="market-category-icons" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}</button>`).join('')}</nav>`
   if(marketCategory==='seeds')return controls+categories+`<div class="market-seed-grid">${cropIds.map(crop=>{const definition=cropDefinitions[crop];return `<section>${icon('ui-seed-'+crop)}<strong>${definition.name}</strong><span>×${seedPackSize}</span>${button('Купить','buy-seeds',farm.coins>=definition.seedPrice,{crop,cost:{icon:'coin',amount:definition.seedPrice}})}</section>`}).join('')}</div>`
-  if(marketCategory==='trees')return controls+categories+`<ul class="dialog-list">${treeIds.map(tree=>{const definition=treeDefinitions[tree];return row('ui-tree-'+tree,definition.saplingName,quantity(definition.days,'ночь')+' до зрелости',button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,cost:{icon:'coin',amount:definition.saplingPrice}}))}).join('')}</ul>`
-  if(marketCategory==='care')return controls+categories+`<ul class="dialog-list">${row('tool-feed','Корм для кур',quantity(feedBagSize,'порция'),button('Купить','buy-feed',farm.coins>=feedBagPrice,{cost:{icon:'coin',amount:feedBagPrice}}))}${row('tool-can','Большая лейка',`Объём: ${expandedWaterCapacity}`,button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{cost:farm.canUpgraded?undefined:{icon:'coin',amount:canUpgradePrice}}))}</ul>`
-  return controls+categories+`<ul class="dialog-list">${buildingIds.map(building=>row('upgrade-'+building+'-card',buildingDefinitions[building].name,buildingDefinitions[building].benefit,button(farm.buildingLevels[building]>=2?'Посмотреть':'Улучшить',farm.buildingLevels[building]>=2?'upgrades':'upgrade-building',farm.buildingLevels[building]>=2||farm.coins>=buildingDefinitions[building].upgradePrice,{value:building,...(farm.buildingLevels[building]<2?{cost:{icon:'coin' as const,amount:buildingDefinitions[building].upgradePrice}}:{})}))).join('')}</ul>`+nav(button('Причал','visit-boat',true,{secondary:true}))
+  if(marketCategory==='trees')return controls+categories+`<ul class="dialog-list market-shop">${treeIds.map(tree=>{const definition=treeDefinitions[tree];return row('ui-tree-'+tree,definition.saplingName,quantity(definition.days,'ночь')+' до зрелости',button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,cost:{icon:'coin',amount:definition.saplingPrice}}))}).join('')}</ul>`
+  if(marketCategory==='care')return controls+categories+`<ul class="dialog-list market-shop">${row('tool-feed','Корм для кур',quantity(feedBagSize,'порция'),button('Купить','buy-feed',farm.coins>=feedBagPrice,{cost:{icon:'coin',amount:feedBagPrice}}))}${row('tool-can','Большая лейка',`Объём: ${expandedWaterCapacity}`,button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{cost:farm.canUpgraded?undefined:{icon:'coin',amount:canUpgradePrice}}))}</ul>`
+  return controls+categories+`<ul class="dialog-list market-shop">${buildingIds.map(building=>row('upgrade-'+building+'-card',buildingDefinitions[building].name,buildingDefinitions[building].benefit,button(farm.buildingLevels[building]>=2?'Посмотреть':'Улучшить',farm.buildingLevels[building]>=2?'upgrades':'upgrade-building',farm.buildingLevels[building]>=2||farm.coins>=buildingDefinitions[building].upgradePrice,{value:building,...(farm.buildingLevels[building]<2?{cost:{icon:'coin' as const,amount:buildingDefinitions[building].upgradePrice}}:{})}))).join('')}</ul>`+nav(button('Причал','visit-boat',true,{secondary:true}))
 }
 
 function treeRow(index: number) {
@@ -781,6 +884,7 @@ let fishingGame: ReturnType<typeof createFishingGame> | undefined
 let fishingToken: number | undefined
 let workshopGame: ReturnType<typeof createWorkshop> | undefined
 let cookeryGame: ReturnType<typeof createCookery> | undefined
+let arrangementGame: ReturnType<typeof createArrangement> | undefined
 
 function stopFishing() {
   fishingGame?.destroy()
@@ -795,6 +899,112 @@ function stopFishing() {
 
 function stopWorkshop() { workshopGame?.destroy(); workshopGame = undefined }
 function stopCookery() { cookeryGame?.destroy(); cookeryGame = undefined }
+function stopArrangement() { arrangementGame?.destroy(); arrangementGame = undefined }
+
+function currentCommunityRequest() {
+  if (!communityRequest) return undefined
+  if (communityRequest.kind === 'intent') {
+    const request = communityRequest
+    return getCommunityOrders(farm).find(order => order.id === request.orderId)
+  }
+  const request = communityRequest
+  return getNeighborPlans(farm).find(plan => plan.id === request.planId && plan.resident === request.resident)
+}
+function communityOffers() {
+  const request = currentCommunityRequest()
+  return request ? getIntentOffers(farm, request.intentId) : []
+}
+function updateCommunityReturn() {
+  try {
+    if (communityRequest) localStorage.setItem(communitySelectionKey, JSON.stringify({ request: communityRequest, food: requestedFood }))
+    else localStorage.removeItem(communitySelectionKey)
+  } catch { /* The current menu also works without browser storage. */ }
+  const request = currentCommunityRequest()
+  communityResume.hidden = !communityRequest || dialog.open || island.isCrossing()
+  communityResume.querySelector('span')!.textContent = requestedFood && communityOffers().find(offer => offer.id === requestedFood)?.count === 0 ? 'К рецепту' : 'К просьбе'
+  communityResume.setAttribute('aria-label', request ? `Вернуться: ${request.title}` : 'Вернуться к соседям')
+}
+async function resumeCommunityRequest(mode: 'request' | 'recipe' = 'request') {
+  const request = communityRequest
+  if (!request) return
+  const destination = request.kind === 'intent' ? 'home' : 'village'
+  if (farm.island !== destination && mode === 'request') {
+    if (!canSailTo(farm, destination)) { openPanel('boat'); return }
+    if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
+    closeDialog()
+    await island.crossIsland(() => perform(() => sail(farm, destination), false, true))
+  }
+  panelHistory.length = 0
+  if (mode === 'recipe' && requestedFood && communityOffers().some(offer => offer.id === requestedFood && offer.count === 0)) { openPanel('request-food', false); return }
+  requestedFood = undefined
+  if (request.kind === 'intent') {
+    communityOrderId = request.orderId
+    openPanel(getCommunityOrders(farm).some(order => order.id === request.orderId) ? 'intent' : 'intents', false)
+  } else {
+    communityResident = request.resident
+    const current = getNeighborPlans(farm).find(plan => plan.resident === request.resident)
+    communityRequest = current ? { kind: 'neighbor', resident: request.resident, planId: current.id } : undefined
+    openPanel('neighbor', false)
+  }
+}
+function requestedRecipe() {
+  const offer = communityOffers().find(offer => offer.id === requestedFood)
+  if (!offer) return undefined
+  if (offer.source === 'dish') {
+    const dish = offer.identity as DishId
+    return { offer, ingredients: getCookIngredients(farm, dish), action: getCookAction(farm, dish), destination: recipeDestination(dish) }
+  }
+  if (offer.source === 'handmade') return { offer, ingredients: [{ kind: 'produce', item: 'wheat', quantity: 2 }, { kind: 'eggs', quantity: 1 }] as StockItem[], action: getWorkshopAction(farm), destination: farm.island === 'village' ? 'village' as const : 'home' as const }
+  const recipe = farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === offer.id)
+  if (!recipe) return undefined
+  const action = getSignatureAction(farm, recipe)
+  return { offer, ingredients: action.items, action, destination: farm.island === 'village' ? 'village' as const : 'home' as const }
+}
+function requestedRecipeCard() {
+  const source = requestedRecipe()
+  if (!source) return `<p class="dialog-status">Выберите угощение для просьбы.</p>${button('К просьбе', 'resume-community')}`
+  const { offer, ingredients, action } = source
+  const sourceLabel = farm.island !== source.destination ? 'К месту готовки' : ingredients.some(item => ingredientCount(farm, item) < item.quantity) ? 'Найти ингредиенты' : 'Что нужно для рецепта'
+  return `<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2>${escapeHtml(offer.name)}</h2><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>
+    ${action.available ? button('Готовить', 'request-start-cook') : `${button(sourceLabel, 'request-food-source')}<p class="recipe-reason">${action.label}</p>`}${nav(button('Другое угощение', 'resume-community', true, { secondary: true }))}</section>`
+}
+async function guideRequestedFood() {
+  const source = requestedRecipe()
+  if (!source) { await resumeCommunityRequest(); return }
+  if (source.offer.source === 'dish') {
+    const dish = source.offer.identity as DishId, definition = dishDefinitions[dish]
+    if (definition.capeLevel && (!canSailTo(farm, 'cape') || farm.capeLevel < definition.capeLevel)
+      || !definition.capeLevel && (farm.buildingLevels.farmhouse < definition.requiredLevel || definition.specialization && farm.farmhouseSpecialization !== definition.specialization)) {
+      await showRequirement({ kind: 'stock', item: { kind: 'dishes', item: dish, quantity: 1 } }); return
+    }
+  } else if (source.offer.source === 'signature' && source.offer.identity === 'preserves' && farm.buildingLevels.farmhouse < 2) {
+    await showRequirement({ kind: 'building', building: 'farmhouse' }); return
+  }
+  const missing = source.ingredients.find(item => ingredientCount(farm, item) < item.quantity)
+  if (missing) { await showRequirement({ kind: 'stock', item: missing }); return }
+  if (farm.island !== source.destination) {
+    if (!canSailTo(farm, source.destination)) { openPanel('boat'); return }
+    closeDialog(); await island.crossIsland(() => perform(() => sail(farm, source.destination), false, true)); openPanel('request-food', false); return
+  }
+  if (source.offer.source === 'handmade' && !isProjectComplete(farm, 'fair')) { marketTab = 'projects'; openPanel('market'); return }
+  if (!source.action.available) notify(source.action.label, false)
+}
+function startRequestedFood() {
+  const source = requestedRecipe()
+  if (!source || !source.action.available) { void guideRequestedFood(); return }
+  if (source.offer.source === 'handmade') { workshopRecipe = 'pastry'; openPanel('workshop'); return }
+  if (source.offer.source === 'dish') {
+    cookingDish = source.offer.identity as DishId; cookingMode = 'dish'
+    if(cookingDish==='grilledFish')cookingFish=getGrillFish(farm)
+    if (cookingDish === 'farmhouseBread') { workshopRecipe = 'bread'; openPanel('workshop') } else openPanel('cookery')
+    return
+  }
+  const recipe = farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === source.offer.id)
+  if (!recipe) return
+  signatureFamily = undefined
+  signatureBase = recipe.base; signatureSlots = recipe.ingredients.flatMap(part => Array.from({ length: part.quantity }, () => ({ ...part, quantity: 1 })))
+  signatureRepeatId = recipe.id; cookingMode = 'signature'; openPanel('cookery')
+}
 
 function mountFishing() {
   stopFishing()
@@ -831,7 +1041,7 @@ function mountFishing() {
 }
 
 function pastryChoices() {
-  return panelTabs('pastry-shape', pastryShape, workshopShapes.map(shape => [shape, workshopDefinitions[shape].name]))
+  return `<div class="pastry-pattern-choices">${workshopShapes.map(shape => `<button type="button" data-action="pastry-shape" data-value="${shape}" aria-pressed="${pastryShape===shape}">${icon(pastryIcons[shape])}<span>${workshopDefinitions[shape].name}</span><small>${farm.workshopPatterns.includes(shape)?'Освоено':'Освоить в мастерской'}</small></button>`).join('')}</div>`
 }
 
 function villageProjectCard() {
@@ -849,48 +1059,58 @@ function villageProjectCard() {
 function neighboursCard() {
   const homes = getVillageHomeCount(farm)
   const resident = farm.village.residents[villageSlot]
-  return `${panelTabs('village-slot', String(villageSlot), [['0', 'Домик 1'], ['1', 'Домик 2']])}
-    ${villageSlot >= homes ? `<p class="dialog-status">Общие ужины · ${Math.min(2, farm.village.meals)}/2 · один в день</p>${nav(button('Накрыть стол', 'village-meal'))}` : `
-    <div class="resident-cards">${residentIds.map(id => {
+  const houseTabs = `<nav class="house-selector" aria-label="Домики соседей">${[0, 1].map(slot => {
+    const occupant = farm.village.residents[slot]
+    return `<button type="button" data-action="village-slot" data-value="${slot}" aria-pressed="${villageSlot === slot}">${icon(occupant ? `ui-${occupant}` : 'upgrade-farmhouse-card')}<span>Домик ${slot + 1}</span><small>${slot >= homes ? 'После двух ужинов' : occupant ? residentDefinitions[occupant].name : 'Свободен'}</small></button>`
+  }).join('')}</nav>`
+  const dinner = `<div class="harbour-next">${icon('ui-grilled-fish')}<div><strong>${homes < 2 ? `Общие ужины · ${Math.min(2, farm.village.meals)}/2` : 'Общий ужин'}</strong>${homes < 2 ? '<small>Второй домик после двух ужинов</small>' : ''}</div>${button('Накрыть стол', 'village-meal')}</div>`
+  return `${houseTabs}${villageSlot >= homes ? dinner : `
+    <div class="resident-cards" data-occupied="${Boolean(resident)}">${residentIds.filter(id => resident ? id === resident : !farm.village.residents.includes(id)).map(id => {
       const def = residentDefinitions[id]
       const service = getResidentService(farm, id, pastryShape)
       const here = resident === id
       return `<section class="resident-card" data-present="${here}">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2><div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 булочки в день':'+1 рыба · крепче снасть'}</span></div>
-        ${here ? (id === 'bea' ? `<div class="resident-patterns">${pastryChoices()}</div><ul class="ingredients">${[{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }].map(item => stockTile(item as StockItem)).join('')}</ul>${button(farm.culinary.tastings.bea.bonus?'Испечь ×4':'Испечь ×3', 'resident-service', service.available, { value: id })}`
+        ${here ? button('Замысел соседа', 'open-neighbor', true, { value: id, secondary: true }) : ''}
+        ${here ? (id === 'bea' ? `<div class="resident-patterns">${pastryChoices()}</div><ul class="ingredients">${[{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }].map(item => stockTile(item as StockItem)).join('')}</ul>${button(farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?'Испечь ×4':'Испечь ×3', 'resident-service', service.available, { value: id })}`
           : button(farm.village.scouting ? 'Маршрут готов · +1 рыба' : 'Разведать · +1 рыба', 'resident-service', service.available, { value: id }))
-        : farm.village.residents.includes(id)?button('К домику','village-slot',true,{value:farm.village.residents.indexOf(id)})
-          : resident?button('Второй домик','village-slot',true,{value:1}):button('Пригласить', 'invite-resident', true, { value: id })}
-        ${here&&!service.available?`<p class="dialog-status">${service.label}</p>`:''}
+        : button('Пригласить', 'invite-resident', true, { value: id })}
+        ${here&&!service.available?`<p class="dialog-status">${service.label}</p>${id==='bea'&&!farm.workshopPatterns.includes(pastryShape)?button(`Освоить: ${workshopDefinitions[pastryShape].name.toLowerCase()}`,'practice-pattern',true,{value:pastryShape}):''}`:''}
       </section>`
     }).join('')}</div>`}
-    <div class="harbour-next">${icon('ui-grilled-fish')}<div><strong>${homes<2?'Два ужина откроют второй домик':'Угостите соседей'}</strong></div>${button('Накрыть стол','village-meal')}</div>
-    ${nav(button('Кондитерская', 'workshop'),button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true}))}`
+    ${villageSlot < homes ? dinner : ''}
+    ${nav(button('Кухня', 'kitchen'),button('Кондитерская', 'workshop', true, {secondary:true}))}`
 }
 
 type PanelVisit = {
+  inventoryGroup: 'harvest'|'kitchen'|'shore'; boatIsland: (typeof islandIds)[number];
   panel: Panel; marketTab: 'buy'|'sell'|'orders'|'projects'; marketCategory:'seeds'|'trees'|'care'|'buildings';marketSellGroup:'all'|'harvest'|'kitchen'|'shore';bagTab: 'seeds'|'harvest'; archiveGroup: ArchiveGroup;
   treeSlot: number; previewSeed: CropId; specializationBuilding: BuildingId; previewSpecialization: BuildingBranch | undefined;
   irrigationMode: 'row'|'pair'; villageSlot: number; pastryShape: WorkshopShape;
-  workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
+  workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; cookingFish: FishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
   signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;cookingMode:'dish'|'signature';
+  communityOrderId:string;communityResident:ResidentId;requestedFood:FoodOfferId|undefined;
+  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;signatureFamily:SignatureFamily;
 }
 const panelHistory: PanelVisit[] = []
 function focusKey(button:HTMLButtonElement){return ['data-action','data-value','data-crop','data-panel','aria-label'].map(name=>button.getAttribute(name)??'').join('\u001f')}
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
-  return {panel:panel!,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
-    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,cookingMode,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
+  return {panel:panel!,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
   const previous=panelHistory.pop()
   if(!previous)return
+  inventoryGroup=previous.inventoryGroup;boatIsland=previous.boatIsland
   marketTab=previous.marketTab;marketCategory=previous.marketCategory;marketSellGroup=previous.marketSellGroup;bagTab=previous.bagTab;archiveGroup=previous.archiveGroup;treeSlot=previous.treeSlot
   previewSeed=previous.previewSeed;specializationBuilding=previous.specializationBuilding;previewSpecialization=previous.previewSpecialization
   irrigationMode=previous.irrigationMode;villageSlot=previous.villageSlot;pastryShape=previous.pastryShape
-  workshopRecipe=previous.workshopRecipe;cookingDish=previous.cookingDish
+  workshopRecipe=previous.workshopRecipe;cookingDish=previous.cookingDish;cookingFish=previous.cookingFish
   seedPickerBed=previous.seedPickerBed
   signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;cookingMode=previous.cookingMode
+  communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
+  kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;signatureFamily=previous.signatureFamily
   openPanel(previous.panel,false)
   requestAnimationFrame(()=>{
     dialogContent.scrollTop=previous.scroll
@@ -900,25 +1120,58 @@ function goBack() {
 }
 function drawPanel() {
   if (!panel) return
-  if (panel === 'fishing' && fishingGame || panel === 'workshop' && workshopGame || panel === 'cookery' && cookeryGame) return
+  if (panel === 'fishing' && fishingGame || panel === 'workshop' && workshopGame || panel === 'cookery' && cookeryGame || panel === 'arrangement' && arrangementGame) return
   requirementLinks.clear()
   const sceneBack=dialog.querySelector<HTMLButtonElement>('.scene-back')!
-  sceneBack.hidden=panelHistory.length===0||panel!=='fishing'&&panel!=='workshop'&&panel!=='cookery'
+  sceneBack.hidden=panelHistory.length===0||panel!=='fishing'&&panel!=='workshop'&&panel!=='cookery'&&panel!=='arrangement'
   sceneBack.setAttribute('aria-label',panelHistory.length?`Назад: ${panelTitles[panelHistory.at(-1)!.panel]}`:'Назад')
   backButton.hidden=panelHistory.length===0
   backButton.setAttribute('aria-label',panelHistory.length?`Назад: ${panelTitles[panelHistory.at(-1)!.panel]}`:'Назад')
   dialog.querySelectorAll<HTMLButtonElement>('.dialog-destinations [data-panel]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.panel===panel)))
   const title = panel === 'specialize' ? `${buildingDefinitions[specializationBuilding].name} · ур. 3`
-    : panel === 'workshop' && workshopRecipe === 'bread' ? 'Домашний хлеб' : panelTitles[panel]
+    : panel === 'workshop' && workshopRecipe === 'bread' ? 'Домашний хлеб' : panel === 'neighbor' ? residentDefinitions[communityResident].name : panelTitles[panel]
   dialogTitle.textContent = panelBanners[panel] ?? title
   dialogTitle.setAttribute('aria-label', title)
   dialog.dataset.panel = panel
+  dialog.dataset.marketTab = marketTab
   dialogEmblem.src = iconUrl(panel === 'specialize' ? `upgrade-${specializationBuilding}-card` : panelEmblems[panel])
   const focused = document.activeElement instanceof HTMLButtonElement && dialogContent.contains(document.activeElement)
     ? document.activeElement
     : undefined
 
   switch (panel) {
+    case 'intents': dialogContent.innerHTML = communityBoard(farm, communityArt); break
+    case 'intent': dialogContent.innerHTML = communityIntent(farm, communityOrderId, communityArt); break
+    case 'neighbor': dialogContent.innerHTML = neighborDetail(farm, communityResident, communityArt); break
+    case 'request-food': dialogContent.innerHTML = requestedRecipeCard(); break
+    case 'arrangement': {
+      const request = arrangementRequest
+      const plan = request?.kind === 'neighbor' ? getNeighborPlans(farm).find(plan => plan.id === request.id) : undefined
+      if (!request || request.kind === 'neighbor' && (!plan || plan.phase !== 'arranging')) {
+        dialogContent.innerHTML = `<p class="dialog-status">Выберите угощение перед встречей.</p>${button('К просьбе', 'resume-community')}`; break
+      }
+      const food = plan?.food ? getIntentOffers(farm, plan.intentId).find(offer => offer.id === plan.food!.id) : undefined
+      let completed = false
+      dialogContent.innerHTML = '<div class="arrangement-host"></div>'
+      arrangementGame = createArrangement(dialogContent.querySelector<HTMLElement>('.arrangement-host')!, {
+        mode: request.kind === 'neighbor' ? plan!.arrangement : request.mode,
+        title: request.kind === 'neighbor' ? plan!.title : request.mode === 'eggs' ? 'Корзинка яиц' : 'Ящик яиц', food,
+        onComplete(result) {
+          if (completed) return true
+          if (panel !== 'arrangement' || arrangementRequest !== request) return false
+          completed = perform(() => request.kind === 'neighbor' ? finishNeighborPlan(farm, request.id, result as NeighborAssembly)
+            : request.mode === 'eggs' ? packEggBasket(farm, result as PackingResult) : packEggCrate(farm, result as PackingResult), false, true)
+          if (completed) queueMicrotask(() => {
+            if (panel !== 'arrangement' || arrangementRequest !== request) return
+            if (request.kind === 'neighbor') closeDialog()
+            else { panelHistory.length = 0; openPanel('coop', false) }
+          })
+          return completed
+        },
+        onCancel() { if (request.kind === 'neighbor') void resumeCommunityRequest(); else leaveScene() },
+      })
+      break
+    }
     case 'market':
       dialogContent.innerHTML = marketCards()
       break
@@ -926,12 +1179,13 @@ function drawPanel() {
     case 'seeds': {
       const inventory = panel === 'inventory'
       const harvest = inventory && bagTab === 'harvest'
-      dialogContent.innerHTML = `${inventory ? panelTabs('bag-tab', bagTab, [['seeds', 'Семена'], ['harvest', 'Припасы'], ['archive', 'Коллекции']]) : ''}
-        ${harvest ? `<ul class="dialog-list">
-          ${row('ui-signature-bright','Мои рецепты',`×${Object.values(farm.culinary.stock).reduce((sum,count)=>sum+count,0)}`,button('Открыть','open-panel',true,{value:'recipes'}))}
-          ${row('tool-feed', 'Корм для кур', quantity(farm.feed, 'порция'))}
-          ${goods().map(({ image, name, count, trait }) => row(image, name, `×${count}`, '', trait)).join('')}
-          ${treeIds.map((tree) => row('orchard', treeDefinitions[tree].saplingName, `×${farm.saplings[tree]}`)).join('')}
+      dialogContent.innerHTML = `${inventory ? panelTabs('bag-tab', bagTab, [['seeds', 'Семена'], ['harvest', 'Припасы'], ['archive', 'Коллекции']], 'Разделы запасов') : ''}
+        ${harvest ? `${panelTabs('inventory-group',inventoryGroup,[['harvest','Ферма'],['kitchen','Кухня'],['shore','Берег']], 'Продукты')}<ul class="dialog-list inventory-stock">
+          ${inventoryGroup==='kitchen'?row('ui-signature-bright','Мои рецепты',`×${Object.values(farm.culinary.stock).reduce((sum,count)=>sum+count,0)}`,button('Открыть','open-panel',true,{value:'recipes'})):''}
+          ${inventoryGroup==='harvest'?row('tool-feed', 'Корм для кур', quantity(farm.feed, 'порция')):''}
+          ${goods().filter(({count,group})=>count>0&&group===inventoryGroup).map(inventoryStockRow).join('')}
+          ${inventoryGroup==='harvest'?treeIds.filter(tree=>farm.saplings[tree]>0).map((tree) => row('ui-tree-'+tree, treeDefinitions[tree].saplingName, `×${farm.saplings[tree]}`)).join(''):''}
+          ${inventoryGroup==='shore'&&!goods().some(({count,group})=>count>0&&group==='shore')?'<li class="dialog-status">Пока пусто</li>':''}
         </ul>` : seedCards()}`
       break
     }
@@ -972,10 +1226,17 @@ function drawPanel() {
       break
     }
     case 'recipes': dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile});break
-    case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile});break
+    case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile},currentCommunityRequest()?.intentId);break
     case 'cove': {
       const action=getCoveActions(farm)
       dialogContent.innerHTML=action.available?coveControls(farm):`<div class="cove-locked">${icon('ui-shell')}<p>Найдите ракушку, чтобы обустроить берег.</p>${button('Найти ракушки','cove-shells')}</div>`
+      break
+    }
+    case 'shoal': {
+      const available = shoalFindIds.filter(id=>getShoalFindAt(farm,id))
+      dialogContent.innerHTML = `<ul class="dialog-list">${shoalFindIds.map(id=>row(shoalDefinitions[id].icon,shoalDefinitions[id].name,
+        available.includes(id)?'На берегу':farm.shoalCollectedToday.includes(id)?'Сегодня собрано':id==='pearl'?'Бывает при лунном приливе':'Вернётся завтра',
+        available.includes(id)?button('Собрать','shoal-pick',true,{value:id}):'')).join('')}</ul>${!available.length?nav(button('Домой','sail',true,{value:'home'})):''}`
       break
     }
     case 'guest': {
@@ -992,24 +1253,23 @@ function drawPanel() {
       break
     }
     case 'coop':
-      dialogContent.innerHTML = `<div class="coop-tools"><span aria-label="Счастье курочек">${icon('tool-hen')} ${farm.chickenHappiness}/${maxChickenHappiness}</span>
+      dialogContent.innerHTML = `<div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>
         ${button('Улучшения', 'upgrades', true, { secondary: true })}</div>
         <ul class="dialog-list">
           ${flockFeedRow()}
-          ${row('egg', 'Яйца', `×${farm.eggsReady}`, button('Собрать яйца', 'collect', farm.eggsReady > 0))}
+          ${row('egg', 'Яйца', `×${farm.eggsReady}`, button('Собрать', 'collect', farm.eggsReady > 0, {context:'яйца'}))}
           ${farm.coopSpecialization === 'hatchery' && farm.flockSize < maxFlockSize
-            ? row('egg', 'Инкубатор', farm.hatchDay === null ? `${farm.eggs}/1 яйцо` : quantity(farm.hatchDay - farm.day, 'ночь'),
+            ? row('egg', 'Инкубатор', farm.hatchDay === null ? `Нужно 1 · в запасе ${farm.eggs}` : quantity(farm.hatchDay - farm.day, 'ночь'),
               farm.hatchDay === null ? button('Положить яйцо', 'incubate-egg', farm.eggs > 0) : '') : ''}
-          ${farm.coopSpecialization === 'packing' ? row('ui-egg-crate', `Ящики яиц · ${farm.eggCrates}`, `${farm.eggs}/${eggsPerCrate} яиц`,
+          ${farm.coopSpecialization === 'packing' ? row('ui-egg-crate', `Ящики яиц · ${farm.eggCrates}`, `Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,
             button('Упаковать', 'pack-egg-crate', farm.eggs >= eggsPerCrate, { context: 'ящик яиц' })) : ''}
-          ${farm.buildingLevels.coop >= 2 ? row('ui-egg-basket', `Корзины яиц · ${farm.eggBaskets}`, `${farm.eggs}/${eggsPerBasket} яиц`,
+          ${farm.buildingLevels.coop >= 2 ? row('ui-egg-basket', `Корзины яиц · ${farm.eggBaskets}`, `Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,
             button('Упаковать', 'pack-egg-basket', farm.eggs >= eggsPerBasket, { context: 'корзина яиц' })) : ''}
-          ${Array.from({ length: farm.flockSize }, (_, index) => {
+        </ul><div class="hen-grid" role="group" aria-label="Курочки">${Array.from({ length: farm.flockSize }, (_, index) => {
             const petted = farm.pettedChickens.includes(index)
-            return row('tool-hen', `Курочка ${index + 1}`, '',
-              button(petted ? 'Поглажена' : 'Погладить', 'pet', !petted, { value: index, context: `курочка ${index + 1}` }))
+            return `<button type="button" class="hen-card" data-action="pet" data-value="${index}"${petted?' disabled':''} aria-label="Курочка ${index+1}, ${petted?'сегодня поглажена':'погладить'}">${icon('tool-hen')}<span>${index+1}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
           }).join('')}
-        </ul>`
+        </div>`
       break
     case 'rest':
       dialogContent.innerHTML = `${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
@@ -1044,7 +1304,7 @@ function drawPanel() {
         ${tile('Острова','tool-boat','open-panel','boat')}${tile('Коллекции','orchard','open-panel','archive')}
         ${tile('Припасы','ui-bag','open-panel','inventory')}${tile(home?'Рынок':'Рынок дома','ui-market',home?'open-panel':'sail',home?'market':'home')}
         ${orchard?tile('Сад','ui-tree-apple','open-panel','orchard')+tile('Рыбалка','tool-rod','open-panel','fishing'):''}
-        ${home?tile('Дом','upgrade-farmhouse-card','open-panel','rest')+tile('Курятник','tool-hen','open-panel','coop')+tile('Улучшения','hammer','open-panel','upgrades'):''}
+        ${home?tile('Дом','upgrade-farmhouse-card','open-panel','rest')+tile('Курятник','tool-hen','open-panel','coop')+tile('Улучшения','hammer','open-panel','upgrades')+(isProjectComplete(farm,'fair')?tile('Просьбы соседей','ui-market','open-panel','intents'):''):''}
         ${home&&isProjectComplete(farm,'fair')||farm.island==='village'?tile('Кондитерская','ui-handmade-round','open-panel','workshop'):''}
         ${farm.island==='cape'?tile('Пасека','ui-honey','open-panel','hive')+(farm.capeLevel>=3?tile('Медовая кухня','ui-honey-biscuits','open-panel','honey-kitchen'):''):''}
         ${farm.island==='village'?tile('Соседи','ui-bea','open-panel','village')+tile('Ужин','ui-grilled-fish','open-panel','village-meal'):''}
@@ -1062,30 +1322,39 @@ function drawPanel() {
         break
       }
       dialogContent.innerHTML = '<div class="workshop-host"></div>'
+      let made = false
       workshopGame = createWorkshop(dialogContent.querySelector<HTMLElement>('.workshop-host')!, {
-        onBake(shape) { return perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true) }, onCancel: leaveScene,
+        initialShape: bread ? 'long' : pastryShape, recipe: bread ? 'bread' : 'pastry',
+        onBake(shape) { if (made) return true; if (panel !== 'workshop') return false; made = perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true); return made },
+        onCancel() { if (communityRequest) void resumeCommunityRequest(); else leaveScene() },
       })
       break
     }
     case 'cookery': {
-      const recipe = dishDefinitions[cookingDish]
+      const recipe = dishDefinitions[cookingDish], preparedFish = cookingFish, ingredients = getCookIngredients(farm,cookingDish,preparedFish)
       const signature=cookingMode==='signature',draft:SignatureDraft={base:signatureBase,ingredients:signatureSlots.filter((part):part is SignatureIngredient=>part!==null).map(part=>({...part}))},repeatId=signatureRepeatId,preparedDish=cookingDish
-      const savedRecipe=signature&&repeatId?farm.culinary.recipes.find(recipe=>recipe.id===repeatId):undefined
-      const action=signature?getSignatureAction(farm,draft):getCookAction(farm,preparedDish)
+      const savedRecipe=signature&&repeatId?farm.culinary.recipes.find(recipe=>recipe.id===repeatId):undefined, familyName=signature?familyRecipeName(draft,signatureFamily):undefined
+      const action=signature?getSignatureAction(farm,draft):getCookAction(farm,preparedDish,preparedFish)
       if (!action.available) {
-        dialogContent.innerHTML = `<ul class="ingredients">${(signature?getSignatureAction(farm,draft).items:recipe.ingredients).map(stockTile).join('')}</ul>${nav(button(signature?'Мои рецепты':'Кухня',signature?'open-panel':'kitchen',true,signature?{value:'recipes'}:{}))}`
+        dialogContent.innerHTML = `<ul class="ingredients">${(signature?getSignatureAction(farm,draft).items:ingredients).map(stockTile).join('')}</ul>${nav(button(signature?'Мои рецепты':'Кухня',signature?'open-panel':'kitchen',true,signature?{value:'recipes'}:{}))}`
         break
       }
       const selectedFruit=signature?draft.ingredients:recipe.ingredients.flatMap(part=>'item' in part&&signatureFruitIds.includes(part.item as typeof signatureFruitIds[number])?[{id:part.item,quantity:part.quantity}]:[])
-      const kind=signature?draft.base==='tart'?'decorate':'preserves':(['honeyPear','honeyBiscuits','windParfait','honeyCake'] as const).find(id=>id===preparedDish)??(isTartDish(preparedDish)?'decorate':'preserves')
+      const kind=signature?draft.base==='tart'?'decorate':'preserves':(['honeyPear','honeyBiscuits','windParfait','honeyCake','grilledFish'] as const).find(id=>id===preparedDish)??(isTartDish(preparedDish)?'decorate':'preserves')
       let made=false
       dialogContent.innerHTML = '<div class="cookery-host"></div>'
       cookeryGame = createCookery(dialogContent.querySelector<HTMLElement>('.cookery-host')!, {
-        recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??'Мой рецепт':recipe.name, kind, signature,processing:savedRecipe?.processing,
+        recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??familyName??'Мой рецепт':preparedDish==='grilledFish'?`${fishDefinitions[preparedFish].name} на гриле`:recipe.name, kind, signature,processing:savedRecipe?.processing,fishSpecies:preparedDish==='grilledFish'?preparedFish:undefined,
           selectedFruit,fruitOptions:selectedFruit.map(part=>({id:part.id,name:signatureFruitNames[part.id as typeof signatureFruitIds[number]],art:part.id==='apple'?'apple-slice':part.id==='pear'?'pear-piece':part.id==='peach'?'peach-slice':part.id})),
-          ingredients:(signature?getSignatureAction(farm,draft).items:recipe.ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity})) },
-        onComplete(result) {made=perform(()=>signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result),false,true);return made},
-        onCancel(){if(signature&&made){panelHistory.length=0;openPanel('recipes',false)}else leaveScene()},
+          ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity})) },
+        returnLabel: communityRequest ? 'К просьбе' : undefined,
+        onComplete(result) {if(made)return true;if(panel!=='cookery')return false;made=perform(()=>{
+          const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
+          const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
+          if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
+          return receipt
+        },false,true);return made},
+        onCancel(){if(communityRequest)void resumeCommunityRequest();else if(signature&&made){panelHistory.length=0;openPanel('recipes',false)}else leaveScene()},
       })
       break
     }
@@ -1103,8 +1372,10 @@ function drawPanel() {
       else dialogContent.innerHTML = `<p class="dialog-status">${action.label}</p>${groveDockActions()}`
       break
     }
-    case 'boat':
-      dialogContent.innerHTML = `<div class="journey-list">${getIslandJourneys(farm).map(destination=>{
+    case 'boat': {
+      const journeys = getIslandJourneys(farm)
+      const selected = journeys.find(destination=>destination.id===boatIsland) ?? journeys[0]
+      dialogContent.innerHTML = `<nav class="island-selector" aria-label="Острова">${journeys.map(destination=>`<button type="button" data-action="boat-island" data-value="${destination.id}" aria-pressed="${destination.id===selected.id}" aria-label="${destination.name}${destination.current?', вы здесь':destination.unlocked?', открыт':', пока закрыт'}" title="${destination.name}"><img src="${import.meta.env.BASE_URL}art/lavender/${destination.id}-plate.webp" alt="" draggable="false"><span>${destination.name}</span>${destination.current?'<small>Вы здесь</small>':!destination.unlocked?'<small>Закрыт</small>':''}</button>`).join('')}</nav><div class="journey-list">${[selected].map(destination=>{
         const action=destination.nextAction,requirements=destination.requirements
         return `<article class="journey-card" data-island="${destination.id}" data-unlocked="${destination.unlocked}">
           <div class="journey-picture"><img src="${import.meta.env.BASE_URL}art/lavender/${destination.id==='grove'?'grove':destination.id==='cape'?'cape':destination.id==='village'?'village':'home'}-plate.webp" alt="" draggable="false"></div>
@@ -1112,9 +1383,11 @@ function drawPanel() {
           <p>${destination.description}</p>
           ${!destination.unlocked&&requirements.length?`<ul class="journey-requirements">${requirements.map(r=>requirementLink(`${icon(r.icon)}<span>${r.label}</span><strong>${r.complete?'✓':`${r.current}/${r.target}`}</strong>`,{kind:'journey',island:destination.id,id:r.id},'journey-requirement',r.label,r.complete)).join('')}</ul>`:''}
           ${action?button(action.label,action.target,action.enabled,{value:action.value,context:destination.name}):''}
+          ${destination.current ? `<nav class="island-places" aria-label="Места на острове">${farm.island==='home'?button('Кухня','kitchen',true,{secondary:true})+(isProjectComplete(farm,'fair')?button('Просьбы соседей','open-panel',true,{value:'intents',secondary:true}):''):farm.island==='grove'?button('Живая заводь','open-panel',true,{value:'cove',secondary:true})+(getHarborOrder(farm)?button('Заказ гавани','visit-harbor',true,{secondary:true}):''):farm.island==='cape'?button(farm.capeLevel>=3?'Медовая кухня':'Пасека','open-panel',true,{value:farm.capeLevel>=3?'honey-kitchen':'hive',secondary:true}):button('Соседи','open-village',true,{secondary:true})+button('Общий ужин','village-meal',true,{secondary:true})}</nav>` : ''}
         </article>`
       }).join('')}</div>`
       break
+    }
     case 'dock-project':
       dialogContent.innerHTML = projectCard('dock')
       break
@@ -1171,11 +1444,7 @@ function drawPanel() {
       dialogContent.innerHTML = irrigationRows()
       break
     case 'kitchen': {
-      const recipes = dishIds.filter((dish) => !dishDefinitions[dish].specialization && !dishDefinitions[dish].capeLevel
-        && (dish !== 'honeyCake' || canSailTo(farm, 'cape')))
-      const branch = farm.farmhouseSpecialization
-      if (branch) recipes.unshift(specializationDefinitions[branch].dish)
-      dialogContent.innerHTML = nav(button('Мои рецепты','open-panel',true,{value:'recipes'}))+recipeCards(recipes)
+      dialogContent.innerHTML = nav(button('Мои рецепты','open-panel',true,{value:'recipes'}))+kitchenFamilies()
       break
     }
   }
@@ -1197,9 +1466,10 @@ function openPanel(next: Panel, remember = true) {
   if(next==='cove'&&farm.island!=='grove')return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
   if (next !== 'seeds') seedPickerBed = undefined
-  if (next !== panel) { stopFishing(); stopWorkshop(); stopCookery() }
+  if (next !== panel) { stopFishing(); stopWorkshop(); stopCookery(); stopArrangement() }
   if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = farm.selectedSeed
   if (remember && next !== panel && next === 'irrigation') irrigationMode = farm.wellSpecialization === 'pipes' ? 'pair' : 'row'
+  if (remember && next !== panel && next === 'boat') boatIsland = farm.island
   if (next === 'archive' || next === 'boat') {
     farm.orientation[next === 'archive' ? 'collections' : 'islands'] = true
     try { localStorage.setItem(saveKey, JSON.stringify(farm)) } catch { saveAvailable = false }
@@ -1214,9 +1484,10 @@ function openPanel(next: Panel, remember = true) {
   drawPanel()
   dialogContent.scrollTop = 0
   if (!dialog.open) dialog.showModal()
+  updateCommunityReturn()
   const sceneEntry = next === 'workshop' ? dialogContent.querySelector<HTMLElement>('.workshop-close')
     : next === 'fishing' ? dialogContent.querySelector<HTMLElement>('.fishing-controls .fishing-action')
-    : next === 'cookery' ? dialogContent.querySelector<HTMLElement>('.cookery-view') : null
+    : next === 'cookery' ? dialogContent.querySelector<HTMLElement>('.cookery-view') : next === 'arrangement' ? dialogContent.querySelector<HTMLElement>('.arrangement-view') : null
   ;(sceneEntry ?? closeButton).focus({ preventScroll: true })
 }
 
@@ -1227,9 +1498,11 @@ function closeDialog() {
   stopFishing()
   stopWorkshop()
   stopCookery()
+  stopArrangement()
   panel = undefined
   panelHistory.length=0
   if (dialog.open) dialog.close()
+  updateCommunityReturn()
 }
 
 function refresh() {
@@ -1280,7 +1553,7 @@ const locationLabels = {
   boat: 'Причал · Лодка и путешествия',
   harbor: 'Заказы гавани',
   salt: 'Солончаки · Собрать соль',
-  tidepool: 'Заводь · Осмотреть',
+  tidepool: 'Лунная отмель · Находки',
   cove:'Живая заводь',
   hive: 'Улей мыса · Собрать мёд',
   'honey-kitchen': 'Медовая кухня · Готовить',
@@ -1331,11 +1604,15 @@ const island = createIsland(canvas, {
       const action = getTreeAction(farm, target.index)
       return action.kind === 'pick' ? `${name} · Собрать плоды` : `${name} · ${action.label}`
     }
-    if (target.kind === 'village-home') return `Домик ${target.index + 1} · ${target.index < getVillageHomeCount(farm) ? 'Пригласить соседа' : 'Откроется после двух ужинов'}`
+    if (target.kind === 'village-home') {
+      const resident = farm.village.residents[target.index]
+      return `Домик ${target.index + 1} · ${target.index >= getVillageHomeCount(farm) ? 'Откроется после двух ужинов' : resident ? residentDefinitions[resident].name : 'Пригласить соседа'}`
+    }
     if (target.kind === 'flower') {
       const bloom = getCapeBloom(farm, target.index)
       return `Клумба ${target.index + 1} · ${bloom === 'empty' ? 'Посадить цветы' : bloom === 'growing' ? 'Расцветут завтра' : 'Цветут'}`
     }
+    if (target.kind === 'neighbor') return `${residentDefinitions[target.resident].name} · Замысел соседа`
     if (target.kind !== 'bed') {
       const kind = target.kind
       if (kind === 'kitchen' && farm.farmhouseSpecialization) {
@@ -1451,6 +1728,7 @@ function activateTarget(target: IslandTarget) {
     case 'honey-kitchen': openPanel('honey-kitchen'); break
     case 'guest': openPanel('guest'); break
     case 'workshop': workshopRecipe = 'pastry'; openPanel('workshop'); break
+    case 'neighbor': communityResident = target.resident; requestedFood = undefined; communityRequest = { kind: 'neighbor', resident: target.resident, planId: getNeighborPlans(farm).find(plan => plan.resident === target.resident)?.id ?? '' }; openPanel('neighbor'); break
     case 'village': openPanel(farm.island === 'home' ? 'village-project' : 'village'); break
     case 'village-meal': openPanel('village-meal'); break
     case 'village-home': villageSlot = target.index; openPanel('village'); break
@@ -1461,7 +1739,7 @@ function activateTarget(target: IslandTarget) {
       }
       break
     case 'harbor': if (farm.island === 'grove' && getHarborOrder(farm)) openPanel('harbor'); break
-    case 'tidepool': break
+    case 'tidepool': openPanel('shoal'); break
     case 'cove': openPanel('cove');break
     case 'pier':
       activeTool = 'rod'
@@ -1637,10 +1915,78 @@ app.addEventListener('click', async (event) => {
     if (action === 'visit-market' && (value === 'buy' || value === 'sell' || value === 'orders')) {marketTab=value;if(value==='buy')marketCategory=task.id.includes('feed')?'care':'seeds'}
   }
   switch (action) {
+    case 'open-intent': {
+      const order = getCommunityOrders(farm).find(order => order.id === value)
+      if (order) { communityOrderId = order.id; requestedFood = undefined; communityRequest = { kind: 'intent', orderId: order.id }; openPanel('intent') }
+      break
+    }
+    case 'open-neighbor': {
+      const resident = residentIds.find(resident => resident === value), plan = getNeighborPlans(farm).find(plan => plan.resident === resident)
+      if (resident && plan) { communityResident = resident; requestedFood = undefined; communityRequest = { kind: 'neighbor', resident, planId: plan.id }; openPanel('neighbor') }
+      break
+    }
+    case 'join-neighbor': {
+      const plan = getNeighborPlans(farm).find(plan => plan.id === value)
+      if (plan) { communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }; perform(() => joinNeighborPlan(farm, plan.id), false, true) }
+      break
+    }
+    case 'choose-neighbor-food': {
+      const plan = getNeighborPlans(farm).find(plan => plan.id === control.dataset.plan), offer = plan ? getIntentOffers(farm, plan.intentId).find(offer => offer.id === value) : undefined
+      if (plan && offer) {
+        communityResident = plan.resident; communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }
+        perform(() => serveNeighborPlan(farm, plan.id, offer.id), false, true)
+      }
+      break
+    }
+    case 'arrange-neighbor': {
+      const plan = getNeighborPlans(farm).find(plan => plan.id === value)
+      if (plan?.phase === 'arranging') { communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }; arrangementRequest = { kind: 'neighbor', id: plan.id }; openPanel('arrangement') }
+      break
+    }
+    case 'ack-neighbor': {
+      const plan = getNeighborPlans(farm).find(plan => plan.id === value)
+      if (plan && perform(() => advanceNeighborPlan(farm, plan.id), false, true)) {
+        const next = getNeighborPlans(farm).find(next => next.resident === plan.resident)
+        communityRequest = next ? { kind: 'neighbor', resident: plan.resident, planId: next.id } : undefined
+        drawPanel()
+      }
+      break
+    }
+    case 'deliver-intent': {
+      const order = getCommunityOrders(farm).find(order => order.id === control.dataset.order), offer = order?.offers.find(offer => offer.id === value)
+      if (order && offer && perform(() => deliverIntentOrder(farm, order.id, offer.id), false, true)) { requestedFood = undefined; communityRequest = undefined; updateCommunityReturn() }
+      break
+    }
+    case 'cook-intent-offer': {
+      const order = getCommunityOrders(farm).find(order => order.id === control.dataset.order), plan = getNeighborPlans(farm).find(plan => plan.id === control.dataset.plan)
+      if (order) communityRequest = { kind: 'intent', orderId: order.id }
+      else if (plan) communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }
+      const offer = communityOffers().find(offer => offer.id === value)
+      if (offer) { requestedFood = offer.id; openPanel('request-food') }
+      break
+    }
+    case 'request-start-cook': startRequestedFood(); break
+    case 'request-food-source': await guideRequestedFood(); break
+    case 'resume-community': await resumeCommunityRequest(control === communityResume ? 'recipe' : 'request'); break
+    case 'intent-own-recipe': signatureBase = 'tart'; signatureSlots = [null, null]; signatureSlot = 0; signatureRepeatId = undefined; signatureFamily = undefined; openPanel('signature'); break
+    case 'recipe-family': {
+      if (control.dataset.family === 'tart' && (value === 'mixed' || dishIds.some(dish=>dish===value&&isTartDish(dish)))) kitchenTart = value as KitchenTart
+      if (control.dataset.family === 'preserves' && (value === 'appleJam' || value === 'orchardPreserves' || value === 'custom')) kitchenPreserves = value
+      drawPanel(); break
+    }
+    case 'family-signature': {
+      signatureFamily = value === 'berries' ? 'berries' : 'preserves'; signatureBase = signatureFamily === 'berries' ? 'tart' : 'preserves'
+      signatureSlots = signatureFamily === 'berries' ? [{ id:'strawberry',quantity:1 },{ id:'blueberry',quantity:1 }] : [null,null]
+      signatureSlot = 0; signatureRepeatId = undefined; openPanel('signature'); break
+    }
     case 'market-category':if(value==='seeds'||value==='trees'||value==='care'||value==='buildings'){marketCategory=value;drawPanel();dialogContent.scrollTop=0}break
+    case 'inventory-group':
+      if(value==='harvest'||value==='kitchen'||value==='shore'){inventoryGroup=value;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="inventory-group"][data-value="${value}"]`)?.focus({preventScroll:true})}break
+    case 'boat-island':
+      if(islandIds.some(id=>id===value)){boatIsland=value as typeof boatIsland;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="boat-island"][data-value="${value}"]`)?.focus({preventScroll:true})}break
     case 'market-sell-group':if(value==='all'||value==='harvest'||value==='kitchen'||value==='shore'){marketSellGroup=value;drawPanel();dialogContent.scrollTop=0}break
     case 'new-signature':
-      signatureBase=value==='tart'?'tart':'preserves';signatureSlots=[null,null];signatureSlot=0;signatureRepeatId=undefined;openPanel('signature');break
+      signatureBase=value==='tart'?'tart':'preserves';signatureSlots=[null,null];signatureSlot=0;signatureRepeatId=undefined;signatureFamily=undefined;openPanel('signature');break
     case 'signature-base':
       if(value==='preserves'||value==='tart'){signatureBase=value;signatureRepeatId=undefined;drawPanel()}break
     case 'signature-slot':signatureSlot=value==='1'?1:0;drawPanel();break
@@ -1656,6 +2002,7 @@ app.addEventListener('click', async (event) => {
       if(canSailTo(farm,'home')){closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true));openPanel('recipes',false);openPanel('signature')}
       break
     case 'make-signature':{
+      signatureFamily=undefined
       const recipe=farm.culinary.recipes.find(recipe=>recipe.id===value)
       if(recipe){signatureBase=recipe.base;signatureSlots=recipe.ingredients.flatMap(part=>Array.from({length:part.quantity},()=>({...part,quantity:1})));signatureRepeatId=recipe.id;cookingMode='signature';if(getSignatureAction(farm,recipe).available)openPanel('cookery');else openPanel('signature')}
       break
@@ -1673,6 +2020,28 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'cove-fish':openPanel('fishing');break
+    case 'shoal-pick': {
+      const id=shoalFindIds.find(id=>id===value)
+      if(id&&getShoalFindAt(farm,id)){closeDialog();activateTarget({kind:'shoal-find',id})}
+      break
+    }
+    case 'grill-fish': {
+      const id=fishIds.find(id=>id===value)
+      if(id){cookingFish=id;drawPanel()}
+      break
+    }
+    case 'fish-kitchen': {
+      const id=fishIds.find(id=>id===value)
+      if(!id)break
+      cookingFish=id
+      if(farm.island!=='home') {closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))}
+      openPanel('kitchen')
+      break
+    }
+    case 'fish-market':
+      marketTab='sell';marketSellGroup='shore'
+      if(farm.island!=='home'){closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))}
+      openPanel('market');break
     case 'cove-shells':closeDialog();island.focusTarget({kind:'shell',index:[0,1,2].find(index=>!farm.shellsCollectedToday.includes(index))??0});break
     case 'show-requirement': {
       const requirement = value === undefined ? undefined : requirementLinks.get(value)
@@ -1744,8 +2113,8 @@ app.addEventListener('click', async (event) => {
       break
     case 'feed': perform(() => feedChickens(farm), false, farm.progress.feed > 0); break
     case 'collect': perform(() => collectEggs(farm)); break
-    case 'pack-egg-basket': perform(() => packEggBasket(farm), false, true); break
-    case 'pack-egg-crate': perform(() => packEggCrate(farm), false, true); break
+    case 'pack-egg-basket': arrangementRequest = { kind: 'packing', mode: 'eggs' }; openPanel('arrangement'); break
+    case 'pack-egg-crate': arrangementRequest = { kind: 'packing', mode: 'crate' }; openPanel('arrangement'); break
     case 'incubate-egg': perform(() => incubateEgg(farm)); break
     case 'visit-rest':
     case 'sleep': {
@@ -1829,10 +2198,15 @@ app.addEventListener('click', async (event) => {
       if (value && workshopShapes.includes(value as WorkshopShape)) pastryShape = value as WorkshopShape
       openPanel('village-meal'); break
     case 'build-village': perform(() => contributeVillage(farm), false, true); break
-    case 'village-slot': villageSlot = Number(value) === 1 ? 1 : 0; drawPanel(); break
+    case 'village-slot': villageSlot = Number(value) === 1 ? 1 : 0; drawPanel(); dialogContent.scrollTop=0; dialogContent.querySelector<HTMLButtonElement>(`[data-action="village-slot"][data-value="${villageSlot}"]`)?.focus({preventScroll:true}); break
     case 'invite-resident': {
       const id = residentIds.find(id => id === value)
       if (id) perform(() => inviteResident(farm, id, villageSlot), false, true)
+      break
+    }
+    case 'practice-pattern': {
+      const shape = workshopShapes.find(shape => shape === value)
+      if (shape) { pastryShape = shape; workshopRecipe = 'pastry'; openPanel('workshop') }
       break
     }
     case 'pastry-shape': {
@@ -1885,7 +2259,7 @@ app.addEventListener('click', async (event) => {
       if (dish === 'farmhouseBread' && getCookAction(farm, dish).available) {
         workshopRecipe = 'bread'
         openPanel('workshop')
-      } else if (dish && (isTartDish(dish)||['appleJam','orchardPreserves','honeyPear','honeyBiscuits','windParfait','honeyCake'].includes(dish)) && getCookAction(farm, dish).available) {
+      } else if (dish && (isTartDish(dish)||['appleJam','orchardPreserves','honeyPear','honeyBiscuits','windParfait','honeyCake','grilledFish'].includes(dish)) && getCookAction(farm, dish, cookingFish).available) {
         cookingDish = dish
         openPanel('cookery')
       } else if (dish && farm.island === 'cape' && dishDefinitions[dish].capeLevel) {
@@ -1897,8 +2271,23 @@ app.addEventListener('click', async (event) => {
   }
 })
 
-closeButton.addEventListener('click', closeDialog)
+function closeCurrentPanel() {
+  if (communityRequest && (panel === 'cookery' || panel === 'workshop' || panel === 'arrangement')) void resumeCommunityRequest()
+  else closeDialog()
+}
+closeButton.addEventListener('click', closeCurrentPanel)
+dialog.addEventListener('cancel', event => { if (communityRequest && (panel === 'cookery' || panel === 'workshop' || panel === 'arrangement')) { event.preventDefault(); void resumeCommunityRequest() } })
 dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&panelHistory.length){event.preventDefault();goBack()}})
+dialog.addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey || !(event.target instanceof HTMLButtonElement)) return
+  const selector = event.target.closest('.island-selector,.house-selector')
+  if (!selector || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
+  const choices = [...selector.querySelectorAll<HTMLButtonElement>('button')]
+  const index = choices.indexOf(event.target)
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + choices.length) % choices.length
+  event.preventDefault()
+  choices[next]?.click()
+})
 dialog.addEventListener('click', (event) => {
   if (event.target === dialog) closeDialog()
 })
@@ -1909,9 +2298,11 @@ dialog.addEventListener('close', () => {
     stopFishing()
     stopWorkshop()
     stopCookery()
+    stopArrangement()
     panel = undefined
     seedPickerBed = undefined
     panelHistory.length=0
+    updateCommunityReturn()
   }
 })
 

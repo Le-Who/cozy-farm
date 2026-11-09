@@ -1,0 +1,113 @@
+{
+  "perch-raw": {
+    "width": 755,
+    "height": 295,
+    "alphaZero": 0.52626,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "visibleBounds": [
+      20,
+      26,
+      735,
+      268
+    ]
+  },
+  "perch-grilled": {
+    "width": 755,
+    "height": 295,
+    "alphaZero": 0.52522,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "visibleBounds": [
+      20,
+      26,
+      734,
+      268
+    ]
+  },
+  "perch-registration": {
+    "silhouetteIoU": 0.98752
+  },
+  "moonfish-raw": {
+    "width": 755,
+    "height": 295,
+    "alphaZero": 0.52515,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "visibleBounds": [
+      20,
+      22,
+      735,
+      273
+    ]
+  },
+  "moonfish-grilled": {
+    "width": 755,
+    "height": 295,
+    "alphaZero": 0.52371,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "visibleBounds": [
+      20,
+      22,
+      735,
+      272
+    ]
+  },
+  "moonfish-registration": {
+    "silhouetteIoU": 0.98634
+  },
+  "lanternfish-raw": {
+    "width": 755,
+    "height": 295,
+    "alphaZero": 0.53082,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "visibleBounds": [
+      20,
+      28,
+      735,
+      267
+    ]
+  },
+  "lanternfish-grilled": {
+    "width": 755,
+    "height": 295,
+    "alphaZero": 0.5272,
+    "cornerAlpha": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "visibleBounds": [
+      20,
+      27,
+      735,
+      268
+    ]
+  },
+  "lanternfish-registration": {
+    "silhouetteIoU": 0.98709
+  }
+}

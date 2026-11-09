@@ -6,6 +6,10 @@ import { fishingSpecies, type FishingLoot } from './fishing-model.ts';
 import { projectHenToGround, type HenNativePoint } from './hen-roaming.ts';
 import {createCulinary,restoreCulinary,isCookeryResult,copyCookeryResult,normalizeSignatureDraft,signatureIdentity,signatureFruitNames,signatureRecipeLimit,validSignatureName,residentTastes,type CulinaryState,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary.ts';
 import {createShoreline,restoreShoreline,settleCove,sameCove,isCoveChoices,getCoveEcology,isCoveFishingHabitat,copyCoveFishingHabitat,covePresets,coveObservationDefinitions,type ShorelineState,type CoveChoices,type CoveFishingHabitat} from './shoreline.ts';
+import { createIntentOrders, restoreIntentOrders, intentIds, currentIntentIds, intentDefinitions, qualityNames, evaluateFood, type IntentId, type IntentOrderState, type FoodDescriptor, type FoodOfferId } from './intent-orders.ts';
+import { createNeighborState, restoreNeighborState, prepareNeighbor, episodeFor, neighborEpisodes, validNeighborAssembly, type NeighborState, type NeighborAssembly } from './neighbor-plans.ts';
+export type { FoodOfferId, IntentId } from './intent-orders.ts';
+export type { NeighborAssembly } from './neighbor-plans.ts';
 export {getCoveEcology,covePresets} from './shoreline.ts';
 
 export const berryCropIds=['strawberry','blueberry','raspberry'] as const;
@@ -99,7 +103,7 @@ type ArchiveItem = { id: DiscoveryId | 'moon' | ShoalFindId | BayDiscoveryId; na
 
 export function getArchive(farm: FarmState, group: ArchiveGroup): { id: string; name: string; items: ArchiveItem[] }[] {
   if (group === 'bay') return [
-    { id: 'fish', name: 'Рыбы бухты', items: fishIds.map((id) => ({ id, name: fishDefinitions[id].name, icon: 'fish', discovered: farm.bayDiscoveries.includes(id) })) },
+    { id: 'fish', name: 'Рыбы бухты', items: fishIds.map((id) => ({ id, name: fishDefinitions[id].name, icon: id, discovered: farm.bayDiscoveries.includes(id) })) },
     { id: 'fruit', name: 'Садовые фрукты', items: treeIds.map((id) => ({ id, ...resourceDefinition(id), discovered: farm.bayDiscoveries.includes(id) })) },
     { id: 'dishes', name: 'Кухонные блюда', items: dishIds.map((id) => ({ id, name: dishDefinitions[id].name, icon: id, discovered: farm.bayDiscoveries.includes(id) })) },
     { id: 'honey', name: 'Мёд с мыса', items: [
@@ -508,6 +512,8 @@ export type FarmState = {
   workshopPatterns: WorkshopShape[];
   village: VillageState;
   culinary:CulinaryState;
+  intentOrders:IntentOrderState;
+  neighbors:NeighborState;
   shoreline:ShorelineState;
   fishingTripSerial: number;
   pendingFishingTrip: FishingTrip | null;
@@ -613,7 +619,7 @@ export function createFarm(): FarmState {
     workshopPatterns: [],
     village: { built: false, supplies: {}, residents: [null, null], meals: 0, mealOn: 0,
       serviceOn: { bea: 0, finn: 0 }, scouting: false },
-    culinary:createCulinary(),shoreline:createShoreline(),
+    culinary:createCulinary(),shoreline:createShoreline(),intentOrders:createIntentOrders(),neighbors:createNeighborState(),
     fishingTripSerial: 0,
     pendingFishingTrip: null,
     seaSalt: 0,
@@ -813,18 +819,30 @@ export function collectEggs(farm: FarmState): ActionResult {
   return record(farm, 'collect', `Собрано: ${ruCount(eggs, 'яйцо', 'яйца', 'яиц')}.` + found);
 }
 
-export function packEggBasket(farm: FarmState): ActionResult {
+export type PackingResult = { kind: 'basket' | 'crate'; placements: readonly { x: number; y: number }[]; settled: true };
+function validPacking(result: PackingResult | undefined, kind: PackingResult['kind'], count: number): boolean {
+  return result === undefined || isRecord(result) && result.kind === kind && result.settled === true
+    && Array.isArray(result.placements) && result.placements.length === count
+    && result.placements.every((point, index, points) => isRecord(point) && typeof point.x === 'number' && Number.isFinite(point.x) && Math.abs(point.x) <= 1
+      && typeof point.y === 'number' && Number.isFinite(point.y) && Math.abs(point.y) <= 1
+      && points.slice(0, index).every(other => Math.hypot((point.x as number) - other.x, (point.y as number) - other.y) >= .18));
+}
+export function packEggBasket(farm: FarmState, result?: PackingResult): ActionResult {
+  if (!validPacking(result, 'basket', eggsPerBasket)) return failure('Уложите три яйца в разные места корзинки.');
   if (farm.island !== 'home' || farm.buildingLevels.coop < 2) return failure('Улучшите курятник для упаковки корзин.');
   if (farm.eggs < eggsPerBasket) return failure(`Для корзины нужно ${ruCount(eggsPerBasket, 'яйцо', 'яйца', 'яиц')}.`);
+  if (!Number.isSafeInteger(farm.eggBaskets + 1) || !Number.isSafeInteger(farm.workToday + 1)) return failure('В кладовой пока нет места для новой корзинки.');
   farm.eggs -= eggsPerBasket;
   farm.eggBaskets += 1;
   farm.workToday += 1;
   return { ok: true, message: 'Корзина яиц упакована.' };
 }
 
-export function packEggCrate(farm: FarmState): ActionResult {
+export function packEggCrate(farm: FarmState, result?: PackingResult): ActionResult {
+  if (!validPacking(result, 'crate', eggsPerCrate)) return failure('Уложите пять яиц в разные ячейки ящика.');
   if (farm.island !== 'home' || farm.coopSpecialization !== 'packing') return failure('Постройте упаковочную для ящиков яиц.');
   if (farm.eggs < eggsPerCrate) return failure(`Для ящика нужно ${ruCount(eggsPerCrate, 'яйцо', 'яйца', 'яиц')}.`);
+  if (!Number.isSafeInteger(farm.eggCrates + 1) || !Number.isSafeInteger(farm.workToday + 1)) return failure('В кладовой пока нет места для нового ящика.');
   farm.eggs -= eggsPerCrate;
   farm.eggCrates += 1;
   farm.workToday += 1;
@@ -886,7 +904,7 @@ export function catchFish(farm: FarmState, hit: boolean): ActionResult {
 
 export function getFishingTripConfig(farm: FarmState): FishingTripConfig {
   const scouted = farm.village.scouting;
-  const picnic=farm.culinary.picnic?.day===farm.day&&farm.culinary.picnic.processing==='bright',tasting=scouted&&farm.culinary.tastings.finn.bonus,habitat=getCoveHabitat(farm);
+  const picnic=farm.culinary.picnic?.day===farm.day&&farm.culinary.picnic.processing==='bright',tasting=scouted&&(farm.culinary.tastings.finn.bonus||farm.neighbors.finn.helpReady),habitat=getCoveHabitat(farm);
   return { capacity: (scouted ? 3 : 2)+Number(picnic), depth: 120, resilience: (scouted ? 4 : 2)+Number(tasting), scouted,...(habitat?{habitat}:{}),...(picnic?{picnic:'bright' as const}:{}),...(tasting?{tasting:true}:{}) };
 }
 function copyFishingTripConfig(config:FishingTripConfig):FishingTripConfig{return {...config,...(config.habitat?{habitat:copyCoveFishingHabitat(config.habitat)}:{})}}
@@ -900,7 +918,7 @@ export function beginFishingTrip(farm: FarmState): ActionResult & { token?: numb
   farm.pendingFishingTrip = { token, day: farm.day, island: farm.island, config:copyFishingTripConfig(config) };
   farm.village.scouting = false;
   if(config.picnic)farm.culinary.picnic=null;
-  if(config.tasting)farm.culinary.tastings.finn.bonus=false;
+  if(config.tasting){farm.culinary.tastings.finn.bonus=false;farm.neighbors.finn.helpReady=false;}
   return { ok: true, message: 'Опустите крючок, а затем поднимите улов.', token, config:copyFishingTripConfig(config) };
 }
 
@@ -1212,6 +1230,7 @@ export function inviteResident(farm: FarmState, id: ResidentId | null, slot: num
   if (oldSlot === slot) return failure('Этот сосед уже живёт здесь.');
   if (oldSlot >= 0) farm.village.residents[oldSlot] = farm.village.residents[slot];
   farm.village.residents[slot] = id;
+  if (id && farm.neighbors[id].current === null) farm.neighbors[id].current = prepareNeighbor(farm.neighbors[id], farm.day);
   return { ok: true, message: id ? `${residentDefinitions[id].name} теперь живёт в домике.` : 'Домик готов принять нового соседа.' };
 }
 
@@ -1244,7 +1263,7 @@ export function getResidentService(farm: FarmState, id: ResidentId, shape: Works
   const available = present && !used && (id === 'finn' ? !farm.village.scouting : known && ingredients);
   const label = !present ? 'Пригласите соседа в домик Лавандовой гавани.' : used ? 'Сегодня сосед уже помог вам.'
     : id === 'finn' ? farm.village.scouting ? 'Всё готово к следующей рыбалке.' : 'Подготовить следующую рыбалку'
-    : !known ? 'Сначала освойте этот образец в мастерской.' : !ingredients ? 'Принесите 4 пшеницы и 2 яйца для трёх изделий.' : farm.culinary.tastings.bea.bonus?'Попросить Беа испечь четыре изделия':'Попросить Беа испечь три изделия';
+    : !known ? `Испеките вручную: ${workshopDefinitions[shape].name.toLowerCase()}. Выберите эту форму в мастерской и нажмите «Испечь» — Беа запомнит образец.` : !ingredients ? 'Принесите 4 пшеницы и 2 яйца для трёх изделий.' : farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?'Попросить Беа испечь четыре изделия':'Попросить Беа испечь три изделия';
   return { available, label, used, shape };
 }
 
@@ -1252,13 +1271,13 @@ export function runResidentService(farm: FarmState, id: ResidentId, shape: Works
   const action = getResidentService(farm, id, shape);
   if (!action.available) return failure(action.label);
   farm.village.serviceOn[id] = farm.day;
-  const pastries=farm.culinary.tastings.bea.bonus?4:3;
+  const pastries=farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?4:3;
   if (id === 'finn') farm.village.scouting = true;
   else {
     farm.produce.wheat -= 4;
     farm.eggs -= 2;
     farm.handmade[shape] += pastries;
-    farm.culinary.tastings.bea.bonus=false;
+    farm.culinary.tastings.bea.bonus=false;farm.neighbors.bea.helpReady=false;
   }
   farm.workToday += 1;
   return { ok: true, message: id === 'finn' ? 'Финн нашёл безопасный путь. Следующий крючок вместит ещё одну рыбу.'
@@ -1377,32 +1396,43 @@ export function specializeFacility(farm: FarmState, branch: FacilityBranch): Act
   return { ok: true, message: `Открыто: ${definition.name.toLowerCase()}.` };
 }
 
-export function getCookAction(farm: FarmState, dish: DishId): { available: boolean; label: string } {
+export function getGrillFish(farm: FarmState): FishId {
+  return farm.fish.seaBass > 0 ? 'seaBass' : fishIds.find(id => farm.fish[id] > 0) ?? 'seaBass';
+}
+
+export function getCookIngredients(farm: FarmState, dish: DishId, fish: FishId = getGrillFish(farm)): StockItem[] {
+  return dishDefinitions[dish].ingredients.map(item => dish === 'grilledFish' && item.kind === 'fish' ? { ...item, item: fish } : { ...item });
+}
+
+export function getCookAction(farm: FarmState, dish: DishId, fish?: FishId): { available: boolean; label: string } {
   if (!isId(dishIds, dish)) return { available: false, label: 'Выберите рецепт.' };
   const definition = dishDefinitions[dish];
   if (definition.capeLevel) {
     if (farm.island !== 'cape') return { available: false, label: 'Готовьте в Медовой кухне на Цветочном мысе.' };
     if (farm.capeLevel < definition.capeLevel) return { available: false, label: 'Постройте Медовую кухню на Цветочном мысе для этого блюда.' };
-  } else if (farm.island !== 'home') return { available: false, label: 'Готовьте на кухне фермерского дома.' };
+  } else if (farm.island !== 'home' && !(farm.island === 'village' && farm.village.built)) return { available: false, label: 'Кухня есть дома и в Лавандовой гавани.' };
   if (dish === 'honeyCake' && !canSailTo(farm, 'cape')) return { available: false, label: 'Откройте путь на Цветочный мыс, чтобы узнать этот рецепт.' };
   if (definition.specialization && farm.farmhouseSpecialization !== definition.specialization) {
     return { available: false, label: `Нужно направление: ${specializationDefinitions[definition.specialization].name.toLowerCase()}.` };
   }
   if (farm.buildingLevels.farmhouse < definition.requiredLevel) return { available: false, label: 'Улучшите дом для этого блюда.' };
-  if (!definition.ingredients.every((ingredient) => ingredientCount(farm, ingredient) >= ingredient.quantity)) {
+  if (!getCookIngredients(farm, dish, fish).every((ingredient) => ingredientCount(farm, ingredient) >= ingredient.quantity)) {
     return { available: false, label: 'Сначала соберите ингредиенты.' };
   }
   return { available: true, label: `Приготовить: ${definition.name.toLowerCase()}` };
 }
 
 export function cookDish(farm: FarmState, dish: DishId,result?:CookeryResult): ActionResult {
-  const families:Partial<Record<DishId,CookeryResult['family']>>={strawberryTart:'decorate',blueberryTart:'decorate',raspberryTart:'decorate',orchardTart:'decorate',appleJam:'preserves',orchardPreserves:'preserves',honeyCake:'honeyCake',honeyPear:'honeyPear',honeyBiscuits:'honeyBiscuits',windParfait:'windParfait'};
+  const families:Partial<Record<DishId,CookeryResult['family']>>={strawberryTart:'decorate',blueberryTart:'decorate',raspberryTart:'decorate',orchardTart:'decorate',appleJam:'preserves',orchardPreserves:'preserves',honeyCake:'honeyCake',honeyPear:'honeyPear',honeyBiscuits:'honeyBiscuits',windParfait:'windParfait',grilledFish:'grilledFish'};
+  if(dish==='grilledFish'&&(!result||!isCookeryResult(result)||result.baking?.method!=='grill'||result.baking.finish!=='golden'||result.baking.seconds<=0||!['season-fish','grill-first-side','turn-fish','grill-second-side','plate-fish','arrange-carrot'].every(step=>result.steps.includes(step))))return failure('Приправьте рыбу, обжарьте с двух сторон и выложите на тарелку с морковью.');
   if(result&&(!isCookeryResult(result)||result.family!==families[dish]))return failure('Закончите выбранный рецепт на кухонном столе.');
-  const action = getCookAction(farm, dish);
+  const fish = result?.fishSpecies ?? 'seaBass';
+  const action = getCookAction(farm, dish, fish);
   if (!action.available) return failure(action.label);
   const definition = dishDefinitions[dish];
-  for (const ingredient of definition.ingredients) removeStock(farm, ingredient);
   const bonus=farm.culinary.picnic?.day===farm.day&&farm.culinary.picnic.processing==='silky';
+  if(!Number.isSafeInteger(farm.dishes[dish]+(bonus?2:1))||!Number.isSafeInteger(farm.workToday+1))return failure('В кладовой пока нет места для нового блюда.');
+  for (const ingredient of getCookIngredients(farm, dish, fish)) removeStock(farm, ingredient);
   farm.dishes[dish] += bonus?2:1;
   if(bonus)farm.culinary.picnic=null;
   if(result)farm.culinary.lastDishes[dish]=copyCookeryResult(result);
@@ -1481,6 +1511,110 @@ export function deliverSignature(farm:FarmState,id:string):ActionResult{
   if(!recipe||farm.island!=='village'||!farm.village.built||farm.village.mealOn===farm.day||(farm.culinary.stock[id]??0)<1||farm.fish[fish]<1)return failure('Принесите к общему столу гавани одно авторское блюдо и одну рыбу.');
   if(!Number.isSafeInteger(farm.workToday+1)||!Number.isSafeInteger(farm.village.meals+1))return failure('Журнал ужинов заполнен.');
   farm.culinary.stock[id]--;farm.fish[fish]--;farm.village.meals++;farm.village.mealOn=farm.day;farm.workToday++;return {ok:true,message:`Блюдо «${recipe.name}» подано к общему ужину. ${farm.village.meals===2?'Второй домик готов!':''}`};
+}
+
+function foodDescriptors(farm: FarmState): FoodDescriptor[] {
+  return [
+    ...dishIds.map(item => ({ id: `dish:${item}` as const, name: dishDefinitions[item].name, source: 'dish' as const, identity: item,
+      ingredients: dishDefinitions[item].ingredients.map(part => 'item' in part ? part.item : part.kind),
+      preparation: farm.culinary.lastDishes[item] ? copyCookeryResult(farm.culinary.lastDishes[item]) : undefined,
+      count: farm.dishes[item], sellPrice: dishDefinitions[item].sellPrice })),
+    ...workshopShapes.map(item => ({ id: `handmade:${item}` as const, name: workshopDefinitions[item].name, source: 'handmade' as const,
+      identity: item, ingredients: ['wheat', 'eggs'], count: farm.handmade[item], sellPrice: workshopDefinitions[item].sellPrice })),
+    ...farm.culinary.recipes.map(recipe => ({ id: `signature:${recipe.id}` as const, name: recipe.name, source: 'signature' as const,
+      identity: recipe.base, ingredients: recipe.ingredients.map(part => part.id), processing: recipe.processing,
+      preparation: copyCookeryResult(recipe.result), count: farm.culinary.stock[recipe.id] ?? 0, sellPrice: recipe.sellPrice })),
+  ];
+}
+export function getIntentOffers(farm: FarmState, intent: IntentId) {
+  if (!isId(intentIds, intent)) return [];
+  return foodDescriptors(farm).map(food => ({ ...evaluateFood(food, intent),
+    canCook: food.source === 'dish' ? getCookAction(farm, food.identity as DishId).available
+      : food.source === 'handmade' ? farm.workshopPatterns.includes(food.identity as WorkshopShape) && getWorkshopAction(farm).available
+      : getSignatureAction(farm, farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === food.id)!).available }));
+}
+export function getCommunityOrders(farm: FarmState) {
+  const unlocked = isProjectComplete(farm, 'fair');
+  return currentIntentIds(farm.day).map(intentId => ({ id: `intent:${farm.day}:${intentId}`, intentId, ...intentDefinitions[intentId],
+    chips: intentDefinitions[intentId].requiredQualities.map(quality => qualityNames[quality]), quantity: 1, rewardBonus: 12, unlocked,
+    delivered: farm.intentOrders[intentId].deliveredOn === farm.day, offers: getIntentOffers(farm, intentId) }));
+}
+function consumeFood(farm: FarmState, offer: FoodDescriptor): void {
+  if (offer.source === 'signature') farm.culinary.stock[offer.id.slice('signature:'.length)]--;
+  else if (offer.source === 'dish') removeStock(farm, { kind: 'dishes', item: offer.identity as DishId, quantity: 1 });
+  else removeStock(farm, { kind: 'handmade', item: offer.identity as WorkshopShape, quantity: 1 });
+}
+export function deliverIntentOrder(farm: FarmState, id: string, offerId: FoodOfferId): ActionResult {
+  const order = getCommunityOrders(farm).find(order => order.id === id);
+  if (!order || !order.unlocked || farm.island !== 'home') return failure('Выберите сегодняшнюю просьбу на ярмарке Родного острова.');
+  if (order.delivered) return failure('Эта просьба уже выполнена. Завтра появятся новые.');
+  const offer = order.offers.find(offer => offer.id === offerId);
+  if (!offer?.available) return failure('Выберите подходящее приготовленное блюдо из запаса.');
+  const ledger = farm.intentOrders[order.intentId];
+  if (ledger.completed >= 1_000_000 || !Number.isSafeInteger(farm.coins + offer.reward) || !Number.isSafeInteger(farm.workToday + 1)) return failure('Журнал ярмарки заполнен.');
+  consumeFood(farm, offer); ledger.completed++; ledger.deliveredOn = farm.day;
+  farm.coins += offer.reward; farm.workToday++;
+  return { ok: true, message: `«${offer.name}» принято. ${offer.reward} монет: стоимость блюда и благодарность за помощь.` };
+}
+export function getNeighborPlans(farm: FarmState) {
+  if (!farm.village.built) return [];
+  return residentIds.filter(resident => farm.village.residents.includes(resident)).map(resident => {
+    const history = farm.neighbors[resident], plan = history.current ?? prepareNeighbor(history, farm.day);
+    const episode = episodeFor(resident, plan.serial), definition = neighborEpisodes[episode], memory = history.memories.at(-1) ?? null;
+    const recollection = memory ? `${residentDefinitions[resident].name} помнит «${memory.foodName}» и уже приготовил${resident === 'bea' ? 'а' : ''} для вас место.` : '';
+    return { id: `${resident}:${plan.serial}`, phase: plan.phase, episode, ...definition,
+      preparation: `${definition.preparation}${memory ? ` ${recollection}` : ''}`,
+      dialogue: `${definition.dialogue}${memory ? ` В прошлый раз было так уютно с «${memory.foodName}».` : ''}`,
+      food: plan.food ? { ...plan.food, qualities: [...plan.food.qualities] } : null,
+      memory: memory ? { ...memory, qualities: [...memory.qualities] } : null,
+      memoryCount: history.completed, helpReady: history.helpReady, chips: intentDefinitions[definition.intentId].requiredQualities.map(quality => qualityNames[quality]), requiredQualities: [...intentDefinitions[definition.intentId].requiredQualities],
+      reward: 12, nextAvailableOn: (memory?.day ?? 0) + 1 };
+  });
+}
+function availableNeighborPlan(farm: FarmState, id: string) {
+  return farm.island === 'village' ? getNeighborPlans(farm).find(plan => plan.id === id) : undefined;
+}
+export function joinNeighborPlan(farm: FarmState, id: string): ActionResult {
+  const view = availableNeighborPlan(farm, id);
+  if (!view || view.phase !== 'preparing') return failure('Подойдите к приглашённому соседу, который готовится к встрече.');
+  const history = farm.neighbors[view.resident], plan = history.current ?? prepareNeighbor(history, farm.day);
+  history.current = { ...plan, phase: 'joined', food: null };
+  return { ok: true, message: `${residentDefinitions[view.resident].name} рад${view.resident === 'bea' ? 'а' : ''} вашей компании. ${intentDefinitions[view.intentId].request}` };
+}
+export function serveNeighborPlan(farm: FarmState, id: string, offerId: FoodOfferId): ActionResult {
+  const view = availableNeighborPlan(farm, id);
+  if (!view || view.phase !== 'joined' && view.phase !== 'arranging') return failure('Сначала присоединитесь к затее соседа.');
+  const offer = getIntentOffers(farm, view.intentId).find(offer => offer.id === offerId);
+  if (!offer?.available) return failure('Выберите подходящее приготовленное угощение.');
+  const history = farm.neighbors[view.resident], plan = history.current!;
+  history.current = { ...plan, phase: 'arranging', food: { id: offer.id, name: offer.name, qualities: [...offer.qualities] } };
+  return { ok: true, message: 'Угощение выбрано. Устройте встречу: разместите еду, чашку и цветы.' };
+}
+export function finishNeighborPlan(farm: FarmState, id: string, assembly: NeighborAssembly): ActionResult {
+  const view = availableNeighborPlan(farm, id);
+  if (!view || view.phase !== 'arranging' || !view.food) return failure('Сначала выберите угощение для встречи.');
+  if (!validNeighborAssembly(assembly, view.arrangement)) return failure('Разместите угощение по центру, а чашку и цветы — рядом, без наложений.');
+  const history = farm.neighbors[view.resident], offer = getIntentOffers(farm, view.intentId).find(offer => offer.id === view.food!.id);
+  if (!offer?.available) return failure('Выбранное угощение закончилось. Приготовьте ещё порцию или выберите другое.');
+  if (history.completed >= 1_000_000 || history.memories.at(-1)?.day === farm.day || !Number.isSafeInteger(farm.coins + 12) || !Number.isSafeInteger(farm.workToday + 1)) return failure('Следующую встречу устроим в другой день.');
+  const food = { id: offer.id, name: offer.name, qualities: [...offer.qualities] };
+  consumeFood(farm, offer);
+  history.current = { ...history.current!, phase: 'celebrating', food };
+  history.completed++; history.helpReady = true;
+  history.memories.push({ day: farm.day, episode: view.episode, foodName: offer.name, qualities: [...offer.qualities] });
+  history.memories = history.memories.slice(-12);
+  farm.coins += 12; farm.workToday++;
+  if (farm.village.mealOn !== farm.day) { farm.village.meals++; farm.village.mealOn = farm.day; }
+  return { ok: true, message: `${residentDefinitions[view.resident].name} запомнит «${offer.name}» и вашу встречу. ${view.resident === 'bea' ? 'В следующий раз Беа испечёт на одно изделие больше.' : 'Финн укрепит следующий подготовленный крючок.'}` };
+}
+export function advanceNeighborPlan(farm: FarmState, id: string): ActionResult {
+  const view = availableNeighborPlan(farm, id);
+  if (!view || view.phase !== 'celebrating' && view.phase !== 'remembered') return failure('Сначала проведите встречу с соседом.');
+  const history = farm.neighbors[view.resident];
+  if (farm.day > (history.memories.at(-1)?.day ?? 0)) history.current = prepareNeighbor(history, farm.day);
+  else if (view.phase === 'celebrating') history.current = { ...history.current!, phase: 'remembered', food: history.current!.food! };
+  else return failure('Сосед уже обдумывает следующую затею на завтра.');
+  return { ok: true, message: farm.day >= view.nextAvailableOn ? 'У соседа появилась новая затея.' : 'Встреча осталась тёплым воспоминанием. Новая затея появится завтра.' };
 }
 
 export function ingredientCount(farm: FarmState, ingredient: StockItem): number {
@@ -1753,6 +1887,7 @@ export function endDay(farm: FarmState): ActionResult {
   if (farm.island !== 'home') return failure('Вернитесь на Родной остров, чтобы отдохнуть в доме.');
   farm.pendingFishingTrip = null;
   const tomorrow = farm.day + 1;
+  for (const resident of residentIds) if (farm.neighbors[resident].current?.phase === 'remembered') farm.neighbors[resident].current = prepareNeighbor(farm.neighbors[resident], tomorrow);
   const { weather } = getClimate(tomorrow);
   let cropsGrew = false;
   for (const [index, bed] of farm.beds.entries()) {
@@ -2048,6 +2183,8 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   const projects = restoreProjectLedger(savedProjects);
   const livingBay = projects && restoreLivingBay(value, day, isProjectComplete({ projects }, 'fair'), restored);
   if (!livingBay) return undefined;
+  const intentOrders=restoreIntentOrders(value.intentOrders,day),neighbors=restoreNeighborState(value.neighbors,day,livingBay.village.residents);
+  if(!intentOrders||!neighbors)return undefined;
   const variants = restoreCollection(savedVariants, traitIds, (entry): entry is number => isQuantity(entry) && entry > 0);
   const discoveries = restoreCollection(savedDiscoveries, discoveryIds, (entry): entry is true => entry === true);
   if (!orders || !projects || !variants || !discoveries || !isRecord(savedDishes)) return undefined;
@@ -2217,6 +2354,6 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     harborSupplies,
     variants,
     discoveries,
-    culinary,shoreline,
+    culinary,shoreline,intentOrders,neighbors,
   };
 }

@@ -1,4 +1,5 @@
 import {traitIds,type Trait} from './climate.ts'
+import {fishingSpecies,type FishingSpecies} from './fishing-model.ts'
 
 export const signatureFruitIds=['apple','pear','peach','strawberry','blueberry','raspberry'] as const
 export type SignatureFruitId=typeof signatureFruitIds[number]
@@ -7,11 +8,13 @@ export const signatureProcessingIds=['bright','silky','chunky'] as const
 export type SignatureProcessing=typeof signatureProcessingIds[number]
 export const signatureProcessingDefinitions={bright:{name:'Свежее',use:'На следующей рыбалке крючок вместит ещё одну находку.'},silky:{name:'Нежное',use:'Следующая готовка даст ещё одну порцию.'},chunky:{name:'С кусочками',use:'Следующий сбор урожая даст ещё одну единицу.'}} as const
 export type CookeryResult={
- family:'preserves'|'decorate'|'honeyPear'|'honeyBiscuits'|'windParfait'|'honeyCake'
+ family:'preserves'|'decorate'|'honeyPear'|'honeyBiscuits'|'windParfait'|'honeyCake'|'grilledFish'
  processing?:SignatureProcessing
+ fishSpecies?:FishingSpecies
  fruit:readonly {ingredientId:string;x:number;y:number;angle:number}[]
+ garnish?:readonly {ingredientId:'carrot';x:number;y:number;angle:number}[]
  steps:readonly string[]
- baking?:{method:'oven'|'chilled'|'stovetop';finish:'golden'|'soft'|'set';seconds:number}
+ baking?:{method:'oven'|'chilled'|'stovetop'|'grill';finish:'golden'|'soft'|'set';seconds:number}
 }
 export type SignatureIngredient={id:SignatureFruitId;quantity:number;trait?:Trait}
 export type SignatureDraft={base:'preserves'|'tart';ingredients:readonly SignatureIngredient[]}
@@ -27,13 +30,15 @@ const count=(v:unknown,max=1_000_000):v is number=>typeof v==='number'&&Number.i
 const oneOf=<T extends string>(values:readonly T[],v:unknown):v is T=>values.includes(v as T)
 const finite=(v:unknown,min:number,max:number):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max
 export function isCookeryResult(value:unknown):value is CookeryResult{
- if(!record(value)||!oneOf(['preserves','decorate','honeyPear','honeyBiscuits','windParfait','honeyCake'],value.family)||value.processing!==undefined&&!oneOf(signatureProcessingIds,value.processing))return false
+ if(!record(value)||!oneOf(['preserves','decorate','honeyPear','honeyBiscuits','windParfait','honeyCake','grilledFish'],value.family)||value.processing!==undefined&&!oneOf(signatureProcessingIds,value.processing))return false
+ if(value.fishSpecies!==undefined&&(value.family!=='grilledFish'||!oneOf(fishingSpecies,value.fishSpecies)))return false
  if(!Array.isArray(value.fruit)||value.fruit.length>24||!value.fruit.every(p=>record(p)&&oneOf(signatureFruitIds,p.ingredientId)&&finite(p.x,-1,1)&&finite(p.y,-1,1)&&finite(p.angle,-Math.PI,Math.PI)))return false
+ if(value.garnish!==undefined&&(!Array.isArray(value.garnish)||value.garnish.length>3||!value.garnish.every(p=>record(p)&&p.ingredientId==='carrot'&&finite(p.x,-1,1)&&finite(p.y,-1,1)&&finite(p.angle,-Math.PI,Math.PI))))return false
  if(!Array.isArray(value.steps)||value.steps.length>24||!value.steps.every(step=>typeof step==='string'&&step.length>0&&step.length<=32&&/^[a-zA-Z0-9 _-]+$/.test(step)))return false
- return value.baking===undefined||record(value.baking)&&oneOf(['oven','chilled','stovetop'],value.baking.method)&&oneOf(['golden','soft','set'],value.baking.finish)&&finite(value.baking.seconds,0,1800)
+ return value.baking===undefined||record(value.baking)&&oneOf(['oven','chilled','stovetop','grill'],value.baking.method)&&oneOf(['golden','soft','set'],value.baking.finish)&&finite(value.baking.seconds,0,1800)
 }
 export function copyCookeryResult(value:CookeryResult):CookeryResult{
- return {family:value.family,...(value.processing?{processing:value.processing}:{}),fruit:value.fruit.map(p=>({ingredientId:p.ingredientId,x:p.x,y:p.y,angle:p.angle})),steps:[...value.steps],...(value.baking?{baking:{method:value.baking.method,finish:value.baking.finish,seconds:value.baking.seconds}}:{})}
+ return {family:value.family,...(value.processing?{processing:value.processing}:{}),...(value.fishSpecies?{fishSpecies:value.fishSpecies}:{}),fruit:value.fruit.map(p=>({ingredientId:p.ingredientId,x:p.x,y:p.y,angle:p.angle})),steps:[...value.steps],...(value.garnish?{garnish:value.garnish.map(p=>({...p}))}:{}),...(value.baking?{baking:{method:value.baking.method,finish:value.baking.finish,seconds:value.baking.seconds}}:{})}
 }
 export function normalizeSignatureDraft(value:unknown):SignatureDraft|undefined{
  if(!record(value)||!oneOf(['preserves','tart'],value.base)||!Array.isArray(value.ingredients)||value.ingredients.length<1||value.ingredients.length>2)return

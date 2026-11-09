@@ -40,6 +40,11 @@ import {
   upgradeBuilding,
   workBed,
 } from '../src/farm.ts';
+import type { CookeryResult } from '../src/culinary.ts';
+
+const grilledFishResult = (): CookeryResult => ({ family: 'grilledFish', fruit: [],
+  steps: ['season-fish', 'grill-first-side', 'turn-fish', 'grill-second-side', 'plate-fish', 'arrange-carrot'],
+  baking: { method: 'grill', finish: 'golden', seconds: 18 } });
 
 test('discovery introductions persist per save and migrate established farms', () => {
   const fresh = createFarm();
@@ -297,7 +302,7 @@ test('the kitchen turns ingredients into premium goods and upgrades unlock the i
   assert.equal(gatherSeaSalt(farm).ok, true);
   assert.equal(sail(farm, 'home').ok, true);
   assert.equal(workBed(farm, 9).ok, true);
-  assert.equal(cookDish(farm, 'grilledFish').ok, true);
+  assert.equal(cookDish(farm, 'grilledFish', grilledFishResult()).ok, true);
   assert.equal(farm.fish.seaBass, 0);
   assert.equal(farm.seaSalt, 1);
   assert.equal(farm.produce.carrot, 2);
@@ -410,7 +415,7 @@ test('Grove orders use island goods and unlock the final meal after the kitchen 
   farm.produce.carrot = 1;
   farm.fish.seaBass = 1;
   farm.seaSalt = 2;
-  assert.equal(cookDish(farm, 'grilledFish').ok, true);
+  assert.equal(cookDish(farm, 'grilledFish', grilledFishResult()).ok, true);
   assert.equal(grove()?.status, 'ready');
   assert.equal(deliverMarketOrder(farm, 'grove').ok, true);
   assert.equal(farm.dishes.grilledFish, 0);

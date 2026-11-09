@@ -1,0 +1,17 @@
+{
+  "runtime": "normal Kitchen recipe entry in production preview http://127.0.0.1:5264, current working tree",
+  "composition": "Coordinator accepted calibrated source08 with intact front wall and handle. All action props remain on the wooden tabletop; board left, grill right, empty plate below, source carrots separated.",
+  "modelChecks": {"command":"node --test tests/fish-cookery.test.ts","passed":6,"failed":0},
+  "mouseFullRecipe": {"passed":true,"before":{"seaBass":3,"seaSalt":3,"carrot":3,"grilledFish":0},"after":{"seaBass":2,"seaSalt":2,"carrot":2,"grilledFish":1},"repeatFinish":"unchanged","grillSeconds":13.105025685119243},
+  "nativeTouchFullRecipe": {"passed":true,"input":"CDP Input.dispatchTouchEvent touchStart/touchMove/touchEnd","viewport":[390,844],"deviceScaleFactor":2,"before":[3,3,3,0],"after":[2,2,2,1],"repeatFinish":"unchanged","grillSeconds":12.548735555367234},
+  "cancel": {"passed":true,"stockBefore":[3,3,3,0],"stockAfterOpen":[3,3,3,0],"stockAfterCancel":[3,3,3,0],"return":"Kitchen recipe list"},
+  "falseCommitRetry": "Harness rejected one valid commit, retained ready state, then accepted one batch. Successful result count1.",
+  "keyboardLifecycle": {"russianPhysicalCode":{"key":"ы","code":"KeyS","result":"salt held"},"webglLoss":"visible recovery status and held object released","webglRestore":"same season stage rendered again","reducedMotionMedia":true,"escapeCancelCount":1,"commitAttempts":0},
+  "normalParentResponsiveSnapshots": ["fish-PRODUCTION-parent-390x844.png","fish-PRODUCTION-parent-568x320.png","fish-PRODUCTION-parent-618x365.png","fish-PRODUCTION-parent-520x480.png"],
+  "finalWholeFishSnapshots": ["fish-PRODUCTION-first-side.png","fish-PRODUCTION-both-sides.png","fish-PRODUCTION-plated.png","fish-TOUCH-DPR2-first-side.png","fish-TOUCH-DPR2-both-sides.png","fish-TOUCH-DPR2-plated.png"],
+  "snapshotDirectory": "game/.playwright-cli/",
+  "videos": {"desktop":"game/.playwright-cli/fish-final-production-desktop.webm","touch":"game/.playwright-cli/fish-final-production-touch-dpr2.webm","desktopDurationSeconds":49.76,"recordingFrameRate":25},
+  "decodedMotionReview": {"method":"sequential browser playback with requestVideoFrameCallback; no seeking before dense interval","presentationCallbacks":732,"denseIntervalSeconds":[24,39],"denseStepSeconds":0.04,"contactSheet":"game/.playwright-cli/fish-final-decoded-motion-sheet.png","presentationTimes":"game/.playwright-cli/fish-final-decoded-presentation-times.json"},
+  "renderer": "Physical fish remains a closed, independently heated two-skin volume. Fixed authored pan source08 is camera-calibrated once and paints before physical food without an invisible depth wall. Real Rapier hull/contact manifolds gate heat. Room image paints beneath the alpha canvas. Fixed viewport dialog/host sizes prevent fit-content feedback.",
+  "buildOwnership": "Coordinator ran the project build and full test suite. Fish worker did not run a shared build or make commits."
+}

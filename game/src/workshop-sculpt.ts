@@ -55,8 +55,8 @@ export function createSculptedDough(options: SculptedDoughOptions): THREE.Buffer
   const seed = (options.seed ?? 1) >>> 0;
   const phase = (seed * .61803398875 % 1) * TAU;
   const rim = RIM;
-  const exponent = shape === 'long' ? 2.65 : 2.15;
-  const sx = shape === 'long' ? 1.83 * Math.sqrt(stretch) : 1.03;
+  const exponent = shape === 'long' ? 2.0 : 2.15;
+  const sx = shape === 'long' ? 1.65 * Math.sqrt(stretch) : 1.03;
   const sz = shape === 'long' ? .65 / Math.sqrt(stretch) : .98;
   const positions: number[] = [], uvs: number[] = [], indices: number[] = [];
 
@@ -76,7 +76,7 @@ export function createSculptedDough(options: SculptedDoughOptions): THREE.Buffer
   function point(u: number, v: number, radius: number, face: number): [number, number, number] {
     const envelope = Math.max(0, 1 - radius * radius) ** .64;
     const x = u * sx, z = v * sz, y = .12;
-    let top = rim + (shape === 'round' ? .47 : .19) * envelope;
+    let top = rim + (shape === 'round' ? .47 : .62) * envelope;
     const bottom = rim + (.12 - rim) * (1 - smooth(.58, 1, radius));
     if (shape === 'long') {
       const strand = v + .09 * Math.sin(u * 2.2 + phase);

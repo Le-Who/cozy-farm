@@ -10,10 +10,13 @@ import { createSupportShadow, type SupportShadow } from './support-shadow';
 import { defaultHenPositions, henIdlePoint, projectHenToGround, type HenNativePoint } from './hen-roaming';
 import { getCoveEcology } from './shoreline';
 import { createCoveMotion, stepCoveMotion, coveChannelPoint, coveSceneAnchors } from './shoreline-view';
+import { getNeighborPlans } from './farm';
+import { getNeighborSceneState, neighborWorkFrame, neighborPropSettle, neighborFoodArt, stepNeighborWalker, type NeighborScenePlan } from './neighbor-scene';
 
 export type IslandTarget =
   | { kind: 'bed' | 'tree' | 'hen' | 'flower' | 'village-home'; index: number }
   | ShoreTarget
+  | { kind: 'neighbor'; resident: ResidentId }
   | { kind: 'well' | 'coop' | 'market' | 'farmhouse' | 'kitchen' | 'pier' | 'boat' | 'harbor' | 'salt' | 'cove' | 'tidepool' | 'hive' | 'honey-kitchen' | 'guest' | 'bay-display' | 'workshop' | 'village' | 'village-meal' };
 
 type Point = { x: number; y: number };
@@ -117,6 +120,7 @@ type VillageActor = {
   id: ResidentId; slot: number; point: Point; route: Point[]; facingRight: boolean;
   stride: number; waitUntil: number; circuit: number; serviceRequested: boolean;
   serviceUntil: number; gathering: boolean; mealUntil: number;
+  plan?: NeighborScenePlan; planKey: string; atStationSince: number; fetching: boolean;
 };
 const kitchenWingX = scenePoint(472, 0).x;
 const kitchenSite: Area = {
@@ -164,6 +168,7 @@ const shoreSites: ShoreArea[] = [
 const pickupDuration = 370;
 
 function sameTarget(a: IslandTarget, b: IslandTarget): boolean {
+  if (a.kind === 'neighbor') return b.kind === 'neighbor' && a.resident === b.resident;
   if (a.kind === 'shoal-find') return b.kind === 'shoal-find' && a.id === b.id;
   return a.kind === b.kind && (!('index' in a) || ('index' in b && a.index === b.index));
 }
@@ -361,6 +366,7 @@ export function createIsland(
   let villageBuiltSeen = false;
   let villageMealCelebration = 0;
   let residentClock = 0;
+  let villageTableCutout: HTMLCanvasElement | undefined;
   let guestServed = false;
   let guestDeparture = 0;
   let honeyReward = 0;
@@ -409,6 +415,36 @@ export function createIsland(
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const abort = new AbortController();
   const art = createRasterLibrary((key) => {
+    if (key === 'village-plate') {
+      const plate = art.image(key);
+      if (plate) {
+        const mask = document.createElement('canvas');
+        mask.width = 365; mask.height = 240;
+        const context = mask.getContext('2d')!;
+        context.translate(-790, -485);
+        // Extract the authored foreground, preserving its painted edge and
+        // texture. Residents prepare behind the table instead of through it.
+        const table = new Path2D();
+        table.moveTo(866, 578);
+        table.bezierCurveTo(877, 564, 919, 553, 962, 546);
+        table.bezierCurveTo(1003, 540, 1054, 542, 1073, 557);
+        table.bezierCurveTo(1096, 573, 1088, 594, 1070, 604);
+        table.lineTo(1056, 609); table.lineTo(1067, 621);
+        table.bezierCurveTo(1071, 628, 1065, 637, 1052, 637);
+        table.lineTo(1040, 617); table.lineTo(952, 636);
+        table.lineTo(948, 665);
+        table.bezierCurveTo(944, 674, 921, 675, 919, 663);
+        table.lineTo(921, 631); table.lineTo(897, 627);
+        table.lineTo(894, 645);
+        table.bezierCurveTo(892, 654, 868, 652, 869, 643);
+        table.lineTo(872, 620);
+        table.bezierCurveTo(861, 613, 861, 591, 866, 578);
+        table.closePath();
+        context.clip(table);
+        context.drawImage(plate, 0, 0);
+        villageTableCutout = mask;
+      }
+    }
     if (key === shoalPlate.key && shoalRevealPending && currentIsland === 'grove') {
       shoalReveal = performance.now();
       shoalRevealPending = false;
@@ -486,9 +522,20 @@ export function createIsland(
   function currentSites(): Area[] {
     if (state?.island === 'village') return [
       ...[...villageActors.values()].map((actor): Area => ({
-        target: { kind: 'village-home', index: actor.slot },
-        center: { x: actor.point.x, y: actor.point.y - 46 }, stop: { ...actor.point }, w: 47, h: 89,
+        target: { kind: 'neighbor', resident: actor.id },
+        center: { x: actor.point.x, y: actor.point.y - 46 },
+        stop: { x: actor.point.x + (actor.facingRight ? 35 : -35), y: actor.point.y + 16 }, w: 47, h: 89,
       })),
+      ...getNeighborPlans(state).flatMap((plan): Area[] => {
+        const scene = getNeighborSceneState(plan), prop = scenePoint(scene.prop.x, scene.prop.y);
+        const site: Area = { target: { kind: 'neighbor', resident: plan.resident },
+          center: { x: prop.x, y: prop.y - scene.height * sceneScale * .38 },
+          stop: scenePoint(scene.player.x, scene.player.y), w: scene.width * sceneScale, h: scene.height * sceneScale };
+        if (!scene.keepsake) return [site];
+        const keep = scene.keepsake, point = scenePoint(keep.point.x, keep.point.y);
+        return [site, { target: site.target, center: { x: point.x, y: point.y - keep.height * sceneScale * .38 },
+          stop: site.stop, w: keep.width * sceneScale, h: keep.height * sceneScale }];
+      }),
       ...villageSites,
     ];
     if (state?.island === 'cape') {
@@ -573,6 +620,7 @@ export function createIsland(
   }
 
   function syncVillageResidents(next: FarmState, moment: number): void {
+    const plans = getNeighborPlans(next);
     for (const id of residentIds) {
       const slot = next.village.residents.indexOf(id);
       if (slot < 0) { villageActors.delete(id); continue; }
@@ -580,7 +628,8 @@ export function createIsland(
       if (!actor) {
         actor = { id, slot, point: { ...village.homes[slot] }, route: [], facingRight: slot === 0,
           stride: 0, waitUntil: moment + 1800 + slot * 1500, circuit: 0, serviceRequested: false,
-          serviceUntil: 0, gathering: false, mealUntil: 0 };
+          serviceUntil: 0, gathering: false, mealUntil: 0,
+          planKey: '', atStationSince: 0, fetching: false };
         villageActors.set(id, actor);
       } else if (actor.slot !== slot) {
         actor.slot = slot;
@@ -588,6 +637,19 @@ export function createIsland(
         actor.serviceRequested = false;
         routeResident(actor, village.homes[slot]);
         actor.waitUntil = moment + 2000;
+      }
+      const plan = plans.find((entry) => entry.resident === id);
+      actor.plan = plan;
+      const key = plan ? `${plan.id}:${plan.phase}` : '';
+      if (plan && actor.planKey !== key) {
+        actor.planKey = key;
+        actor.atStationSince = 0;
+        actor.fetching = false;
+        if (!actor.serviceRequested && !actor.gathering) {
+          const scene = getNeighborSceneState(plan);
+          routeResident(actor, scenePoint(scene.stand.x, scene.stand.y));
+          actor.waitUntil = moment + 1800;
+        }
       }
       if (currentIsland === 'village' && next.island === 'village'
         && next.village.serviceOn[id] > residentServiceSeen[id] && !motion.matches) {
@@ -598,7 +660,8 @@ export function createIsland(
       }
     }
     if (currentIsland === 'village' && next.island === 'village'
-      && next.village.mealOn > villageMealSeen && !motion.matches) {
+      && next.village.mealOn > villageMealSeen && !motion.matches
+      && !plans.some(plan => plan.phase === 'celebrating')) {
       villageMealCelebration = moment;
       for (const actor of villageActors.values()) {
         actor.gathering = true;
@@ -615,8 +678,9 @@ export function createIsland(
   function paintVillage(farm: FarmState, time: number, moment: number): void {
     const elapsed = motion.matches ? 0 : clamp((moment - (residentClock || moment)) / 1000, 0, 0.05);
     residentClock = moment;
+    const gatheringPlan = getNeighborPlans(farm).find(plan => plan.phase === 'celebrating' || plan.phase === 'arranging');
     const mealActive = villageMealCelebration && moment - villageMealCelebration < 24000;
-    if (farm.village.mealOn === farm.day) {
+    if (farm.village.mealOn === farm.day && !getNeighborPlans(farm).some(plan => plan.memory?.day === farm.day)) {
       const shape = farm.workshopPatterns.find((id) => farm.handmade[id] > 0) ?? farm.workshopPatterns[0] ?? 'round';
       const meal = [
         { key: `ui-handmade-${shape}`, point: scenePoint(930, 607), width: 24, height: 22 },
@@ -640,29 +704,27 @@ export function createIsland(
     }
     const actors = [...villageActors.values()];
     for (const actor of actors) {
+      const scene = actor.plan && getNeighborSceneState(actor.plan);
+      const guestScene = gatheringPlan && gatheringPlan.resident !== actor.id && getNeighborSceneState(gatheringPlan);
+      if (guestScene && !actor.gathering && !actor.serviceRequested && !actor.fetching) {
+        const guest = scenePoint(guestScene.guest.x, guestScene.guest.y);
+        if (distance(actor.point, guest) > 4 && !actor.route.length) routeResident(actor, guest);
+      }
       if (motion.matches) {
-        actor.point = { ...village.homes[actor.slot] };
+        actor.point = guestScene ? scenePoint(guestScene.guest.x, guestScene.guest.y)
+          : scene ? scenePoint(scene.stand.x, scene.stand.y) : { ...village.homes[actor.slot] };
+        if (guestScene) actor.facingRight = guestScene.stand.x > guestScene.guest.x;
+        else if (scene) actor.facingRight = scene.prop.x > scene.stand.x;
         actor.route = [];
       } else if (actor.route.length) {
-        let step = elapsed * (actor.id === 'bea' ? 32 : 35);
-        while (actor.route.length && step > 0) {
-          const to = actor.route[0];
-          const gap = distance(actor.point, to);
-          if (gap > 0.02) {
-            const ratio = Math.min(1, step / gap);
-            if (Math.abs(to.x - actor.point.x) > 0.2) actor.facingRight = to.x > actor.point.x;
-            actor.point = { x: actor.point.x + (to.x - actor.point.x) * ratio,
-              y: actor.point.y + (to.y - actor.point.y) * ratio };
-            actor.stride += Math.min(step, gap) / 38;
-          }
-          if (step < gap) break;
-          step -= gap;
-          actor.route.shift();
-        }
+        stepNeighborWalker(actor, elapsed, actor.id === 'bea' ? 32 : 35);
         if (!actor.route.length) {
           if (actor.gathering) actor.mealUntil = moment + 7200;
           else if (actor.serviceRequested) actor.serviceUntil = moment + 5100;
           actor.waitUntil = moment + (actor.id === 'bea' ? 4200 : 5600);
+          actor.atStationSince = moment;
+          if (guestScene) actor.facingRight = guestScene.stand.x > guestScene.guest.x;
+          else if (scene) actor.facingRight = scene.prop.x > scene.stand.x;
         }
       } else if (actor.gathering && actor.mealUntil && moment >= actor.mealUntil) {
         actor.gathering = false;
@@ -672,26 +734,67 @@ export function createIsland(
         actor.serviceRequested = false;
         actor.serviceUntil = 0;
         actor.waitUntil = moment + 1300;
-      } else if (!actor.gathering && !actor.serviceRequested && moment >= actor.waitUntil) {
+      } else if (!actor.gathering && !actor.serviceRequested && !guestScene && scene && moment >= actor.waitUntil) {
+        const stand = scenePoint(scene.stand.x, scene.stand.y);
+        if (distance(actor.point, stand) > 4) {
+          routeResident(actor, stand);
+          actor.fetching = false;
+        } else if (scene.phase === 'preparing' && moment - actor.atStationSince > 18500) {
+          routeResident(actor, scenePoint(scene.source.x, scene.source.y));
+          actor.fetching = true;
+        } else if (scene.phase === 'memory' && moment - actor.atStationSince > 14000) {
+          routeResident(actor, actor.circuit++ % 2 ? stand : village.homes[actor.slot]);
+        }
+      } else if (!actor.gathering && !actor.serviceRequested && !scene && moment >= actor.waitUntil) {
         const destinations = actor.id === 'bea'
           ? [scenePoint(770, 466), village.workshop, scenePoint(939, 743), village.homes[actor.slot]]
           : [scenePoint(845, 466), village.lookout, scenePoint(1068, 743), village.homes[actor.slot]];
         routeResident(actor, destinations[actor.circuit++ % destinations.length]);
       }
     }
+    for (const plan of getNeighborPlans(farm)) {
+      const scene = getNeighborSceneState(plan);
+      const actor = villageActors.get(plan.resident);
+      const point = scenePoint(scene.prop.x, scene.prop.y);
+      const age = actor?.atStationSince ? (moment - actor.atStationSince) / 1000 : 9;
+      const settled = !motion.matches && scene.phase === 'preparing' ? neighborPropSettle(age % 15) : { lift: 0, angle: 0 };
+      art.draw(world, 'neighbor-props', point.x, point.y - settled.lift, scene.width * sceneScale, scene.height * sceneScale,
+        { frame: scene.frame, fullCell: true, baseline: .94, footY: scenePoint(0, scene.groundY).y, angle: settled.angle });
+      if (plan.food && (plan.phase === 'celebrating' || plan.phase === 'remembered')) {
+        const signature = plan.food.id.startsWith('signature:')
+          ? farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === plan.food!.id) : undefined;
+        const food = neighborFoodArt(plan.food.id, signature);
+        const native = plan.episode === 'beaTea' ? { x: 1004, y: 618 }
+          : { x: scene.prop.x + 4, y: scene.prop.y - 24 };
+        const contact = scenePoint(native.x, native.y);
+        art.draw(world, food, contact.x, contact.y, 33 * sceneScale, 33 * sceneScale,
+          { baseline: .9, footY: scenePoint(0, scene.groundY + 1).y });
+      }
+      if (scene.keepsake) {
+        const keep = scene.keepsake, contact = scenePoint(keep.point.x, keep.point.y);
+        art.draw(world, 'neighbor-props', contact.x, contact.y, keep.width * sceneScale, keep.height * sceneScale,
+          { frame: keep.frame, fullCell: true, baseline: .94, footY: scenePoint(0, keep.groundY).y });
+      }
+    }
     actors.sort((a,b) => a.point.y - b.point.y);
     for (const actor of actors) {
       const walking = actor.route.length > 0 && !motion.matches;
       const serving = !walking && (actor.serviceRequested && actor.serviceUntil > moment || actor.gathering && actor.mealUntil > moment);
-      const frame = walking ? 1 + Math.floor(actor.stride * 4) % 4 : serving ? 5 : 0;
+      const scene = actor.plan && getNeighborSceneState(actor.plan);
+      const atStation = scene && distance(actor.point, scenePoint(scene.stand.x, scene.stand.y)) < 5;
+      const social = Boolean(gatheringPlan || scene?.phase === 'celebrating');
+      const workArt = !walking && !serving && (atStation || gatheringPlan) && art.image(`neighbor-${actor.id}-work`);
+      const key = workArt ? `neighbor-${actor.id}-work` : `village-${actor.id}`;
+      const frame = walking ? 1 + Math.floor(actor.stride * 4) % 4 : serving ? 5
+        : workArt ? neighborWorkFrame(motion.matches ? 0 : Math.max(0, (moment - actor.atStationSince) / 1000), social) : 0;
       const options = { frame, fullCell: true, baseline: 236 / 256, flip: !actor.facingRight,
-        scaleY: walking ? 1 : 1 + Math.sin(time * 1.75 + actor.slot * 2) * 0.004,
+        scaleY: 1,
         footY: actor.point.y };
       // A 110px cell contains approximately 94px of visible character, versus the farmer's 88px.
       const size = 110;
       world.shape('shade', actor.point.x, actor.point.y, 12, 4, '#62543b', 0.18);
-      art.draw(world, `village-${actor.id}`, actor.point.x, actor.point.y, size, size, { ...options, shadow: true });
-      art.draw(world, `village-${actor.id}`, actor.point.x, actor.point.y, size, size, options);
+      art.draw(world, key, actor.point.x, actor.point.y, size, size, { ...options, shadow: true });
+      art.draw(world, key, actor.point.x, actor.point.y, size, size, options);
       if (!motion.matches && (actor.gathering && actor.mealUntil > moment || actor.serviceUntil > moment)) {
         const cycle = ((moment / 1650) + actor.slot * 0.5) % 1;
         art.draw(world, 'heart', actor.point.x + Math.sin(cycle * Math.PI * 2) * 6,
@@ -1041,6 +1144,12 @@ export function createIsland(
       if (projectPatch && projectMask && bounds.project === project) continue;
       if (bounds.building && upgraded.some(({ building }) => building === bounds.building)) continue;
       world.occluder(image, bounds);
+    }
+    if (island === 'village' && villageTableCutout) {
+      const top = scenePoint(790, 485);
+      world.sprite(villageTableCutout, { x: 0, y: 0, w: 365, h: 240 },
+        top.x + 365 * sceneScale / 2, top.y, 365 * sceneScale, 240 * sceneScale,
+        { baseline: 0, footY: scenePoint(0, 690).y });
     }
     for (const { mask, maskImage } of upgraded) world.occluder(maskImage, mask);
     if (projectPatch && projectMask) world.occluder(projectMask, stage.mask);
@@ -1685,6 +1794,11 @@ export function createIsland(
   load('fair-guest-walk', 4);
   load('village-bea', 6);
   load('village-finn', 6);
+  art.load('neighbor-bea-work', 'lavender/community/bea-work', [3, 2]);
+  art.load('neighbor-finn-work', 'lavender/community/finn-work', [3, 2]);
+  art.load('neighbor-props', 'lavender/community/props', [2, 2]);
+  for (const key of ['ui-tart', 'ui-strawberry-tart', 'ui-blueberry-tart', 'ui-raspberry-tart',
+    'ui-orchard-preserves', 'ui-apple-jam', 'ui-farmhouse-bread', 'ui-honey-cake']) load(key, 1);
   for (const key of ['ui-handmade-round', 'ui-handmade-folded', 'ui-handmade-long', 'ui-grilled-fish']) load(key, 1);
   art.load('guest-apple', 'icons/apple', [1, 1]);
   load('guest-jam', 1, 'ui-apple-jam');

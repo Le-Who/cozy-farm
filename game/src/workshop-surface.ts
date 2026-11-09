@@ -4,12 +4,14 @@ export type WorkshopSurface = {
   raw: THREE.MeshStandardMaterial
   cut: THREE.MeshStandardMaterial
   setBaked(amount: number): void
+  setCrustRoughness(amount: number): void
   invalidateGraphics(): void
   dispose(): void
 }
 
 const surfaceShader = /* glsl */ `
 uniform float doughBaked;
+uniform float doughCrustRoughness;
 uniform float doughCutFace;
 uniform sampler2D doughBakedMap;
 uniform sampler2D doughSkinMap;
@@ -21,6 +23,7 @@ uniform vec3 doughToast;
 uniform vec3 doughFlour;
 varying vec3 vDoughPosition;
 varying vec3 vDoughNormal;
+varying float vDoughScore;
 
 float doughHash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -57,11 +60,12 @@ float doughProgress = clamp(doughBaked + doughBaked * (1.0 - doughBaked)
 float doughCrust = smoothstep(0.10, 0.96, doughProgress) * (1.0 - doughCutFace);
 vec3 doughCrustSample = doughTriplanar(doughBakedMap, doughTexturePosition, doughWeights);
 float doughCrustTone = clamp(dot(doughCrustSample, vec3(0.2126, 0.7152, 0.0722))
-  / max(dot(doughBakedMean, vec3(0.2126, 0.7152, 0.0722)), 0.01), 0.82, 1.18);
+  / max(dot(doughBakedMean, vec3(0.2126, 0.7152, 0.0722)), 0.01), 0.58, 1.42);
 float doughGoldenEdge = smoothstep(0.45, 1.0, doughProgress)
   * (0.04 + doughSide * 0.58 + (doughMottle - 0.5) * 0.08);
 vec3 doughCrustColour = mix(doughHoney, doughToast, doughGoldenEdge)
-  * (1.0 + (doughCrustTone - 1.0) * 0.12);
+  * (1.0 + (doughCrustTone - 1.0) * 0.42);
+doughCrustColour = mix(doughCrustColour, doughHoney * mix(vec3(1.10, 1.03, 0.87), vec3(0.66, 0.57, 0.48), smoothstep(0.65, 1.0, vDoughScore)), vDoughScore * doughBaked * 0.9);
 vec3 doughInterior = mix(doughRawColour, doughRawColour * vec3(1.0, 0.99, 0.96), doughBaked * doughCutFace * 0.35);
 diffuseColor.rgb = mix(doughInterior, doughCrustColour, doughCrust);
 `
@@ -84,6 +88,7 @@ export function createWorkshopSurface(): WorkshopSurface {
   const cutFallback = own(placeholder([238, 215, 180]))
   const bakedFallback = own(placeholder([241, 145, 47]))
   const bake = { value: 0 }
+  const crustRoughness = { value: .65 }
   const bakedMap = { value: bakedFallback as THREE.Texture }
   const skinMaps = new Map<THREE.MeshStandardMaterial, { value: THREE.Texture }>()
   const srgb = (r: number, g: number, b: number) => new THREE.Color().setRGB(r / 255, g / 255, b / 255, THREE.SRGBColorSpace)
@@ -100,23 +105,24 @@ export function createWorkshopSurface(): WorkshopSurface {
     skinMaps.set(material, { value: cutFace ? cutFallback : rawFallback })
     material.onBeforeCompile = shader => {
       shader.uniforms.doughBaked = bake
+      shader.uniforms.doughCrustRoughness = crustRoughness
       shader.uniforms.doughCutFace = { value: Number(cutFace) }
       shader.uniforms.doughBakedMap = bakedMap
       shader.uniforms.doughSkinMap = skinMaps.get(material)!
       shader.uniforms.doughTextureMean = { value: cutFace ? srgb(237.91, 214.81, 180.25) : srgb(239.28, 215.01, 184.10) }
       shader.uniforms.doughBakedMean = { value: bakedMean }
       shader.uniforms.doughIvory = { value: new THREE.Color(cutFace ? '#ffebc5' : '#ffe3ad') }
-      shader.uniforms.doughHoney = { value: new THREE.Color('#ffc176') }
-      shader.uniforms.doughToast = { value: new THREE.Color('#dc8148') }
+      shader.uniforms.doughHoney = { value: new THREE.Color('#ef9e45') }
+      shader.uniforms.doughToast = { value: new THREE.Color('#c16e35') }
       shader.uniforms.doughFlour = { value: new THREE.Color('#fff4df') }
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vDoughPosition;\nvarying vec3 vDoughNormal;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDoughPosition = transformed;\nvDoughNormal = normalize(objectNormal);')
+        .replace('#include <common>', '#include <common>\nvarying vec3 vDoughPosition;\nvarying vec3 vDoughNormal;\nvarying float vDoughScore;\nattribute float doughScore;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDoughPosition = transformed;\nvDoughNormal = normalize(objectNormal);\nvDoughScore = doughScore;')
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', '#include <common>\n' + surfaceShader)
         .replace('#include <map_fragment>', surfaceColour)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-          roughnessFactor = mix(roughnessFactor, 0.34, doughCrust);`)
+          roughnessFactor = mix(roughnessFactor, doughCrustRoughness, doughCrust);`)
         .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
           // The near wooden board returns a little warmer indirect light to sides and creases.
           reflectedLight.indirectDiffuse *= mix(vec3(1.0), vec3(1.04, 1.0, 0.96),
@@ -126,7 +132,7 @@ export function createWorkshopSurface(): WorkshopSurface {
           totalEmissiveRadiance += diffuseColor.rgb
             * mix(0.27 + 0.10 * doughSide, 0.16, doughCrust);`)
     }
-    material.customProgramCacheKey = () => `lavender-dough-surface-v5-${Number(cutFace)}`
+    material.customProgramCacheKey = () => `lavender-dough-surface-v6-${Number(cutFace)}`
     return material
   }
 
@@ -162,6 +168,7 @@ export function createWorkshopSurface(): WorkshopSurface {
   return {
     raw, cut,
     invalidateGraphics,
+    setCrustRoughness(amount: number): void { crustRoughness.value = THREE.MathUtils.clamp(amount, .3, 1) },
     setBaked(amount: number): void {
       if (disposed) return
       bake.value = Number.isFinite(amount) ? THREE.MathUtils.clamp(amount, 0, 1) : 0
