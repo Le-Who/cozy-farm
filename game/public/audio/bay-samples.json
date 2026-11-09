@@ -1,0 +1,374 @@
+{
+  "ui.tap": [
+    {
+      "url": "./ui.tap.mp3",
+      "gain": 0.32
+    },
+    {
+      "url": "./ui.tap@2.mp3",
+      "gain": 0.27
+    }
+  ],
+  "ui.confirm": [
+    {
+      "url": "./ui.confirm.mp3",
+      "gain": 0.45
+    }
+  ],
+  "ui.error": [
+    {
+      "url": "./ui.error.mp3",
+      "gain": 0.26
+    }
+  ],
+  "garden.till": [
+    {
+      "url": "./garden.till.mp3",
+      "gain": 0.55
+    }
+  ],
+  "garden.plant": [
+    {
+      "url": "./garden.plant.mp3",
+      "gain": 0.55
+    },
+    {
+      "url": "./garden.plant@2.mp3",
+      "gain": 0.5
+    }
+  ],
+  "garden.water": [
+    {
+      "url": "./garden.water.mp3",
+      "gain": 0.54
+    },
+    {
+      "url": "./garden.water@2.mp3",
+      "gain": 0.46
+    }
+  ],
+  "garden.harvest": [
+    {
+      "url": "./garden.harvest.mp3",
+      "gain": 0.56
+    },
+    {
+      "url": "./garden.harvest@2.mp3",
+      "gain": 0.5
+    }
+  ],
+  "orchard.pick": [
+    {
+      "url": "./orchard.pick.mp3",
+      "gain": 0.5
+    }
+  ],
+  "well.fill": [
+    {
+      "url": "./well.fill.mp3",
+      "gain": 0.48
+    }
+  ],
+  "hen.pet": [
+    {
+      "url": "./hen.pet.mp3",
+      "gain": 0.43
+    }
+  ],
+  "hen.feed": [
+    {
+      "url": "./hen.feed.mp3",
+      "gain": 0.52
+    }
+  ],
+  "hen.egg": [
+    {
+      "url": "./hen.egg.mp3",
+      "gain": 0.47
+    }
+  ],
+  "hen.hatch": [
+    {
+      "url": "./hen.hatch.mp3",
+      "gain": 0.48
+    }
+  ],
+  "shore.collect": [
+    {
+      "url": "./shore.collect.mp3",
+      "gain": 0.47
+    }
+  ],
+  "apiary.collect": [
+    {
+      "url": "./apiary.collect.mp3",
+      "gain": 0.4
+    }
+  ],
+  "fish.cast": [
+    {
+      "url": "./fish.cast.mp3",
+      "gain": 0.58
+    }
+  ],
+  "fish.hook": [
+    {
+      "url": "./fish.hook.mp3",
+      "gain": 0.56
+    }
+  ],
+  "fish.land": [
+    {
+      "url": "./fish.land.mp3",
+      "gain": 0.52
+    }
+  ],
+  "ferry.depart": [
+    {
+      "url": "./ferry.depart.mp3",
+      "gain": 0.45
+    }
+  ],
+  "ferry.arrive": [
+    {
+      "url": "./ferry.arrive.mp3",
+      "gain": 0.46
+    }
+  ],
+  "freight.crate": [
+    {
+      "url": "./freight.crate.mp3",
+      "gain": 0.48
+    }
+  ],
+  "market.buy": [
+    {
+      "url": "./market.buy.mp3",
+      "gain": 0.45
+    }
+  ],
+  "market.sell": [
+    {
+      "url": "./market.sell.mp3",
+      "gain": 0.46
+    },
+    {
+      "url": "./market.sell@2.mp3",
+      "gain": 0.39
+    }
+  ],
+  "workshop.knead": [
+    {
+      "url": "./workshop.knead.mp3",
+      "gain": 0.44
+    },
+    {
+      "url": "./workshop.knead@2.mp3",
+      "gain": 0.45
+    }
+  ],
+  "workshop.roll": [
+    {
+      "url": "./workshop.roll.mp3",
+      "gain": 0.42
+    },
+    {
+      "url": "./workshop.roll@2.mp3",
+      "gain": 0.32,
+      "loop": true
+    }
+  ],
+  "workshop.cut": [
+    {
+      "url": "./workshop.cut.mp3",
+      "gain": 0.5
+    },
+    {
+      "url": "./workshop.cut@2.mp3",
+      "gain": 0.36
+    }
+  ],
+  "workshop.complete": [
+    {
+      "url": "./workshop.complete.mp3",
+      "gain": 0.48
+    }
+  ],
+  "kitchen.stir": [
+    {
+      "url": "./kitchen.stir.mp3",
+      "gain": 0.46
+    },
+    {
+      "url": "./kitchen.stir@2.mp3",
+      "gain": 0.35,
+      "loop": true
+    }
+  ],
+  "kitchen.fruit": [
+    {
+      "url": "./kitchen.fruit.mp3",
+      "gain": 0.45
+    },
+    {
+      "url": "./kitchen.fruit@2.mp3",
+      "gain": 0.42
+    }
+  ],
+  "kitchen.cream": [
+    {
+      "url": "./kitchen.cream.mp3",
+      "gain": 0.45
+    }
+  ],
+  "kitchen.honey": [
+    {
+      "url": "./kitchen.honey.mp3",
+      "gain": 0.43
+    },
+    {
+      "url": "./kitchen.honey@3.mp3",
+      "gain": 0.32,
+      "loop": true
+    }
+  ],
+  "kitchen.sprinkle": [
+    {
+      "url": "./kitchen.sprinkle.mp3",
+      "gain": 0.43
+    }
+  ],
+  "kitchen.grill": [
+    {
+      "url": "./kitchen.grill.mp3",
+      "gain": 0.42
+    },
+    {
+      "url": "./kitchen.grill@2.mp3",
+      "gain": 0.34,
+      "loop": true
+    }
+  ],
+  "kitchen.flip": [
+    {
+      "url": "./kitchen.flip.mp3",
+      "gain": 0.48
+    },
+    {
+      "url": "./kitchen.flip@2.mp3",
+      "gain": 0.39
+    }
+  ],
+  "table.place": [
+    {
+      "url": "./table.place.mp3",
+      "gain": 0.44
+    }
+  ],
+  "rest.dawn": [
+    {
+      "url": "./rest.dawn.mp3",
+      "gain": 0.45
+    }
+  ],
+  "footsteps.grass": [
+    {
+      "url": "./footsteps.grass.mp3",
+      "gain": 0.27
+    },
+    {
+      "url": "./footsteps.grass@2.mp3",
+      "gain": 0.24
+    },
+    {
+      "url": "./footsteps.grass@3.mp3",
+      "gain": 0.25
+    }
+  ],
+  "instrument.ceramic": [
+    {
+      "url": "./instrument.ceramic-low.mp3",
+      "gain": 0.74
+    },
+    {
+      "url": "./instrument.ceramic-high.mp3",
+      "gain": 0.72
+    }
+  ],
+  "instrument.marimba": [
+    {
+      "url": "./instrument.marimba-low.mp3",
+      "gain": 0.82,
+      "rootMidi": 60.03,
+      "tuned": true
+    },
+    {
+      "url": "./instrument.marimba-high.mp3",
+      "gain": 0.78,
+      "rootMidi": 64.959,
+      "tuned": true
+    }
+  ],
+  "instrument.handpan": [
+    {
+      "url": "./instrument.handpan-low.mp3",
+      "gain": 0.75,
+      "rootMidi": 61.954,
+      "tuned": true
+    },
+    {
+      "url": "./instrument.handpan-high.mp3",
+      "gain": 0.73,
+      "rootMidi": 80.888,
+      "tuned": true
+    }
+  ],
+  "instrument.harp": [
+    {
+      "url": "./instrument.harp-low.mp3",
+      "gain": 0.78,
+      "rootMidi": 59.879,
+      "tuned": true
+    },
+    {
+      "url": "./instrument.harp-high.mp3",
+      "gain": 0.72,
+      "rootMidi": 76.041,
+      "tuned": true
+    }
+  ],
+  "instrument.shaker": [
+    {
+      "url": "./instrument.shaker-low.mp3",
+      "gain": 0.48
+    },
+    {
+      "url": "./instrument.shaker-high.mp3",
+      "gain": 0.47
+    }
+  ],
+  "instrument.bass": [
+    {
+      "url": "./instrument.bass-low.mp3",
+      "gain": 0.82,
+      "rootMidi": 37.946,
+      "tuned": true
+    },
+    {
+      "url": "./instrument.bass-high.mp3",
+      "gain": 0.77,
+      "rootMidi": 42.859,
+      "tuned": true
+    }
+  ],
+  "kitchen.salt": [
+    {
+      "url": "./kitchen.salt.mp3",
+      "gain": 0.3
+    },
+    {
+      "url": "./kitchen.salt@2.mp3",
+      "gain": 0.28
+    }
+  ]
+}

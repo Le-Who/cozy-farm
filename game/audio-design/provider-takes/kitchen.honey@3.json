@@ -1,0 +1,9 @@
+{
+  "id": "kitchen.honey@3",
+  "provider": "ElevenLabs",
+  "modelId": "eleven_text_to_sound_v3",
+  "requestedSeconds": 3.5,
+  "direction": "Completely continuous soft sticky syrup spreading, smooth close wet viscous friction steadily filling the whole recording at one even level. No taps, impacts, initial transient, separated drops, silence or pauses. Constant gentle natural seamless loop texture.",
+  "generatedAt": "2026-11-09T05:27:51.796Z",
+  "sha256": "b073427d207a70fd86422377afb0acc2538d759a2bd34dee94a053257b08cabb"
+}

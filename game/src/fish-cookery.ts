@@ -1,3 +1,4 @@
+import { playBaySound, prepareBaySoundScene, setBaySoundContact } from './game-sound'
 import * as THREE from 'three'
 import {createFishPanView} from './fish-pan-view'
 
@@ -22,6 +23,7 @@ const spring = (value: number) => ({ value, velocity: 0 })
 /** Inventory belongs to the caller. Every visible contact and retained garnish belongs to this scene. */
 export function createFishCookery(host: HTMLElement, options: CookeryOptions): { destroy(): void } {
   const model = createFishModel(), abort = new AbortController(), signal = abort.signal
+  prepareBaySoundScene(['kitchen.salt','kitchen.grill','kitchen.flip','kitchen.fruit','table.place','workshop.complete'], signal)
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL, artBase = `${base}art/lavender/fish-cookery/`
   const species = options.recipe.fishSpecies ?? 'seaBass'
@@ -241,7 +243,7 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
   }
   const resizeObserver=new ResizeObserver(()=>{if(!destroyed)resize()});resizeObserver.observe(host)
   window.addEventListener('resize',resize,{signal});visualViewport?.addEventListener('resize',resize,{signal})
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;status.hidden=false;status.textContent='Восстанавливаем свет на кухне…';release(false)},{signal})
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;setBaySoundContact('kitchen.grill',false);status.hidden=false;status.textContent='Восстанавливаем свет на кухне…';release(false)},{signal})
   renderer.domElement.addEventListener('webglcontextrestored',()=>{lost=false;for(const t of textures)t.needsUpdate=true;status.hidden=true;last=performance.now();resize()},{signal})
   function point(clientX: number,clientY: number) {const r=view.getBoundingClientRect();ndc.set((clientX-r.left)/r.width*2-1,-(clientY-r.top)/r.height*2+1);raycaster.setFromCamera(ndc,camera);raycaster.ray.intersectPlane(floor,cursor);return cursor}
   function fishHalfDepth() { const raw=assets.get('fish-raw')!;return fishWidth*raw.height/raw.width*.66 }
@@ -259,7 +261,7 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
     const b=held.body,dx=cursor.x-held.lastX,dz=cursor.z-held.lastZ
     b.tx=clamp(cursor.x,-8,8);b.tz=clamp(cursor.z,-7,9)
     if(held.kind==='salt') {
-      const l=localFish(cursor);if(model.stage==='season'&&Math.abs(l.x)<1&&Math.abs(l.y)<.85){b.ty=fish.y.value+.65;seasonFish(model,l,.035,Math.hypot(dx,dz));scatterSalt(l)}else b.ty=.9
+      const l=localFish(cursor);if(model.stage==='season'&&Math.abs(l.x)<1&&Math.abs(l.y)<.85){b.ty=fish.y.value+.65;if(seasonFish(model,l,.035,Math.hypot(dx,dz))){scatterSalt(l);playBaySound('kitchen.salt',.8,300)}}else b.ty=.9
     }
     if((held.kind==='fish'||held.kind==='spatula')&&model.stage==='grill') {
       if(held.kind==='spatula'&&!held.turn&&Math.abs(cursor.x-fish.x.value)<2.4&&Math.abs(cursor.z-fish.z.value)<.35){held.turn=true;held.startZ=cursor.z;held.startRoll=fish.roll.value;fish.ty=1.1}
@@ -274,15 +276,15 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
     if(h.kind==='salt'&&commit)finishFishSeason(model)
     if(h.kind==='fish'){
       const overPan=Math.hypot(b.tx-panPoint.x,(b.tz-panPoint.z)*.7)<3.0,overPlate=Math.hypot(b.tx-platePoint.x,(b.tz-platePoint.z)*.8)<3
-      if(commit&&model.stage==='transfer'&&overPan)placeFishInPan(model)
-      if(commit&&model.stage==='plate'&&overPlate)plateFish(model)
+      if(commit&&model.stage==='transfer'&&overPan){placeFishInPan(model)}
+      if(commit&&model.stage==='plate'&&overPlate&&plateFish(model))playBaySound('table.place',.65)
     }
     if((h.kind==='fish'||h.kind==='spatula')&&h.turn&&model.stage==='grill'){
       const delta=fish.tr-h.startRoll
-      if(commit&&Math.abs(delta)>Math.PI*.40){turnFish(model);rotation=model.side*Math.PI}
+      if(commit&&Math.abs(delta)>Math.PI*.40){if(turnFish(model))playBaySound('kitchen.flip',.8);rotation=model.side*Math.PI}
       fish.tr=rotation
     }
-    if(h.kind==='carrot'&&commit){const scale=portrait?1.22:1;placeFishGarnish(model,h.id,{x:(b.tx-platePoint.x)/(2.8*scale),y:(b.tz-platePoint.z)/(2.1*scale)},b.mesh.rotation.y)}
+    if(h.kind==='carrot'&&commit){const scale=portrait?1.22:1;if(placeFishGarnish(model,h.id,{x:(b.tx-platePoint.x)/(2.8*scale),y:(b.tz-platePoint.z)/(2.1*scale)},b.mesh.rotation.y))playBaySound('kitchen.fruit',.65)}
     arrange();sync()
   }
   view.addEventListener('pointerdown',e=>{
@@ -340,8 +342,9 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
     if(destroyed)return;frame=requestAnimationFrame(animate);const dt=Math.min(.045,Math.max(0,(now-last)/1000));last=now;if(!loaded||lost)return;elapsed+=dt
     for(const b of bodies){if(b===fish&&physics)continue;const active=held?.body===b;stepSpring(b.x,b.tx,dt,{frequency:active?4.1:3.7,damping:.78});stepSpring(b.z,b.tz,dt,{frequency:active?4.1:3.7,damping:.78});stepSpring(b.y,b.ty,dt,{frequency:active?4.5:3.8,damping:.68});stepSpring(b.roll,b.tr,dt,{frequency:3.3,damping:.72});b.mesh.position.set(b.x.value,b.y.value,b.z.value);b.mesh.rotation.x=b.roll.value}
     if(physics){const grip=held?.kind==='fish'?held.grip:held?.kind==='spatula'&&held.turn?new THREE.Vector3(.4,0,.3):null,p=physics.step(dt,{x:fish.tx,y:fish.ty,z:fish.tz},fish.tr,grip,!!grip);panTouching=p.panContact;fish.mesh.position.copy(p.position);fish.mesh.quaternion.copy(p.rotation);fish.x.value=p.position.x;fish.y.value=p.position.y;fish.z.value=p.position.z;fish.x.velocity=p.velocity.x;fish.y.velocity=p.velocity.y;fish.z.velocity=p.velocity.z;fish.roll.value=2*Math.atan2(p.rotation.x,p.rotation.w)}
+    const q=fish.mesh.quaternion,angleContact=Math.pow(Math.abs(1-2*(q.x*q.x+q.z*q.z)),8)
+    setBaySoundContact('kitchen.grill',model.stage==='grill'&&panTouching&&angleContact>.65,.65)
     if(model.stage==='grill'){
-      const q=fish.mesh.quaternion,angleContact=Math.pow(Math.abs(1-2*(q.x*q.x+q.z*q.z)),8)
       heatFish(model,dt,angleContact*(panTouching?1:0),{x:(fish.x.value-panPoint.x+.68)*.25,y:(fish.z.value-panPoint.z)*.3})
     }
     cooking[0].value.set(model.heat[0]);cooking[1].value.set(model.heat[1]);settleFish(model,dt,!held&&bodies.every(b=>Math.abs(b.x.velocity)+Math.abs(b.z.velocity)+Math.abs(b.y.velocity)<.08))

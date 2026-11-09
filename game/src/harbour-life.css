@@ -1,0 +1,6 @@
+.farm-dialog:is([data-panel="bay-shop"],[data-panel="bay-freight"],[data-panel="bay-music"]){width:min(96vw,1060px);max-width:96vw;max-height:95dvh}
+.farm-dialog:is([data-panel="bay-shop"],[data-panel="bay-music"]) .dialog-content{padding:0;margin:0}
+.farm-dialog:is([data-panel="bay-shop"],[data-panel="bay-music"]) .dialog-content>section{min-width:0}
+.bay-sound-settings{margin:1rem auto;border:1px solid #ceb48b;border-radius:12px;color:#644463;padding:.8rem 1.2rem;max-width:400px}
+.bay-sound-settings label{display:flex;align-items:center;justify-content:space-between;min-height:42px;gap:1rem;font-weight:600}.bay-sound-settings label:first-of-type{justify-content:flex-start}
+.bay-sound-settings input{accent-color:#946496}

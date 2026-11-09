@@ -1,3 +1,4 @@
+import { ruCount } from './ru.ts';
 import { getCoinGuidance, getSupplyGuidance, type DiscoveryTask } from './discovery-path.ts';
 import { getIslandJourneys } from './journey.ts';
 import {
@@ -30,7 +31,7 @@ function safe(task: DiscoveryTask): RequirementHint {
 
 function access(farm: FarmState, destination: IslandId): RequirementHint {
   if (canSailTo(farm, destination)) return route('sail', destination);
-  if (!farm.boatOwned) return farm.coins < boatPrice ? {...safe(getCoinGuidance(farm, boatPrice, 'деревянная лодка')),notice:`Лодка стоит ${boatPrice} монет. Продайте урожай на рынке.`}
+  if (!farm.boatOwned) return farm.coins < boatPrice ? {...safe(getCoinGuidance(farm, boatPrice, 'деревянная лодка')),notice:`Лодка стоит ${ruCount(boatPrice,'монета','монеты','монет')}. Продайте урожай на рынке.`}
     : atHome(farm, route('focus-place', 'boat'));
   const next = getIslandJourneys(farm).find(journey => journey.id === destination)?.nextAction;
   if (next?.target === 'upgrades') return route('show-upgrade',destination==='cape'?'farmhouse':buildingIds.find(building=>farm.buildingLevels[building]<2) ?? 'farmhouse');

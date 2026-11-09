@@ -63,3 +63,78 @@
 .tree-selector .icon{width:37px;height:39px;object-fit:contain}
 .tree-selector small{position:absolute;bottom:1px;right:5px;font-weight:700}
 .tree-selector button:focus-visible{outline:3px solid #8065a8;outline-offset:2px}
+
+/* The map is a directory. The illustrated island cards belong to the travel screen. */
+.farm-dialog:is([data-panel="guide"],[data-panel="boat"]) { width:min(680px,calc(100vw - 20px)); }
+.farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-emblem { display:none; }
+.farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-header { align-items:center; }
+.explore-section + .explore-section { margin-top:15px; }
+.explore-section h2 { margin:0 0 7px; color:var(--plum); font:700 17px/1.25 Georgia,serif; }
+.explore-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.explore-tile {
+  display:flex; align-items:center; justify-content:flex-start; gap:7px; min-height:52px; padding:5px 8px;
+  border-radius:12px; text-align:start; font-size:14px; line-height:1.18;
+}
+.explore-tile .icon { flex:0 0 37px; width:37px; height:37px; object-fit:contain; }
+.explore-tile:focus-visible,.explore-personal button:focus-visible { outline:3px solid #80559a; outline-offset:-2px; }
+.explore-personal { display:flex; flex-wrap:wrap; gap:5px 12px; margin-top:14px; padding-top:7px; border-top:1px solid #dfc79f; }
+.explore-personal button {
+  flex:0 1 auto; min-height:44px; min-width:0; border:0; border-radius:8px; box-shadow:none; background:transparent;
+  padding:3px 4px; font-family:inherit; font-size:13px; line-height:1.2; color:var(--plum);
+}
+.explore-personal .icon { flex-basis:27px; width:27px; height:27px; }
+.explore-personal .dialog-button { margin-left:auto; font-weight:700; }
+.controls-help { margin-top:0; }
+.controls-help summary { display:list-item; width:fit-content; min-height:44px; align-content:center; }
+.controls-help p { margin:0 0 4px; }
+.island-selector { gap:5px; margin:0 0 8px; }
+.island-selector button { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; min-height:48px; padding:4px 6px; gap:4px; }
+.island-selector .icon { width:31px; height:31px; }
+.island-selector span { max-width:8em; font-size:12px; }
+.journey-overview { display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr); align-items:center; gap:14px; }
+.journey-picture { height:clamp(90px,15vh,128px); background:radial-gradient(ellipse at 48% 68%,#e4f3df,#c4e4e2 70%,#b9dadf); }
+.journey-picture img { width:100%; max-width:100%; height:100%; }
+.journey-caption p { font-size:14px; line-height:1.35; margin:4px 0; }
+.journey-requirements .requirement-link { width:100%; }
+.island-places { gap:5px; }
+.island-places .dialog-button { min-width:0; white-space:normal; min-height:44px; padding-inline:8px; }
+@media (max-width:510px) {
+  .explore-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .island-selector button { flex-direction:column; flex-wrap:nowrap; }
+  .island-selector .icon { width:32px; height:29px; }
+  .island-selector span { font-size:11px; }
+  .journey-overview { gap:9px; }
+  .journey-heading h2 { font-size:18px; }
+  .island-places .dialog-button { flex:1 1 90px; }
+}
+@media (max-width:355px) {
+  .explore-tile { padding-inline:4px; gap:3px; font-size:13px; }
+  .explore-tile .icon { flex-basis:30px; width:30px; }
+  .explore-personal { gap:3px; }
+}
+@media (min-width:480px) and (max-height:460px) {
+  .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-header,
+  .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-destinations { grid-area:1 / 1; min-height:49px; }
+  .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-title { position:absolute; width:1px; height:1px; clip-path:inset(50%); }
+  .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) :is(.dialog-close,.dialog-back) { top:0; bottom:auto; }
+  .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-destinations { align-items:flex-start; padding:0; margin-inline:50px; z-index:1; }
+  .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-destinations button { flex:0 1 auto; }
+  .explore-section h2 { font-size:15px; margin-bottom:4px; }
+  .explore-section + .explore-section { margin-top:8px; }
+  .explore-tile { min-height:44px; }
+  .explore-grid { gap:4px; }
+  .explore-personal { margin-top:7px; }
+  .journey-picture { height:74px; }
+  .journey-overview { grid-template-columns:minmax(100px,.6fr) 1.4fr; }
+  .island-selector .icon { width:26px; height:26px; }
+  .island-selector button { min-height:44px; }
+}
+.farm-dialog[data-panel="settings"] .bay-sound-settings { max-width:none; margin:0; }
+.settings-save { margin:4px 0; color:var(--muted); font-size:13px; }
+@media (min-width:480px) and (max-width:700px) and (max-height:360px) {
+  .island-selector button { position:relative; flex-wrap:nowrap; gap:0; min-height:44px; }
+  .island-selector span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .island-selector .icon { height:34px; width:36px; }
+}
+.journey-details summary { display:list-item; min-height:44px; align-content:center; cursor:pointer; color:var(--plum); font-weight:700; }
+.journey-details summary span { display:inline-block; margin-left:4px; color:var(--muted); font-size:.9em; }

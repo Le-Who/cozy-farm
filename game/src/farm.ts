@@ -1,3 +1,6 @@
+import { createBayShop, restoreBayShop, advanceBayShopDay, type BayShopState } from './bay-shop-model.ts';
+import { createFreight, restoreFreight, advanceFreight, type BayFreightState } from './bay-freight-model.ts';
+import { createBayMusicState, normalizeBayMusicState, type BayMusicState } from './bay-music-model.ts';
 import { ruCount, traitLabel } from './ru.ts';
 import { exposedTrait, getClimate, traitIds, type Trait } from './climate.ts';
 import { shellDefinitions, shellForSpot, shellIds, shellSpotCount, type ShellId } from './tide.ts';
@@ -386,7 +389,7 @@ const honeyKitchenMenus: readonly Order[] = [
   { name: 'Дегустация на мысе', reward: 88, items: [{ kind: 'dishes', item: 'honeyPear', quantity: 1 }, { kind: 'dishes', item: 'windParfait', quantity: 1 }] },
 ];
 
-const marketStock: readonly StockItem[] = [
+export const marketStock: readonly StockItem[] = [
   ...cropIds.map((item) => ({ kind: 'produce', item, quantity: 1 }) as const),
   ...treeIds.map((item) => ({ kind: 'fruit', item, quantity: 1 }) as const),
   ...fishIds.map((item) => ({ kind: 'fish', item, quantity: 1 }) as const),
@@ -511,6 +514,10 @@ export type FarmState = {
   handmade: Record<WorkshopShape, number>;
   workshopPatterns: WorkshopShape[];
   village: VillageState;
+  freight: BayFreightState;
+  bayShop: BayShopState;
+  musicGarden: BayMusicState;
+  concertDay: number;
   culinary:CulinaryState;
   intentOrders:IntentOrderState;
   neighbors:NeighborState;
@@ -619,6 +626,7 @@ export function createFarm(): FarmState {
     workshopPatterns: [],
     village: { built: false, supplies: {}, residents: [null, null], meals: 0, mealOn: 0,
       serviceOn: { bea: 0, finn: 0 }, scouting: false },
+    freight: createFreight(), bayShop: createBayShop(), musicGarden: createBayMusicState(), concertDay: 0,
     culinary:createCulinary(),shoreline:createShoreline(),intentOrders:createIntentOrders(),neighbors:createNeighborState(),
     fishingTripSerial: 0,
     pendingFishingTrip: null,
@@ -1486,6 +1494,11 @@ export function favoriteSignature(farm:FarmState,id:string,favorite?:boolean):Ac
   const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id);if(!recipe||favorite!==undefined&&typeof favorite!=='boolean')return failure('Выберите сохранённый рецепт.');recipe.favorite=favorite??!recipe.favorite;return {ok:true,message:recipe.favorite?'Рецепт добавлен в избранное.':'Рецепт удалён из избранного.'};
 }
 export function forgetSignature(farm:FarmState,id:string):ActionResult{
+  const product = 'signature:' + id;
+  if (Object.values(farm.freight.warehouses).some(stock => stock[product] > 0)
+    || farm.freight.ship.cargo.some(lot => lot.id === product)
+    || farm.bayShop.slots.some(slot => slot?.product.id === product && slot.quantity > 0))
+    return failure('Заберите партию из лавки или со склада перед архивацией рецепта.');
   const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id);if(!recipe||recipe.favorite||(farm.culinary.stock[id]??0)>0)return failure('Используйте запас блюда и удалите рецепт из избранного перед архивацией.');farm.culinary.recipes=farm.culinary.recipes.filter(recipe=>recipe.id!==id);delete farm.culinary.stock[id];for(const memory of Object.values(farm.culinary.tastings)){memory.favoriteIds=memory.favoriteIds.filter(value=>value!==id);if(memory.lastRecipeId===id)memory.lastRecipeId=null}return {ok:true,message:'Рецепт убран в архив.'};
 }
 export function sellSignature(farm:FarmState,id:string,quantity=1):ActionResult{
@@ -1513,7 +1526,7 @@ export function deliverSignature(farm:FarmState,id:string):ActionResult{
   farm.culinary.stock[id]--;farm.fish[fish]--;farm.village.meals++;farm.village.mealOn=farm.day;farm.workToday++;return {ok:true,message:`Блюдо «${recipe.name}» подано к общему ужину. ${farm.village.meals===2?'Второй домик готов!':''}`};
 }
 
-function foodDescriptors(farm: FarmState): FoodDescriptor[] {
+export function foodDescriptors(farm: FarmState): FoodDescriptor[] {
   return [
     ...dishIds.map(item => ({ id: `dish:${item}` as const, name: dishDefinitions[item].name, source: 'dish' as const, identity: item,
       ingredients: dishDefinitions[item].ingredients.map(part => 'item' in part ? part.item : part.kind),
@@ -1736,7 +1749,7 @@ export function getSale(farm: FarmState): { items: number; coins: number } {
   return { items, coins };
 }
 
-function unitPrice(item: StockItem, farm: FarmState): number {
+export function unitPrice(item: StockItem, farm: FarmState): number {
   switch (item.kind) {
     case 'produce': return cropDefinitions[item.item].sellPrice + Number(isProjectComplete(farm, 'fair'));
     case 'fruit': return treeDefinitions[item.item].sellPrice;
@@ -1929,6 +1942,8 @@ export function endDay(farm: FarmState): ActionResult {
   farm.chickensFed = false;
   farm.shoreline=settleCove(farm.shoreline,tomorrow);
   farm.culinary.picnic=null;
+  advanceFreight(farm.freight, tomorrow, islandIds.filter(port => canSailTo(farm, port)), farm.capeLevel >= 2);
+  for (const sale of advanceBayShopDay(farm.bayShop, tomorrow, Number(farm.concertDay === farm.day))) farm.coins += sale.price;
   farm.day = tomorrow;
   const hatched = farm.hatchDay === farm.day;
   if (hatched) {
@@ -2177,6 +2192,11 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   if (!isRecord(savedFish)) return undefined;
   const fish = { moonfish: 0, lanternfish: 0, ...savedFish };
   if (!isQuantity(day) || day === 0 || !isQuantity(coins)) return undefined;
+  const bayShop = restoreBayShop(value.bayShop, day);
+  if (!bayShop) return undefined;
+  const freight = restoreFreight(value.freight, day);
+  const musicGarden = normalizeBayMusicState(value.musicGarden);
+  const concertDay = isQuantity(value.concertDay) && value.concertDay <= day ? value.concertDay : 0;
   const culinary=restoreCulinary(value.culinary,day),shoreline=restoreShoreline(value.shoreline,day);
   if(!culinary||!shoreline)return undefined;
   const orders = restoreOrderLedger(savedOrders, day, restored.orders);
@@ -2354,6 +2374,6 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     harborSupplies,
     variants,
     discoveries,
-    culinary,shoreline,intentOrders,neighbors,
+    culinary,shoreline,intentOrders,neighbors,freight,bayShop,musicGarden,concertDay,
   };
 }

@@ -1,3 +1,4 @@
+import { playBaySound } from './game-sound'
 import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
 import { cookeryFinishTraits, type SignatureRecipe } from './culinary';
 import { finishedIngredient } from './ingredient-finish';
@@ -19,7 +20,7 @@ export type IslandTarget =
   | { kind: 'bed' | 'tree' | 'hen' | 'flower' | 'village-home'; index: number }
   | ShoreTarget
   | { kind: 'neighbor'; resident: ResidentId }
-  | { kind: 'well' | 'coop' | 'market' | 'farmhouse' | 'kitchen' | 'pier' | 'boat' | 'harbor' | 'salt' | 'cove' | 'tidepool' | 'hive' | 'honey-kitchen' | 'guest' | 'bay-display' | 'workshop' | 'village' | 'village-meal' };
+  | { kind: 'well' | 'coop' | 'market' | 'farmhouse' | 'kitchen' | 'pier' | 'boat' | 'harbor' | 'salt' | 'cove' | 'tidepool' | 'hive' | 'honey-kitchen' | 'guest' | 'bay-display' | 'bay-shop' | 'bay-music' | 'bay-freight' | 'workshop' | 'village' | 'village-meal' };
 
 type Point = { x: number; y: number };
 type Area = { target: IslandTarget; center: Point; w: number; h: number; stop: Point };
@@ -75,7 +76,13 @@ const homeWorkshopSite: Area = { target: { kind: 'workshop' }, center: scenePoin
   stop: scenePoint(1110, 429), w: 75, h: 64 };
 const villageProjectSite: Area = { target: { kind: 'village' }, center: scenePoint(1249, 365),
   stop: scenePoint(1215, 432), w: 78, h: 64 };
+const harbourPlacesOnMap = [
+  {kind:'bay-shop',art:'bay-pavilion',x:1195,y:513,w:151,h:155,stop:village.lookout},
+  {kind:'bay-music',art:'bay-pergola',x:790,y:381,w:210,h:195,stop:village.square},
+] as const
 const villageSites: Area[] = [
+  ...harbourPlacesOnMap.map((place):Area=>({target:{kind:place.kind},center:scenePoint(place.x,place.y-place.h*.44),
+    stop:place.stop,w:place.w*sceneScale,h:place.h*sceneScale})),
   ...village.homes.map((stop, index): Area => ({ target: { kind: 'village-home', index },
     center: { x: stop.x, y: stop.y - 100 }, stop, w: 191, h: 211 })),
   { target: { kind: 'workshop' }, center: scenePoint(382, 516), stop: village.workshop, w: 272, h: 185 },
@@ -539,6 +546,14 @@ export function createIsland(
     }, offset.y + shoreY * scale);
   }
 
+  function mooredFerry(farm:FarmState): Area[] {
+    const ship=farm.freight.ship
+    if(!farm.boatOwned || ship.phase!=='docked' || ship.port!==farm.island)return []
+    const dock=docks[farm.island]
+    const side=dock.boat.x>=dock.end.x?-1:1
+    return [{target:{kind:'bay-freight'},center:{x:dock.end.x+side*184*sceneScale,y:Math.max(dock.boat.y,dock.end.y+44*sceneScale)-42*sceneScale},stop:dock.end,w:170*sceneScale,h:105*sceneScale}]
+  }
+
   function currentSites(): Area[] {
     if (state?.island === 'village') return [
       ...[...villageActors.values()].map((actor): Area => ({
@@ -556,23 +571,23 @@ export function createIsland(
         return [site, { target: site.target, center: { x: point.x, y: point.y - keep.height * sceneScale * .38 },
           stop: site.stop, w: keep.width * sceneScale, h: keep.height * sceneScale }];
       }),
-      ...villageSites,
+      ...mooredFerry(state), ...villageSites,
     ];
     if (state?.island === 'cape') {
       const level = state.capeLevel;
-      return [...(level >= 2 ? [apiarySite] : []),
+      return [...mooredFerry(state),...(level >= 2 ? [apiarySite] : []),
         ...capeSites.filter(({ target }) => target.kind !== 'honey-kitchen' || level >= 3)];
     }
     if (state?.island === 'grove') {
       const farm = state;
       const expanded = islandPlate().expanded && (!shoalReveal || performance.now() - shoalReveal > 720);
-      const sites = [...groveSites, ...shoreSites.filter(({ target }) =>
+      const sites = [...mooredFerry(farm), ...groveSites, ...shoreSites.filter(({ target }) =>
         (target.kind === 'shell' || expanded) && getShoreItem(farm, target))];
       if (expanded) sites.push(tidepoolSite);
       if (hasBayDisplay(farm)) sites.push(displaySite);
       return getHarborOrder(farm) ? [harborSite, ...sites] : sites;
     }
-    const sites = [...(state&&!state.chickensFed?[feedStationSite]:[]),...henSites, ...homeSites];
+    const sites = [...(state?mooredFerry(state):[]),...(state&&!state.chickensFed?[feedStationSite]:[]),...henSites, ...homeSites];
     if (state && state.buildingLevels.farmhouse >= 2) sites.push(kitchenSite);
     if (state && getFairGuest(state)?.served === false) sites.unshift(guestSite);
     if (state && isProjectComplete(state, 'fair')) sites.push(homeWorkshopSite, villageProjectSite);
@@ -698,6 +713,11 @@ export function createIsland(
   function paintVillage(farm: FarmState, time: number, moment: number): void {
     const elapsed = motion.matches ? 0 : clamp((moment - (residentClock || moment)) / 1000, 0, 0.05);
     residentClock = moment;
+    for (const place of harbourPlacesOnMap) {
+      const anchor=scenePoint(place.x,place.y)
+      world.shape('shade',anchor.x,anchor.y-3,place.w*sceneScale*.35,place.h*sceneScale*.065,'#686044',.14)
+      art.draw(world,place.art,anchor.x,anchor.y,place.w*sceneScale,place.h*sceneScale,{baseline:.98,footY:anchor.y})
+    }
     const gatheringPlan = getNeighborPlans(farm).find(plan => plan.phase === 'celebrating' || plan.phase === 'arranging');
     const mealActive = villageMealCelebration && moment - villageMealCelebration < 24000;
     if (farm.village.mealOn === farm.day && !getNeighborPlans(farm).some(plan => plan.memory?.day === farm.day)) {
@@ -1198,6 +1218,12 @@ export function createIsland(
       world.sprite(sails, { x: 0, y: 0, w: sails.naturalWidth, h: sails.naturalHeight },
         pivot.x, pivot.y, w, h, { angle: time * 0.39, baseline, footY }, origin);
     }
+    const ferrySite=state && mooredFerry(state)[0]
+    if(ferrySite){
+      const {center,w,h}=ferrySite
+      const bob=motion.matches?0:Math.sin(time*1.1)*1.2
+      art.draw(world,'bay-ferry',center.x,center.y+h*.5+bob,w,h,{baseline:1})
+    }
     art.draw(world, 'boat', boatX, boatY, 160 * sceneScale, 87 * sceneScale, { fullCell: true, angle: boatAngle });
     const selected = hovered ?? (showFocus && focused
       ? currentSites().find((area) => sameTarget(area.target, focused!.target))
@@ -1318,6 +1344,7 @@ export function createIsland(
       const step = Math.floor(stride * 2);
       if (step !== previousStep && stride > 0.15) {
         const side = step % 2 ? -1 : 1;
+        playBaySound('footsteps.grass',.55,340)
         footfalls.push({ x: farmer.x + side * 5, y: farmer.y, began: moment, side });
         previousStep = step;
       }
@@ -1793,6 +1820,7 @@ export function createIsland(
   }
   function loadIslandAssets(next: FarmState): void {
     const island = next.island;
+    if(next.boatOwned)art.load('bay-ferry','lavender/bay/ferry',[1,1])
     art.load(`${island}-plate`, landscape[island].path);
     landscape[island].occluders.forEach((bounds, index) => art.loadUrl(`${island}-occluder-${index}`, bounds.url));
     load('boat', 1, 'home-boat');
@@ -1848,6 +1876,8 @@ export function createIsland(
       if (next.capeLevel >= 2) load('cape-apiary', 1);
       if (next.capeLevel >= 3) load('cape-honey-kitchen', 1);
     } else {
+      art.load('bay-pavilion','lavender/bay/pavilion',[1,1])
+      art.load('bay-pergola','lavender/bay/pergola',[1,1])
       load('village-bea', 6);
       load('village-finn', 6);
       art.load('neighbor-bea-work', 'lavender/community/bea-work', [3, 2]);

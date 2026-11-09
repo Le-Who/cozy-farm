@@ -1,3 +1,4 @@
+import { playBaySound, prepareBaySoundScene, setBaySoundContact } from './game-sound'
 import { preserveFillMask } from './preserve-mask'
 import {finishedIngredient, applyIngredientFinishes} from './ingredient-finish'
 import {traitIds, type Trait} from './climate'
@@ -57,6 +58,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   }
   const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle))
   const abort = new AbortController(), signal = abort.signal
+  prepareBaySoundScene(['kitchen.fruit',options.recipe.kind==='preserves'?'kitchen.stir':'kitchen.sprinkle','workshop.complete'], signal)
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL
   const artBase = `${base}art/lavender/cookery/`
@@ -437,6 +439,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         moveCookeryStroke(model, normalizedPoint)
         if (Math.hypot(normalizedPoint.x - previous.x, normalizedPoint.y - previous.y) >= .007) emitDust(previous, normalizedPoint)
         lastDust = normalizedPoint
+        playBaySound('kitchen.sprinkle',.7,720)
       } else { lastDust = null; beginCookeryStroke(model, normalizedPoint) }
     }
     sync()
@@ -454,7 +457,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
           if(length>.975) {drop.x*=.975/length;drop.y*=.975/length}
         }
       }
-      if (placeCookeryFruit(model, drag.id, drop)) { landings.set(drag.id, { body: createFruitLanding((reduced.matches?2:9)/surface.ry,0), follow: {...heldFruit} }); rotateCookeryFruit(model, drag.id, dragAngle); announce(model.kind === 'preserves' ? 'Фрукт в кастрюле' : 'Фрукт на тарте') }
+      if (placeCookeryFruit(model, drag.id, drop)) { playBaySound('kitchen.fruit'); landings.set(drag.id, { body: createFruitLanding((reduced.matches?2:9)/surface.ry,0), follow: {...heldFruit} }); rotateCookeryFruit(model, drag.id, dragAngle); announce(model.kind === 'preserves' ? 'Фрукт в кастрюле' : 'Фрукт на тарте') }
     }
     drag = null; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync()
   }
@@ -624,7 +627,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   }
   const eventCanvas = renderer.domElement
   eventCanvas.addEventListener('webglcontextlost', event => {
-    event.preventDefault(); contextLost = true; abandon(); cancelAnimationFrame(frame)
+    event.preventDefault(); contextLost = true; setBaySoundContact('kitchen.stir',false); abandon(); cancelAnimationFrame(frame)
     status.hidden = false; status.textContent = 'Восстанавливаем кухонный стол…'; finish.disabled = true
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose()); renderer.dispose()
   }, { signal })
@@ -647,6 +650,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (loaded) positionFruit()
     if (finish.disabled !== (contextLost || !loaded || !physicallySettled || !!drag)) sync()
     const stirring = drag?.kind === 'spoon' && model.stage === 'stir' && now - lastStirAt < 140
+    setBaySoundContact('kitchen.stir',stirring,.8)
     const flowGoal = stirring ? flowTarget : 0
     flowVelocity += (flowGoal - flowVelocity) * (1 - Math.exp(-dt * (stirring ? 5 : 2.7)))
     flowPhase += flowVelocity * dt * .55

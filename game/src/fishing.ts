@@ -1,3 +1,4 @@
+import { playBaySound, prepareBaySoundScene } from './game-sound'
 import { loadArtTexture } from './art-texture';
 import { fishDefinitions } from './farm.ts';
 import { shellDefinitions } from './tide.ts';
@@ -331,6 +332,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   let caughtAt = -Infinity;
   const abort = new AbortController();
   const signal = abort.signal;
+  prepareBaySoundScene(['fish.cast','fish.hook','fish.land'], signal)
 
   function announce(text: string): void { live.textContent = text; }
   function showCallout(text: string): void {
@@ -427,6 +429,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     if (lastPhase !== model.phase) {
       lastPhase = model.phase; root.dataset.phase = model.phase;
       if (model.phase === 'descending') {
+        playBaySound('fish.cast')
         action.innerHTML = 'Поднять крючок <span aria-hidden="true">↑</span>';
         showCallout('↓ Обходите рыб');
         announce('Обходите рыб. Пробел — начать подъём раньше.');
@@ -447,6 +450,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       announce(`Касания: ${model.contacts} из ${model.resilience}. ${model.phase === 'ascending' ? 'Крючок поднимается.' : 'Обходите рыб.'}`);
     }
     if (lastCount !== model.caught.length) {
+      if(model.caught.length>0 && model.caught.length>lastCount)playBaySound('fish.hook')
       lastCount = model.caught.length;
       caughtAt = model.time;
       Array.from(slots.children).forEach((slot, i) => {

@@ -1,3 +1,4 @@
+import { playBaySound, prepareBaySoundScene, setBaySoundContact } from './game-sound'
 import { loadArtTexture } from './art-texture';
 import { ruCount } from './ru.ts'
 import * as THREE from 'three'
@@ -27,6 +28,7 @@ type PropKey = 'bowl'|'spoon'|'pin'|'knife'|'scraper'|'hand'
 
 export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { destroy(): void } {
   const abort = new AbortController(), signal = abort.signal
+  prepareBaySoundScene(['workshop.knead','workshop.roll','workshop.cut','workshop.complete','kitchen.stir'], signal)
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL
   const root = document.createElement('section')
@@ -158,7 +160,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   const hand = { x:0, z:0, down:false, edge:false, pointerId:null as number|null, start:new THREE.Vector2(), angle:0 }
   let grab:DoughGrab|null=null
-  let rollingOwner:DoughPiece|null=null,rollingLast:THREE.Vector3|null=null,rollingTravel=0
+  let rollingOwner:DoughPiece|null=null,rollingLast:THREE.Vector3|null=null,rollingTravel=0, lastRollContact=-Infinity
   const cue=root.querySelector<HTMLElement>('.workshop-gesture-cue')!
   const announce = (message:string) => { live.textContent = message }
   const close = () => { if (!destroyed) options.onCancel?.() }
@@ -593,6 +595,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     if(layoutChanging)return
     if (stage === 'ingredients') stage = 'mixing'
     if (stage !== 'mixing') return
+    if(amount>0)playBaySound('kitchen.stir',.65,750)
     mixed = Math.min(1, mixed + amount)
     stirring += amount * Math.PI * 5
     if (mixed === 1) {
@@ -663,6 +666,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     if(!result.halves||!result.volumes)return
     const halves=result.halves.map(unpackDoughGeometry),volumes=result.volumes,total=volumes[0]+volumes[1]
     if (volumes.some(volume => volume < total * .075)) { halves.forEach(half => half.dispose()); announce('Оставьте побольше теста с обеих сторон разреза.'); return }
+    playBaySound('workshop.cut',.8)
     const origin = piece.mesh.position.clone()
     const pieceIndex=pieces.indexOf(piece)
     if(pieceIndex<0){halves.forEach(half=>half.dispose());return}
@@ -765,6 +769,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     hand.x = hit.x; hand.z = hit.z
     hand.start.set(hit.x, hit.z)
     hand.down = true
+    if(stage==='working' && ['knead','cup','fold'].includes(activeTool))playBaySound('workshop.knead',.75)
     hand.pointerId = event.pointerId
     hand.edge = Math.abs(hit.x - (activePiece()?.mesh.position.x ?? 0)) > .65
     view.setPointerCapture(event.pointerId)
@@ -808,6 +813,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
           if(rollingOwner===owner&&rollingLast){
             const rollX=point.x-rollingLast.x,rollZ=point.z-rollingLast.z
             rollingTravel+=Math.hypot(rollX,rollZ)
+            if(Math.hypot(rollX,rollZ)>.008)lastRollContact=performance.now()
             hand.x=point.x;hand.z=point.z;knead(0,0,Math.hypot(rollX,rollZ)*2.8)
             props.pin.mesh.material.uniforms.rollPhase.value+=(rollZ+rollX*.3)/.18
             if(rollingTravel>.28){rollingTravel=0;work+=.5}
@@ -830,6 +836,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     if (event && event.pointerId !== hand.pointerId) return
     const wasDown = hand.down, pointerId = hand.pointerId
     hand.down = false
+    setBaySoundContact('workshop.roll',false)
     props.pin.mesh.material.uniforms.rollPhase.value=0
     hand.pointerId = null
     grab=null
@@ -925,6 +932,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   function tick(now:number){
     if(destroyed)return
     const handDelta=Math.min((now-lastTime)/1000,.1),delta=Math.min(handDelta,.035);lastTime=now;elapsed+=delta
+    setBaySoundContact('workshop.roll',stage==='working'&&hand.down&&activeTool==='roll'&&rollingOwner!==null&&now-lastRollContact<120,.65)
     const step=Math.min(1.8,delta*60)
     if(stage==='transferring'){
       transfer=Math.min(1,transfer+delta/.8)

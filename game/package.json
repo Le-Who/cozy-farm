@@ -8,7 +8,8 @@
     "build": "node scripts/audit-russian.mjs && tsc --noEmit && vite build",
     "audit:ru": "node scripts/audit-russian.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test tests/*.test.ts"
+    "test": "node --test tests/*.test.ts",
+    "audio:generate": "node --env-file=.env.local scripts/generate-bay-audio.mjs"
   },
   "engines": {
     "node": ">=22.18"
@@ -20,6 +21,7 @@
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",
+    "@elevenlabs/elevenlabs-js": "^2.77.0",
     "three": "^0.187.0"
   }
 }
