@@ -8,7 +8,7 @@ export function createHoneyFilm(size:number,region:ArrayLike<number>,edgeDistanc
  // A pinned wet edge has a rounded contact profile. Pressure redistributes the
  // same retained volume inward instead of cutting a raised sheet off at the rim.
  for(let i=0;i<height.length;i++){if(region[i]<=128)continue;const x=i%size,y=Math.floor(i/size);let distance=36;for(const j of boundary)distance=Math.min(distance,(x-j%size)**2+(y-Math.floor(j/size))**2);const t=Math.min(1,(edgeDistance?edgeDistance[i]:Math.sqrt(distance)+.5)/6);capacity[i]=Math.max(.035,t*t*(3-2*t))}
- let active=false
+ let active=false,dirty=false
  return {height,
   deposit(point:HoneyPoint,amount:number,radius=.045){
    if(![point.x,point.y,amount,radius].every(Number.isFinite)||amount<=0||radius<=0)return
@@ -16,7 +16,7 @@ export function createHoneyFilm(size:number,region:ArrayLike<number>,edgeDistanc
    for(let y=Math.max(0,Math.floor(cy-reach));y<Math.min(size,Math.ceil(cy+reach));y++)for(let x=Math.max(0,Math.floor(cx-reach));x<Math.min(size,Math.ceil(cx+reach));x++){
     const i=y*size+x;if(region[i]<=128)continue
     const d=((x+.5-cx)**2+(y+.5-cy)**2)/(r*r)
-    height[i]+=amount*Math.exp(-d*.5)/(2*Math.PI*r*r);active=true
+    height[i]+=amount*Math.exp(-d*.5)/(2*Math.PI*r*r);active=true;dirty=true
    }
   },
   step(seconds:number,gravity:HoneyPoint={x:0,y:0}){
@@ -37,7 +37,8 @@ export function createHoneyFilm(size:number,region:ArrayLike<number>,edgeDistanc
     }
     for(let i=0;i<height.length;i++)height[i]=Math.max(0,height[i]+scratch[i])
    }
-   return moved>.0001
+   const changed = dirty; dirty = false; active = moved > .0001;
+   return active || changed
   },
   coverage(){let total=0,wet=0;for(let i=0;i<height.length;i++)if(region[i]>128){total++;if(height[i]>=.30)wet++}return total?wet/total:0},
   maxPressure(){let maximum=0;for(let i=0;i<height.length;i++)if(region[i]>128)maximum=Math.max(maximum,height[i]/capacity[i]);return maximum},
@@ -52,6 +53,7 @@ export type HoneyModel = {
   mixed: number; sectors: Set<number>; coverage: Set<number>; travel: number; fruit: HoneyFruit[];
   last: HoneyPoint | null; start: HoneyPoint | null; tool: HoneyTool | null; baked: number; steps: string[];
   cutTracks: { angle: number; bins: Set<number>; progress: number; offset: number }[]; pending: HoneyStage | null; settledFor: number; deposited: Map<number, number>; coated: Map<number,number>;
+  parfaitCustard:number; parfaitHoney:number;
 }
 export const honeyPearCenters: readonly HoneyPoint[] = [{ x: -.44, y: 0 }, { x: .44, y: 0 }]
 export const honeyBiscuitCenters: readonly HoneyPoint[] = [{ x: -.48, y: -.39 }, { x: .48, y: -.39 }, { x: -.48, y: .39 }, { x: .48, y: .39 }]
@@ -69,7 +71,7 @@ export function createHoneyModel(family: HoneyFamily): HoneyModel {
   return { family, stage: family === 'honeyPear' ? 'cut' : family === 'honeyBiscuits' ? 'shape' : family === 'honeyCake' ? 'mix' : 'custard',
     cuts: new Set(), pieces: honeyBiscuitCenters.map(() => ({ work: 0, pressure: 0 })),
     mixed: 0, sectors: new Set(), coverage: new Set(), travel: 0, fruit: [], last: null, start: null, tool: null, baked: 0, steps: [],
-    cutTracks: honeyPearCenters.map(() => ({ angle: 0, bins: new Set<number>(), progress: 0, offset: 0 })), pending: null, settledFor: 0, deposited: new Map(),coated:new Map() }
+    cutTracks: honeyPearCenters.map(() => ({ angle: 0, bins: new Set<number>(), progress: 0, offset: 0 })), pending: null, settledFor: 0, deposited: new Map(),coated:new Map(),parfaitCustard:0,parfaitHoney:0 }
 }
 export function onHoneySurface(point: HoneyPoint, radius = 1.03): boolean { return Number.isFinite(point.x) && Number.isFinite(point.y) && Math.hypot(point.x, point.y) <= radius }
 function distance(point: HoneyPoint, a: HoneyPoint, b: HoneyPoint): number {
@@ -111,6 +113,7 @@ export function workHoneyPiece(model:HoneyModel,index:number,distanceMoved:numbe
  return true
 }
 export function moveHoneyStroke(model: HoneyModel, point: HoneyPoint, depositedAmount = 1): number {
+  if(model.family==='windParfait'&&(model.stage==='custard'||model.stage==='glaze'))return 0
   const previous = model.last, start = model.start, tool = model.tool
   model.last = { ...point }
   if (!previous || !start || !tool || !onHoneySurface(point, 1.2)) return 0
@@ -134,6 +137,18 @@ export function moveHoneyStroke(model: HoneyModel, point: HoneyPoint, depositedA
     }
   }
   return length
+}
+/** The glass receives a finite spoonful, rather than credit for an empty sweep. */
+export function depositParfaitCustard(model:HoneyModel,amount:number):void{
+  if(model.family!=='windParfait'||model.stage!=='custard'||model.tool!=='spoon'||!Number.isFinite(amount)||amount<=0)return
+  model.parfaitCustard=Math.min(1,model.parfaitCustard+amount)
+  if(model.parfaitCustard>=.999)model.pending='fruit'
+}
+/** A continuous pour inside this single vessel spreads over its contained top. */
+export function depositParfaitHoney(model:HoneyModel,point:HoneyPoint,seconds:number):void{
+  if(model.family!=='windParfait'||model.stage!=='glaze'||model.tool!=='honey'||!onHoneySurface(point,1.12)||!Number.isFinite(seconds)||seconds<=0)return
+  model.parfaitHoney=Math.min(1,model.parfaitHoney+Math.min(seconds,.05)/2.1)
+  if(model.parfaitHoney>=.999)model.pending='settling'
 }
 /** Material coordinates attach coating to the worked biscuit rather than its original screen position. */
 export function depositHoneyPiece(model: HoneyModel, piece: number, from: HoneyPoint, to: HoneyPoint, amount: number): boolean {
@@ -165,7 +180,11 @@ export function syncHoneyCoating(model:HoneyModel,coverage:readonly number[]):vo
  if(model.stage==='glaze'){model.pending='settling';if(model.tool===null)endHoneyStroke(model)}
 }
 export function placeHoneyFruit(model: HoneyModel, id: number, point: HoneyPoint, ingredientId = 'peach', angle = 0): boolean {
-  if (model.family !== 'windParfait' || !['fruit', 'glaze', 'ready'].includes(model.stage) || !Number.isInteger(id) || id < 0 || id >= 6 || !onHoneySurface(point, .8) || !Number.isFinite(angle)) return false
+  if (model.family !== 'windParfait' || !['fruit', 'glaze', 'ready'].includes(model.stage) || !Number.isInteger(id) || id < 0 || id >= 6 || !onHoneySurface(point, 1.12) || !Number.isFinite(angle)) return false
+  // Accept a release on the painted rim and let the landing settle the slice
+  // into the bowl, keeping its centre within the contained fruit layer.
+  const distance = Math.hypot(point.x, point.y), inset = distance > .8 ? .8 / distance : 1;
+  point = { x: point.x * inset, y: point.y * inset };
   const existing = model.fruit.find(value => value.id === id)
   if (existing) Object.assign(existing, point, { angle })
   else model.fruit.push({ ...point, id, ingredientId, angle })
@@ -182,6 +201,8 @@ export function advanceHoneyBake(model: HoneyModel, seconds: number): void {
   if (model.baked >= HONEY_BAKE_SECONDS) stage(model, 'glaze', 'bake-golden')
 }
 export function honeyProgress(model: HoneyModel): number {
+  if(model.family==='windParfait'&&model.stage==='custard')return model.parfaitCustard
+  if(model.family==='windParfait'&&model.stage==='glaze')return model.parfaitHoney
   if (model.stage === 'cut') return model.cutTracks.reduce((sum,track)=>sum+track.progress,0) / 2
   if (model.stage === 'shape') return Math.min(1, model.pieces.reduce((sum, piece) => sum + piece.work, 0) / 1.5, model.pieces.filter(piece => piece.work >= .36).length / 2)
   if (model.stage === 'mix') return Math.min(1, model.mixed / HONEY_MIX_REQUIRED, model.sectors.size / 14)

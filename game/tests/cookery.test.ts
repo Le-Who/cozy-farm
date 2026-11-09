@@ -14,7 +14,9 @@ function addFruit(kind: 'preserves' | 'decorate') {
 
 test('fruit is freely arranged, with no prescribed pattern; outside drops and duplicate ingredients do not advance preparation', () => {
   const model = createCookeryModel('decorate')
-  assert.equal(placeCookeryFruit(model, 0, { x: 1, y: 0 }), false)
+  assert.equal(placeCookeryFruit(model, 0, { x: 1.08, y: 0 }), false)
+  assert.equal(placeCookeryFruit(model, 0, { x: 1, y: 0 }), true)
+  assert.ok(model.fruit[0].x > .95 && model.fruit[0].x < 1, 'a drop on the rim settles just inside the filling')
   assert.equal(placeCookeryFruit(model, 0, { x: NaN, y: 0 }), false)
   placeCookeryFruit(model, 0, { x: .1, y: .2 })
   placeCookeryFruit(model, 0, { x: -.3, y: -.2 })

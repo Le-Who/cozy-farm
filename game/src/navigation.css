@@ -57,3 +57,9 @@
 .recipe-fish-choices button[aria-pressed="true"]{background:#e8d7ed;border:2px solid #907098;padding:4px}
 .recipe-fish-choices .icon{width:48px;height:34px;object-fit:contain}.recipe-fish-choices span{font-size:12px}
 .recipe-fish-choices button:focus-visible{outline:3px solid #80559a;outline-offset:2px}
+.tree-selector {display:flex;justify-content:center;gap:7px;margin:0 0 12px}
+.tree-selector button {position:relative;min-width:54px;height:48px;padding:2px 10px;border:1px solid #d4b696;border-radius:13px;background:#fff5de;color:var(--plum);cursor:pointer}
+.tree-selector button[aria-pressed=true]{background:#f0dff2;border-color:#9b71aa;box-shadow:inset 0 0 0 1px #bd93bd}
+.tree-selector .icon{width:37px;height:39px;object-fit:contain}
+.tree-selector small{position:absolute;bottom:1px;right:5px;font-weight:700}
+.tree-selector button:focus-visible{outline:3px solid #8065a8;outline-offset:2px}

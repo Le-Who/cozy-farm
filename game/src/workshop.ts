@@ -44,16 +44,19 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
         <button class="workshop-bake" type="button" hidden><span>Испечь</span></button>
         <button class="workshop-object" type="button" data-prop="bowl" aria-label="Замесить тесто" aria-keyshortcuts="Space"></button>
         <button class="workshop-object" type="button" data-prop="spoon" aria-label="Перемешать тесто"></button>
-        <button class="workshop-object" type="button" data-prop="pin" data-tool="roll" aria-label="Скалка" aria-keyshortcuts="R"></button>
-        <button class="workshop-object" type="button" data-prop="knife" data-tool="cut" aria-label="Разрезать тесто" aria-keyshortcuts="X"></button>
-        <button class="workshop-object" type="button" data-prop="scraper" data-tool="move" aria-label="Поднять и перенести тесто" aria-keyshortcuts="M"></button>
-        <button class="workshop-object" type="button" data-prop="hand" data-tool="knead" aria-label="Слепить тесто руками" aria-keyshortcuts="Space" aria-expanded="false" aria-controls="workshop-hand-menu"></button>
-        <div class="workshop-hand-menu" id="workshop-hand-menu" role="group" aria-label="Придать форму тесту" hidden><button type="button" data-tool="cup" aria-label="Округлить тесто"><img src="${base}art/lavender/ui-handmade-round.webp" alt=""><span>Скатать</span></button><button type="button" data-tool="fold" aria-label="Сложить тесто"><img src="${base}art/lavender/ui-handmade-folded.webp" alt=""><span>Сложить</span></button><button type="button" data-tool="move" aria-label="Перенести кусочек"><img class="workshop-menu-hand" alt=""><span>Двигать</span></button></div>
+        <button class="workshop-object" type="button" data-prop="pin" tabindex="-1" aria-hidden="true"></button>
+        <button class="workshop-object" type="button" data-prop="knife" tabindex="-1" aria-hidden="true"></button>
+        <button class="workshop-object" type="button" data-prop="scraper" tabindex="-1" aria-hidden="true"></button>
+        <button class="workshop-object" type="button" data-prop="hand" aria-label="Инструменты для теста" aria-expanded="false" aria-controls="workshop-hand-menu"></button>
+        <div class="workshop-hand-menu" id="workshop-hand-menu" role="group" aria-label="Инструменты для теста" hidden>${[
+          ['knead','Размять','workshop-authored/hand-medallion'],['cup','Округлить','ui-handmade-round'],
+          ['roll','Раскатать','workshop-authored/rolling-pin'],['fold','Сложить','ui-handmade-folded'],
+          ['cut','Разрезать','workshop-authored/curved-knife'],['move','Перенести','workshop-authored/scraper'],
+        ].map(([tool,label,image])=>`<button type="button" data-tool="${tool}" aria-label="${label}" title="${label}"><img src="${base}art/lavender/${image}.webp" alt=""><span>${label}</span></button>`).join('')}</div>
         <span class="workshop-gesture-cue" aria-hidden="true"></span>
       </div>
-      <div class="workshop-shape-picker" role="group" aria-label="Какую выпечку слепить">${(['round','long','folded'] as const).map(shape=>`<button type="button" data-shape="${shape}" aria-pressed="${chosenShape===shape}"><img src="${base}art/lavender/ui-handmade-${shape}.webp" alt=""><span>${shapeNames[shape]}</span></button>`).join('')}</div>
+      <div class="workshop-shape-picker" role="group" aria-label="Какую выпечку слепить">${(['round','long','folded'] as const).map(shape=>`<button type="button" data-shape="${shape}" aria-label="${shapeNames[shape]}" aria-pressed="${chosenShape===shape}"><img src="${base}art/lavender/ui-handmade-${shape}.webp" alt=""><span>${shape==='round'?'Булочка':shapeNames[shape]}</span></button>`).join('')}</div>
       <p class="workshop-result" aria-live="polite"></p>
-      <div class="workshop-accessible-tools" aria-label="Инструменты для теста"><button type="button" data-tool="knead">Размять</button><button type="button" data-tool="cup">Округлить</button><button type="button" data-tool="roll">Раскатать</button><button type="button" data-tool="fold">Сложить</button><button type="button" data-tool="cut">Разрезать</button><button type="button" data-tool="move">Перенести</button></div>
     </div>
     <p class="workshop-sr-only" id="workshop-controls">Мешайте по кругу в миске или нажимайте пробел. На доске нажимайте и тяните тесто для замеса. R — раскатать, C — округлить, F — сложить, X — разрезать, M — перенести. Цифры от 1 до 6 выбирают кусочек; Shift со стрелками перемещает его. Для рецепта нужны 2 пшеницы и 1 яйцо.</p>
     <p class="workshop-sr-only workshop-hint"></p><p class="workshop-sr-only" aria-live="polite" aria-atomic="true"></p>`
@@ -105,7 +108,8 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   const shapeButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-shape]')]
   const resultLabel = root.querySelector<HTMLElement>('.workshop-result')!
   const handButton=hotspots.find(button=>button.dataset.prop==='hand')!
-  function closeHandMenu(restore=false){handMenu.hidden=true;handButton.setAttribute('aria-expanded','false');if(restore)handButton.focus({preventScroll:true})}
+  let handMenuExpanded=true
+  function closeHandMenu(restore=false){handMenuExpanded=false;handMenu.hidden=true;handButton.setAttribute('aria-expanded','false');if(restore)handButton.focus({preventScroll:true})}
   let stage: Stage = 'ingredients', activeTool: Tool = 'knead'
   let work = 0, mixed = 0, stirring = 0, selected = 0, frame = 0, elapsed = 0, bakeElapsed = 0
   let transfer=0
@@ -360,9 +364,10 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     updateContactShadows()
   }
   function positionHandMenu(){
-    const handRect=handButton.getBoundingClientRect(),viewRect=view.getBoundingClientRect(),menuRect=handMenu.getBoundingClientRect(),w=menuRect.width||172,h=menuRect.height||62
-    handMenu.style.left=`${THREE.MathUtils.clamp(handRect.right-viewRect.left+8,artwork.x,Math.min(width,artwork.x+artwork.width)-w)}px`
-    handMenu.style.top=`${THREE.MathUtils.clamp(handRect.top-viewRect.top-h-8,artwork.y,Math.min(height,artwork.y+artwork.height)-h)}px`
+    const handRect=handButton.getBoundingClientRect(),viewRect=view.getBoundingClientRect(),menuRect=handMenu.getBoundingClientRect(),w=menuRect.width||(layout.id==='portrait'?148:292),h=menuRect.height||(layout.id==='portrait'?96:46)
+    const footerTop=artwork.y+Math.max(...layout.board.corners.map(point=>point.v))*artwork.height+5
+    handMenu.style.left=`${THREE.MathUtils.clamp(handRect.right-viewRect.left+6,artwork.x+4,Math.min(width,artwork.x+artwork.width)-w-4)}px`
+    handMenu.style.top=`${Math.min(height-h-4,footerTop)}px`
   }
   function updateCue(){
     cue.hidden=!assetsReady||!handMenu.hidden||stage==='finished'||stage==='baking'||stage==='mixing'&&mixed>.2
@@ -396,7 +401,6 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     const bowlItem=data.items.bowl as Asset
     if(bowlItem.foregroundUrl){bowlFront.mesh.material.uniforms.map.value=await loadTexture(artUrl(bowlItem.foregroundUrl));bowlFront.asset=bowlItem}
     await Promise.all(([['closeMedallion',closeButton],['bakeFrame',bakeButton]]as const).map(async([name,element])=>{const item=data.items[name];if(item){await loadTexture(artUrl(item.url));if(destroyed)return;element.style.backgroundImage=`url("${artUrl(item.url)}")`;if(name==='closeMedallion')element.textContent='';else bakeFrameSize={width:item.width,height:item.height}}}))
-    root.querySelector<HTMLImageElement>('.workshop-menu-hand')!.src=artUrl(data.items.handMedallion.url)
     if(destroyed)return;propsReady=true;activateReady()
   }).catch(()=>{if(!destroyed){status.hidden=false;status.textContent='Не удалось загрузить инструменты. Закройте мастерскую и попробуйте ещё раз.'}})
   void propTextures;void loadLayout()
@@ -517,11 +521,6 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     const size = piece.bounds.getSize(new THREE.Vector3())
     return Math.max(size.x,size.z) / Math.max(.1,Math.min(size.x,size.z)) > 1.65 ? 'long' : 'round'
   }
-  function batchShape(): WorkshopShape {
-    const masses: Record<WorkshopShape, number> = { round: 0, folded: 0, long: 0 }
-    pieces.forEach(piece => { masses[recognize(piece)] += piece.mass })
-    return (Object.entries(masses) as [WorkshopShape, number][]).sort((a, b) => b[1] - a[1])[0][0]
-  }
   function refreshBounds(piece: DoughPiece) {
     piece.bounds.makeEmpty()
     const point = new THREE.Vector3()
@@ -561,11 +560,11 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     piece.mesh.position.y=.018;refreshBounds(piece);keepOnBoard(piece)
   }  function updateState() {
     root.dataset.stage = stage
-    root.dataset.shape = pieces.length ? batchShape() : chosenShape
-    shapeButtons.forEach(button=>{button.disabled=contextLost||cutPending||stage==='baking'||stage==='finished'||stage==='transferring';button.setAttribute('aria-pressed',String(button.dataset.shape===(pieces.length?recognize():chosenShape)))})
-    const namedShape=shapeNames[pieces.length?batchShape():chosenShape]
+    root.dataset.shape = chosenShape
+    shapeButtons.forEach(button=>{button.disabled=contextLost||cutPending||stage==='baking'||stage==='finished'||stage==='transferring';button.setAttribute('aria-pressed',String(button.dataset.shape===chosenShape))})
+    const namedShape=shapeNames[chosenShape]
     resultLabel.textContent=stage==='baking'?'Тесто поднимается и румянится…':stage==='finished'?`${namedShape} · в запасах`:pieces.length?`Получится: ${namedShape.toLowerCase()}`:`Выберите форму · затем замесите тесто`
-    resultLabel.hidden=!assetsReady
+    resultLabel.hidden=!assetsReady||stage!=='baking'&&stage!=='finished'
     root.dataset.worked = String(work > .05)
     root.dataset.mixed = mixed.toFixed(3)
     root.dataset.pieceCount = String(pieces.length)
@@ -575,6 +574,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     root.dataset.cutting=String(cutPending);root.setAttribute('aria-busy',String(cutPending))
     bakeButton.hidden=stage==='ingredients'||stage==='mixing'||stage==='transferring'
     toolButtons.forEach(button => { button.disabled = contextLost || cutPending || stage !== 'working'; button.setAttribute('aria-pressed', String(button.dataset.tool === activeTool)) })
+    handButton.disabled=contextLost||cutPending||stage!=='working'
     hotspots.filter(button=>button.dataset.prop==='bowl'||button.dataset.prop==='spoon').forEach(button=>{button.disabled=stage!=='ingredients'&&stage!=='mixing'})
     if (stage === 'ingredients') hint.textContent = ''
     if (stage === 'mixing') { hint.textContent = 'Мешайте по кругу.' }
@@ -585,9 +585,9 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       bakeButton.disabled = contextLost||cutPending
     }
     if(assetsReady&&!hand.down&&!cutPending){updateSpriteBoxes();rebuildMixSurface()}
-    updateCue()
-    fitBakeLabel()
-    closeHandMenu()
+    handMenu.hidden=stage!=='working'||!handMenuExpanded
+    handButton.setAttribute('aria-expanded',String(!handMenu.hidden))
+    positionHandMenu();updateCue();fitBakeLabel()
   }
   function mix(amount: number) {
     if(layoutChanging)return
@@ -688,14 +688,12 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     const piece = activePiece()
     if (!piece) return
     if((action==='roll'||action==='cup'||action==='fold')&&!keyboard){updateState();announce(action==='roll'?'Скалка выбрана. Прокатите её по тесту.':action==='cup'?'Удерживайте нажатие, чтобы округлить тесто.':'Поднимите и потяните край, затем прижмите сгиб.');return}
-    if (action === 'knead') { hand.x = piece.mesh.position.x + .1; hand.z = piece.mesh.position.z; knead(.025, .02, 1.6) }
+    if (action === 'knead' && keyboard) { hand.x = piece.mesh.position.x + .1; hand.z = piece.mesh.position.z; knead(.025, .02, .7) }
     else if (action === 'cup' || action === 'roll' || action === 'fold') {
-      const alreadyFolded=action==='fold'&&piece.fold>.65,alreadyRound=action==='cup'&&piece.mesh.geometry.userData.sculptedDough?.shape==='round'
-      if(alreadyFolded||alreadyRound){
-        const size=piece.bounds.getSize(new THREE.Vector3()),side=Math.sin(work*3.2)
-        hand.x=piece.mesh.position.x+side*size.x*.28;hand.z=piece.mesh.position.z+(alreadyFolded?piece.bounds.max.z*.65:side*size.z*.25)
-        knead(alreadyRound?-side*.09:0,-.025,1.15);work+=.5
-      }else{form(piece, action === 'cup' ? 'round' : action === 'roll' ? 'long' : 'folded');work+=1}
+      const center=piece.bounds.getCenter(new THREE.Vector3()),size=piece.bounds.getSize(new THREE.Vector3())
+      const handle=latchDoughHandle(piece.mesh.geometry,center.x,center.z+(action==='fold'?size.z*.32:0))
+      shapeDoughHandle(piece.mesh.geometry,handle,0,action==='fold'?-size.z*.25:0,.2,action,localBoard(piece))
+      retainDeformation(piece);work+=.2
       announce(action === 'cup' ? 'Подберите края внутрь, чтобы слепить круглую булочку.' : action === 'roll' ? 'Тесто вытягивается в батон.' : 'Заверните дальний край и прижмите сгиб.')
     } else if (action === 'cut' && keyboard) {
       const center = piece.bounds.getCenter(new THREE.Vector3()).add(piece.mesh.position)
@@ -706,13 +704,13 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   shapeButtons.forEach(button=>button.addEventListener('click',()=>{
     if(contextLost||cutPending||stage==='baking'||stage==='finished'||stage==='transferring')return
     chosenShape=button.dataset.shape as WorkshopShape
-    if(stage==='working'){if(hand.down)release(undefined,true);const piece=activePiece();if(piece){form(piece,chosenShape);work+=1}activeTool=chosenShape==='round'?'cup':chosenShape==='long'?'roll':'fold'}
-    updateState();announce(`${shapeNames[chosenShape]}. ${stage==='working'?'Форму можно менять руками.':'Замесите тесто в миске.'}`)
+    if(hand.down)release(undefined,true)
+    updateState();announce(`${shapeNames[chosenShape]}. ${stage==='working'?'Продолжайте лепить: ваши изменения сохранены.':'Замесите тесто в миске.'}`)
   },{signal}))
   toolButtons.filter(button=>button!==handButton).forEach(button => button.addEventListener('click', () => tool(button.dataset.tool as Tool), { signal }))
   hotspots.filter(button=>button.dataset.prop==='bowl'||button.dataset.prop==='spoon').forEach(button=>button.addEventListener('click',()=>{if(stage==='ingredients'||stage==='mixing'){mix(.1);view.focus({preventScroll:true})}},{signal}))
-  handButton.addEventListener('click',()=>{if(stage!=='working')return;if(hand.down)release(undefined,true);if(!handMenu.hidden){closeHandMenu();updateCue();return}activeTool='knead';updateState();handMenu.hidden=false;handButton.setAttribute('aria-expanded','true');positionHandMenu();updateCue()},{signal})
-  handMenu.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{closeHandMenu();view.focus({preventScroll:true})},{signal}))
+  handButton.addEventListener('click',()=>{if(stage!=='working')return;if(hand.down)release(undefined,true);if(!handMenu.hidden){closeHandMenu();updateCue();return}handMenuExpanded=true;handMenu.hidden=false;handButton.setAttribute('aria-expanded','true');positionHandMenu();updateCue()},{signal})
+  handMenu.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{view.focus({preventScroll:true})},{signal}))
   const raycaster = new THREE.Raycaster()
   const down=new THREE.Vector3(0,-1,0)
   const hitPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -.75)
@@ -744,10 +742,10 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   view.addEventListener('pointerdown', event => {
     if(event.button!==0)return
     if (!assetsReady || contextLost || cutPending || layoutChanging || committed || hand.pointerId !== null || stage === 'finished' || stage === 'baking'||stage==='transferring') return
-    if(event.target instanceof Element&&event.target.closest('.workshop-close,.workshop-bake,.workshop-hand-menu,.workshop-accessible-tools,.workshop-shape-picker'))return
+    if(event.target instanceof Element&&event.target.closest('.workshop-close,.workshop-bake,.workshop-hand-menu,.workshop-shape-picker'))return
     if(stage==='working'&&event.target instanceof Element&&event.target.closest('[data-prop="knife"],[data-prop="scraper"],[data-prop="hand"]'))return
-    const pickedPin=stage==='working'&&event.target instanceof Element&&!!event.target.closest('[data-prop="pin"]')
-    if(pickedPin){activeTool='roll';rollingOwner=null;rollingLast=null;rollingTravel=0;for(const sprite of Object.values(props)){sprite.glow=sprite===props.pin?1:0;placeSprite(sprite)}}
+    // The painted barrel's transparent rectangle overlaps the board. Only the
+    // selected rolling tool owns a stroke; crossing that rectangle never selects it.
     ray(event)
     if (stage === 'ingredients' || stage === 'mixing') {
       const point=pointerArt(event),dx=(point.u-mixEllipse.cx)/mixEllipse.rx,dy=(point.v-mixEllipse.cy)/mixEllipse.ry
@@ -757,7 +755,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       hand.angle = Math.atan2(dy,dx)
     } else {
       const intersection = pickPiece(event)
-      if (!intersection && activeTool !== 'cut'&&!pickedPin) return
+      if (!intersection && activeTool !== 'cut') return
       if (!intersection) { const piece=activePiece();hitPlane.constant=piece?-(piece.mesh.position.y+piece.bounds.getCenter(new THREE.Vector3()).y):-.025;if(!raycaster.ray.intersectPlane(hitPlane,hit))return }
     }
     event.preventDefault()
@@ -771,7 +769,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     hand.edge = Math.abs(hit.x - (activePiece()?.mesh.position.x ?? 0)) > .65
     view.setPointerCapture(event.pointerId)
     if (stage === 'working' && (activeTool === 'knead' || activeTool === 'cup' || activeTool === 'fold'))latchDough(materialPoint)
-    if(stage==='working'&&activeTool==='roll'&&!pickedPin){rollingOwner=activePiece();rollingLast=materialPoint.clone();rollingTravel=0}
+    if(stage==='working'&&activeTool==='roll'){rollingOwner=activePiece();rollingLast=materialPoint.clone();rollingTravel=0}
     root.dataset.touching = 'true'
     updateState()
   }, { signal })
@@ -810,7 +808,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
           if(rollingOwner===owner&&rollingLast){
             const rollX=point.x-rollingLast.x,rollZ=point.z-rollingLast.z
             rollingTravel+=Math.hypot(rollX,rollZ)
-            hand.x=point.x;hand.z=point.z;knead(rollX*.45,rollZ*.45,Math.hypot(rollX,rollZ)*2.8)
+            hand.x=point.x;hand.z=point.z;knead(0,0,Math.hypot(rollX,rollZ)*2.8)
             props.pin.mesh.material.uniforms.rollPhase.value+=(rollZ+rollX*.3)/.18
             if(rollingTravel>.28){rollingTravel=0;work+=.5}
           }
@@ -886,14 +884,14 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     if (stage !== 'working' || committed) return
     stage = 'baking'; bakeButton.disabled = true; updateState()
     let accepted: boolean | void
-    try { accepted = options.onBake(batchShape()) } catch { accepted = false }
+    try { accepted = options.onBake(chosenShape) } catch { accepted = false }
     if (accepted === false) {
       stage = 'working'; updateState()
       hint.textContent = 'Принесите 2 пшеницы и 1 яйцо, затем попробуйте испечь снова.'
       announce('Тесто сохранено на доске. Для выпечки нужны 2 пшеницы и 1 яйцо.'); return
     }
     committed = true; release(undefined, true)
-    surface.setCrustRoughness(batchShape()==='long'?.65:batchShape()==='round'?.48:.42)
+    surface.setCrustRoughness(chosenShape==='long'?.65:chosenShape==='round'?.48:.42)
     pieces.forEach(piece=>{piece.dirty=false;piece.offset.fill(0);piece.velocity.fill(0);piece.baking=prepareDoughBaking(piece.mesh.geometry,recognize(piece))})
     hint.textContent = ''; bakeButton.innerHTML = '<span>Выпекаем…</span>';fitBakeLabel()
     announce('Вся партия выпекается по одному рецепту.')
@@ -931,7 +929,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     if(stage==='transferring'){
       transfer=Math.min(1,transfer+delta/.8)
       updateSpriteBoxes();rebuildMixSurface()
-      if(transfer===1){stage='working';updateState();announce('Тесто на доске. Нажимайте и тяните для замеса; выберите форму сверху или работайте видимыми инструментами.')}
+      if(transfer===1){stage='working';updateState();announce('Тесто на доске. Нажимайте и тяните для замеса. Кнопка ладони открывает инструменты; рецепт можно выбрать сверху.')}
     }
     if(assetsReady){
       animateSpoon()
@@ -963,15 +961,10 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
         announce('Выпечка готова и добавлена в запасы фермы.')
       }
     }
-    if(stage==='working'&&!cutPending&&hand.down&&activeTool==='roll'&&rollingOwner&&rollingLast){
-      const piece=rollingOwner,handle=latchDoughHandle(piece.mesh.geometry,rollingLast.x-piece.mesh.position.x,rollingLast.z-piece.mesh.position.z)
-      shapeDoughHandle(piece.mesh.geometry,handle,0,0,handDelta*.32,'roll',localBoard(piece))
-      retainDeformation(piece);work+=handDelta*.12
-    }
     pieces.forEach(piece=>{
       const held=hand.down&&grab?.piece===piece
       if(held&&grab){
-        const nextPressure=Math.min(2.2,grab.pressure+handDelta*(grab.action==='cup'?.65:.58))
+        const nextPressure=Math.min(grab.action==='cup'?.5:grab.action==='fold'?.2:.65,grab.pressure+handDelta*.58)
         if(grab.changed||nextPressure!==grab.pressure){
           grab.pressure=nextPressure
           shapeDoughHandle(piece.mesh.geometry,grab.handle,grab.delta.x,grab.delta.y,grab.pressure,grab.action,localBoard(piece))

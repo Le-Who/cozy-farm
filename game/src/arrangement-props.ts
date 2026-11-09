@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { loadImage } from './image-assets';
 import type { FoodDescriptor } from './intent-orders';
+import {resolvedCookeryFruit,cookeryFinishTraits} from './culinary';
+import {finishedIngredient} from './ingredient-finish';
 
 type Mode = 'table' | 'basket' | 'eggs' | 'crate';
 type Slot = 'food' | 'cup' | 'flowers' | 'egg';
@@ -94,7 +96,7 @@ export async function createArrangementProps(mode: Mode, food?: FoodDescriptor):
   }
 
   async function composedTart(): Promise<Source> {
-    const fruits = food?.preparation?.fruit ?? [];
+    const fruits = food?.preparation ? resolvedCookeryFruit(food.preparation,food.recipeIngredients) : [];
     const types = [...new Set(fruits.map(fruit => fruit.ingredientId))];
     const berryOnly = types.length === 1 && ['strawberry', 'blueberry', 'raspberry'].includes(types[0]);
     const tart = await load(`cookery/${berryOnly ? `tart-${types[0]}` : 'tart'}.webp`);
@@ -104,7 +106,7 @@ export async function createArrangementProps(mode: Mode, food?: FoodDescriptor):
     for (let i = 0; i < fruits.length; i++) {
       const fruit = fruits[i], source = fruitAssets[i], size = 146 * .65 * 2;
       context.save(); context.translate((257 + fruit.x * 146) * 2, (240 + fruit.y * 110) * 2);
-      context.rotate(fruit.angle); context.drawImage(source.image, -size / 2, -size * source.height / source.width / 2, size, size * source.height / source.width); context.restore();
+      context.rotate(fruit.angle); context.drawImage(finishedIngredient(source.image,fruit.trait?[fruit.trait]:[]), -size / 2, -size * source.height / source.width / 2, size, size * source.height / source.width); context.restore();
     }
     return inspect(canvas);
   }
@@ -130,7 +132,7 @@ export async function createArrangementProps(mode: Mode, food?: FoodDescriptor):
     if (food?.source === 'handmade') return load(`ui-handmade-${identity}.webp`);
     if (identity === 'strawberryTart') return load('assembly/raster/tea-tart.webp');
     if (identity === 'tart') return load('ui-tart.webp');
-    if (identity === 'preserves') return load('ui-orchard-preserves.webp');
+    if (identity === 'preserves'||food?.preparation?.family==='preserves') { const source=await load(identity==='preserves'?'ui-orchard-preserves.webp':`ui-${identity.replace(/([a-z])([A-Z])/g,'$1-$2').toLowerCase()}.webp`);return inspect(finishedIngredient(source.image,cookeryFinishTraits(food?.preparation,food?.recipeIngredients),'jar')); }
     return load(`ui-${identity === 'orchardTart' ? 'tart' : identity.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}.webp`);
   }
 

@@ -96,7 +96,7 @@ export function createRasterLibrary(onLoad: (key: string) => void, signal: Abort
     },
     draw(
       world: IslandWorld, key: string, x: number, y: number, w: number, h: number,
-      options: SpriteOptions = {},
+      options: SpriteOptions = {}, image?: HTMLImageElement | HTMLCanvasElement,
     ): boolean {
       const sheet = sheets.get(key);
       const index = options.frame ?? 0;
@@ -106,7 +106,7 @@ export function createRasterLibrary(onLoad: (key: string) => void, signal: Abort
       const src = options.fullCell ? cell : frame;
       const width = options.fullCell ? w : w * frame.w / sheet.maxWidth;
       const height = options.fullCell ? h : h * frame.h / sheet.maxHeight;
-      world.sprite(sheet.image, src, x, y, width, height, options);
+      world.sprite(image ?? sheet.image, src, x, y, width, height, options);
       return true;
     },
   };

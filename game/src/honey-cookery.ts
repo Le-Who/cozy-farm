@@ -8,6 +8,8 @@ import { createFruitLanding, createViscousFollower, stepFruitLanding, stepSpring
 import { createFoodDeformation } from './food-deformation'
 import {createHoneyPears} from './honey-pear-view'
 import {createHoneyStream} from './honey-stream'
+import {createParfaitTransfer} from './parfait-transfer'
+import {depositParfaitCustard,depositParfaitHoney} from './honey-cookery-model'
 import './honey-cookery.css'
 
 type Asset = { url: string; width: number; height: number; mixSurfaceEllipse?: { cx: number; cy: number; rx: number; ry: number } }
@@ -33,6 +35,8 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     <div class="cookery-render-status" role="status">Открываем медовую кухню…</div><div class="cookery-keyboard-cursor" hidden aria-hidden="true"></div>
     </div><p id="honey-controls" class="cookery-sr-only">Возьмите нож, ложку или мёд и проведите по продуктам. Тесто для печенья можно мять и тянуть рукой. Клавиатура: S — взять инструмент, F — взять дольку персика, стрелки — переместить, пробел — отпустить, Q и E — повернуть фрукт, Enter — испечь или завершить готовку, Escape — вернуться на кухню.</p><p class="cookery-live cookery-sr-only" aria-live="polite" aria-atomic="true"></p>`
   host.append(root)
+  if (family === 'honeyPear') root.querySelector('#honey-controls')!.textContent = 'Проведите пальцем или мышью по каждой груше от края до края. Можно взять нож из держателя и подвести к груше. Клавиатура: S — нож у верхнего края следующей груши, стрелка вниз — вести разрез, пробел — отпустить. После разрезания S берёт мёд, стрелки ведут струю по срезам. Enter — завершить, Escape — вернуться на кухню.'
+  if(family==='windParfait')root.querySelector('#honey-controls')!.textContent='Зачерпните крем из миски слева, перенесите ложку к открытому краю бокала и подержите. Повторите три раза. Затем перетащите три дольки персика в бокал и полейте мёдом. Клавиатура: S — взять крем, повторное S — перенести к бокалу; F — взять персик, стрелки — переместить, пробел — отпустить. На этапе мёда S подносит кувшин к бокалу. Enter — завершить.'
   const view = root.querySelector<HTMLElement>('.cookery-view')!, status = root.querySelector<HTMLElement>('.cookery-render-status')!, hint = root.querySelector<HTMLElement>('.cookery-hint')!, live = root.querySelector<HTMLElement>('.cookery-live')!
   const finish = root.querySelector<HTMLButtonElement>('.cookery-finish')!, close = root.querySelector<HTMLButtonElement>('.cookery-close')!, progress = root.querySelector<HTMLElement>('.cookery-progress')!, fill = progress.querySelector<HTMLElement>('i')!, cursorElement = root.querySelector<HTMLElement>('.cookery-keyboard-cursor')!, rotate = root.querySelector<HTMLButtonElement>('.cookery-rotate')!
   root.querySelector<HTMLElement>('.cookery-recipe-name')!.textContent = options.recipe.name
@@ -44,6 +48,11 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   const toolReturns=new Map<string,{x:{value:number;velocity:number};y:{value:number;velocity:number};width:{value:number;velocity:number};angle:{value:number;velocity:number};target:{x:number;y:number;width:number;angle:number}}>(),knifeAngle={value:-Math.PI*.29,velocity:0},pitcherTilt={value:0,velocity:0}
   const contact = createViscousFollower(), fruitFollow = createViscousFollower(), coating = { value: 0, velocity: 0 }, swirl = { value: 0, velocity: 0 }
   const fruitLayer = {value:0,velocity:0},custardLevel={value:0,velocity:0},incorporated = new Map<number,number>()
+  const parfaitTransfer=createParfaitTransfer()
+  const parfaitTopping={value:0,velocity:0}
+  let previousCreamUi=-1
+  let creamRelease:HoneyPoint|null=null
+  let creamFlow=0,creamStream:THREE.Mesh<THREE.BufferGeometry,THREE.ShaderMaterial>|null=null,creamTube:ReturnType<typeof createHoneyStream>|null=null
   const landings = new Map<number, FruitLanding>(), landingXY = new Map<number,ViscousFollower>()
   const raycaster = new THREE.Raycaster(), rayPoint = new THREE.Vector2()
   let knifeTransport=false
@@ -91,12 +100,17 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     const maskTexture = new THREE.CanvasTexture(mask); textures.add(maskTexture)
     const dough = family === 'honeyBiscuits' ? createFoodDeformation({ radiusX: .46, radiusZ: .34, height: .30 }) : undefined
     const geometry = dough?.geometry ?? new THREE.PlaneGeometry(1, 1, 20, 20); geometries.add(geometry)
+    if(family==='windParfait'){
+      const positions=geometry.getAttribute('position'),uv=geometry.getAttribute('uv')
+      for(let i=0;i<positions.count;i++){const y=(positions.getY(i)+.5)*1.16-.5;positions.setY(i,y);uv.setY(i,y+.5)}
+      geometry.computeBoundingBox();geometry.computeBoundingSphere()
+    }
     const material = new THREE.ShaderMaterial({ transparent: true, depthWrite: !!dough, side: THREE.DoubleSide,
       uniforms: { rawMap: { value: value.texture }, bakeMap: { value: assets.get(family === 'honeyBiscuits' ? 'dough-baked-surface' : 'honey-cake-baked')?.texture ?? value.texture }, finishMap: { value: finished.texture }, glazeAngle: { value: foods.length * 1.13 }, bake: { value: 0 }, volume: { value: dough ? 1 : 0 }, glassMap: { value: value.texture }, glassMode: { value: family === 'windParfait' ? 1 : 0 }, fruitMap: {value:assets.get('honey-parfait-fruit')?.texture??value.texture},fruitFill:{value:0},layerMap: { value: assets.get('honey-parfait-custard')?.texture ?? value.texture }, layerFill: { value: 0 }, paint: { value: maskTexture }, glaze: { value: 0 } },
       vertexShader: `varying vec2 vUv;varying vec3 vNormal;varying float vHeight;uniform float volume;uniform float bake;uniform sampler2D paint;void main(){vUv=uv;vHeight=position.y;vNormal=normalize(normalMatrix*(volume>.5?normalize(normal/vec3(1.,1.+bake*.12,1.)):normal));vec3 p=position;if(volume>.5)p.y*=1.+bake*.12;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,
-      fragmentShader: `varying vec2 vUv;varying vec3 vNormal;varying float vHeight;uniform sampler2D rawMap;uniform sampler2D bakeMap;uniform sampler2D finishMap;uniform sampler2D glassMap;uniform sampler2D layerMap;uniform sampler2D fruitMap;uniform float fruitFill;uniform sampler2D paint;uniform float volume;uniform float bake;uniform float glazeAngle;uniform float glassMode;uniform float layerFill;uniform float glaze;
+      fragmentShader: `varying vec2 vUv;varying vec3 vNormal;varying float vHeight;uniform sampler2D rawMap;uniform sampler2D bakeMap;uniform sampler2D finishMap;uniform sampler2D glassMap;uniform sampler2D layerMap;uniform sampler2D fruitMap;uniform float fruitFill;uniform sampler2D paint;uniform float volume;uniform float bake;uniform float glazeAngle;uniform float glassMode;uniform float layerFill;uniform float glaze;uniform float parfaitFinish;
       void main(){vec2 uv=vUv;vec4 a=mix(texture2D(rawMap,uv),texture2D(bakeMap,uv),smoothstep(.05,.97,bake));
-      vec2 filledUV=uv,custardUV=uv;if(glassMode>.5){float down=1.-uv.y;filledUV.y=1.-(.135+(down-.12)*1.24);custardUV.y=1.-(.12+(down-.12)*1.10);}vec4 b=texture2D(finishMap,filledUV);if(layerFill>.001){float reveal=1.-smoothstep(mix(.14,.8,layerFill)-.01,mix(.14,.8,layerFill)+.01,vUv.y);a=mix(a,texture2D(layerMap,custardUV),reveal);}if(glassMode>.5)a=mix(a,texture2D(fruitMap,filledUV),fruitFill);float coat=texture2D(paint,vUv).r;float m=coat*glaze;vec4 food=mix(a,b,m);
+      vec2 filledUV=uv,custardUV=uv;if(glassMode>.5){float down=1.-uv.y;filledUV.y=1.-(.135+(down-.12)*1.24);custardUV.y=1.-(.12+(down-.12)*1.10);}vec2 finishUV=filledUV;if(glassMode>.5)finishUV.y*=.8;vec4 b=texture2D(finishMap,finishUV);if(layerFill>.001){float reveal=1.-smoothstep(mix(.14,.8,layerFill)-.01,mix(.14,.8,layerFill)+.01,vUv.y);a=mix(a,texture2D(layerMap,custardUV),reveal);}if(glassMode>.5)a=mix(a,texture2D(fruitMap,filledUV),fruitFill);float coat=texture2D(paint,vUv).r;float m=glassMode>.5?smoothstep(0.,.98,parfaitFinish):coat*glaze;vec4 food=mix(a,b,m);
       float ridge=length(vec2(dFdx(coat),dFdy(coat)));food.rgb+=vec3(.17,.105,.018)*smoothstep(.005,.05,ridge)*m;food.rgb+=vec3(.12,.09,.035)*pow(clamp(1.-ridge*14.,0.,1.),12.)*m*.2;
       if(volume>.5){vec3 rawVariation=clamp(texture2D(rawMap,uv).rgb/vec3(.865,.68,.48),vec3(.72),vec3(1.35));vec3 crustVariation=clamp(texture2D(bakeMap,uv).rgb/vec3(.88,.285,.028),vec3(.72),vec3(1.45));vec3 dough=vec3(.93,.72,.40)*mix(vec3(1.),rawVariation,.10),crust=vec3(.86,.47,.15)*mix(vec3(1.),crustVariation,.12);food.rgb=mix(dough,crust,smoothstep(.05,.95,bake));vec2 honeyUV=.5+mat2(cos(glazeAngle),-sin(glazeAngle),sin(glazeAngle),cos(glazeAngle))*(uv-.5)*.65;vec3 honey=texture2D(finishMap,honeyUV).rgb;food.rgb=mix(food.rgb,honey,m*.72);vec3 N=normalize(vNormal),L=normalize(vec3(-.4,-.8,1.));float light=.70+.30*max(0.,dot(N,L));food.rgb*=light;food.rgb=mix(food.rgb*vec3(1.,.96,.88),food.rgb,smoothstep(0.,.16,vHeight));food.rgb+=vec3(.12,.09,.035)*pow(max(0.,dot(reflect(-L,N),vec3(0.,0.,1.))),18.)*m;food.a=1.;}
       if(glassMode>.5){vec4 glass=texture2D(glassMap,vUv);float down=1.-vUv.y;
@@ -105,9 +119,13 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
       float interior=(1.-smoothstep(halfWidth-.012,halfWidth,abs(vUv.x-.5)))*smoothstep(.085,.135,down)*(1.-smoothstep(.535,.575,down));
       float cap=(1.-smoothstep(.12,.20,down))*(1.-smoothstep(.27,.35,abs(vUv.x-.5)))*m;
       float region=max(interior,cap);float reflection=smoothstep(.75,.97,dot(glass.rgb,vec3(.2126,.7152,.0722)))*.26;
-      gl_FragColor=vec4(mix(glass.rgb,mix(food.rgb,glass.rgb,reflection),region),max(glass.a,food.a*region));}else gl_FragColor=food;
+      float foodAlpha=food.a*region;
+      float compositeAlpha=max(glass.a,foodAlpha);
+      // Unassociated RGB outside the painted dessert is undefined. Only visible food can tint the rim.
+      vec3 surfaceColor=mix(food.rgb,glass.rgb,reflection*glass.a);
+      gl_FragColor=vec4(mix(glass.rgb,surfaceColor,foodAlpha/max(compositeAlpha,.0001)),compositeAlpha);}else gl_FragColor=food;
       #include <colorspace_fragment>
-      }` }); materials.add(material)
+      }` });material.uniforms.parfaitFinish={value:0}; materials.add(material)
     const mesh = new THREE.Mesh(geometry, material); mesh.position.z = 4; mesh.renderOrder = 4; scene.add(mesh)
     const result: Food = { mesh, shadow: shadow(value.texture, dough?.geometry), asset: value.asset, rect: { x: 0, y: 0, width: 1, height: 1 }, mask, context, texture: maskTexture, dough }; foods.push(result); return result
   }
@@ -120,6 +138,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
       if (object.shadow && !object.dough) object.shadow.material.uniforms.map.value = value.texture
       uniforms.glaze.value = glazed ? 1 : 0; uniforms.bake.value = family === 'honeyBiscuits' || family === 'honeyCake' ? baked : 0
       uniforms.layerFill.value = family === 'windParfait' ? custardLevel.value : 0;uniforms.fruitFill.value=fruitLayer.value
+      if(family==='windParfait')uniforms.parfaitFinish.value=parfaitTopping.value
 
       object.dough?.setBaked(baked)
     })
@@ -143,7 +162,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
       surface = { x: r.x + ellipse.cx / foods[0].asset.width * r.width, y: r.y + ellipse.cy / foods[0].asset.height * r.height, rx: ellipse.rx / foods[0].asset.width * r.width, ry: ellipse.ry / foods[0].asset.height * r.height }
     }
     const toolWidth = Math.min(width * (portrait ? .27 : .17), height * .30), toolX = width * (portrait ? .82 : family==='honeyPear'?.92:.84), toolY = height * (portrait ? .74 : family==='honeyPear'?.60:.63)
-    for (const key of ['knife', 'spoon', 'honey'] as const) if (parts.has(key) && !(held && 'tool' in held && held.tool === key)) {const object=parts.get(key)!,returning=toolReturns.get(key),a=key==='knife'?-.12:0;if(returning){returning.target={x:toolX,y:toolY,width:toolWidth,angle:returning.angle.value+angle(a-returning.angle.value)};locate(object,returning.x.value,returning.y.value,returning.width.value,returning.angle.value)}else locate(object,toolX,toolY,toolWidth,a)}
+    for (const key of ['knife', 'spoon', 'honey'] as const) if (parts.has(key) && !(held && 'tool' in held && held.tool === key)&&!(creamRelease&&key==='spoon')) {const object=parts.get(key)!,returning=toolReturns.get(key),a=key==='knife'?-.12:0;if(returning){returning.target={x:toolX,y:toolY,width:toolWidth,angle:returning.angle.value+angle(a-returning.angle.value)};locate(object,returning.x.value,returning.y.value,returning.width.value,returning.angle.value)}else locate(object,toolX,toolY,toolWidth,a)}
     const current = currentTool(); for (const key of ['knife', 'spoon', 'honey'] as const) if (parts.has(key)) parts.get(key)!.mesh.visible = current === key || toolReturns.has(key) || !!held && 'tool' in held && held.tool === key
     if (parts.has('fruit-dish')) locate(parts.get('fruit-dish')!, width * (portrait ? .23 : .18), height * (portrait ? .79 : .79), Math.min(width * .38, height * .36))
     if (parts.has('custard-bowl')) { locate(parts.get('custard-bowl')!, width * (portrait ? .23 : .18), height * .77, Math.min(width * (portrait ? .38 : .27), height * .34)); parts.get('custard-bowl')!.mesh.visible = model.stage === 'custard'; parts.get('fruit-dish')!.mesh.visible = model.stage !== 'custard' }
@@ -158,6 +177,13 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   }
   window.addEventListener('resize', resize, { signal }); visualViewport?.addEventListener('resize', resize, { signal }); const observer = new ResizeObserver(() => { if (!destroyed) resize() }); observer.observe(host)
   function currentTool(): HoneyTool { return model.stage === 'cut' ? 'knife' : ['shape', 'bake-ready'].includes(model.stage) && family === 'honeyBiscuits' ? 'hand' : ['mix', 'custard', 'bake-ready'].includes(model.stage) ? 'spoon' : 'honey' }
+  function parfaitBowlContact(point:HoneyPoint){const bowl=parts.get('custard-bowl');if(!bowl)return false;const p=imagePoint(bowl,.5,.43);return((point.x-p.x)/(bowl.rect.width*.39))**2+((point.y-p.y)/(bowl.rect.height*.24))**2<=1}
+  function parfaitReceivingPoint(point:HoneyPoint){
+    const r=foods[0].rect,n=normalized(point),x=THREE.MathUtils.clamp(n.x,-.83,.83),finish=THREE.MathUtils.smoothstep(parfaitTopping.value,0,.98)
+    const level=model.stage==='custard'?.56-.16*custardLevel.value:.27-.215*finish+Math.abs(x)**1.4*.10*finish
+    const bowlY=(level-.12)/.46,insideWidth=Math.max(.08,.395*Math.sqrt(Math.max(0,1-bowlY*bowlY)))*r.width*.88
+    return{x:surface.x+THREE.MathUtils.clamp(x*surface.rx,-insideWidth,insideWidth),y:r.y+r.height*level}
+  }
   function fruitSource(id: number): HoneyPoint { const r = parts.get('fruit-dish')!.rect; return { x: r.x + r.width * (.27 + id % 3 * .22), y: r.y + r.height * (.46 + Math.floor(id / 3) * .13) } }
   function updateCursor() { cursorElement.hidden = !keyboard; cursorElement.style.left = `${cursor.x}px`; cursorElement.style.top = `${cursor.y}px` }
   function positionRotation() { const object = fruitParts.get(selected), placed = model.fruit.find(value => value.id === selected); rotate.hidden = !object || !placed || (incorporated.get(selected)??0)>.3 || ['finished', 'committing', 'cancelled'].includes(model.stage); if (!rotate.hidden && object) { rotate.style.left = `${Math.max(4, Math.min(width - 48, object.rect.x + object.rect.width - 5))}px`; rotate.style.top = `${Math.max(70, Math.min(height - 100, object.rect.y - 30))}px` } }
@@ -165,8 +191,13 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     if (destroyed) return
     root.dataset.stage = model.stage
     const messages: Record<string, string> = { cut: 'Проведите ножом через каждую грушу', shape: 'Разомните и растяните тесто для печенья', mix: 'Медленно размешайте тесто по кругу', 'bake-ready': '', baking: 'Выпекаем до золотистой корочки…', custard: 'Переложите крем ложкой в бокал', fruit: 'Уложите дольки персика в бокал', glaze: family === 'honeyPear' ? 'Полейте срезы груш мёдом' : family === 'windParfait' ? 'Полейте слои мёдом' : 'Смажьте выпечку мёдом', settling: '', ready: '', committing: '', finished: '', cancelled: '' }
-    hint.textContent = messages[model.stage] ?? ''; if (model.stage !== previousStage) { announce(model.stage === 'ready' ? 'Блюдо готово. Можно завершить приготовление.' : hint.textContent); previousStage = model.stage; updateFoodState(); layout() }
+    if(family==='windParfait')messages.custard=parfaitTransfer.load>.025?'Перенесите ложку к открытому бокалу':'Зачерпните крем из миски слева'
+    if (model.stage === 'cut') messages.cut = knifeTransport && held
+      ? 'Подведите нож к груше и проведите через неё'
+      : `Проведите по груше от края до края · ${model.cuts.size}/2`;
+    const message=messages[model.stage]??'';if(hint.textContent!==message)hint.textContent=message; if (model.stage !== previousStage) { announce(model.stage === 'ready' ? 'Блюдо готово. Можно завершить приготовление.' : hint.textContent); previousStage = model.stage; updateFoodState(); layout() }
     const value = Math.round(honeyProgress(model) * 100); previousProgress=value; progress.setAttribute('aria-valuenow', String(value)); fill.style.width = `${value}%`; progress.hidden = ['ready', 'finished'].includes(model.stage)
+    if(family==='windParfait'){previousCreamUi=Math.round(parfaitTransfer.load*10);root.dataset.creamLoad=parfaitTransfer.load.toFixed(3);root.dataset.custard=model.parfaitCustard.toFixed(3);root.dataset.honey=model.parfaitHoney.toFixed(3)}
     finish.hidden = !['bake-ready', 'ready', 'finished'].includes(model.stage); finish.disabled = lost || !loaded || model.stage !== 'finished' && (!!held || !physicalQuiet)
     finish.querySelector('span')!.textContent = model.stage === 'bake-ready' ? 'Испечь' : model.stage === 'finished' ? options.returnLabel ?? 'На кухню' : 'Готово'; positionRotation()
   }
@@ -181,6 +212,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   }
   finish.addEventListener('click', finishRecipe, { signal })
   function paintGlaze(from: HoneyPoint, to: HoneyPoint, amount: number) {
+    if(family==='windParfait')return
     if(pearView){pearView.paint(from,to,amount,coating.value);return}
     for (const object of foods) {
       const local = (point: HoneyPoint) => { const dx = point.x - object.mesh.position.x, dy = point.y - object.mesh.position.y, a = -object.mesh.rotation.z; return { x: (Math.cos(a) * dx - Math.sin(a) * dy) / object.rect.width + .5, y: (Math.sin(a) * dx + Math.cos(a) * dy) / object.rect.height + .5 } }
@@ -197,26 +229,36 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     const object = parts.get(held.tool)!, size = Math.min(surface.rx * (held.tool === 'honey' ? 1.1 : 1.25), height * .36)
     const pouring = held.tool === 'honey' && (family === 'honeyPear' || family === 'windParfait')
     const brushing = held.tool === 'honey' && !pouring
-    const tip = { x: point.x, y: point.y - (pouring ? Math.max(24, surface.ry * .65) : 0) }, rotation = held.tool === 'knife' ? knifeAngle.value+Math.PI*.25 : pouring ? -.25-pitcherTilt.value*.58 : brushing ? Math.PI - .35 : -.5
+    const creamOverGlass=family==='windParfait'&&model.stage==='custard'&&held.tool==='spoon'&&onHoneySurface(normalized(point),1.12)
+    const lift=pouring?(family==='windParfait'?Math.max(48,surface.rx*.7):Math.max(24,surface.ry*.65)):creamOverGlass?Math.max(22,surface.rx*.22):0
+    const tip = { x: point.x, y: point.y - lift }, rotation = held.tool === 'knife' ? knifeAngle.value+Math.PI*.25 : pouring ? -.25-pitcherTilt.value*.58 : brushing ? Math.PI - .35 : -.5
     locate(object, tip.x, tip.y, size, rotation); const toolContact = imagePoint(object, held.tool === 'knife' ? .887 : pouring ? .105 : brushing ? .77 : .285, held.tool === 'knife' ? .098 : pouring ? .219 : brushing ? .15 : .745)
     rect(object, { ...object.rect, x: object.rect.x + tip.x - toolContact.x, y: object.rect.y + tip.y - toolContact.y }, rotation); object.mesh.position.z = object.mesh.renderOrder = 20
     if (stream && pouring) strandTip = tip
   }
   function start(point: HoneyPoint) {
     if (!loaded || lost || destroyed || ['baking', 'committing', 'finished', 'cancelled'].includes(model.stage)) return
+    if(creamRelease){depositParfaitCustard(model,parfaitTransfer.finishDeposit());creamRelease=null;endHoneyStroke(model)}
+    if(family==='windParfait'&&model.stage==='custard'&&parfaitBowlContact(point))parfaitTransfer.scoop()
     cursor = point
-    if (family === 'windParfait' && ['fruit', 'glaze', 'ready'].includes(model.stage)) for (const [id, object] of [...fruitParts].reverse()) if (object.mesh.visible && contains(object, point, 5)) { held = { fruit: id }; fruitFollow.x = point.x; fruitFollow.y = point.y; fruitFollow.vx = fruitFollow.vy = 0; selected = id; fruitAngle = model.fruit.find(value => value.id === id)?.angle ?? 0; moveHeld(point); return }
+    if (family === 'windParfait' && ['fruit', 'glaze', 'ready'].includes(model.stage)) for (const [id, object] of [...fruitParts].reverse()) if ((model.stage==='fruit'||!model.fruit.some(fruit=>fruit.id===id))&&object.mesh.visible && contains(object, point, 5)) { held = { fruit: id }; fruitFollow.x = point.x; fruitFollow.y = point.y; fruitFollow.vx = fruitFollow.vy = 0; selected = id; fruitAngle = model.fruit.find(value => value.id === id)?.angle ?? 0; moveHeld(point); return }
     const tool = currentTool(), object = parts.get(tool)
-    if (tool === 'hand' ? !!pickDough(point) : tool==='knife' ? !!pearView?.wholeHit(point) || !!object&&contains(object,point,8) : object && contains(object, point, 8) || tool === 'spoon' && onHoneySurface(normalized(point))) { held = { tool };knifeTransport=tool==='knife'&&!pearView?.wholeHit(point);toolReturns.delete(tool);if(tool==='knife'&&object){knifeAngle.value=object.mesh.rotation.z-Math.PI*.25;knifeAngle.velocity=0} if(tool === 'hand') {grippedDough=pickDough(point);latchDough(point)} contact.x = point.x; contact.y = point.y; contact.vx = contact.vy = 0; contactReady = true; lastContact = null; beginHoneyStroke(model, tool, normalized(point));if(tool==='knife'&&!knifeTransport)pearView?.trace(point,point,(index,angle,bins,offset)=>recordHoneyKnife(model,index,angle,bins,offset)); moveHeld(point) }
+    if (tool === 'hand' ? !!pickDough(point) : tool==='knife' ? !!pearView?.wholeHit(point) || !!object&&contains(object,point,8) : object && contains(object, point, 8) || tool === 'spoon' && (onHoneySurface(normalized(point))||family==='windParfait'&&model.stage==='custard'&&parfaitBowlContact(point))||family==='windParfait'&&tool==='honey'&&onHoneySurface(normalized(point))) { held = { tool };knifeTransport=tool==='knife'&&!pearView?.wholeHit(point);toolReturns.delete(tool);if(tool==='knife'&&object){knifeAngle.value=object.mesh.rotation.z-Math.PI*.25;knifeAngle.velocity=0} if(tool === 'hand') {grippedDough=pickDough(point);latchDough(point)} contact.x = point.x; contact.y = point.y; contact.vx = contact.vy = 0; contactReady = true; lastContact = null; beginHoneyStroke(model, tool, normalized(point));if(tool==='knife'&&!knifeTransport)pearView?.trace(point,point,(index,angle,bins,offset)=>recordHoneyKnife(model,index,angle,bins,offset)); moveHeld(point) }
   }
   function move(point: HoneyPoint) {
     if (!held || lost || destroyed) return
     const before = cursor; moveHeld(point)
     if ('fruit' in held) return
-    if(held.tool==='knife'&&pearView&&!knifeTransport)pearView.trace(before,point,(index,angle,bins,offset)=>recordHoneyKnife(model,index,angle,bins,offset))
+    if(held.tool==='knife'&&pearView){
+      // Arriving from the holder positions the blade. Cutting starts with the
+      // next movement on the fruit, so the outside approach cannot cut a pear.
+      if(knifeTransport){if(pearView.wholeHit(point)){knifeTransport=false;pearView.releaseTrace();pearView.trace(point,point,(index,angle,bins,offset)=>recordHoneyKnife(model,index,angle,bins,offset))}}
+      else pearView.trace(before,point,(index,angle,bins,offset)=>recordHoneyKnife(model,index,angle,bins,offset))
+    }
     else if (held.tool !== 'knife' && held.tool !== 'honey' && held.tool !== 'spoon' && held.tool !== 'hand') moveHoneyStroke(model, normalized(point))
     if (held.tool === 'hand') sculpt(point, { x: point.x - before.x, y: point.y - before.y })
-    updateFoodState(); layout(); sync()
+    // The animation frame synchronizes progress and stage layout once after
+    // processing every coalesced contact sample.
   }
   function pickDough(point: HoneyPoint): Food | null {
     rayPoint.set(point.x/width*2-1,1-point.y/height*2);camera.updateMatrixWorld();scene.updateMatrixWorld(true);raycaster.setFromCamera(rayPoint,camera)
@@ -241,11 +283,16 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     object.dough.applyStroke({point:{x:x/.46,y:-z/.34},delta:{x:delta.x*1.4/(w*.46),y:delta.y*1.4/(w*.34*Math.sin(.95))},pressure:pointerPressure,radius:.58})
   }
   function release(commit = true) {
-    if(held&&'tool' in held&&held.tool!=='hand'){const object=parts.get(held.tool)!;toolReturns.set(held.tool,{x:{value:object.mesh.position.x,velocity:0},y:{value:object.mesh.position.y,velocity:0},width:{value:object.rect.width,velocity:0},angle:{value:object.mesh.rotation.z,velocity:0},target:{x:object.mesh.position.x,y:object.mesh.position.y,width:object.rect.width,angle:object.mesh.rotation.z}})}
+    if(commit&&creamRelease&&!held)return
+    const drainCream=commit&&family==='windParfait'&&model.stage==='custard'&&held&&'tool'in held&&held.tool==='spoon'&&parfaitTransfer.load>.001&&onHoneySurface(normalized(cursor),1.12)
+    if(drainCream){creamRelease={...cursor};contact.x=cursor.x;contact.y=cursor.y;contact.vx=contact.vy=0;moveHeld(cursor)}
+    if(!commit)creamRelease=null
+    if(held&&'tool' in held&&held.tool!=='hand'&&!drainCream)returnTool(held.tool)
     if (held && 'fruit' in held && commit) { if (placeHoneyFruit(model, held.fruit, normalized(cursor), 'peach', fruitAngle)) {landings.set(held.fruit, createFruitLanding((reduced.matches?2:8)/surface.ry,0));landingXY.set(held.fruit,{...fruitFollow});incorporated.set(held.fruit,0)} }
-    pearView?.releaseTrace();foods.forEach(object => object.dough?.release()); grippedDough=null; gripMaterial=null; if(held&&'tool' in held&&held.tool==='honey'&&(family==='honeyPear'||family==='windParfait'))honeyDrop={body:createFruitLanding(Math.max(.02,(contact.y-strandTip.y)*.55/surface.ry),0),x:contact.x,targetY:contact.y,hit:false,fade:0};strandTail = held && 'tool' in held && held.tool === 'honey' ? 1 : strandTail
-    held = null; lastContact = null; endHoneyStroke(model); updateFoodState(); layout(); sync()
+    pearView?.releaseTrace();foods.forEach(object => object.dough?.release()); grippedDough=null; gripMaterial=null; if(held&&'tool' in held&&held.tool==='honey'&&(family==='honeyPear'||family==='windParfait')){const target=family==='windParfait'?parfaitReceivingPoint(contact):contact;honeyDrop={body:createFruitLanding(Math.max(.02,(target.y-strandTip.y)*.55/surface.ry),0),x:target.x,targetY:target.y,hit:false,fade:0}};strandTail = held && 'tool' in held && held.tool === 'honey' ? 1 : strandTail
+    held = null; lastContact = null;if(!drainCream)endHoneyStroke(model); updateFoodState(); layout(); sync()
   }
+  function returnTool(tool:HoneyTool){const object=parts.get(tool)!;toolReturns.set(tool,{x:{value:object.mesh.position.x,velocity:0},y:{value:object.mesh.position.y,velocity:0},width:{value:object.rect.width,velocity:0},angle:{value:object.mesh.rotation.z,velocity:0},target:{x:object.mesh.position.x,y:object.mesh.position.y,width:object.rect.width,angle:object.mesh.rotation.z}})}
   const eventPoint = (event: PointerEvent) => { const r = view.getBoundingClientRect(); return { x: event.clientX - r.left, y: event.clientY - r.top } }
   view.addEventListener('pointerdown', event => { if ((event.target as HTMLElement).closest('button') || pointer !== null || event.button !== 0) return; pointer = event.pointerId; pointerPressure = event.pointerType === 'mouse' ? .9 : Math.max(.25,event.pressure); keyboard = false; view.setPointerCapture(pointer); view.focus({ preventScroll: true }); start(eventPoint(event)); updateCursor() }, { signal })
   view.addEventListener('pointermove', event => { if (pointer !== event.pointerId) return; pointerPressure = event.pointerType === 'mouse' ? .9 : Math.max(.25,event.pressure); const samples = event.getCoalescedEvents?.(); for (const sample of samples?.length ? samples : [event]) move(eventPoint(sample)) }, { signal })
@@ -262,9 +309,9 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     if (key === 'enter') finishRecipe()
     else if (key === 'q' || key === 'e') rotateFruit(key === 'q' ? -.13 : .13)
     else if (key === 'f' && family === 'windParfait') { release(); const id = [...fruitParts.keys()].find(value => !model.fruit.some(fruit => fruit.id === value)) ?? 0; cursor = fruitSource(id); start(cursor) }
-    else if (key === 's') { release(); const tool = currentTool(), object = parts.get(tool); cursor = object ? { x: object.mesh.position.x, y: object.mesh.position.y } : pixel(honeyBiscuitCenters[0]); start(cursor) }
+    else if (key === 's') { release(); const tool = currentTool(), object = parts.get(tool); cursor = family==='windParfait'&&model.stage==='custard'?(parfaitTransfer.load>.025?pixel({x:0,y:0}):imagePoint(parts.get('custard-bowl')!,.5,.43)):family==='windParfait'&&model.stage==='glaze'?pixel({x:0,y:0}):tool === 'knife' ? pearView?.knifeStart() ?? cursor : object ? { x: object.mesh.position.x, y: object.mesh.position.y } : pixel(honeyBiscuitCenters[0]); start(cursor) }
     else if (key === ' ') { if (held) release(); else start(cursor.x || cursor.y ? cursor : pixel({ x: 0, y: 0 })) }
-    else { const step = Math.max(5, Math.min(surface.rx, surface.ry) * .18); cursor = { x: Math.max(8, Math.min(width - 8, cursor.x + (key === 'arrowleft' ? -step : key === 'arrowright' ? step : 0))), y: Math.max(65, Math.min(height - 65, cursor.y + (key === 'arrowup' ? -step : key === 'arrowdown' ? step : 0))) }; if (held) move(cursor) }
+    else { const step = Math.max(5, Math.min(surface.rx, surface.ry) * .18); const next = { x: Math.max(8, Math.min(width - 8, cursor.x + (key === 'arrowleft' ? -step : key === 'arrowright' ? step : 0))), y: Math.max(65, Math.min(height - 65, cursor.y + (key === 'arrowup' ? -step : key === 'arrowdown' ? step : 0))) }; if (held) move(next); else cursor = next }
     updateCursor()
   }, { signal })
   async function load() {
@@ -294,7 +341,13 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     if (family === 'honeyCake') { const geo = new THREE.CircleGeometry(1, 64); geometries.add(geo); const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: { map: { value: assets.get('honey-cake-batter')!.texture }, phase: { value: 0 }, work: { value: 0 }, brush: { value: new THREE.Vector2() }, ripple: { value: 0 }, fade: { value: 1 } }, vertexShader: `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`, fragmentShader: `varying vec2 vUv;uniform sampler2D map;uniform float phase;uniform float work;uniform vec2 brush;uniform float ripple;uniform float fade;void main(){vec2 p=vUv*2.-1.;float r=length(p);if(r>.99)discard;float local=exp(-dot(p-brush,p-brush)*4.);float turn=phase*(1.-r)*.25;vec2 q=mat2(cos(turn),-sin(turn),sin(turn),cos(turn))*p;vec2 uv=.5+q*.5+vec2(-p.y,p.x)*work*.025*(1.-r)+vec2(local,-local)*ripple*.015;vec4 batter=texture2D(map,uv);float ridge=sin((length(p-brush)*24.-phase*3.))*local*ripple;gl_FragColor=vec4(batter.rgb+vec3(.06,.04,.01)*ridge,batter.a*(1.-smoothstep(.95,.99,r))*fade);
     #include <colorspace_fragment>
     }` }); materials.add(mat); batter = new THREE.Mesh(geo, mat); batter.renderOrder = 5; scene.add(batter) }
-    if (family === 'windParfait') { const geometry = new THREE.CircleGeometry(1, 48); geometries.add(geometry); const material = new THREE.MeshBasicMaterial({ map: assets.get('honey-cake-batter')!.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }); materials.add(material); custardSpoon = new THREE.Mesh(geometry, material); custardSpoon.position.z = custardSpoon.renderOrder = 21; custardSpoon.visible = false; scene.add(custardSpoon) }
+    if (family === 'windParfait') {
+      const geometry = new THREE.CircleGeometry(1, 48); geometries.add(geometry); const material = new THREE.MeshBasicMaterial({ map: assets.get('honey-cake-batter')!.texture, transparent: true, depthWrite: false,depthTest:false, side: THREE.DoubleSide, toneMapped: false }); materials.add(material); custardSpoon = new THREE.Mesh(geometry, material); custardSpoon.position.z = custardSpoon.renderOrder = 21; custardSpoon.visible = false; scene.add(custardSpoon)
+      creamTube=createHoneyStream({longitudinalSegments:12});geometries.add(creamTube.geometry)
+      const skin=new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:false,side:THREE.DoubleSide,uniforms:{map:{value:assets.get('honey-cake-batter')!.texture},time:{value:0}},vertexShader:`varying vec2 uv0;varying vec3 N;void main(){uv0=uv;N=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec2 uv0;varying vec3 N;uniform sampler2D map;uniform float time;void main(){vec3 light=normalize(vec3(-.4,-.7,1.)),n=normalize(N);vec3 cream=texture2D(map,.5+vec2((uv0.x-.5)*.34,sin(uv0.y*4.-time*3.)*.12)).rgb;float shade=.82+.18*max(0.,dot(n,light)),gloss=pow(max(0.,dot(reflect(-light,n),vec3(0.,0.,1.))),18.);gl_FragColor=vec4(cream*shade+vec3(.09,.07,.03)*gloss,1.);
+#include <colorspace_fragment>
+}`});materials.add(skin);creamStream=new THREE.Mesh(creamTube.geometry,skin);creamStream.position.z=creamStream.renderOrder=21;creamStream.frustumCulled=false;creamStream.visible=false;scene.add(creamStream)
+    }
     loaded = true; status.hidden = true; updateFoodState(); resize(); sync(); view.focus({ preventScroll: true })
   }
   const canvas = renderer.domElement
@@ -307,36 +360,50 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
 
     if (held && 'fruit' in held) { stepViscousFollower(fruitFollow,cursor.x,cursor.y,dt,26); moveHeld(cursor); quiet = false }
     for (const [id,landing] of landings) { const placed=model.fruit.find(p=>p.id===id),xy=landingXY.get(id);if(placed&&xy){const target=pixel(placed);stepViscousFollower(xy,target.x,target.y,dt,24)}stepFruitLanding(landing,dt);if(landing.settled)incorporated.set(id,Math.min(1,(incorporated.get(id)??0)+dt*1.65));quiet &&= landing.settled }
-    if(family==='windParfait'){stepSpring(custardLevel,model.stage==='custard'?honeyProgress(model):1,dt,{frequency:2,damping:1});stepSpring(fruitLayer,Math.min(1,[...incorporated.values()].reduce((sum,value)=>sum+value,0)/3),dt,{frequency:2,damping:1});quiet=quiet&&Math.abs(fruitLayer.velocity)<.02&&Math.abs(custardLevel.velocity)<.02}
+    if(family==='windParfait'){stepSpring(custardLevel,model.stage==='custard'?honeyProgress(model):1,dt,{frequency:2,damping:1});stepSpring(fruitLayer,Math.min(1,[...incorporated.values()].reduce((sum,value)=>sum+value,0)/3),dt,{frequency:2,damping:1});stepSpring(parfaitTopping,model.parfaitHoney,dt,{frequency:2,damping:1});quiet=quiet&&Math.abs(fruitLayer.velocity)<.02&&Math.abs(custardLevel.velocity)<.02&&Math.abs(parfaitTopping.velocity)<.02}
     const painting = !!held && 'tool' in held && held.tool === 'honey', pouring = painting && (family === 'honeyPear' || family === 'windParfait');stepSpring(pitcherTilt,pouring?1:0,dt,{frequency:2.2,damping:.88})
     if (held && 'tool' in held && (held.tool === 'honey' || held.tool === 'spoon')) {
       stepViscousFollower(contact,cursor.x,cursor.y,dt,painting ? 17 : 20)
-      const point = { x: contact.x, y: contact.y }, n = normalized(point)
-      const contacting = model.stage === 'glaze' && pearView ? pearView.hit(point) : family === 'honeyBiscuits' && model.stage === 'glaze' ? !!pickDough(point) : onHoneySurface(n)
+      const point = { x: contact.x, y: contact.y }, n = normalized(point), previousContact = lastContact
+      const contacting = model.stage === 'glaze' && pearView ? pearView.hit(point) : family === 'honeyBiscuits' && model.stage === 'glaze' ? !!pickDough(point) : onHoneySurface(n,family==='windParfait'?1.12:1.03)
       stepSpring(coating, painting || contacting ? pointerPressure : 0, dt, { frequency: 2.3, damping: .9 })
+      if(family==='windParfait'&&model.stage==='custard'&&held.tool==='spoon'){
+        const amount=parfaitTransfer.step(dt,parfaitBowlContact(point),contacting)
+        depositParfaitCustard(model,amount);creamFlow=amount/Math.max(.001,dt)
+      }else creamFlow=0
       if (contacting && (model.stage === 'glaze' || model.stage === 'custard' || model.stage === 'mix')) {
         if(model.stage === 'mix' && lastContact){const old=normalized(lastContact),turn=angle(Math.atan2(n.y,n.x)-Math.atan2(old.y,old.x));swirlTarget=THREE.MathUtils.clamp(turn/Math.max(.001,dt),-5,5)}
-        if((family!=='honeyBiscuits'&&family!=='honeyPear')||model.stage!=='glaze')moveHoneyStroke(model,n,dt*Math.max(.12,coating.value)*6)
-        if (painting) paintGlaze(lastContact ?? point, point, Math.min(.6,dt*(family==='honeyPear'?18:9)) * Math.max(.12,coating.value))
+        if(family==='windParfait'&&model.stage==='glaze')depositParfaitHoney(model,n,dt*Math.max(0,coating.value))
+        else if(family!=='windParfait'||model.stage!=='custard')if((family!=='honeyBiscuits'&&family!=='honeyPear')||model.stage!=='glaze')moveHoneyStroke(model,n,dt*Math.max(.12,coating.value)*6)
+        if (painting && !pearView) paintGlaze(lastContact ?? point, point, Math.min(.6,dt*9) * Math.max(.12,coating.value))
         lastContact = point
       } else lastContact = null
+      if (painting && pearView && model.stage === 'glaze') {
+        paintGlaze(previousContact ?? point, point, Math.min(.6,dt*18) * Math.max(.12,coating.value))
+        lastContact = point
+      }
       moveHeld(cursor); if (pouring) strandTail = 1
       quiet = false
+    } else if(creamRelease){
+      contact.x=creamRelease.x;contact.y=creamRelease.y
+      const amount=parfaitTransfer.step(dt,false,true);depositParfaitCustard(model,amount);creamFlow=amount/Math.max(.001,dt);quiet=false
+      if(parfaitTransfer.load<=.001||model.pending==='fruit'){creamRelease=null;endHoneyStroke(model);returnTool('spoon')}
     } else {
+      creamFlow=0
       stepSpring(coating,0,dt,{frequency:2.3,damping:.9}); strandTail = Math.max(0,strandTail-dt*3.5)
-      if(strandTail>0){stepViscousFollower(contact,cursor.x,cursor.y,dt,17);const point={x:contact.x,y:contact.y};if(onHoneySurface(normalized(point)))paintGlaze(lastContact??point,point,Math.min(.3,dt*6)*Math.max(0,coating.value));lastContact=point}
+      if(strandTail>0){stepViscousFollower(contact,cursor.x,cursor.y,dt,17);const point={x:contact.x,y:contact.y};if(pearView||onHoneySurface(normalized(point)))paintGlaze(lastContact??point,point,Math.min(.3,dt*6)*Math.max(0,coating.value));lastContact=point}
     }
     if (held && 'tool' in held && held.tool === 'hand') { sculpt(cursor,{x:0,y:0},dt); quiet = false }
     foods.forEach(object => { if (object.dough) { const state = object.dough.update(dt); quiet = quiet && state.settled } })
     if (!held || !('tool' in held) || held.tool !== 'spoon') swirlTarget *= Math.exp(-dt*3)
     stepSpring(swirl,swirlTarget,dt,{frequency:1.4,damping:.72}); swirlAngle += swirl.value*dt; quiet &&= Math.abs(swirl.value) < .035 && coating.value < .035 && strandTail === 0
     if (batter) { const u=batter.material.uniforms; u.phase.value=swirlAngle;u.work.value=Math.abs(swirl.value);u.ripple.value=Math.min(1,Math.abs(swirl.velocity)*.04+Math.abs(swirl.value)*.15);u.brush.value.set(normalized(cursor).x,-normalized(cursor).y);u.fade.value=1-smoothBake() }
-    quiet=quiet&&honeyDrop===null;physicalQuiet = quiet; settleHoney(model,dt,quiet)
+    quiet=quiet&&honeyDrop===null&&creamRelease===null;physicalQuiet = quiet; settleHoney(model,dt,quiet)
     updateFoodState(); layout()
     if (stream && streamGeometry) {
       const show = (family === 'honeyPear' || family === 'windParfait') && (pouring || strandTail > 0) && coating.value > .005
       stream.visible = show; stream.position.set(0,0,21);stream.scale.set(1,1,1)
-      const strength=painting?1:strandTail,bottom={x:contact.x,y:contact.y}
+      const strength=painting?1:strandTail,bottom=family==='windParfait'?parfaitReceivingPoint(contact):{x:contact.x,y:contact.y}
       honeyTube?.update({from:{...strandTip,z:0},to:{...bottom,z:0},velocity:{x:contact.vx,y:contact.vy},radius:Math.max(2,surface.rx*.025),tail:1-strength,flow:coating.value,time:elapsed})
       if(pitcherSurface&&spoutFlow&&spoutTube){const jug=parts.get('honey')!,mouth=imagePoint(jug,.47,.265),inside=imagePoint(jug,.31,.245);pitcherSurface.visible=jug.mesh.visible;pitcherSurface.position.set(mouth.x,mouth.y,21);pitcherSurface.scale.set(jug.rect.width*.205,-jug.rect.height*.075,1);pitcherSurface.rotation.z=jug.mesh.rotation.z;pitcherSurface.material.uniforms.time.value=elapsed;pitcherSurface.material.uniforms.flow.value=pitcherTilt.value;spoutFlow.visible=pouring&&coating.value>.03;spoutFlow.position.z=21;spoutTube.update({from:{...inside,z:0},to:{...strandTip,z:0},velocity:{x:0,y:0},radius:Math.max(1.8,surface.rx*.022),tail:0,flow:pouring?coating.value:0,time:elapsed})}
 
@@ -344,7 +411,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
 
 
     }
-    if (model.stage !== previousStage || Math.round(honeyProgress(model)*100)!==previousProgress || finish.disabled !== (lost || !loaded || model.stage !== 'finished' && (!!held || !physicalQuiet))) sync()
+    if (model.stage !== previousStage || Math.round(honeyProgress(model)*100)!==previousProgress ||family==='windParfait'&&Math.round(parfaitTransfer.load*10)!==previousCreamUi|| finish.disabled !== (lost || !loaded || model.stage !== 'finished' && (!!held || !physicalQuiet))) sync()
   }
   function smoothBake() { const p=Math.max(0,Math.min(1,model.baked/2.4));return p*p*(3-2*p) }
   function animate(now: number) {
@@ -354,7 +421,11 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     if (model.stage === 'baking') advanceHoneyBake(model,dt * (reduced.matches ? 3 : 1))
     if(loaded) advanceMaterial(dt)
     if (stream) stream.material.uniforms.time.value = reduced.matches ? 0 : elapsed
-    if (custardSpoon) { custardSpoon.visible = !!held && 'tool' in held && held.tool === 'spoon' && model.stage === 'custard'; const spoon = parts.get('spoon')!, point = imagePoint(spoon, .285, .745); custardSpoon.position.set(point.x, point.y, 21); custardSpoon.scale.set(spoon.rect.width * .125, -spoon.rect.height * .085, 1); custardSpoon.rotation.z = spoon.mesh.rotation.z - .77 }
+    if (custardSpoon) {
+      const spoon=parts.get('spoon')!,point=imagePoint(spoon,.285,.745),amount=Math.sqrt(parfaitTransfer.load/parfaitTransfer.capacity)
+      custardSpoon.visible=spoon.mesh.visible&&model.stage==='custard'&&amount>.025;custardSpoon.position.set(point.x,point.y,21);custardSpoon.scale.set(spoon.rect.width*.14*amount,-spoon.rect.height*.10*amount,1);custardSpoon.rotation.z=spoon.mesh.rotation.z-.77
+      if(creamStream&&creamTube){const time=reduced.matches?0:elapsed;creamStream.visible=creamFlow>.001&&model.stage==='custard';creamStream.material.uniforms.time.value=time;creamTube.update({from:{...point,z:0},to:{...parfaitReceivingPoint(contact),z:0},velocity:{x:contact.vx,y:contact.vy},radius:Math.max(2.5,surface.rx*.032),tail:0,flow:Math.min(1,creamFlow/.85),time})}
+    }
     for (const object of [...parts.values(), ...foods]) if (object.shadow) object.shadow.visible = object.mesh.visible
     renderer.render(scene, camera); frame = requestAnimationFrame(animate)
   }

@@ -74,3 +74,34 @@ test('sustained rolling of a narrow cut section spreads material without inflati
   assert.ok(Math.abs(doughVolume(section)-mass)<1e-5)
   ;[source,...halves].forEach(g=>g.dispose())
 })
+
+test('many separate rolling strokes keep a real dough thickness instead of filling the entire board', () => {
+  const g=createSculptedDough({shape:'round',mass:1.93471,seed:12}),mass=doughVolume(g)
+  for(let stroke=0;stroke<240;stroke++){
+    const box=bounds(g),center=box.getCenter(new THREE.Vector3())
+    const handle=latchDoughHandle(g,center.x+Math.sin(stroke)*.4,center.z+Math.cos(stroke)*.3)
+    shapeDoughHandle(g,handle,0,0,.16,'roll',board)
+  }
+  const box=bounds(g),size=box.getSize(new THREE.Vector3())
+  assert.ok(size.y>=Math.cbrt(mass)*.239,`dough thickness remains ${size.y}`)
+  assert.ok(size.x<6.2&&size.z<4.4,'a usable border stays around the portion')
+  assert.ok(Math.abs(doughVolume(g)-mass)<1e-5)
+  const beforePull=new Float32Array(g.attributes.position.array),center=box.getCenter(new THREE.Vector3())
+  const hand=latchDoughHandle(g,center.x+size.x*.22,center.z)
+  shapeDoughHandle(g,hand,.55,.15,.1,'knead',board)
+  assert.notDeepEqual(g.attributes.position.array,beforePull,'a fully rolled portion can still be shaped by hand')
+  assert.ok(Math.abs(doughVolume(g)-mass)<1e-5)
+  g.dispose()
+})
+
+test('repeated cupping gathers the portion without growing a tower or replacing its mesh', () => {
+  const g=createSculptedDough({shape:'round',mass:1.93471,seed:12}),mass=doughVolume(g),vertices=g.attributes.position.count
+  for(let stroke=0;stroke<160;stroke++){
+    const center=bounds(g).getCenter(new THREE.Vector3()),handle=latchDoughHandle(g,center.x,center.z)
+    shapeDoughHandle(g,handle,0,0,.5,'cup',board)
+  }
+  assert.ok(bounds(g).getSize(new THREE.Vector3()).y<=Math.cbrt(mass)*1.051)
+  assert.equal(g.attributes.position.count,vertices)
+  assert.ok(Math.abs(doughVolume(g)-mass)<1e-5)
+  g.dispose()
+})

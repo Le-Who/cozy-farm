@@ -8,6 +8,7 @@
 .dough-workshop button:focus-visible { outline:3px solid #efb9ff; outline-offset:3px; filter:drop-shadow(0 0 5px #e6a7fb); }
 .dough-workshop .workshop-object { position:absolute; min-width:44px; min-height:44px; margin:0; padding:0; border:0; border-radius:45%; background:transparent; box-shadow:none; pointer-events:auto; }
 .dough-workshop .workshop-object:disabled { cursor:default; }
+.dough-workshop .workshop-object:is([data-prop="pin"],[data-prop="knife"],[data-prop="scraper"]) { pointer-events:none; }
 .workshop-object:focus-visible { background:#e8c6ff15!important; }
 .dough-workshop .workshop-close { position:absolute; min-width:44px; min-height:44px; padding:0; border:0; background-color:transparent; background-repeat:no-repeat; background-position:center; background-size:contain; box-shadow:none; pointer-events:auto; z-index:5; }
 .dough-workshop .workshop-bake { position:absolute; min-width:90px; min-height:44px; padding:0; border:0; background-color:transparent; background-repeat:no-repeat; background-position:center; background-size:contain; box-shadow:none; pointer-events:auto; z-index:4; color:#753708; text-shadow:0 1px 0 #ffe9a2,0 -1px 0 #5c290866; font-size:calc(68px*var(--workshop-art-scale,.5)); font-weight:700; line-height:1; }
@@ -18,43 +19,32 @@
 .workshop-ingredients { position:absolute; display:flex; align-items:center; gap:5%; pointer-events:none; font-size:clamp(17px,calc(45px*var(--workshop-art-scale,.5)),45px); font-weight:700; line-height:1; }
 .workshop-ingredients>span { display:flex; align-items:center; justify-content:space-evenly; width:48%; height:100%; min-height:34px; padding:3% 9% 3% 3%; border:1px solid #b97735; border-radius:38% / 48%; background:linear-gradient(115deg,#fff9e6,#ffe4b1); box-shadow:inset 0 0 0 2px #fff3d7,inset 0 -3px 4px #d59d5d66,0 3px 4px #723d3266; text-shadow:0 1px #fff5dc; }
 .workshop-ingredients img { width:48%; height:100%; object-fit:contain; filter:drop-shadow(0 1px 1px #7c4b2922); }
-.workshop-hand-menu { position:absolute; display:flex; gap:8px; pointer-events:auto; z-index:10; }
-.dough-workshop .workshop-hand-menu button { display:grid; place-items:center; width:46px; height:46px; padding:4px; border:2px solid #c99148; border-radius:50%; background:linear-gradient(#fff6dc,#f1c47d); box-shadow:inset 0 0 0 2px #fff5d9,0 3px 7px #59372155; }
-.workshop-hand-menu img { width:100%; height:100%; object-fit:contain; }
+.workshop-hand-menu { position:absolute; display:grid; grid-template-columns:repeat(6,44px); gap:6px; pointer-events:auto; z-index:10; }
+.dough-workshop .workshop-hand-menu button { display:flex; flex-direction:column; align-items:center; justify-content:center; width:44px; height:44px; padding:2px; border:2px solid #c99148; border-radius:50%; background:linear-gradient(#fff6dc,#f1c47d); box-shadow:inset 0 0 0 2px #fff5d9,0 3px 7px #59372155; }
+.dough-workshop .workshop-hand-menu button[aria-pressed="true"] { border-color:#9768aa; background:#f0d7f1; box-shadow:inset 0 0 0 2px #fff5ef,0 2px 6px #59372155; }
+.workshop-hand-menu img { width:28px; height:26px; object-fit:contain; }
+.workshop-hand-menu span { font:8px ui-rounded,"Trebuchet MS",sans-serif; color:#704524; line-height:10px; }
+.dough-workshop[data-layout="portrait"] .workshop-hand-menu { grid-template-columns:repeat(3,44px); }
 .workshop-render-status { position:absolute; inset:40% 20%; display:grid; place-items:center; z-index:20; padding:18px; border-radius:16px; background:#fff1dce8; color:#825a3f; text-align:center; font-family:ui-rounded,"Trebuchet MS",sans-serif; font-size:14px; box-shadow:0 5px 20px #54332140; }
 .workshop-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-/* Shape and hand actions stay visible before and during shaping. */
-.workshop-shape-picker { position:absolute; top:10%; left:50%; transform:translateX(-50%); display:flex; gap:7px; width:min(440px,76%); z-index:12; }
-.dough-workshop .workshop-shape-picker button { flex:1; min-width:0; min-height:62px; display:flex; align-items:center; justify-content:center; gap:5px; padding:5px 8px; border:1px solid #ba8f5a; border-radius:16px; color:#74462d; background:#fff3deed; box-shadow:0 3px 8px #482b2833,inset 0 0 0 2px #fff8e8; font:600 13px ui-rounded,"Trebuchet MS",sans-serif; }
-.workshop-shape-picker img { width:47px; height:43px; object-fit:contain; }
+.workshop-shape-picker { position:absolute; top:2%; left:50%; transform:translateX(-50%); display:flex; gap:5px; width:min(300px,60%); z-index:12; }
+.dough-workshop .workshop-shape-picker button { flex:1; min-width:0; min-height:44px; display:flex; align-items:center; justify-content:center; gap:4px; padding:3px 7px; border:1px solid #ba8f5a; border-radius:13px; color:#74462d; background:#fff3deed; box-shadow:0 3px 8px #482b2833,inset 0 0 0 2px #fff8e8; font:600 11px ui-rounded,"Trebuchet MS",sans-serif; }
+.workshop-shape-picker img { width:29px; height:28px; object-fit:contain; }
 .dough-workshop .workshop-shape-picker button[aria-pressed="true"] { border:2px solid #9670ac; background:#f5e8ffed; }
 .workshop-shape-picker button:disabled { opacity:.75; }
-.workshop-accessible-tools { position:absolute; display:flex; gap:5px; justify-content:center; left:50%; top:23%; transform:translateX(-50%); width:max-content; max-width:94%; padding:5px; border-radius:14px; background:#fff2dce8; z-index:12; }
-.dough-workshop .workshop-accessible-tools button { min-width:44px; min-height:44px; border:1px solid #c8975d; border-radius:9px; background:#fff7e5; color:#725039; padding:5px 8px; font:12px ui-rounded,"Trebuchet MS",sans-serif; }
-.workshop-accessible-tools button[aria-pressed="true"] { background:#ead5f2; border-color:#9670ac; }
-.workshop-accessible-tools button:disabled { opacity:.6; }
 .workshop-result { position:absolute; left:50%; transform:translateX(-50%); top:18%; width:max-content; max-width:90%; margin:0; padding:4px 9px; border-radius:10px; background:#fff3e1e8; color:#704524; font:12px ui-rounded,"Trebuchet MS",sans-serif; text-align:center; z-index:11; pointer-events:none; }
 .workshop-result[hidden] { display:none; }
-.dough-workshop[data-layout="portrait"] .workshop-shape-picker { top:8%; width:94%; }
-.dough-workshop[data-layout="portrait"] .workshop-shape-picker button { flex-direction:column; font-size:11px; gap:1px; padding:3px; min-height:66px; }
-.dough-workshop[data-layout="portrait"] .workshop-shape-picker img { width:44px; height:32px; }
+.dough-workshop[data-layout="portrait"] .workshop-shape-picker { top:9%; width:min(300px,94%); }
 .dough-workshop[data-layout="portrait"] .workshop-result { top:20%; font-size:11px; }
-.dough-workshop[data-layout="portrait"] .workshop-accessible-tools { top:24%; gap:3px; padding:3px; }
-.dough-workshop[data-layout="portrait"] .workshop-accessible-tools button { padding:4px 3px; font-size:10px; }
-.dough-workshop[data-layout="landscape"] .workshop-shape-picker { top:1.5%; width:60%; }
+.dough-workshop[data-layout="landscape"] .workshop-shape-picker { top:1.5%; width:min(300px,55%); }
 .dough-workshop[data-layout="landscape"] .workshop-shape-picker button { min-height:44px; padding:2px 4px; font-size:11px; border-radius:11px; }
 .dough-workshop[data-layout="landscape"] .workshop-shape-picker img { height:30px; width:35px; }
-.dough-workshop[data-layout="landscape"] .workshop-accessible-tools { top:19%; gap:3px; padding:3px; }
-.dough-workshop[data-layout="landscape"] .workshop-accessible-tools button { min-height:44px; padding:3px 5px; font-size:10px; }
 .dough-workshop[data-layout="landscape"] .workshop-result { top:auto; bottom:1.5%; font-size:11px; }
 @media(prefers-reduced-motion:reduce) { .dough-workshop * { scroll-behavior:auto!important; transition:none!important; } }
 
 .dough-workshop .workshop-view:focus-visible { outline:0; box-shadow:none; }
 .workshop-gesture-cue { position:absolute; display:grid; place-items:center; pointer-events:none; color:#704524; font:clamp(12px,1.15vw,16px) ui-rounded,"Trebuchet MS",sans-serif; font-weight:600; line-height:1.15; text-align:center; text-shadow:0 1px 2px #ffe8bfc9; }
 .workshop-gesture-cue[hidden] { display:none; }
-.dough-workshop .workshop-hand-menu button { width:52px; height:62px; padding:4px; border-radius:18px; grid-template-rows:34px auto; }
-.workshop-hand-menu img { max-height:34px; }
-.workshop-hand-menu span { font:11px ui-rounded,"Trebuchet MS",sans-serif; color:#704524; }
 .workshop-cut-preview { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 .workshop-cut-preview[hidden] { display:none; }
 .workshop-cut-preview path { fill:none; stroke-linecap:round; stroke-linejoin:round; }
@@ -71,5 +61,5 @@
 .pastry-pattern-choices span { font-size:12px; }
 .pastry-pattern-choices small { font-size:10px; line-height:1.2; }
 
-.dough-workshop:is([data-stage="baking"],[data-stage="finished"]) :is(.workshop-shape-picker,.workshop-accessible-tools,.workshop-hand-menu,.workshop-object[data-tool],.workshop-ingredients) { display:none!important; }
+.dough-workshop:is([data-stage="baking"],[data-stage="finished"]) :is(.workshop-shape-picker,.workshop-hand-menu,.workshop-object[data-tool],.workshop-ingredients) { display:none!important; }
 .dough-workshop:is([data-stage="baking"],[data-stage="finished"]) .workshop-result { top:10%; bottom:auto; font-size:clamp(12px,1.5vw,19px); padding:7px 15px; }

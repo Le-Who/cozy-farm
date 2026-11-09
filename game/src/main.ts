@@ -1,3 +1,4 @@
+import {applyIngredientFinishes} from './ingredient-finish'
 import './style.css'
 import './navigation.css'
 import { ruPlural } from './ru'
@@ -6,7 +7,7 @@ import { getIslandJourneys } from './journey'
 import { getDiscoveryTask } from './discovery-path'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
-import {signatureBook,signatureStudio,coveControls,signaturePortionStock,escapeRecipeText as escapeHtml} from './culinary-ui'
+import {signatureBook,signatureStudio,coveControls,signaturePortionStock,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
 import { communityBoard, communityIntent, neighborDetail, type CommunityArt } from './community-ui'
 import {
@@ -560,15 +561,12 @@ const communityArt: CommunityArt = {
   icon,
   offerIcon(offer) {
     if (offer.source === 'signature') {
-      if (offer.identity === 'preserves') return icon(`ui-signature-${offer.processing}`)
       const recipe = farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === offer.id)
-      const fruit = recipe?.ingredients.map(part => part.id) ?? []
-      const berry = fruit[0]
-      const base = berry && fruit.every(id => id === berry) && ['strawberry', 'blueberry', 'raspberry'].includes(berry) ? `tart-${berry}` : 'tart'
-      const topping = (id: string) => id === 'apple' ? 'apple-slice' : id === 'pear' ? 'pear-piece' : id === 'peach' ? 'peach-slice' : id
-      return `<span class="signature-tart"><img class="signature-tart-base" src="${import.meta.env.BASE_URL}art/lavender/cookery/${base}.webp" alt="">${recipe?.result.fruit.map(point => `<img class="signature-topping" src="${import.meta.env.BASE_URL}art/lavender/cookery/${topping(point.ingredientId)}.webp" alt="" style="left:${50 + point.x * 27}%;top:${46 + point.y * 18}%;transform:translate(-50%,-50%) rotate(${point.angle}rad)">`).join('') ?? ''}</span>`
+      if (recipe) return signatureResultPicture(recipe,{icon})
     }
+    if (offer.preparation && (offer.preparation.family==='decorate'||offer.preparation.family==='preserves')) return cookeryResultPicture(offer.preparation,offer.recipeIngredients??[],{icon})
     return icon(offer.source === 'dish' ? dishIcons[offer.identity as DishId] : pastryIcons[offer.identity as WorkshopShape])
+
   },
 }
 const archiveIcons: Record<string, string> = {
@@ -865,6 +863,19 @@ function marketCards() {
   if(marketCategory==='trees')return controls+categories+`<ul class="dialog-list market-shop">${treeIds.map(tree=>{const definition=treeDefinitions[tree];return row('ui-tree-'+tree,definition.saplingName,quantity(definition.days,'ночь')+' до зрелости',button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,cost:{icon:'coin',amount:definition.saplingPrice}}))}).join('')}</ul>`
   if(marketCategory==='care')return controls+categories+`<ul class="dialog-list market-shop">${row('tool-feed','Корм для кур',quantity(feedBagSize,'порция'),button('Купить','buy-feed',farm.coins>=feedBagPrice,{cost:{icon:'coin',amount:feedBagPrice}}))}${row('tool-can','Большая лейка',`Объём: ${expandedWaterCapacity}`,button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{cost:farm.canUpgraded?undefined:{icon:'coin',amount:canUpgradePrice}}))}</ul>`
   return controls+categories+`<ul class="dialog-list market-shop">${buildingIds.map(building=>row('upgrade-'+building+'-card',buildingDefinitions[building].name,buildingDefinitions[building].benefit,button(farm.buildingLevels[building]>=2?'Посмотреть':'Улучшить',farm.buildingLevels[building]>=2?'upgrades':'upgrade-building',farm.buildingLevels[building]>=2||farm.coins>=buildingDefinitions[building].upgradePrice,{value:building,...(farm.buildingLevels[building]<2?{cost:{icon:'coin' as const,amount:buildingDefinitions[building].upgradePrice}}:{})}))).join('')}</ul>`+nav(button('Причал','visit-boat',true,{secondary:true}))
+}
+
+function treeSelector() {
+  if (farm.island !== 'home' && farm.island !== 'grove') return ''
+  const choices = farm.trees[farm.island].flatMap((slot,index) => {
+    if (!slot && index !== treeSlot) return []
+    const name = slot ? treeDefinitions[slot.tree].treeName : 'Свободное место'
+    const label = name + ', место ' + (index + 1) + (slot?.fruitReady ? ', плодов: ' + slot.fruitReady : '')
+    return [`<button type="button" data-action="tree-slot" data-value="${index}" aria-pressed="${index === treeSlot}" aria-label="${label}" title="${label}">
+      ${icon(slot ? 'ui-tree-' + slot.tree : 'orchard')}<small>${index + 1}</small>
+    </button>`]
+  })
+  return choices.length > 1 ? `<nav class="tree-selector" aria-label="Деревья этого острова">${choices.join('')}</nav>` : ''
 }
 
 function treeRow(index: number) {
@@ -1347,7 +1358,7 @@ function drawPanel() {
       cookeryGame = createCookery(dialogContent.querySelector<HTMLElement>('.cookery-host')!, {
         recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??familyName??'Мой рецепт':preparedDish==='grilledFish'?`${fishDefinitions[preparedFish].name} на гриле`:recipe.name, kind, signature,processing:savedRecipe?.processing,fishSpecies:preparedDish==='grilledFish'?preparedFish:undefined,
           selectedFruit,fruitOptions:selectedFruit.map(part=>({id:part.id,name:signatureFruitNames[part.id as typeof signatureFruitIds[number]],art:part.id==='apple'?'apple-slice':part.id==='pear'?'pear-piece':part.id==='peach'?'peach-slice':part.id})),
-          ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity})) },
+          ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity,...(item.kind==='variants'?{trait:item.trait}:{})})) },
         returnLabel: communityRequest ? 'К просьбе' : undefined,
         onComplete(result) {if(made)return true;if(panel!=='cookery')return false;made=perform(()=>{
           const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
@@ -1403,14 +1414,15 @@ function drawPanel() {
     case 'tree': {
       if(farm.island!=='home'&&farm.island!=='grove')break
       const slot=farm.trees[farm.island][treeSlot],action=getTreeAction(farm,treeSlot)
+      dialogEmblem.src = iconUrl(slot ? 'ui-tree-' + slot.tree : 'orchard')
       dialogTitle.textContent=slot?`${treeDefinitions[slot.tree].treeName}`:'Посадить дерево'
       dialogTitle.setAttribute('aria-label',dialogTitle.textContent)
       if(slot){
         const definition=treeDefinitions[slot.tree],growing=slot.age<definition.days
-        dialogContent.innerHTML=`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}<strong>${growing?`До зрелости: ${quantity(definition.days-slot.age, 'ночь')}`:slot.fruitReady?`Плодов к сбору: ${slot.fruitReady}`:'Новые плоды завтра'}</strong>
+        dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong>${growing ? 'До зрелости: ' + quantity(definition.days-slot.age,'ночь') : 'Новые плоды завтра'}</strong>`}
           ${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):button(farm.island==='home'?'До утра':'Домой',farm.island==='home'?'sleep':'sail',true,{value:farm.island==='home'?undefined:'home',secondary:true})}</div>`
       }else{
-        dialogContent.innerHTML=`<div class="sapling-options">${treeIds.map(tree=>{
+        dialogContent.innerHTML=treeSelector()+`<div class="sapling-options">${treeIds.map(tree=>{
           const definition=treeDefinitions[tree],owned=farm.saplings[tree]>0
           return `<article class="sapling-option">${icon(`ui-tree-${tree}`)}<h2>${definition.treeName}</h2><span>До зрелости: ${quantity(definition.days, 'ночь')}</span>${button(owned?'Посадить':'Купить и посадить','buy-plant-tree',owned||farm.coins>=definition.saplingPrice,{value:tree,context:`${definition.treeName}`,cost:owned?undefined:{icon:'coin',amount:definition.saplingPrice}})}</article>`
         }).join('')}</div>`
@@ -1450,6 +1462,7 @@ function drawPanel() {
     }
   }
 
+  applyIngredientFinishes(dialogContent)
   if (focused) {
     const replacement = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
       .find((candidate) => candidate.dataset.action === focused.dataset.action && candidate.dataset.crop === focused.dataset.crop && candidate.dataset.value === focused.dataset.value)
@@ -2161,6 +2174,16 @@ app.addEventListener('click', async (event) => {
       break
     case 'serve-guest': perform(() => serveFairGuest(farm), true); break
     case 'visit-boat': activateTarget({ kind: 'boat' }); break
+    case 'tree-slot': {
+      if (panel !== 'tree' || (farm.island !== 'home' && farm.island !== 'grove')) break
+      const index = Number(value)
+      if (!Number.isInteger(index) || !farm.trees[farm.island][index]) break
+      treeSlot = index
+      island.visit({kind:'tree',index})
+      drawPanel()
+      dialogContent.querySelector<HTMLButtonElement>('.tree-selector [aria-pressed="true"]')?.focus({preventScroll:true})
+      break
+    }
     case 'visit-tree': activateTarget({ kind: 'tree', index: Number(value) }); break
     case 'pet': activateTarget({ kind: 'hen', index: Number(value) }); break
     case 'gather-salt': activateTarget({ kind: 'salt' }); break
@@ -2284,7 +2307,7 @@ dialog.addEventListener('cancel', event => { if (communityRequest && (panel === 
 dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&panelHistory.length){event.preventDefault();goBack()}})
 dialog.addEventListener('keydown', event => {
   if (event.altKey || event.ctrlKey || event.metaKey || !(event.target instanceof HTMLButtonElement)) return
-  const selector = event.target.closest('.island-selector,.house-selector')
+  const selector = event.target.closest('.island-selector,.house-selector,.tree-selector')
   if (!selector || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
   const choices = [...selector.querySelectorAll<HTMLButtonElement>('button')]
   const index = choices.indexOf(event.target)

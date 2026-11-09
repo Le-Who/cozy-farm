@@ -1,4 +1,6 @@
 import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
+import { cookeryFinishTraits, type SignatureRecipe } from './culinary';
+import { finishedIngredient } from './ingredient-finish';
 import { createRasterLibrary } from './raster';
 import { createWorld } from './world';
 import { beach, buildingUpgrades, cape, capeBuildings, capeKitchenSteam, capeKitchenStop, docks, landscape, orchard, plots, projectStages, saltCove, scenePoint, sceneScale, shoal, shoalPlate, specializationStages, village, windmillSails } from './lavender-layout';
@@ -31,6 +33,7 @@ type Footfall = { x: number; y: number; began: number; side: number };
 type Spring = { value: number; speed: number };
 type CapeWork = { target: { kind: 'flower'; index: number } | { kind: 'hive' | 'honey-kitchen' }; commit: () => boolean; reward?: string; began?: number; hit: boolean };
 
+const servedJars = new WeakMap<SignatureRecipe, HTMLImageElement | HTMLCanvasElement>();
 const WORLD = { w: 1440, h: 900 };
 const HOME = scenePoint(1174, 585);
 const sceneOrigin=scenePoint(0,0);
@@ -781,11 +784,19 @@ export function createIsland(
         const signature = plan.food.id.startsWith('signature:')
           ? farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === plan.food!.id) : undefined;
         const food = neighborFoodArt(plan.food.id, signature);
+        let jar = signature && servedJars.get(signature);
+        if (signature?.base === 'preserves' && !jar) {
+          const artwork = art.image(food);
+          if (artwork) {
+            jar = finishedIngredient(artwork, cookeryFinishTraits(signature.result, signature.ingredients), 'jar');
+            servedJars.set(signature, jar);
+          }
+        }
         const native = plan.episode === 'beaTea' ? { x: 1004, y: 618 }
           : { x: scene.prop.x + 4, y: scene.prop.y - 24 };
         const contact = scenePoint(native.x, native.y);
         art.draw(world, food, contact.x, contact.y, 33 * sceneScale, 33 * sceneScale,
-          { baseline: .9, footY: scenePoint(0, scene.groundY + 1).y });
+          { baseline: .9, footY: scenePoint(0, scene.groundY + 1).y }, jar);
       }
       if (scene.keepsake) {
         const keep = scene.keepsake, contact = scenePoint(keep.point.x, keep.point.y);

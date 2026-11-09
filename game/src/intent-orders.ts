@@ -1,4 +1,4 @@
-import type { CookeryResult, SignatureProcessing } from './culinary.ts';
+import type { CookeryResult, SignatureProcessing, SignatureIngredient } from './culinary.ts';
 
 export const foodQualities = ['berry', 'fruit', 'delicate', 'hearty', 'portable', 'sharing', 'sweet', 'savoury'] as const;
 export type FoodQuality = typeof foodQualities[number];
@@ -6,7 +6,7 @@ export type FoodOfferId = `dish:${string}` | `handmade:${string}` | `signature:$
 export type FoodDescriptor = {
   id: FoodOfferId; name: string; source: 'dish' | 'handmade' | 'signature';
   identity: string; ingredients: readonly string[]; processing?: SignatureProcessing;
-  preparation?: CookeryResult; count: number; sellPrice: number;
+  recipeIngredients?: readonly SignatureIngredient[]; preparation?: CookeryResult; count: number; sellPrice: number;
 };
 export const qualityNames: Record<FoodQuality, string> = {
   berry: 'С ягодами', fruit: 'С фруктами', delicate: 'Нежное',

@@ -11,7 +11,8 @@ export type CookeryResult={
  family:'preserves'|'decorate'|'honeyPear'|'honeyBiscuits'|'windParfait'|'honeyCake'|'grilledFish'
  processing?:SignatureProcessing
  fishSpecies?:FishingSpecies
- fruit:readonly {ingredientId:string;x:number;y:number;angle:number}[]
+ fruitTraitsVersion?:1
+ fruit:readonly {ingredientId:string;x:number;y:number;angle:number;trait?:Trait}[]
  garnish?:readonly {ingredientId:'carrot';x:number;y:number;angle:number}[]
  steps:readonly string[]
  baking?:{method:'oven'|'chilled'|'stovetop'|'grill';finish:'golden'|'soft'|'set';seconds:number}
@@ -32,13 +33,25 @@ const finite=(v:unknown,min:number,max:number):v is number=>typeof v==='number'&
 export function isCookeryResult(value:unknown):value is CookeryResult{
  if(!record(value)||!oneOf(['preserves','decorate','honeyPear','honeyBiscuits','windParfait','honeyCake','grilledFish'],value.family)||value.processing!==undefined&&!oneOf(signatureProcessingIds,value.processing))return false
  if(value.fishSpecies!==undefined&&(value.family!=='grilledFish'||!oneOf(fishingSpecies,value.fishSpecies)))return false
- if(!Array.isArray(value.fruit)||value.fruit.length>24||!value.fruit.every(p=>record(p)&&oneOf(signatureFruitIds,p.ingredientId)&&finite(p.x,-1,1)&&finite(p.y,-1,1)&&finite(p.angle,-Math.PI,Math.PI)))return false
+ if(value.fruitTraitsVersion!==undefined&&value.fruitTraitsVersion!==1)return false
+ if(!Array.isArray(value.fruit)||value.fruit.length>24||!value.fruit.every(p=>record(p)&&oneOf(signatureFruitIds,p.ingredientId)&&(p.trait===undefined||oneOf(traitIds,p.trait))&&finite(p.x,-1,1)&&finite(p.y,-1,1)&&finite(p.angle,-Math.PI,Math.PI)))return false
  if(value.garnish!==undefined&&(!Array.isArray(value.garnish)||value.garnish.length>3||!value.garnish.every(p=>record(p)&&p.ingredientId==='carrot'&&finite(p.x,-1,1)&&finite(p.y,-1,1)&&finite(p.angle,-Math.PI,Math.PI))))return false
  if(!Array.isArray(value.steps)||value.steps.length>24||!value.steps.every(step=>typeof step==='string'&&step.length>0&&step.length<=32&&/^[a-zA-Z0-9 _-]+$/.test(step)))return false
  return value.baking===undefined||record(value.baking)&&oneOf(['oven','chilled','stovetop','grill'],value.baking.method)&&oneOf(['golden','soft','set'],value.baking.finish)&&finite(value.baking.seconds,0,1800)
 }
 export function copyCookeryResult(value:CookeryResult):CookeryResult{
- return {family:value.family,...(value.processing?{processing:value.processing}:{}),...(value.fishSpecies?{fishSpecies:value.fishSpecies}:{}),fruit:value.fruit.map(p=>({ingredientId:p.ingredientId,x:p.x,y:p.y,angle:p.angle})),steps:[...value.steps],...(value.garnish?{garnish:value.garnish.map(p=>({...p}))}:{}),...(value.baking?{baking:{method:value.baking.method,finish:value.baking.finish,seconds:value.baking.seconds}}:{})}
+ return {family:value.family,...(value.processing?{processing:value.processing}:{}),...(value.fishSpecies?{fishSpecies:value.fishSpecies}:{}),...(value.fruitTraitsVersion?{fruitTraitsVersion:value.fruitTraitsVersion}:{}),fruit:value.fruit.map(p=>({ingredientId:p.ingredientId,x:p.x,y:p.y,angle:p.angle,...(p.trait?{trait:p.trait}:{})})),steps:[...value.steps],...(value.garnish?{garnish:value.garnish.map(p=>({...p}))}:{}),...(value.baking?{baking:{method:value.baking.method,finish:value.baking.finish,seconds:value.baking.seconds}}:{})}
+}
+/** New receipts distinguish ordinary pieces explicitly; legacy receipts recover their portion order. */
+export function resolvedCookeryFruit(result:CookeryResult,ingredients:readonly SignatureIngredient[]=[]):CookeryResult['fruit']{
+ if(result.fruitTraitsVersion===1||result.fruit.some(point=>point.trait!==undefined))return result.fruit
+ const portions=new Map<string,(Trait|undefined)[]>(),next=new Map<string,number>()
+ for(const part of ingredients){const list=portions.get(part.id)??[];for(let i=0;i<part.quantity;i++)list.push(part.trait);portions.set(part.id,list)}
+ return result.fruit.map(point=>{const list=portions.get(point.ingredientId),index=next.get(point.ingredientId)??0;next.set(point.ingredientId,index+1);const trait=list?.[index%list.length];return {...point,...(trait?{trait}:{})}})
+}
+export function cookeryFinishTraits(result:CookeryResult|undefined,ingredients:readonly SignatureIngredient[]=[]):Trait[]{
+ const traits=result&&(result.fruitTraitsVersion===1||result.fruit.some(point=>point.trait!==undefined))?result.fruit.map(point=>point.trait):ingredients.map(part=>part.trait)
+ return traitIds.filter(trait=>traits.includes(trait))
 }
 export function normalizeSignatureDraft(value:unknown):SignatureDraft|undefined{
  if(!record(value)||!oneOf(['preserves','tart'],value.base)||!Array.isArray(value.ingredients)||value.ingredients.length<1||value.ingredients.length>2)return
@@ -54,7 +67,7 @@ export function normalizeSignatureDraft(value:unknown):SignatureDraft|undefined{
 }
 export function signatureIdentity(draft:SignatureDraft,result:CookeryResult):string{
  const processing=result.processing??(draft.base==='tart'?'chunky':'bright')
- const fruit=draft.base==='tart'?result.fruit.map(p=>({ingredientId:p.ingredientId,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,angle:Math.round(p.angle*10)/10})):[]
+ const fruit=draft.base==='tart'?resolvedCookeryFruit(result,draft.ingredients).map(p=>({ingredientId:p.ingredientId,...(p.trait?{trait:p.trait}:{}),x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,angle:Math.round(p.angle*10)/10})):[]
  return JSON.stringify([draft.base,draft.ingredients,processing,fruit,result.baking?.method,result.baking?.finish])
 }
 export function validSignatureName(value:unknown):value is string{return typeof value==='string'&&value.trim().length>0&&value.trim().length<=32&&!/[<>\x00-\x1f]/.test(value)}
@@ -66,7 +79,7 @@ export function restoreCulinary(value:unknown,day:number):CulinaryState|undefine
  for(const raw of value.recipes){
   if(!record(raw)||typeof raw.id!=='string'||!/^s[1-9]\d{0,5}$/.test(raw.id)||Number(raw.id.slice(1))>value.serial||recipes.some(r=>r.id===raw.id)||!validSignatureName(raw.name)||typeof raw.favorite!=='boolean'||!oneOf(signatureProcessingIds,raw.processing)||!isCookeryResult(raw.result)||!count(raw.createdOn,day)||raw.createdOn<1||!count(raw.batches)||raw.batches<1||!count(raw.sellPrice,1000)||raw.sellPrice<1)return
   const draft=normalizeSignatureDraft(raw),result=raw.result
-  if(!draft||result.family!==(draft.base==='tart'?'decorate':'preserves')||raw.processing!==(result.processing??(draft.base==='tart'?'chunky':'bright'))||result.fruit.some(p=>!draft.ingredients.some(i=>i.id===p.ingredientId)))return
+  if(!draft||result.family!==(draft.base==='tart'?'decorate':'preserves')||raw.processing!==(result.processing??(draft.base==='tart'?'chunky':'bright'))||result.fruit.some(p=>!draft.ingredients.some(i=>i.id===p.ingredientId&&((p.trait===undefined&&result.fruitTraitsVersion!==1)||i.trait===p.trait))))return
   if(recipes.some(recipe=>signatureIdentity(recipe,recipe.result)===signatureIdentity(draft,result)))return
   recipes.push({id:raw.id,name:raw.name.trim(),favorite:raw.favorite,...draft,ingredients:[...draft.ingredients],processing:raw.processing,result:copyCookeryResult(result),createdOn:raw.createdOn,batches:raw.batches,sellPrice:raw.sellPrice})
  }

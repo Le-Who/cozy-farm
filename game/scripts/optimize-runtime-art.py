@@ -2,7 +2,8 @@
 
 Run from game/: python scripts/optimize-runtime-art.py --apply
 Requires Pillow and NumPy. The pinned revision makes the operation reproducible;
-original authoring images under 01_primary_target are never modified.
+original authoring images under 01_primary_target are never modified. Assets
+replaced or removed since the pinned build retain their current artwork.
 """
 
 import argparse
@@ -114,6 +115,12 @@ def main():
         if drift > .0025:
             raise RuntimeError(f"Visible bounds moved too far: {path} ({drift})")
         target = path.with_suffix(".webp")
+        # The pinned report can be reproduced without restoring superseded artwork.
+        source_changed = path.exists() and target != path and path.read_bytes() != original
+        target_changed = target.exists() and target.read_bytes() not in (original, encoded)
+        if source_changed or target_changed or not (path.exists() or target.exists()):
+            print(f"Skipping revised or removed artwork: {path.relative_to(ART)}", flush=True)
+            continue
         rows.append({"path": target.relative_to(ROOT / "game/public").as_posix(),
                      "sourcePath": path.relative_to(ROOT / "game/public").as_posix(),
                      "beforeBytes": len(original), "afterBytes": len(encoded),

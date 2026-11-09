@@ -25,7 +25,7 @@ export const workshopLayouts: Record<WorkshopLayoutId, WorkshopLayout> = {
   },
   portrait: {
     id: 'portrait', art: { path: 'lavender/workshop-authored/room-portrait.webp', width: 1000, height: 1573 },
-    board: { width: 6.8, depth: 9.5, corners: points([.066,482/1573],[.928,482/1573],[.946,1360/1573],[.061,1360/1573]) },
+    board: { width: 6.8, depth: 9.5, corners: points([.066,482/1573],[.928,482/1573],[.936,.815],[.065,.815]) },
     props: { bowl: box(.14,.32,.35,.19), spoon: box(.2,.30,.16,.13), pin: box(.033,.326,.145,.49),
       knife: box(.772,.394,.178,.188), scraper: box(.716,.641,.233,.158), hand: box(.04,.908,.105,.063) },
     ui: { bake: box(.666,.914,.305,.068), close: box(.89,.018,.085,.052), ingredients: box(.03,.014,.29,.051) },

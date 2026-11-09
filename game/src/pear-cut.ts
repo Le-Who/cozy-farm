@@ -70,8 +70,8 @@ export function createPearCut(options: { radiusX?: number; radiusZ?: number; hei
         const x = original[i] - center.x, z = original[i + 2] - center.z;
         const along = (x * tangent.x + z * tangent.z) / (2 * length) + .5, across = x * normal.x + z * normal.z;
         const bin = Math.floor(along * 16), hit = covered.size ? covered.has(bin) : progress > 0 && along >= 0 && along <= progress;
-        const groove = hit ? Math.exp(-((across / (Math.min(rx, rz) * .075)) ** 2)) : 0;
-        out[i] = original[i]; out[i + 1] = Math.max(0, original[i + 1] - height * .085 * groove * (original[i + 1] / height) ** 2); out[i + 2] = original[i + 2];
+        const groove = hit ? Math.exp(-((across / (Math.min(rx, rz) * .11)) ** 2)) : 0;
+        out[i] = original[i]; out[i + 1] = Math.max(0, original[i + 1] - height * .12 * groove * (original[i + 1] / height) ** 2); out[i + 2] = original[i + 2];
       }
       positions.needsUpdate = true; wholeGeometry.computeVertexNormals();
     },

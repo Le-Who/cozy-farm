@@ -1455,7 +1455,7 @@ export function getSignatureAction(farm:FarmState,draft:SignatureDraft){
 }
 function craftSignature(farm:FarmState,draft:SignatureDraft,result:CookeryResult,quantity:number):ActionResult&{recipeId?:string}{
   const normalized=normalizeSignatureDraft(draft);
-  if(!normalized||!isCookeryResult(result)||result.family!==(normalized.base==='tart'?'decorate':'preserves')||result.fruit.some(p=>!normalized.ingredients.some(part=>part.id===p.ingredientId))||quantity!==1&&quantity!==3)return failure('Выберите готовый рецепт.');
+  if(!normalized||!isCookeryResult(result)||result.family!==(normalized.base==='tart'?'decorate':'preserves')||result.fruit.some(p=>!normalized.ingredients.some(part=>part.id===p.ingredientId&&((p.trait===undefined&&result.fruitTraitsVersion!==1)||part.trait===p.trait)))||quantity!==1&&quantity!==3)return failure('Выберите готовый рецепт.');
   const action=getSignatureAction(farm,normalized),items=action.items.map(item=>({...item,quantity:item.quantity*quantity}));
   if(!action.available||!items.every(item=>ingredientCount(farm,item)>=item.quantity))return failure(action.available?'Соберите ингредиенты для всей партии.':action.label);
   if(!Number.isSafeInteger(farm.workToday+1))return failure('Журнал работ заполнен.');
@@ -1522,7 +1522,7 @@ function foodDescriptors(farm: FarmState): FoodDescriptor[] {
     ...workshopShapes.map(item => ({ id: `handmade:${item}` as const, name: workshopDefinitions[item].name, source: 'handmade' as const,
       identity: item, ingredients: ['wheat', 'eggs'], count: farm.handmade[item], sellPrice: workshopDefinitions[item].sellPrice })),
     ...farm.culinary.recipes.map(recipe => ({ id: `signature:${recipe.id}` as const, name: recipe.name, source: 'signature' as const,
-      identity: recipe.base, ingredients: recipe.ingredients.map(part => part.id), processing: recipe.processing,
+      identity: recipe.base, ingredients: recipe.ingredients.map(part => part.id), recipeIngredients: recipe.ingredients.map(part=>({...part})), processing: recipe.processing,
       preparation: copyCookeryResult(recipe.result), count: farm.culinary.stock[recipe.id] ?? 0, sellPrice: recipe.sellPrice })),
   ];
 }

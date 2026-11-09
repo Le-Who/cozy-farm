@@ -34,7 +34,7 @@ export function latchDoughHandle(geometry: THREE.BufferGeometry, x: number, z: n
 export function shapeDoughHandle(geometry: THREE.BufferGeometry, handle: DoughHandle, dx: number, dz: number, pressure: number, action: DoughHandAction, board: THREE.Box3): void {
   const positions = geometry.getAttribute('position') as THREE.BufferAttribute, out = positions.array as Float32Array
   const travel = Math.hypot(dx, dz), radius = Math.max(handle.radius, travel * 1.15)
-  const press = Math.min(2.2, Math.max(0, pressure)), floor = .002
+  const press = Math.min(action === 'cup' ? .75 : 1.1, Math.max(0, pressure)), floor = .002
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, minY = Infinity, maxY = -Infinity
   for (let i = 0; i < out.length; i += 3) {
     const x = handle.positions[i], y = handle.positions[i + 1], z = handle.positions[i + 2]
@@ -59,7 +59,8 @@ export function shapeDoughHandle(geometry: THREE.BufferGeometry, handle: DoughHa
   // Correct the pressure field's volume error by spreading sideways first.
   // Repeated local rolling must not inflate untouched tips vertically.
   const deformedVolume=volume(out,geometry.index),spreadCorrection=deformedVolume>1e-9?Math.sqrt(handle.volume/deformedVolume):1
-  const scaleX = Math.min(spreadCorrection, (board.max.x - board.min.x) / Math.max(.001, maxX - minX)), scaleZ = Math.min(spreadCorrection, (board.max.z - board.min.z) / Math.max(.001, maxZ - minZ))
+  const maximumSpan=Math.cbrt(handle.volume)*3.35
+  const scaleX = Math.min(spreadCorrection, Math.min(maximumSpan,board.max.x - board.min.x) / Math.max(.001, maxX - minX)), scaleZ = Math.min(spreadCorrection, Math.min(maximumSpan,board.max.z - board.min.z) / Math.max(.001, maxZ - minZ))
   const centerX = (minX + maxX) / 2, centerZ = (minZ + maxZ) / 2
   const shiftX = Math.max(board.min.x - (centerX + (minX - centerX) * scaleX), Math.min(0, board.max.x - (centerX + (maxX - centerX) * scaleX)))
   const shiftZ = Math.max(board.min.z - (centerZ + (minZ - centerZ) * scaleZ), Math.min(0, board.max.z - (centerZ + (maxZ - centerZ) * scaleZ)))
@@ -71,8 +72,17 @@ export function shapeDoughHandle(geometry: THREE.BufferGeometry, handle: DoughHa
   // Incompressibility: displaced dough spreads sideways; the remaining small error
   // is corrected vertically, preserving the authored topology and actual cut volume.
   const currentVolume = volume(out, geometry.index), correction = currentVolume > 1e-9 ? handle.volume / currentVolume : 1
-  const maxHeight=action==='knead'||action==='roll'?handle.height*1.00001:Math.max(handle.height,Math.cbrt(handle.volume)*(action==='cup'?1.45:1.65))
+  const maxHeight=action==='roll'?handle.height*1.00001:Math.min(handle.height*1.22,Math.max(handle.height,Math.cbrt(handle.volume)*1.05))
   if((maxY-minY)*correction>maxHeight){out.set(handle.positions);positions.needsUpdate=true;return}
-  for (let i = 1; i < out.length; i += 3) out[i] *= correction
+  // A portion has a material thickness even after many separately latched strokes.
+  // Restore that thickness by gathering its footprint, keeping the same volume.
+  const minimumHeight=Math.min(handle.height,Math.cbrt(handle.volume)*.24)
+  const heightScale=Math.max(1,minimumHeight/Math.max(.0001,(maxY-minY)*correction))
+  const gather=1/Math.sqrt(heightScale)
+  for (let i = 0; i < out.length; i += 3) {
+    out[i]=centerX+(out[i]-centerX)*gather
+    out[i+1]*=correction*heightScale
+    out[i+2]=centerZ+(out[i+2]-centerZ)*gather
+  }
   positions.needsUpdate = true
 }

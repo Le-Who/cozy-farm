@@ -1,6 +1,6 @@
 import {getSignatureAction,getSignatureStock,ingredientCount,type FarmState,type StockItem} from './farm'
-import {signatureFruitIds,signatureFruitNames,signatureProcessingDefinitions,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary'
-import {traitIds} from './climate'
+import {signatureFruitIds,signatureFruitNames,signatureProcessingDefinitions,resolvedCookeryFruit,cookeryFinishTraits,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary'
+import {traitIds,type Trait} from './climate'
 import {getCoveEcology,type CoveChoices} from './shoreline'
 import './culinary-ui.css'
 import {traitLabel} from './ru'
@@ -16,12 +16,19 @@ export function signaturePortionStock(farm:FarmState,part:SignatureIngredient):n
 const ingredientName=(part:SignatureIngredient)=>part.trait?`${traitLabel(part.trait,part.id)} ${signatureFruitNames[part.id].toLowerCase()}`:signatureFruitNames[part.id]
 const control=(text:string,action:string,id:string,enabled=true,extra='')=>`<button type="button" class="dialog-button" data-action="${action}" data-value="${id}" ${enabled?'':'disabled'} ${extra}>${text}</button>`
 
-function resultPicture(recipe:SignatureRecipe,art:Icons){
-  if(recipe.base==='preserves')return art.icon(`ui-signature-${recipe.processing}`,'signature-jar')
+export function finishedIcon(markup:string,traits:readonly Trait[],surface:'fruit'|'jar'='fruit'):string{
+ const finish=traitIds.filter(trait=>traits.includes(trait)).join(' ')
+ return finish?markup.replace(/<img\b([^>]*)>/,`<img $1 data-finish="${finish}"${surface==='jar'?' data-surface="jar"':''}>`):markup
+}
+export function cookeryResultPicture(result:CookeryResult,ingredients:readonly SignatureIngredient[],art:Pick<Icons,'icon'>,processing=result.processing??'bright'):string{
+  if(result.family==='preserves')return finishedIcon(art.icon(`ui-signature-${processing}`,'signature-jar'),cookeryFinishTraits(result,ingredients),'jar')
   const topping=(id:string)=>id==='apple'?'apple-slice':id==='pear'?'pear-piece':id==='peach'?'peach-slice':id
-  const fruit=recipe.ingredients.map(part=>part.id),berry=fruit[0]
+  const points=resolvedCookeryFruit(result,ingredients),fruit=points.length?points.map(point=>point.ingredientId):ingredients.map(part=>part.id),berry=fruit[0]
   const base=fruit.every(id=>id===berry)&&['strawberry','blueberry','raspberry'].includes(berry)?`tart-${berry}`:'tart'
-  return `<span class="signature-tart"><img class="signature-tart-base" src="${import.meta.env.BASE_URL}art/lavender/cookery/${base}.webp" alt="">${recipe.result.fruit.map(p=>`<img class="signature-topping" src="${import.meta.env.BASE_URL}art/lavender/cookery/${topping(p.ingredientId)}.webp" alt="" style="left:${50+p.x*27}%;top:${46+p.y*18}%;transform:translate(-50%,-50%) rotate(${p.angle}rad)">`).join('')}</span>`
+  return `<span class="signature-tart"><img class="signature-tart-base" src="${import.meta.env.BASE_URL}art/lavender/cookery/${base}.webp" alt="">${points.map(p=>`<img class="signature-topping" ${p.trait?`data-finish="${p.trait}"`:''} src="${import.meta.env.BASE_URL}art/lavender/cookery/${topping(p.ingredientId)}.webp" alt="" style="left:${50+p.x*27}%;top:${46+p.y*18}%;transform:translate(-50%,-50%) rotate(${p.angle}rad)">`).join('')}</span>`
+}
+export function signatureResultPicture(recipe:SignatureRecipe,art:Pick<Icons,'icon'>):string{
+ return cookeryResultPicture(recipe.result,recipe.ingredients,art,recipe.processing)
 }
 
 export function signatureBook(farm:FarmState,art:Icons):string{
@@ -30,7 +37,7 @@ export function signatureBook(farm:FarmState,art:Icons):string{
     ${recipes.length?`<div class="signature-pages">${recipes.map(({recipe,count})=>{
       const action=getSignatureAction(farm,recipe),batch=action.available&&action.items.every(item=>ingredientCount(farm,item)>=item.quantity*3)
       return `<article class="signature-page" data-recipe="${recipe.id}"><header>${control(recipe.favorite?'★':'☆','favorite-signature',recipe.id,true,`aria-label="${recipe.favorite?'Убрать из избранного':'В избранное'} ${escapeRecipeText(recipe.name)}" aria-pressed="${recipe.favorite}"`)}<input aria-label="Название рецепта" data-recipe-name="${recipe.id}" value="${escapeRecipeText(recipe.name)}" maxlength="32"></header>
-      <div class="signature-result">${resultPicture(recipe,art)}<div><strong class="signature-stock">×${count}</strong><span>${signatureProcessingDefinitions[recipe.processing].name}</span><div class="signature-stamps">${recipe.ingredients.map(part=>`<span ${part.trait?`data-trait="${part.trait}"`:''} title="${ingredientName(part)}">${art.icon(ingredientArt(part.id))}<b>${part.quantity}</b></span>`).join('')}</div></div></div>
+      <div class="signature-result">${signatureResultPicture(recipe,art)}<div><strong class="signature-stock">×${count}</strong><span>${signatureProcessingDefinitions[recipe.processing].name}</span><div class="signature-stamps">${recipe.ingredients.map(part=>`<span ${part.trait?`data-trait="${part.trait}"`:''} title="${ingredientName(part)}">${finishedIcon(art.icon(ingredientArt(part.id)),part.trait?[part.trait]:[])}<b>${part.quantity}</b></span>`).join('')}</div></div></div>
       <div class="signature-actions">${control('Приготовить ещё','make-signature',recipe.id)}${control('Партия ×3','batch-signature',recipe.id,batch)}${control(`Продать · ${recipe.sellPrice}`,'sell-signature',recipe.id,count>0&&farm.island==='home')}${control('Устроить пикник','use-signature',recipe.id,count>0&&farm.culinary.picnic===null,`title="${signatureProcessingDefinitions[recipe.processing].use}"`)}</div>
       ${farm.island==='village'&&farm.village.built?`<div class="signature-neighbours">${(['bea','finn'] as const).filter(id=>farm.village.residents.includes(id)).map(id=>control(`${art.icon('ui-'+id)}${id==='bea'?'Беа':'Финн'}${farm.culinary.tastings[id].favoriteIds.includes(recipe.id)?' ♥':''}`,'taste-signature',recipe.id,count>0&&farm.culinary.tastings[id].servedOn!==farm.day,`data-resident="${id}"`)).join('')}${control('Ужин вместе','supper-signature',recipe.id,count>0&&farm.village.mealOn!==farm.day&&farm.fish[farm.village.residents.includes('finn')?'seaBass':'perch']>0)}</div>`:''}
       ${!count&&!recipe.favorite?`<button class="signature-forget" type="button" data-action="forget-signature" data-value="${recipe.id}">Удалить пустой рецепт</button>`:''}</article>`
@@ -49,8 +56,8 @@ export function signatureStudio(farm:FarmState,base:SignatureDraft['base'],slots
     ? 'Для чаепития разотрите варенье до нежной текстуры'
     : 'Для просьбы нужно: ' + preview.requiredQualities.filter(q=>!preview.qualities.includes(q)).map(q=>qualityNames[q]).join(', ') : ''
   return `<div class="recipe-studio">${fit ? `<p class="signature-request-fit" role="status">${fit}</p>` : ''}<div class="recipe-base-tabs">${(['preserves','tart'] as const).map(kind=>control(`${art.icon(kind==='tart'?'ui-tart':'ui-apple-jam')}${kind==='tart'?'Тарт':'Варенье'}`,'signature-base',kind,true,`aria-pressed="${base===kind}"`)).join('')}</div>
-    <div class="recipe-portions">${slots.map((part,index)=>`<button type="button" class="recipe-portion" data-action="signature-slot" data-value="${index}" aria-pressed="${activeSlot===index}" aria-label="${index?'Вторая':'Первая'} порция фруктов">${part?`${art.icon(ingredientArt(part.id))}<span>${ingredientName(part)}</span>`:'<span class="portion-plus" aria-hidden="true">+</span>'}</button>`).join('<span class="portion-join" aria-hidden="true">+</span>')}</div>
-    <div class="recipe-fruit-palette">${choices.map(part=>{const count=signaturePortionStock(farm,part);return `<button type="button" data-action="signature-fruit" data-value="${part.id}" ${part.trait?`data-trait="${part.trait}"`:''} data-empty="${count===0}" aria-label="${ingredientName(part)}, в наличии: ${count}">${art.icon(ingredientArt(part.id))}<strong>${ingredientName(part)}</strong><span>×${count}</span></button>`}).join('')}</div>
+    <div class="recipe-portions">${slots.map((part,index)=>`<button type="button" class="recipe-portion" data-action="signature-slot" data-value="${index}" aria-pressed="${activeSlot===index}" aria-label="${index?'Вторая':'Первая'} порция фруктов">${part?`${finishedIcon(art.icon(ingredientArt(part.id)),part.trait?[part.trait]:[])}<span>${ingredientName(part)}</span>`:'<span class="portion-plus" aria-hidden="true">+</span>'}</button>`).join('<span class="portion-join" aria-hidden="true">+</span>')}</div>
+    <div class="recipe-fruit-palette">${choices.map(part=>{const count=signaturePortionStock(farm,part);return `<button type="button" data-action="signature-fruit" data-value="${part.id}" ${part.trait?`data-trait="${part.trait}"`:''} data-empty="${count===0}" aria-label="${ingredientName(part)}, в наличии: ${count}">${finishedIcon(art.icon(ingredientArt(part.id)),part.trait?[part.trait]:[])}<strong>${ingredientName(part)}</strong><span>×${count}</span></button>`}).join('')}</div>
     ${slots.every(Boolean)?`<ul class="ingredients recipe-cost">${action.items.map(art.stock).join('')}</ul>`:''}
     <footer>${away?control('Домой','signature-home','home'):upgrade?control('Улучшить дом','upgrades',''):control('Готовить','start-signature',base,action.available)}</footer></div>`
 }

@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { syncHoneyCoating,HONEY_PEAR_EACH_HALF } from '../src/honey-cookery-model.ts'
+import { syncHoneyCoating,HONEY_PEAR_EACH_HALF,depositParfaitCustard,depositParfaitHoney } from '../src/honey-cookery-model.ts'
+import {createParfaitTransfer} from '../src/parfait-transfer.ts'
 import { advanceHoneyBake, beginHoneyStroke, cancelHoney, completeHoney, createHoneyModel, createHoneyFilm, depositHoneyPiece, measuredHoneyCoverage, reportHoneyCoating, endHoneyStroke, honeyBiscuitCenters, moveHoneyStroke, placeHoneyFruit, recordHoneyKnife, workHoneyPiece, settleHoney, startHoneyBake, type HoneyModel } from '../src/honey-cookery-model.ts'
 
 function sweep(model: HoneyModel, tool: 'spoon' | 'honey') {
   beginHoneyStroke(model, tool, { x: -.8, y: -.6 })
+  if(model.family==='windParfait'){
+    if(tool==='spoon'){const cream=createParfaitTransfer();for(let scoop=0;scoop<3;scoop++){for(let i=0;i<8;i++)cream.step(.05,true,false);for(let i=0;i<12;i++)depositParfaitCustard(model,cream.step(.05,false,true))}}
+    else for(let i=0;i<60;i++)depositParfaitHoney(model,{x:0,y:0},.05)
+    endHoneyStroke(model);for(let i=0;i<4;i++)settleHoney(model,.05,true);return
+  }
   if(tool==='honey'&&model.family==='honeyPear'){for(let i=0;i<4;i++)reportHoneyCoating(model,i,1);endHoneyStroke(model);for(let i=0;i<4;i++)settleHoney(model,.05,true);return}
   if(tool==='honey'&&model.family==='honeyBiscuits'){for(let pass=0;pass<3;pass++)for(let piece=0;piece<4;piece++){let previous={x:.15,y:.5};for(let i=0;i<17;i++){const a=i/16*Math.PI*2,point={x:.5+Math.cos(a)*.32,y:.5+Math.sin(a)*.32};depositHoneyPiece(model,piece,previous,point,.25);previous=point}depositHoneyPiece(model,piece,previous,{x:.5,y:.5},.25)}endHoneyStroke(model);for(let i=0;i<4;i++)settleHoney(model,.05,true);return}
   for (let y = -.76; y <= .76; y += .12) {
@@ -81,6 +87,16 @@ test('only actual view traces can advance a cut, and partial material marks pers
   beginHoneyStroke(model,'knife',{x:0,y:0});recordHoneyKnife(model,0,.2,Array.from({length:16},(_,i)=>i));endHoneyStroke(model)
   assert.equal(model.cuts.has(0),true)
 })
+
+test('a peach released on the painted glass rim settles inside the fruit layer', () => {
+  const model = createHoneyModel('windParfait'); model.stage = 'fruit';
+  assert.equal(placeHoneyFruit(model, 0, { x: 1.04, y: .1 }), true);
+  assert.ok(Math.abs(Math.hypot(model.fruit[0].x, model.fruit[0].y) - .8) < 1e-9);
+  assert.equal(placeHoneyFruit(model, 1, { x: .2, y: -.3 }), true);
+  assert.deepEqual({ x: model.fruit[1].x, y: model.fruit[1].y }, { x: .2, y: -.3 });
+  assert.equal(placeHoneyFruit(model, 2, { x: 1, y: 1 }), false);
+  assert.equal(placeHoneyFruit(model, 2, { x: NaN, y: 0 }), false);
+});
 
 test('honey readiness waits for both release and a continuous physically settled interval',()=>{
   const model=createHoneyModel('honeyPear');model.stage='glaze'

@@ -31,7 +31,9 @@ export const inCookerySurface = (point: CookeryPoint, radius = .91) => Number.is
 
 export function placeCookeryFruit(model: CookeryModel, id: number, point: CookeryPoint): boolean {
   const canArrange = model.kind === 'decorate' && ['fruit', 'sprinkle', 'ready'].includes(model.stage)
-  if ((!canArrange && model.stage !== 'fruit') || !Number.isInteger(id) || id < 0 || id >= (model.kind === 'decorate' ? 12 : model.fruitRequired) || !inCookerySurface(point, .81)) return false
+  if ((!canArrange && model.stage !== 'fruit') || !Number.isInteger(id) || id < 0 || id >= (model.kind === 'decorate' ? 12 : model.fruitRequired) || !inCookerySurface(point, 1.035)) return false
+  const scale = Math.min(1, .975 / Math.max(.001,Math.hypot(point.x,point.y)))
+  point = { x:point.x*scale, y:point.y*scale }
   const existing = model.fruit.find(fruit => fruit.id === id)
   if (existing) { existing.x = point.x; existing.y = point.y; return true }
   model.fruit.push({ id, x: point.x, y: point.y, angle: model.kind === 'decorate' ? (id % 3 - 1) * .12 : (id * 2.39996) % (Math.PI * 2) })

@@ -1,3 +1,6 @@
+import { preserveFillMask } from './preserve-mask'
+import {finishedIngredient, applyIngredientFinishes} from './ingredient-finish'
+import {traitIds, type Trait} from './climate'
 import { loadArtTexture } from './art-texture';
 import * as THREE from 'three'
 import { createFruitLanding, createViscousFollower, stepFruitLanding, stepSpring, stepViscousFollower, type FruitLanding, type ViscousFollower } from './food-motion'
@@ -16,7 +19,7 @@ import './cookery.css'
 
 export type CookeryRecipe = {
   id: string; name: string; kind: CookeryKind | HoneyFamily | 'grilledFish'; icon?: string; signature?: boolean; processing?: SignatureProcessing;
-  ingredients?: readonly { name: string; icon?: string; count?: number }[];
+  ingredients?: readonly { name: string; icon?: string; count?: number; trait?: Trait }[];
   fruitOptions?: readonly { id: string; name: string; art?: string; color?: string }[];
   selectedFruit?: readonly { id: string; quantity: number; trait?: string }[];
   fishSpecies?: FishingSpecies;
@@ -37,9 +40,13 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   if (options.recipe.kind === 'grilledFish') return createFishCookery(host, options)
   if (options.recipe.kind !== 'preserves' && options.recipe.kind !== 'decorate') return createHoneyCookery(host, options)
   const model = createCookeryModel(options.recipe.kind, options.recipe.processing)
-  const fruitMix = options.recipe.selectedFruit?.length ? options.recipe.selectedFruit.flatMap(value => Array.from({ length: Math.max(1, Math.min(3, value.quantity)) }, () => value.id))
-    : options.recipe.id === 'orchardPreserves' ? ['apple', 'pear'] : ['apple']
-  const fruitId = (id: number) => fruitMix[id % fruitMix.length]
+  const portions: { id: string; trait?: string }[] = options.recipe.selectedFruit?.length
+    ? options.recipe.selectedFruit.flatMap(p => Array.from({length:Math.max(1,Math.min(3,p.quantity))},()=>p))
+    : (options.recipe.id === 'orchardPreserves' ? ['apple','pear'] : ['apple']).map(id=>({id}))
+  const fruitMix = portions.map(part=>part.id)
+  const fruitId = (id:number)=>portions[id % portions.length].id
+  const fruitTrait = (id:number)=>traitIds.find(t=>t===portions[id % portions.length].trait)
+  const mixture = portions.map((_,index)=>fruitTrait(index)).filter((t):t is Trait=>!!t)
   const berryMix = fruitMix.filter(id => ['strawberry', 'blueberry', 'raspberry'].includes(id))
   const tartBase = berryMix.length === fruitMix.length && new Set(berryMix).size === 1 ? `tart-${berryMix[0]}` : 'tart'
   const fruitTint = new THREE.Color(berryMix.includes('blueberry') ? '#7460a3' : berryMix.includes('raspberry') ? '#c33c66' : '#d94c42')
@@ -90,11 +97,12 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   for (const ingredient of options.recipe.ingredients ?? []) {
     const item = document.createElement('span')
     item.title = ingredient.name
-    if (ingredient.icon) { const image = document.createElement('img'); image.src = ingredient.icon; image.alt = ingredient.name; item.append(image) }
+    if (ingredient.icon) { const image = document.createElement('img'); image.src = ingredient.icon; image.alt = ingredient.name; if (ingredient.trait) image.dataset.finish = ingredient.trait; item.append(image) }
     else item.textContent = ingredient.name
     if (ingredient.count && ingredient.count > 1) { const count = document.createElement('b'); count.textContent = String(ingredient.count); item.append(count) }
     ingredients.append(item)
   }
+  applyIngredientFinishes(ingredients)
   close.style.backgroundImage = `url("${base}art/lavender/workshop-authored/close-medallion.webp")`
   finish.style.backgroundImage = `url("${base}art/lavender/workshop-authored/bake-frame.webp")`
   let destroyed = false, contextLost = false, loaded = false, frame = 0
@@ -331,7 +339,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (model.stage === 'finished') { options.onCancel(); return }
     try {
       const result: CookeryResult = { family: model.kind, processing: model.kind === 'preserves' ? model.processing : options.recipe.processing ?? 'chunky',
-        fruit: model.fruit.map(fruit => ({ ingredientId: fruitId(fruit.id), x: fruit.x, y: fruit.y, angle: normalizeAngle(fruit.angle) })),
+        fruitTraitsVersion: 1, fruit: model.fruit.map(fruit => ({ ingredientId: fruitId(fruit.id), ...(fruitTrait(fruit.id) ? {trait:fruitTrait(fruit.id)} : {}), x: fruit.x, y: fruit.y, angle: normalizeAngle(fruit.angle) })),
         steps: model.kind === 'preserves' ? ['add-fruit', `stir-${model.processing}`, 'fill-jar'] : ['arrange-fruit', 'dust-sugar'],
         ...(model.kind === 'preserves' ? { baking: { method: 'stovetop' as const, finish: 'set' as const, seconds: Math.min(1800, elapsed) } } : {}) }
       if (!completeCookery(model, () => options.onComplete(result)) && model.stage === 'ready') announce('Не хватает ингредиентов. Выберите другой рецепт на кухне.')
@@ -437,7 +445,16 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (!drag) return
     if(drag.kind!=='fruit'){const art=artwork.get(drag.kind)!;toolReturns.set(drag.kind,{x:{value:art.mesh.position.x,velocity:0},y:{value:art.mesh.position.y,velocity:0},width:{value:art.rect.width,velocity:0},angle:{value:art.mesh.rotation.z,velocity:0},target:{x:art.mesh.position.x,y:art.mesh.position.y,width:art.rect.width,angle:art.mesh.rotation.z}})}
     if (drag.kind === 'fruit') {
-      if (placeCookeryFruit(model, drag.id, normalized(cursor))) { landings.set(drag.id, { body: createFruitLanding((reduced.matches?2:9)/surface.ry,0), follow: {...heldFruit} }); rotateCookeryFruit(model, drag.id, dragAngle); announce(model.kind === 'preserves' ? 'Фрукт в кастрюле' : 'Фрукт на тарте') }
+      const drop = normalized(cursor)
+      // Accept the full painted pot mouth, including its deeper rear rim. Keep fruit on the liquid.
+      if (model.kind === 'preserves') {
+        const rimY = (cursor.y - (surface.cy - artwork.get('pot')!.rect.height * .025)) / (surface.ry / .84)
+        if (Math.hypot(drop.x*.97,rimY) <= 1.035) {
+          const length=Math.hypot(drop.x,drop.y)
+          if(length>.975) {drop.x*=.975/length;drop.y*=.975/length}
+        }
+      }
+      if (placeCookeryFruit(model, drag.id, drop)) { landings.set(drag.id, { body: createFruitLanding((reduced.matches?2:9)/surface.ry,0), follow: {...heldFruit} }); rotateCookeryFruit(model, drag.id, dragAngle); announce(model.kind === 'preserves' ? 'Фрукт в кастрюле' : 'Фрукт на тарте') }
     }
     drag = null; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync()
   }
@@ -529,10 +546,23 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
       addArt(name, asset, texture, z)
     }
     artwork.get(model.kind === 'preserves' ? 'tart' : 'pot')!.mesh.visible = false
+    const finishes = new Map<string,THREE.Texture>()
+    function materialTexture(texture:THREE.Texture,traits:readonly Trait[],surface:'fruit'|'jar'|'jam'='fruit') {
+      if(!traits.length)return texture
+      const key = texture.uuid + ':' + traits.join(',') + surface
+      const cached=finishes.get(key);if(cached)return cached
+      const image=texture.image
+      if (!(image instanceof HTMLImageElement || image instanceof HTMLCanvasElement)) return texture
+      const source=finishedIngredient(image,traits,surface)
+      const mapped=new THREE.Texture(source)
+      mapped.colorSpace=texture.colorSpace; mapped.anisotropy=texture.anisotropy
+      mapped.needsUpdate=true; textures.add(mapped); finishes.set(key,mapped)
+      return mapped
+    }
     for (let id = 0; id < (model.kind === 'decorate' ? 12 : model.fruitRequired); id++) {
       const name = fruitAsset(id)
       const value = assets.find(asset => asset.name === name)!
-      fruitArt.set(id, addArt(`fruit-${id}`, value.asset, value.texture, 9))
+      fruitArt.set(id, addArt(`fruit-${id}`, value.asset, materialTexture(value.texture,fruitTrait(id)?[fruitTrait(id)!]:[]), 9))
     }
     const pot = manifest.items.pot
     if (model.kind === 'preserves' && pot.foregroundUrl) {
@@ -541,7 +571,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     }
     const liquidGeometry = new THREE.CircleGeometry(1, 96); geometries.add(liquidGeometry)
     if (model.kind === 'preserves') {
-      const syrupMap = assets.find(value => value.name === 'syrup-surface')!.texture, jamMap = assets.find(value => value.name === 'jam-surface')!.texture
+      const syrupMap = assets.find(value => value.name === 'syrup-surface')!.texture, jamMap = materialTexture(assets.find(value => value.name === 'jam-surface')!.texture,mixture,'jam')
       const vertexShader = `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`
       const skin = `uniform sampler2D syrupMap;uniform sampler2D jamMap;uniform float cooked;uniform vec3 fruitTint;uniform float tintStrength;varying vec2 vUv;
         vec4 preserves(vec2 uv){vec4 art=mix(texture2D(syrupMap,clamp(uv,.025,.975)),texture2D(jamMap,clamp(uv,.025,.975)),smoothstep(.08,.92,cooked));float light=dot(art.rgb,vec3(.2126,.7152,.0722));vec3 fruit=fruitTint*(.5+light*1.7);fruit=mix(fruit,art.rgb,smoothstep(.55,.9,light));art.rgb=mix(art.rgb,fruit,tintStrength);return art;}`
@@ -572,9 +602,12 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         #include <colorspace_fragment>
         }` })
       materials.add(streamMaterial); pourStream = new THREE.Mesh(plane, streamMaterial); pourStream.renderOrder = 21; pourStream.visible = false; scene.add(pourStream)
+      const jarTexture = assets.find(value => value.name === 'jar-full')!.texture
+      const jarMask = new THREE.CanvasTexture(preserveFillMask(jarTexture.image as HTMLImageElement)!)
+      textures.add(jarMask)
       const jarMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-        uniforms: { filledJar: { value: assets.find(value => value.name === 'jar-full')!.texture }, fill: { value: 0 }, fruitTint: { value: fruitTint }, tintStrength: { value: berryMix.length ? .72 : 0 } }, vertexShader,
-        fragmentShader: `uniform sampler2D filledJar;uniform float fill;uniform vec3 fruitTint;uniform float tintStrength;varying vec2 vUv;void main(){if(fill<.005)discard;vec4 jar=texture2D(filledJar,vUv);float light=dot(jar.rgb,vec3(.2126,.7152,.0722));vec3 fruit=fruitTint*(.5+light*1.7);jar.rgb=mix(jar.rgb,mix(fruit,jar.rgb,smoothstep(.55,.9,light)),tintStrength);float level=mix(.14,.78,fill);float reveal=1.-smoothstep(level-.008,level+.008,vUv.y);gl_FragColor=vec4(jar.rgb,jar.a*reveal);
+        uniforms: { filledJar: { value: materialTexture(jarTexture,mixture,'jar') }, fillMask: { value: jarMask }, fill: { value: 0 }, fruitTint: { value: fruitTint }, tintStrength: { value: berryMix.length ? .72 : 0 } }, vertexShader,
+        fragmentShader: `uniform sampler2D filledJar;uniform sampler2D fillMask;uniform float fill;uniform vec3 fruitTint;uniform float tintStrength;varying vec2 vUv;void main(){if(fill<.005)discard;vec4 jar=texture2D(filledJar,vUv);float light=dot(jar.rgb,vec3(.2126,.7152,.0722));vec3 fruit=fruitTint*(.5+light*1.7);jar.rgb=mix(jar.rgb,mix(fruit,jar.rgb,smoothstep(.55,.9,light)),tintStrength * texture2D(fillMask,vUv).a);float level=mix(.14,.78,fill);float reveal=1.-smoothstep(level-.008,level+.008,vUv.y);gl_FragColor=vec4(jar.rgb,jar.a*reveal);
         #include <colorspace_fragment>
         }` })
       materials.add(jarMaterial); jarLiquid = new THREE.Mesh(plane, jarMaterial); jarLiquid.renderOrder = 8.5; scene.add(jarLiquid)

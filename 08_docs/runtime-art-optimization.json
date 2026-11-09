@@ -2649,5 +2649,19 @@
       "normalizedAlphaBoundsMaxDrift": 0.0,
       "playScaleCompositePsnrDb": 46.26
     }
-  ]
+  ],
+  "postOptimizationRepairs": [
+    {
+      "path": "art/lavender/cookery/honey-parfait-full.webp",
+      "reason": "Restored complete authored crest from the original master, retaining the original lower glass registration",
+      "size": [
+        512,
+        640
+      ],
+      "bytes": 82512,
+      "source": "01_primary_target/lavender-bay/culinary-cove-expansion/runtime-sources/honey-props.png"
+    }
+  ],
+  "currentRasterBytes": 29602530,
+  "currentDecodedRgbaEstimate": 401391944
 }
