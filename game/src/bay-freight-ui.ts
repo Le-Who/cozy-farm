@@ -1,11 +1,18 @@
-import { freightPorts, freightPortNames, freightStock, freightUsed, ferryUsed, freightCapacity, ferryCapacity, freightProductionBuffer,
+import { freightPorts,
   setFreightStops, setFreightMode, setFreightPickup, startFreight, pauseFreight,
   type BayFreightState, type FreightPort, type FreightResult } from './bay-freight-model.ts';
+import { expeditionPorts, expeditionPortNames, expeditionPortDescriptions, expeditionTrades, quoteExpedition, portDemand, portProjectComplete, portProjects, expeditionStock, type ExpeditionPort, type ExpeditionManifest } from './ferry-expeditions.ts';
 import './bay-freight.css';
 
 export type FreightProduct = { id: string; name: string; icon: string; artwork?: string };
 export type FreightPanelContext = {
   day: number;
+  coins?: number;
+  harvestTier?: number;
+  boatOwned?: boolean;
+  expeditionPort?: ExpeditionPort;
+  expeditionOffer?: string;
+  villageBuilt?: boolean;
   playerPort: FreightPort;
   selectedPort?: FreightPort;
   routeEditorOpen?: boolean;
@@ -14,13 +21,6 @@ export type FreightPanelContext = {
   products: readonly FreightProduct[];
   carried: Record<string, number>;
   icon: (name: string, className?: string) => string;
-};
-const positions: Record<FreightPort, { x: number; y: number; short: string }> = {
-  home: { x: 15, y: 65, short: 'Дом' }, grove: { x: 31, y: 36, short: 'Роща' },
-  cape: { x: 68, y: 35, short: 'Мыс' }, village: { x: 86, y: 58, short: 'Гавань' },
-};
-const moorings: Record<FreightPort, { x: number; y: number }> = {
-  home: { x: 34, y: 60 }, grove: { x: 44, y: 40 }, cape: { x: 66, y: 40 }, village: { x: 65, y: 55 },
 };
 const labels: Record<string, string> = { wheat: 'Пшеница', shells: 'Ракушки', seaSalt: 'Морская соль', beeswax: 'Пчелиный воск', 'handmade:round': 'Круглая булочка' };
 const icons: Record<string, string> = { wheat: 'wheat', shells: 'shell', seaSalt: 'seaSalt', beeswax: 'beeswax', 'handmade:round': 'ui-handmade-round' };
@@ -49,73 +49,82 @@ export function freightControl(state: BayFreightState, action: string, value: st
   if (action === 'freight-destination' && freightPorts.some(destination => destination === id)) return setFreightPickup(state, port, id as FreightPort, pickup.products);
 }
 
+const portArt: Record<ExpeditionPort, string> = { mill: 'mill-port-background', salt: 'salt-port-background', orchard: 'orchard-port-background' };
+const primaryStock: Record<ExpeditionPort, string> = { mill: 'handmade:round', salt: 'seaSalt', orchard: 'peach' };
+const demandLabels = { shortage: 'Высокий спрос', balanced: 'Припасов достаточно', surplus: 'Пока есть запас' };
+const demandNeeds: Record<string,string> = { wheat:'Нужно зерно', eggs:'Нужны яйца', carrot:'Нужны овощи', seaBass:'Нужен улов', apple:'Нужны яблоки', 'handmade:round':'Ждут булочки' };
+const sourceHints: Record<string, { label: string; panel: string }> = {
+  wheat: { label: 'Семена пшеницы', panel: 'market' }, carrot: { label: 'Семена моркови', panel: 'market' },
+  eggs: { label: 'К курочкам', panel: 'coop' }, seaBass: { label: 'На рыбалку', panel: 'fishing' },
+  apple: { label: 'К своему саду', panel: 'orchard' }, 'handmade:round': { label: 'К пекарю в посад', panel: 'mill' },
+};
+
 export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelContext): string {
-  const selected = ctx.openedPorts.includes(ctx.selectedPort ?? ctx.playerPort) ? ctx.selectedPort ?? ctx.playerPort : ctx.openedPorts[0] ?? 'home';
-  const port = selected as FreightPort, pickup = state.route.pickups[port], local = ctx.playerPort === port;
-  const ship = state.ship, at = ship.phase === 'sailing' ? ship.from : ship.port;
-  const from = moorings[at], to = moorings[ship.phase === 'sailing' ? ship.to : ship.port];
-  const portStock = state.warehouses[port];
-  const ids = [...new Set([...Object.keys(portStock), ...(local ? Object.keys(ctx.carried).filter(id => ctx.carried[id] > 0) : []), ...pickup.products])];
-  const used = freightUsed(state, port), capacity = freightCapacity(state, port);
-  const editable = ship.phase === 'docked' && !state.route.running;
-  const status = ship.phase === 'sailing' ? `→ ${positions[ship.to].short} · утром дня ${ship.arrivesOn}`
-    : `У причала: ${positions[ship.port].short}`;
-  const path = state.route.stops.map(stop => `${moorings[stop].x},${moorings[stop].y}`).join(' ');
-  const nextPort = state.route.stops[(state.route.stops.indexOf(at) + 1) % state.route.stops.length];
-  const heading = (ship.phase === 'sailing' ? to.x : moorings[nextPort].x) > from.x ? 'right' : 'left';
-  const lastDelivery = state.events.find(item => item.kind === 'unloading' && item.day === ctx.day);
-  const loading = state.events.find(item => item.kind === 'loading' && item.day === ctx.day);
-  const blocked = ship.phase === 'docked' && ship.cargo.some(item => item.destination === ship.port);
-  const latestProduction = state.events.find(item => item.kind === 'production' && item.port === 'village');
-  const candidateIds = [...new Set([...ids, ...pickup.products])];
-  const needsStock = local && !candidateIds.some(id => freightStock(state, port, id) > 0 || (ctx.carried[id] ?? 0) > 0);
-  const warehouseRows = candidateIds.map(id => {
-    const item = product(id, ctx), quantity = freightStock(state, port, id), available = local ? ctx.carried[id] ?? 0 : 0;
-    const selectedProduct = pickup.products.includes(id);
-    const depositReason = used >= capacity ? 'Склад заполнен: заберите припасы' : available < 1 ? 'Нет с собой: привезите или соберите товар' : 'Положить на склад';
-    return `<div class="bay-freight-stock-row">${picture(id, ctx)}<span class="bay-freight-stock-name">${esc(item.name)}<small>Склад <b>${quantity}</b>${local ? ` · с собой ${available}` : ''}</small></span>
-      ${local ? `<span class="bay-freight-transfer">${button('−', 'freight-withdraw', `${port}|${id}|1`, `title="${quantity ? 'Забрать с собой' : 'Склад пуст'}" aria-label="Забрать: ${esc(item.name)}${quantity ? '' : '. Склад пуст'}" ${quantity ? '' : 'disabled'}`)}${button('+', 'freight-deposit', `${port}|${id}|1`, `title="${depositReason}" aria-label="Положить: ${esc(item.name)}. ${depositReason}" ${available > 0 && used < capacity ? '' : 'disabled'}`)}${available >= 5 ? button('+5', 'freight-deposit', `${port}|${id}|5`, `title="Положить пять" aria-label="Положить пять: ${esc(item.name)}" ${used + 5 <= capacity ? '' : 'disabled'}`) : ''}</span>` : ''}
-      ${button(selectedProduct ? '✓' : '', 'freight-load', `${port}|${id}`, `class="bay-freight-load" title="${selectedProduct ? 'Убрать из погрузки' : 'Грузить в рейс'}" role="checkbox" aria-label="Грузить в рейс: ${esc(item.name)}" aria-checked="${selectedProduct}"`)}
-    </div>`;
+  const world = state.expeditions, active = world.active;
+  const selected = ctx.expeditionPort ?? active?.port ?? 'mill';
+  const open = world.discovered.includes(selected), choices = expeditionTrades(world, selected);
+  const id = open ? choices.find(trade => trade.id === ctx.expeditionOffer)?.id ?? choices[0].id : 'explore-' + selected;
+  const quote = quoteExpedition(world, id, { bag: ctx.carried, harvestTier: ctx.harvestTier, coins: ctx.coins ?? 0, boatOwned: ctx.boatOwned ?? true })!;
+  const manifest: ExpeditionManifest = active ?? quote;
+  const port = manifest.port, phase = active?.phase ?? 'planning', exploring = manifest.kind === 'explore';
+  const stockId = manifest.incoming[0]?.id ?? primaryStock[port];
+  const demandItem = manifest.outgoing[0]?.id, demand = portDemand(world,port,demandItem);
+  const demandText = !demandItem ? 'Запасы на продажу' : demand === 'shortage' ? demandNeeds[demandItem] ?? demandLabels.shortage : demandLabels[demand];
+  const project = portProjects[port], projectDone = portProjectComplete(world, port);
+  const projectTotal = project.needs.reduce((sum, item) => sum + item.quantity, 0);
+  const projectHave = project.needs.reduce((sum, item) => sum + Math.min(item.quantity, world.markets[port].supplied[item.id] ?? 0), 0);
+  const cargo = (items: ExpeditionManifest['outgoing'], outgoing: boolean) => items.map(item => {
+    const entry = product(item.id, ctx), available = ctx.carried[item.id] ?? 0;
+    return `<div class="expedition-cargo-item">${picture(item.id, ctx)}<span><strong>${esc(item.id === 'handmade:round' ? 'Булочка' : entry.name)} ×${item.quantity}</strong>${outgoing ? `<small>${active ? 'Уже погружено' : available >= item.quantity ? `Есть ${available} · останется ${available - item.quantity}` : `Есть ${available} · нужно ещё ${item.quantity - available}`}</small>` : ''}</span></div>`;
   }).join('');
-  return `<section class="bay-freight" aria-label="Грузовой паром">
-    <header class="bay-freight-heading">${button('‹', 'back', '', 'class="bay-freight-back" aria-label="Назад"')}<h2>Паром «Ласточка»</h2><span class="bay-freight-capacity" title="Груз в трюме">${ctx.icon('boat')}<strong>${ferryUsed(state)}/${ferryCapacity}</strong></span>${button('×', 'close', '', 'class="bay-freight-close" aria-label="Закрыть паром"')}</header>
-    <div class="bay-freight-workspace"><div class="bay-freight-overview">
-    <div class="bay-freight-scene" data-phase="${ship.phase}" aria-label="${esc(status)}">
-      <div class="bay-freight-map">
-      <svg class="bay-freight-waterway" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${path} ${moorings[state.route.stops[0]].x},${moorings[state.route.stops[0]].y}" /></svg>
-      ${freightPorts.map(stop => {
-        const place = positions[stop], open = ctx.openedPorts.includes(stop), index = state.route.stops.indexOf(stop);
-        return button(`<span>${open ? index >= 0 ? index + 1 : '•' : '⌁'}</span><strong>${place.short}</strong>`, open ? 'freight-port' : 'freight-unlock', stop,
-          `class="bay-freight-pier" style="left:${place.x}%;top:${place.y}%" data-selected="${port === stop}" data-open="${open}" title="${open ? freightPortNames[stop] : 'Откройте остров на карте'}" aria-label="${open ? esc(freightPortNames[stop]) : `Как открыть ${esc(freightPortNames[stop])}`}"`);
-      }).join('')}
-      <div class="bay-freight-boat" data-heading="${heading}" style="--from-x:${from.x}%;--from-y:${from.y}%;--to-x:${to.x}%;--to-y:${to.y}%" aria-hidden="true"><span class="bay-freight-facing"><img src="${import.meta.env.BASE_URL}art/lavender/bay/ferry.webp" class="bay-freight-boat-art" alt=""></span><span class="bay-freight-wake"></span>${ship.cargo.length ? `<span class="bay-freight-hold">${ship.cargo.slice(0, 3).map(item => picture(item.id, ctx)).join('')}</span>` : ''}</div>
-      ${loading ? `<span class="bay-freight-moving-crate" style="left:${positions[loading.port].x}%;top:${positions[loading.port].y - 8}%" aria-label="Погрузка">${picture(loading.items[0].id, ctx)}</span>` : ''}
-      ${lastDelivery ? `<span class="bay-freight-delivery" style="left:${positions[lastDelivery.port].x}%;top:${positions[lastDelivery.port].y + 9}%">Выгружено +${lastDelivery.items.reduce((sum, item) => sum + item.quantity, 0)}</span>` : ''}
+  const missing = !active && manifest.outgoing.find(item => (ctx.carried[item.id] ?? 0) < item.quantity);
+  const hint = missing ? sourceHints[missing.id] : undefined;
+  const sourceAction = hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : missing!.id, 'class="expedition-source"') : '';
+  const status = phase === 'sailing' ? `Вернётся утром дня ${active!.returnsOn}` : phase === 'ready' ? 'Паром вернулся. Груз вас дождётся.' : 'Вернётся следующим игровым утром';
+  const production = world.markets[port].production;
+  const effect = exploring ? 'Новый торговый порт будет открыт наверняка. Разведка не зависит от удачи.'
+    : port === 'mill' ? 'Зерно и яйца идут в следующую выпечку.' : port === 'salt' ? 'Морковь и улов помогут открыть кухню у маяка.' : 'Яблоки идут на варенье, булочки ждут сборщики.';
+  const displayPort = exploring && phase !== 'ready' ? 'Неизвестный берег' : expeditionPortNames[port];
+  return `<section class="bay-freight" data-expedition-phase="${phase}" aria-label="Торговые экспедиции">
+    <header class="bay-freight-heading">${button('‹', 'back', '', 'class="bay-freight-back" aria-label="Назад"')}<h2>Паром «Ласточка»</h2><span class="expedition-balance">${ctx.icon('coin')} ${ctx.coins ?? 0}</span>${button('×', 'close', '', 'class="bay-freight-close" aria-label="Закрыть паром"')}</header>
+    <div class="bay-freight-workspace">
+      <div class="expedition-overview">
+        <div class="expedition-scene" data-port="${port}" data-unknown="${exploring && phase !== 'ready'}">
+          <img class="expedition-port-art" src="${import.meta.env.BASE_URL}art/lavender/bay/${exploring && phase !== 'ready' ? 'freight-harbor' : portArt[port]}.webp" alt="${esc(exploring ? 'Бухта перед дальней разведкой' : expeditionPortNames[port])}">
+          <span class="expedition-place">${esc(displayPort)}</span>
+          ${projectDone && !exploring ? `<span class="expedition-built">${esc(project.name)} работает</span>` : ''}
+          <div class="expedition-ferry" aria-hidden="true"><div class="expedition-ferry-bob"><img src="${import.meta.env.BASE_URL}art/lavender/bay/ferry.webp" alt=""><span class="expedition-deck-cargo">${(phase === 'ready' ? manifest.incoming : manifest.outgoing).slice(0, 2).map(item => picture(item.id, ctx)).join('')}</span></div></div>
+          ${phase === 'sailing' ? '<span class="expedition-at-sea">В море</span>' : phase === 'ready' ? '<span class="expedition-at-sea">С возвращением!</span>' : ''}
+        </div>
+        <nav class="expedition-chart" aria-label="Морские направления">
+          <img src="${import.meta.env.BASE_URL}art/lavender/bay/expedition-chart-background.webp" alt="" class="expedition-chart-art">
+          ${(['salt','orchard'] as const).filter(place=>world.discovered.includes(place)).map(place=>`<img src="${import.meta.env.BASE_URL}art/lavender/bay/expedition-chart-revealed.webp" alt="" class="expedition-chart-art expedition-chart-reveal" data-revealed="${place}">`).join('')}
+          <svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="M12 23 Q22 8 36 18 T62 18 T87 16" /></svg>
+          <span class="expedition-home">Дом</span>
+          ${expeditionPorts.map((place, index) => button(`<span class="expedition-map-symbol" data-known="${world.discovered.includes(place)}">${world.discovered.includes(place) ? '' : '?'}</span><strong class="expedition-map-long">${esc(world.discovered.includes(place) ? expeditionPortNames[place] : index === 1 ? 'Неизвестный маяк' : 'Неизвестный берег')}</strong><strong class="expedition-map-short">${place === 'mill' ? 'Посад' : place === 'salt' ? 'Маяк' : world.discovered.includes(place) ? 'Сады' : 'Берег'}</strong>`, 'expedition-port', place, `aria-label="${esc(world.discovered.includes(place) ? expeditionPortNames[place] : place === 'salt' ? 'Неизвестный маяк' : 'Неизвестный берег')}" class="expedition-map-port" style="--port-x:${[36,62,87][index]}%" aria-pressed="${port === place}" ${active ? 'disabled' : ''}`)).join('')}
+        </nav>
+        <p class="expedition-map-hint">${phase === 'sailing' ? 'Продолжайте заниматься фермой. Рейс завершится после отдыха в доме.' : 'Знакомый порт для торговли. Неизвестный берег для открытия.'}</p>
+
+      </div>
+      <div class="expedition-desk">
+        <div class="expedition-card-scroll">
+          <div class="expedition-eyebrow">${phase === 'ready' ? 'РЕЙС ЗАВЕРШЁН' : exploring ? 'РАЗВЕДКА НОВОГО БЕРЕГА' : 'ТОРГОВАЯ ЭКСПЕДИЦИЯ'}</div>
+          <h3>${esc(manifest.name)}</h3>
+          <p class="expedition-destination">⌖ ${esc(displayPort)}</p>
+          ${!exploring ? `<div class="expedition-market-status"><span data-demand="${demand}">${demandText}</span><span>${picture(stockId, ctx)} ${expeditionStock(world, port, stockId)} в порту${active ? ' · ваш груз отложен' : ''}</span></div>` : ''}
+          <div class="expedition-cargo-card"><h4>${active ? 'Отправили' : 'Отправим'}</h4>${cargo(manifest.outgoing, true)}${manifest.payCoins ? `<div class="expedition-cargo-item expedition-money">${ctx.icon('coin')}<span><strong>${manifest.payCoins} монет</strong><small>${active ? 'Уже оплачено' : `Останется ${Math.max(0,(ctx.coins ?? 0)-manifest.payCoins)}`}</small></span></div>` : ''}${!manifest.outgoing.length && !manifest.payCoins ? '<p>Пустой трюм</p>' : ''}</div>
+          <div class="expedition-cargo-arrow" aria-hidden="true">↓</div>
+          <div class="expedition-cargo-card expedition-return"><h4>${phase === 'ready' ? 'Привёз' : 'Привезёт'}</h4><div class="expedition-return-row">${cargo(manifest.incoming, false)}${manifest.earnCoins ? `<div class="expedition-cargo-item expedition-money">${ctx.icon('coin')}<strong>${manifest.earnCoins} монет</strong></div>` : ''}</div>${exploring ? `<div class="expedition-discovery">${ctx.icon('island')}<strong>${phase === 'ready' ? esc(expeditionPortNames[port]) : 'Новый торговый порт'}</strong></div>` : ''}</div>
+          <p class="expedition-effect">${esc(effect)}${manifest.harvestBonus ? ` Включена доплата за урожай: ${manifest.harvestBonus} монет.` : ''}</p>
+          ${!exploring ? `<details class="expedition-port-details"><summary>${esc(project.name)} <span>${projectHave}/${projectTotal}${projectDone ? ' · готово' : ''}</span></summary><p>${esc(project.benefit)}</p><p>Благодаря нашим поставкам:</p>${project.needs.map(item => `<div class="expedition-project-item">${picture(item.id, ctx)}<span>${esc(product(item.id, ctx).name)}</span><b>${Math.min(item.quantity,world.markets[port].supplied[item.id] ?? 0)}/${item.quantity}</b></div>`).join('')}<p>${esc(expeditionPortDescriptions[port])}</p>${production.length ? `<p>Сегодня приготовлено: ${production.map(item => `${esc(product(item.id, ctx).name)} ×${item.quantity}`).join(', ')}.</p>` : ''}<p>Спрос и остатки меняются после поставок и игровых утр. Условия отправленного рейса не меняются.</p></details>` : ''}
+        ${!active && open ? `<details class="expedition-offers"><summary>Другие предложения порта <span>${choices.length}</span></summary><div>${choices.map(trade => {
+          const offer = quoteExpedition(world, trade.id, { bag: ctx.carried, harvestTier: ctx.harvestTier, coins: ctx.coins ?? 0, boatOwned: true })!;
+          return button(`${esc(trade.name)}<small>${offer.incoming.map(item => `${esc(product(item.id, ctx).name)} ×${item.quantity}`).join(' + ')}${offer.earnCoins ? ` + ${offer.earnCoins} монет` : offer.payCoins ? ` · доплата ${offer.payCoins}` : ''}</small>`, 'expedition-offer', trade.id, `aria-pressed="${id === trade.id}"`);
+        }).join('')}</div></details>` : ''}
+          ${world.last && !active ? `<p class="expedition-receipt">${world.last.explored ? 'Новый порт на карте' : 'Прошлый груз получен'} · день ${world.last.day}</p>` : ''}
+        </div>
+        <footer class="expedition-departure"><p>${esc(status)}</p>${phase === 'sailing' ? `${button('Вернуться на ферму', 'close', '', 'class="bay-freight-primary"')}<small>Игровое утро начинается после сна. Настоящий таймер не идёт.</small>` : phase === 'ready' ? `${button(exploring ? 'Открыть новый порт' : 'Получить груз и выручку', 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения и потери груза.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
       </div>
     </div>
-    <div class="bay-freight-voyage"><p>${esc(status)}</p>${state.route.running ? button('Приостановить', 'freight-pause') : button(ship.phase === 'sailing' ? 'Продолжать рейсы' : 'Отправить паром', 'freight-start', '', `class="bay-freight-primary"`)}</div>
-    ${blocked ? `<p class="bay-freight-blocked">Склад полон. Заберите припасы — груз выгрузится утром.</p>` : ''}
-    ${ship.cargo.length ? `<div class="bay-freight-cargo" aria-label="Груз в трюме">${ship.cargo.map(item => `<span>${picture(item.id, ctx)}<b>${item.quantity}</b><small>→ ${positions[item.destination].short}</small></span>`).join('')}</div>` : `<p class="bay-freight-hint">${ship.phase === 'docked' ? `Следующая остановка — ${freightPortNames[nextPort]}.` : 'Трюм пуст. Выберите товары для погрузки у следующего причала.'}</p>`}
-    ${ctx.openedPorts.length < freightPorts.length ? `<p class="bay-freight-locked">Закрытые причалы: ${button('Открыть карту', 'open-panel', 'map')}</p>` : ''}
-    <details class="bay-freight-log"><summary>Журнал рейсов</summary><ol>${state.events.filter(item => item.kind !== 'production').slice(0, 5).map(item => `<li><small>День ${item.day}</small> ${item.kind === 'sailing' ? `${positions[item.port].short} → ${positions[item.to!].short}` : item.kind === 'blocked' ? `${positions[item.port].short}: склад заполнен, груз остаётся на борту` : `${item.kind === 'loading' ? 'Погружено' : 'Выгружено'}: ${item.items.map(entry => `${esc(product(entry.id, ctx).name)} ×${entry.quantity}`).join(', ')}`}</li>`).join('') || '<li>Первый рейс ещё впереди.</li>'}</ol></details>
-    </div><div class="bay-freight-desk"><div class="bay-freight-warehouse"><header><h3>${positions[port].short}: склад</h3><span>${used}/${capacity}</span></header><meter min="0" max="${capacity}" value="${used}" aria-label="Заполненность склада"></meter>
-      <div class="bay-freight-destinations" aria-label="Куда отправлять товары"><strong>Грузить →</strong>${state.route.stops.filter(stop => stop !== port).map(stop => button(positions[stop].short, 'freight-destination', `${port}|${stop}`, `aria-pressed="${pickup.destination === stop}"`)).join('')}</div>
-      <div class="bay-freight-stock-label"><span>${local ? '− с собой · + на склад' : 'Передача: посетите остров'}</span><span>В рейс</span></div>
-      ${used >= capacity ? '<p class="bay-freight-hint">Склад полон: заберите припасы кнопкой −.</p>' : ''}
-      ${needsStock ? `<p class="bay-freight-hint">${port === 'home' ? 'Соберите урожай, затем положите его на склад кнопкой +.' : port === 'village' ? 'Привезите продукты или испеките булочки в гавани.' : 'Соберите местные припасы, затем положите их на склад кнопкой +.'} ${button('К острову', 'close')}</p>` : ''}
-      <div class="bay-freight-stock">${warehouseRows || '<p class="bay-freight-hint">Здесь пока нет припасов.</p>'}</div>
-      ${port === 'village' ? `<div class="bay-freight-bakery"><div>${picture('wheat', ctx)}<b>2 →</b>${picture('handmade:round', ctx)}<b>1</b></div><small>${latestProduction?.day === ctx.day ? 'Сегодня испечена' : freightStock(state, 'village', 'wheat') < 2 ? 'Привезите 2 пшеницы' : 'Каждое утро'}</small></div>` : `<p class="bay-freight-production" title="Добыча приостанавливается при запасе ${freightProductionBuffer}">${picture(port === 'home' ? 'shells' : port === 'grove' ? 'seaSalt' : 'beeswax', ctx)}${port === 'cape' && ctx.waxAvailable === false ? 'Улучшите пасеку: 2 воска в день' : `+${port === 'home' ? 1 : 2} каждое утро`}</p>`}
-    </div>
-    <details class="bay-freight-plan" ${ctx.routeEditorOpen ? 'open' : ''}><summary>Маршрут <span>${state.route.stops.map(stop => positions[stop].short).join(' → ')} ↻</span></summary>
-      <div class="bay-freight-stops" aria-label="Причалы маршрута">${freightPorts.map(stop => button(positions[stop].short, 'freight-route-port', stop, `aria-pressed="${state.route.stops.includes(stop)}" ${editable && (ctx.openedPorts.includes(stop) || state.route.stops.includes(stop)) ? '' : 'disabled'}`)).join('')}</div>
-      ${editable ? '' : '<p class="bay-freight-hint">Для смены причалов приостановите паром и дождитесь прибытия.</p>'}
-      <div class="bay-freight-mode" aria-label="Способ погрузки">${button('Поровну', 'freight-mode', 'mixed', `aria-pressed="${state.route.mode === 'mixed'}"`)}${button('По приоритету', 'freight-mode', 'priority', `aria-pressed="${state.route.mode === 'priority'}"`)}</div>
-      ${state.route.mode === 'priority' ? `<div class="bay-freight-manifest" aria-label="Очередь погрузки">${pickup.products.map(id => {
-        const item = product(id, ctx), selectedProduct = pickup.products.includes(id);
-        return `<div><span>${picture(id, ctx)}${esc(item.name)}</span>${selectedProduct ? button('↑', 'freight-priority', `${port}|${id}`, `aria-label="Поднять приоритет: ${esc(item.name)}"`) : ''}</div>`;
-      }).join('')}</div>` : ''}
-    </details>
-    </div></div>
   </section>`;
 }

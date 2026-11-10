@@ -1,16 +1,20 @@
+import { VersionedSave, browserSaveLock } from './versioned-save'
+import { farmSaveKeys } from './farm-save-keys'
+import { mountSaveRecovery } from './save-recovery'
 import { renderFestivalPanel } from './bay-festival-ui'
 import { festivalTraditions, type FestivalTradition } from './bay-festival'
 import { beginFestival, contributeFestival, finishFestival, getFestivalChoices, getFestivalStatus, getShellAt } from './farm'
 import { playBaySound } from './game-sound'
 import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
+import { expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
 import { renderFreightPanel, freightControl } from './bay-freight-ui'
 import { createBayMusic, type BayMusicViewState } from './bay-music'
 import { describeFood } from './intent-orders'
-import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods } from './harbour-economy'
+import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods, sendFerryExpedition, receiveFerryExpedition, gardenMaterialStock } from './harbour-economy'
 import { berryCropIds, foodDescriptors, marketStock, unitPrice, islandIds as allPorts } from './farm'
 import './harbour-life.css'
 import {applyIngredientFinishes} from './ingredient-finish'
@@ -20,6 +24,9 @@ import { ruPlural } from './ru'
 import { archiveCards } from './archive'
 import { getIslandJourneys } from './journey'
 import { getDiscoveryTask } from './discovery-path'
+import { getDiscoveryJournal } from './discovery-journal'
+import { getFruitSource } from './orchard-guidance'
+import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
 import {signatureBook,signatureStudio,coveControls,signaturePortionStock,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
@@ -124,6 +131,8 @@ import {
   packEggCrate,
   petChicken,
   pickFruit,
+  storeTree,
+  returnNurseryTree,
   plantTree,
   plantCapeFlower,
   projectIds,
@@ -168,20 +177,23 @@ import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt } from './shoal'
 
-const saveKey = 'cozy-farm-island-v1'
+const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreFarm, createFarm, browserSaveLock(farmSaveKeys.lock))
+const farm = await saveStore.load() ?? createFarm()
+let saveAvailable = !saveStore.blocked
+let saveRecovery: ReturnType<typeof mountSaveRecovery> | undefined
 
-function loadFarm() {
-  try {
-    const saved = localStorage.getItem(saveKey)
-    if (saved) return restoreFarm(JSON.parse(saved)) ?? createFarm()
-  } catch {
-    // The island is playable even when the browser cannot open its save.
-  }
-  return createFarm()
+let pendingSaves = 0
+function saveFarm() {
+  pendingSaves++
+  void saveStore.save(farm).then(saved => {
+    pendingSaves--
+    saveAvailable = saved
+    saveRecovery?.update()
+  })
 }
-
-const farm = loadFarm()
-let saveAvailable = true
+window.addEventListener('beforeunload', event => {
+  if (pendingSaves > 0) { event.preventDefault(); event.returnValue = '' }
+})
 
 function iconUrl(name: string) {
   if (name.startsWith('bay/') || name.startsWith('festivals/')) return import.meta.env.BASE_URL+'art/lavender/'+name+'.webp'
@@ -227,6 +239,7 @@ let marketSellGroup:'all'|'harvest'|'kitchen'|'shore'='all'
 let inventoryGroup: 'harvest'|'kitchen'|'shore' = 'harvest'
 let boatIsland = farm.island
 let journeyDetailsOpen = false
+let journalDetailsOpen = false
 let bagTab: 'seeds' | 'harvest' = 'harvest'
 let archiveGroup: ArchiveGroup = 'crops'
 let previewSeed: CropId = farm.selectedSeed
@@ -895,7 +908,7 @@ function marketCards() {
   }
   const categories=`<nav class="market-category-icons" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}</button>`).join('')}</nav>`
   if(marketCategory==='seeds')return controls+categories+`<div class="market-seed-grid">${cropIds.map(crop=>{const definition=cropDefinitions[crop];return `<section>${icon('ui-seed-'+crop)}<strong>${definition.name}</strong><span>×${seedPackSize}</span>${button('Купить','buy-seeds',farm.coins>=definition.seedPrice,{crop,cost:{icon:'coin',amount:definition.seedPrice}})}</section>`}).join('')}</div>`
-  if(marketCategory==='trees')return controls+categories+`<ul class="dialog-list market-shop">${treeIds.map(tree=>{const definition=treeDefinitions[tree];return row('ui-tree-'+tree,definition.saplingName,quantity(definition.days,'ночь')+' до зрелости',button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,cost:{icon:'coin',amount:definition.saplingPrice}}))}).join('')}</ul>`
+  if(marketCategory==='trees')return controls+categories+(!farm.trees.home.includes(null)?`<p class="dialog-intro">Родной сад заполнен. Перенесите дерево в питомник бесплатно, чтобы посадить другое.</p>${nav(button('Освободить место','orchard',true,{secondary:true}))}`:'')+`<ul class="dialog-list market-shop">${treeIds.map(tree=>{const definition=treeDefinitions[tree];return row('ui-tree-'+tree,definition.saplingName,quantity(definition.days,'ночь')+' до зрелости',button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,cost:{icon:'coin',amount:definition.saplingPrice}}))}).join('')}</ul>`
   if(marketCategory==='care')return controls+categories+`<ul class="dialog-list market-shop">${row('tool-feed','Корм для кур',quantity(feedBagSize,'порция'),button('Купить','buy-feed',farm.coins>=feedBagPrice,{cost:{icon:'coin',amount:feedBagPrice}}))}${row('tool-can','Большая лейка',`Объём: ${expandedWaterCapacity}`,button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{cost:farm.canUpgraded?undefined:{icon:'coin',amount:canUpgradePrice}}))}</ul>`
   return controls+categories+`<ul class="dialog-list market-shop">${buildingIds.map(building=>row('upgrade-'+building+'-card',buildingDefinitions[building].name,buildingDefinitions[building].benefit,button(farm.buildingLevels[building]>=2?'Посмотреть':'Улучшить',farm.buildingLevels[building]>=2?'upgrades':'upgrade-building',farm.buildingLevels[building]>=2||farm.coins>=buildingDefinitions[building].upgradePrice,{value:building,...(farm.buildingLevels[building]<2?{cost:{icon:'coin' as const,amount:buildingDefinitions[building].upgradePrice}}:{})}))).join('')}</ul>`+nav(button('Причал','visit-boat',true,{secondary:true}))
 }
@@ -903,7 +916,6 @@ function marketCards() {
 function treeSelector() {
   if (farm.island !== 'home' && farm.island !== 'grove') return ''
   const choices = farm.trees[farm.island].flatMap((slot,index) => {
-    if (!slot && index !== treeSlot) return []
     const name = slot ? treeDefinitions[slot.tree].treeName : 'Свободное место'
     const label = name + ', место ' + (index + 1) + (slot?.fruitReady ? ', плодов: ' + slot.fruitReady : '')
     return [`<button type="button" data-action="tree-slot" data-value="${index}" aria-pressed="${index === treeSlot}" aria-label="${label}" title="${label}">
@@ -927,6 +939,19 @@ function treeRow(index: number) {
     button(action.kind === 'pick' ? 'Собрать плоды' : slot ? 'Осмотреть' : 'Посадить дерево', 'visit-tree', true, { value: index }))
 }
 
+function nurseryCard(slot?: number) {
+  if (farm.island !== 'home' && farm.island !== 'grove' || !farm.treeNursery.length) return ''
+  const target = slot ?? farm.trees[farm.island].findIndex(tree => tree === null)
+  const available = farm.trees[farm.island][target] === null
+  return `<section aria-label="Питомник"><h2>Питомник · ${farm.treeNursery.length}</h2>
+    <p class="dialog-intro">Перенос бесплатный. Возраст и созревшие плоды сохраняются. В питомнике рост и новые плоды на паузе.${available ? '' : ' Чтобы вернуть дерево, сначала освободите место в саду.'}</p>
+    <ul class="dialog-list">${farm.treeNursery.map(({ id, tree }) => {
+      const definition = treeDefinitions[tree.tree]
+      const detail = tree.age < definition.days ? `${quantity(definition.days - tree.age, 'ночь')} до зрелости` : `Плодов к сбору: ${tree.fruitReady}`
+      return row('ui-tree-' + tree.tree, definition.treeName, detail, button(slot === undefined ? 'Вернуть в сад' : 'Посадить здесь', 'return-nursery-tree', available, { value: id, context: definition.treeName }), tree.trait)
+    }).join('')}</ul></section>`
+}
+
 let fishingGame: ReturnType<typeof createFishingGame> | undefined
 let fishingToken: number | undefined
 let workshopGame: ReturnType<typeof createWorkshop> | undefined
@@ -939,7 +964,7 @@ function stopFishing() {
   if (fishingToken !== undefined) {
     cancelFishingTrip(farm, fishingToken)
     fishingToken = undefined
-    try { localStorage.setItem(saveKey, JSON.stringify(farm)) } catch { saveAvailable = false }
+    saveFarm()
   }
   island.setFishing(false)
 }
@@ -963,8 +988,10 @@ function communityOffers() {
 }
 function updateCommunityReturn() {
   try {
-    if (communityRequest) localStorage.setItem(communitySelectionKey, JSON.stringify({ request: communityRequest, food: requestedFood }))
-    else localStorage.removeItem(communitySelectionKey)
+    if (!saveStore.issue) {
+      if (communityRequest) localStorage.setItem(communitySelectionKey, JSON.stringify({ request: communityRequest, food: requestedFood }))
+      else localStorage.removeItem(communitySelectionKey)
+    }
   } catch { /* The current menu also works without browser storage. */ }
   const request = currentCommunityRequest()
   communityResume.hidden = !communityRequest || dialog.open || island.isCrossing()
@@ -1070,7 +1097,7 @@ function mountFishing() {
       if (!trip.ok || trip.token === undefined) { notify(trip.message, false); return false }
       fishingToken = trip.token
       island.setFishing(true)
-      try { localStorage.setItem(saveKey, JSON.stringify(farm)) } catch { saveAvailable = false }
+      saveFarm()
       return true
     },
     onCancel: closeDialog,
@@ -1129,7 +1156,8 @@ function neighboursCard() {
 }
 
 type PanelVisit = {
-  warehouse: typeof selectedWarehouse; freightPlanOpen: boolean; journeyDetailsOpen: boolean;
+  expeditionPort: ExpeditionPort; expeditionOffer: string;
+  warehouse: typeof selectedWarehouse; freightPlanOpen: boolean; journeyDetailsOpen: boolean; journalDetailsOpen: boolean;
   inventoryGroup: 'harvest'|'kitchen'|'shore'; boatIsland: (typeof islandIds)[number];
   panel: Panel; marketTab: 'buy'|'sell'|'orders'|'projects'; marketCategory:'seeds'|'trees'|'care'|'buildings';marketSellGroup:'all'|'harvest'|'kitchen'|'shore';bagTab: 'seeds'|'harvest'; archiveGroup: ArchiveGroup;
   treeSlot: number; previewSeed: CropId; specializationBuilding: BuildingId; previewSpecialization: BuildingBranch | undefined;
@@ -1140,6 +1168,7 @@ type PanelVisit = {
   kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;signatureFamily:SignatureFamily;
 }
 const panelHistory: PanelVisit[] = []
+let panelRenderVersion = 0
 function focusKey(button: HTMLButtonElement) {
   const controls = Object.entries(button.dataset).filter(([key])=> !['selected','active','ready'].includes(key))
   return JSON.stringify(controls.length ? controls : [button.className,button.getAttribute('aria-label') ?? button.textContent?.trim()])
@@ -1147,13 +1176,15 @@ function focusKey(button: HTMLButtonElement) {
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
-  return {panel:panel!,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  return {expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
   const previous=panelHistory.pop()
   if(!previous)return
   journeyDetailsOpen=previous.journeyDetailsOpen
+  journalDetailsOpen=previous.journalDetailsOpen
+  selectedExpeditionPort=previous.expeditionPort; selectedExpeditionOffer=previous.expeditionOffer
   selectedWarehouse=previous.warehouse; freightPlanOpen=previous.freightPlanOpen
   inventoryGroup=previous.inventoryGroup;boatIsland=previous.boatIsland
   marketTab=previous.marketTab;marketCategory=previous.marketCategory;marketSellGroup=previous.marketSellGroup;bagTab=previous.bagTab;archiveGroup=previous.archiveGroup;treeSlot=previous.treeSlot
@@ -1165,14 +1196,19 @@ function goBack() {
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;signatureFamily=previous.signatureFamily
   openPanel(previous.panel,false,farm.island,'page.fold')
+  const restoredVersion = panelRenderVersion
   requestAnimationFrame(()=>{
+    // A newer selection or dismissal must not receive an old page’s scroll or focus.
+    if (!dialog.open || panel !== previous.panel || panelRenderVersion !== restoredVersion) return
     dialogContent.scrollTop=previous.scroll
-    const target=Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('button')).find(button=>focusKey(button)===previous.focus&&!button.disabled)
+    const target=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')).find(button=>focusKey(button)===previous.focus&&button.getClientRects().length>0)
     if (target) target.focus({preventScroll:true})
   })
 }
 let harbourScene: {destroy():void} | undefined
 let selectedWarehouse = farm.island
+let selectedExpeditionPort: ExpeditionPort = 'mill'
+let selectedExpeditionOffer = 'mill-grain'
 let freightPlanOpen = false
 let musicView: BayMusicViewState | undefined
 function stopHarbour() {
@@ -1183,8 +1219,7 @@ function stopHarbour() {
   island.render(farm)
 }
 function saveHarbour() {
-  try { localStorage.setItem(saveKey, JSON.stringify(farm)); saveAvailable = true }
-  catch { saveAvailable = false }
+  saveFarm()
 }
 
 function harbourGoods() {
@@ -1230,7 +1265,7 @@ function openShopScene(host:HTMLElement) {
   applyIngredientFinishes(host)
 }
 function openMusicScene(host:HTMLElement) {
-  harbourScene=createBayMusic(host,{state:farm.musicGarden,viewState:musicView,onViewChange:view=>{ musicView=view },materialStock:farm.freight.warehouses.village,
+  harbourScene=createBayMusic(host,{state:farm.musicGarden,viewState:musicView,onViewChange:view=>{ musicView=view },getMaterialStock:()=>gardenMaterialStock(farm),
     onSave:state=>{farm.musicGarden=state;saveHarbour()},onClose:leaveScene,
     onPerformance:()=>{
       if(farm.concertDay===farm.day)return false
@@ -1252,12 +1287,18 @@ function harbourPlaces() {
 function drawPanel() {
   if (!panel || harbourScene) return
   if (panel === 'fishing' && fishingGame || panel === 'workshop' && workshopGame || panel === 'cookery' && cookeryGame || panel === 'arrangement' && arrangementGame) return
+  panelRenderVersion++
   requirementLinks.clear()
   const sceneBack=dialog.querySelector<HTMLButtonElement>('.scene-back')!
   sceneBack.hidden=panelHistory.length===0||panel!=='fishing'&&panel!=='workshop'&&panel!=='cookery'&&panel!=='arrangement'
   sceneBack.setAttribute('aria-label',panelHistory.length?`Назад: ${panelTitles[panelHistory.at(-1)!.panel]}`:'Назад')
   backButton.hidden=panelHistory.length===0
   backButton.setAttribute('aria-label',panelHistory.length?`Назад: ${panelTitles[panelHistory.at(-1)!.panel]}`:'Назад')
+  for (const back of [backButton, sceneBack]) {
+    back.title = `${back.getAttribute('aria-label')} (Esc / Alt + ←)`
+    back.setAttribute('aria-keyshortcuts', 'Escape Alt+ArrowLeft')
+  }
+  closeButton.title = panelHistory.length ? 'Закрыть все меню' : 'Закрыть меню (Esc)'
   dialog.querySelectorAll<HTMLButtonElement>('.dialog-destinations [data-panel]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.panel===panel)))
   const title = panel === 'specialize' ? `${buildingDefinitions[specializationBuilding].name} · ур. 3`
     : panel === 'workshop' && workshopRecipe === 'bread' ? 'Домашний хлеб' : panel === 'neighbor' ? residentDefinitions[communityResident].name : panelTitles[panel]
@@ -1284,7 +1325,7 @@ function drawPanel() {
     case 'bay-freight': {
       reconcileFreightPorts(farm.freight,openedFreightPorts(farm))
       const goods=harbourGoods()
-      dialogContent.innerHTML=renderFreightPanel(farm.freight,{day:farm.day,playerPort:farm.island,selectedPort:selectedWarehouse,waxAvailable:farm.capeLevel>=2,routeEditorOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? freightPlanOpen,
+      dialogContent.innerHTML=renderFreightPanel(farm.freight,{day:farm.day,harvestTier:farm.festivals.completed.harvest,coins:farm.coins,boatOwned:farm.boatOwned,villageBuilt:farm.village.built,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,playerPort:farm.island,selectedPort:selectedWarehouse,waxAvailable:farm.capeLevel>=2,routeEditorOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? freightPlanOpen,
         openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),icon})
       break
     }
@@ -1426,18 +1467,24 @@ function drawPanel() {
         <ul class="dialog-list">${row('moon', `День ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}`, '', button('До утра', 'sleep'))}</ul>`
       break
     case 'journal': {
-      const goal = currentTask()
+      const goal = currentTask(), journal = getDiscoveryJournal(farm)
+      const chapter = journal.current
       const groveActivities = farm.island === 'grove'
         ? row('tool-rod', 'Рыбалка в роще', `Сегодня поймано: ${farm.fishCaughtToday.grove} / ${getFishLimit(farm, 'grove')}`)
           + row('ui-sea-salt', 'Морская соль', farm.saltGatheredToday ? 'Сегодня собрано' : 'Можно собрать на солончаках')
         : ''
-      dialogContent.innerHTML = goal
-        ? `<p class="dialog-intro">${goal.detail}</p>
-          <ul class="dialog-list">
-            ${row('star', goal.label, `${goal.progress} / ${goal.target}${goal.reward === undefined ? '' : ` · Награда: ${quantity(goal.reward, 'монета')}`}`)}
-            ${groveActivities}
-          </ul>${'action' in goal ? nav(button(goal.action.label, 'follow-task')) : ''}`
-        : '<p class="dialog-status">Все задания дневника выполнены.</p>'
+      dialogContent.innerHTML = `<section class="discovery-chapter">
+          ${icon(chapter?.icon ?? 'star')}<div><small>Знакомство с бухтой · ${journal.completed}/${journal.chapters.length}</small><h2>${chapter?.title ?? 'Бухта живёт дальше'}</h2></div>
+          <p>${chapter?.detail ?? 'Продолжайте свои рецепты, встречи с соседями и новые праздники. Каждая традиция может расти дальше.'}</p>
+        </section>
+        ${goal ? `<section class="discovery-now" aria-label="Ближайший шаг"><h3>${goal.label}</h3><p>${goal.detail}</p>
+          ${goal.target > 1 || goal.reward !== undefined ? `<small>${goal.progress}/${goal.target}${goal.reward === undefined ? '' : ` · Награда: ${quantity(goal.reward, 'монета')}`}</small>` : ''}
+          ${'action' in goal ? nav(button(goal.action.label, 'follow-task')) : ''}</section>` : ''}
+        <p class="discovery-tip">${journal.tip}</p>
+        ${journal.next ? `<section class="discovery-next"><strong>Впереди: ${journal.next.title.toLowerCase()}</strong><p>${journal.next.detail}</p></section>` : ''}
+        <details class="discovery-roadmap"${journalDetailsOpen ? ' open' : ''}><summary>Все открытия бухты</summary><ol>${journal.chapters.map(chapter => `<li data-current="${chapter.id === journal.current?.id}" data-complete="${chapter.complete}">${icon(chapter.icon)}<strong>${chapter.title}</strong><small>${chapter.complete ? 'Открыто' : chapter.id === journal.current?.id ? 'Сейчас' : 'Впереди'}</small></li>`).join('')}</ol></details>
+        ${groveActivities ? `<ul class="dialog-list">${groveActivities}</ul>` : ''}
+        ${journal.activities.length ? `<nav class="discovery-activities" aria-label="Другие занятия">${journal.activities.map(activity => `<button type="button" data-action="open-panel" data-value="${activity.panel}">${icon(activity.icon)}<strong>${activity.label}</strong><small>${activity.detail}</small></button>`).join('')}</nav>` : ''}`
       break
     }
     case 'settings':
@@ -1445,7 +1492,7 @@ function drawPanel() {
           <label><input type="checkbox" data-sound="muted" ${bayAudio.settings.muted?'checked':''}> Без звука</label>
           ${([['volume','Громкость'],['music','Музыка'],['effects','Эффекты']] as const).map(([key,name])=>`<label>${name}<input type="range" data-sound="${key}" min="0" max="100" value="${Math.round(bayAudio.settings[key]*100)}"></label>`).join('')}</fieldset>
         <details class="controls-help"><summary>Управление</summary><p>Нажмите на место или выберите его стрелками и нажмите Enter. Курочек можно переносить. Золотая отметка показывает спелый урожай.</p></details>
-        <p class="settings-save">${saveAvailable ? 'Прогресс сохраняется в этом браузере.' : 'Браузер не смог сохранить ферму. Можно продолжать до закрытия страницы.'}</p>`
+        <p class="settings-save">${saveAvailable ? 'Прогресс сохраняется в этом браузере.' : saveStore.blocked ? 'Сохранение защищено от перезаписи. Игра идёт только в этой сессии.' : 'Браузер не смог сохранить ферму. Можно продолжать до закрытия страницы.'}</p>${saveStore.issue ? button('Восстановление сохранения', 'save-recovery') : ''}`
       break
     case 'guide': {
       const home = farm.island === 'home', village = farm.island === 'village'
@@ -1473,7 +1520,7 @@ function drawPanel() {
       ]
       dialogContent.innerHTML = `<section class="explore-section"><h2>${islandNames[farm.island]}</h2><div class="explore-grid">${places.join('')}</div></section>
         ${away.length ? `<section class="explore-section"><h2>На других островах</h2><div class="explore-grid">${away.join('')}</div></section>` : ''}
-        <div class="explore-personal">${tile('Запасы','ui-bag','inventory')}${home || village ? tile('Мои рецепты','ui-signature-bright','recipes') : ''}${button('Настройки','open-panel',true,{value:'settings',secondary:true})}</div>`
+        <div class="explore-personal">${tile('Дневник','star','journal')}${tile('Запасы','ui-bag','inventory')}${home || village ? tile('Мои рецепты','ui-signature-bright','recipes') : ''}${button('Настройки','open-panel',true,{value:'settings',secondary:true})}</div>`
       break
     }
     case 'workshop': {
@@ -1578,7 +1625,8 @@ function drawPanel() {
     case 'orchard':
       if (farm.island !== 'home' && farm.island !== 'grove') break
       dialogContent.innerHTML = `<p class="dialog-intro">Деревья растут ночью. После отдыха взрослые деревья снова приносят плоды.</p>
-        <ul class="dialog-list">${farm.trees[farm.island].map((_, index) => treeRow(index)).join('')}</ul>`
+        <p class="dialog-intro">Нужно место? Откройте дерево и перенесите его в питомник. Позже его можно бесплатно вернуть.</p>
+        <ul class="dialog-list">${farm.trees[farm.island].map((_, index) => treeRow(index)).join('')}</ul>${nurseryCard()}`
       break
     case 'tree': {
       if(farm.island!=='home'&&farm.island!=='grove')break
@@ -1589,9 +1637,11 @@ function drawPanel() {
       if(slot){
         const definition=treeDefinitions[slot.tree],growing=slot.age<definition.days
         dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong>${growing ? 'До зрелости: ' + quantity(definition.days-slot.age,'ночь') : 'Новые плоды завтра'}</strong>`}
-          ${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):''}</div>`
+          ${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):''}</div>
+          <p class="dialog-intro">Освободите место бесплатно: дерево, его возраст и созревшие плоды сохранятся в питомнике. Там рост и новые плоды на паузе. Вернуть дерево можно на любое свободное место.</p>
+          ${nav(button('Перенести в питомник','store-tree',true,{value:treeSlot,secondary:true}))}`
       }else{
-        dialogContent.innerHTML=treeSelector()+`<div class="sapling-options">${treeIds.map(tree=>{
+        dialogContent.innerHTML=treeSelector()+nurseryCard(treeSlot)+`<div class="sapling-options">${treeIds.map(tree=>{
           const definition=treeDefinitions[tree],owned=farm.saplings[tree]>0
           return `<article class="sapling-option">${icon(`ui-tree-${tree}`)}<h2>${definition.treeName}</h2><span>До зрелости: ${quantity(definition.days, 'ночь')}</span>${button(owned?'Посадить':'Купить и посадить','buy-plant-tree',owned||farm.coins>=definition.saplingPrice,{value:tree,context:`${definition.treeName}`,cost:owned?undefined:{icon:'coin',amount:definition.saplingPrice}})}</article>`
         }).join('')}</div>`
@@ -1646,7 +1696,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
   if (island.isCrossing() || !canSailTo(farm,destination)) return
   if (farm.island === destination) { openPanel(next); return }
   const returnPath = dialog.open && panel ? [...panelHistory,rememberPanel()].filter(visit =>
-    ['guide','boat','archive','bay-freight','inventory'].includes(visit.panel)) : []
+    ['guide','boat','archive','bay-freight','inventory','journal'].includes(visit.panel)) : []
   if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
   closeDialog()
   await island.crossIsland(()=>perform(()=>sail(farm,destination),false,true))
@@ -1679,7 +1729,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (remember && next !== panel && next === 'boat') { boatIsland = destinationIsland; journeyDetailsOpen=false }
   if (next === 'archive' || next === 'boat') {
     farm.orientation[next === 'archive' ? 'collections' : 'islands'] = true
-    try { localStorage.setItem(saveKey, JSON.stringify(farm)) } catch { saveAvailable = false }
+    saveFarm()
     status()
   }
   if (next !== panel && next !== 'festival') celebratedFestival=undefined
@@ -1733,12 +1783,7 @@ function perform(action: () => { ok: boolean; message: string }, dismiss = false
   if (!result.ok)playBaySound('menu.blocked')
   if (result.ok) {
     if (dismiss && dialog.open) dialog.close()
-    try {
-      localStorage.setItem(saveKey, JSON.stringify(farm))
-      saveAvailable = true
-    } catch {
-      saveAvailable = false
-    }
+    saveFarm()
     refresh()
   }
   if (dialog.open) {
@@ -2101,6 +2146,7 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
   }
   else if (target === 'show-upgrade') { openPanel('upgrades');highlightControl(dialogContent.querySelector<HTMLElement>(`[data-value="${value}"]`));return }
   else if (target === 'upgrades') openPanel('upgrades')
+  else if (target === 'orchard') openPanel('orchard')
   else if (target === 'project-dock') openPanel('dock-project')
   else if (target === 'visit-harbor') openPanel('harbor')
   else if (target === 'fair-project') {marketTab='projects';openPanel('market')}
@@ -2166,6 +2212,7 @@ app.addEventListener('click', async (event) => {
     useHotbar(control.dataset.tool as Tool)
     return
   }
+  if (control.dataset.action === 'save-recovery') { saveRecovery?.show(); return }
   const crop = cropIds.find((id) => id === control.dataset.crop)
   let value = control.dataset.value
   let action = control.dataset.action
@@ -2230,6 +2277,37 @@ app.addEventListener('click', async (event) => {
     }
     case 'festival-village': openPanel('village-project');break
     case 'festival-meal': openPanel('village-meal');break
+    case 'expedition-source': {
+      if (value === 'wheat' || value === 'carrot') {
+        marketTab='buy';marketCategory='seeds';previewSeed=value
+        await visitPanelAt('home','market')
+      } else if (value === 'seaBass') await visitPanelAt('grove','fishing')
+      else if (value === 'apple') await visitPanelAt(getFruitSource(farm,'apple').island,'orchard')
+      else if (value === 'eggs') await visitPanelAt('home','coop')
+      break
+    }
+    case 'expedition-port': {
+      if (farm.freight.expeditions.active) break
+      const port=expeditionPorts.find(id=>id===value)
+      if(port){selectedExpeditionPort=port;selectedExpeditionOffer=expeditionTrades(farm.freight.expeditions,port)[0].id;drawPanel()}
+      break
+    }
+    case 'expedition-offer': {
+      if(farm.freight.expeditions.active)break
+      const offer=expeditionTrades(farm.freight.expeditions,selectedExpeditionPort).find(entry=>entry.id===value)
+      if(offer){selectedExpeditionOffer=offer.id;drawPanel()}
+      break
+    }
+    case 'expedition-send': {
+      if(perform(()=>sendFerryExpedition(farm,value??'')))bayAudio.playEvent('harbour.castoff')
+      break
+    }
+    case 'expedition-claim': {
+      const voyage=farm.freight.expeditions.active
+      if(voyage){selectedExpeditionPort=voyage.port;selectedExpeditionOffer=expeditionTrades(farm.freight.expeditions,voyage.port)[0].id}
+      if(perform(()=>receiveFerryExpedition(farm)))bayAudio.playEvent('harbour.crate')
+      break
+    }
     case 'freight-unlock': {
       const port=allPorts.find(id=>id===value)
       if(port)openPanel('boat',true,port)
@@ -2467,8 +2545,9 @@ app.addEventListener('click', async (event) => {
     case 'sleep': {
       const flockSize = farm.flockSize
       const oldShip=farm.freight.ship
+      const expeditionWasSailing=farm.freight.expeditions.active?.phase==='sailing'
       const rested=perform(() => endDay(farm),true)
-      if(rested){playBaySound(oldShip.phase==='sailing'&&farm.freight.ship.phase==='docked'?'harbour.berth':'daybreak.shutters')}
+      if(rested){playBaySound(expeditionWasSailing&&farm.freight.expeditions.active?.phase==='ready'||oldShip.phase==='sailing'&&farm.freight.ship.phase==='docked'?'harbour.berth':'daybreak.shutters')}
       if (rested && farm.flockSize > flockSize) {
         playBaySound('flock.hatch', 1, 0);island.showHatch()
         notify('В стае появилась новая курочка.')
@@ -2510,7 +2589,7 @@ app.addEventListener('click', async (event) => {
     case 'tree-slot': {
       if (panel !== 'tree' || (farm.island !== 'home' && farm.island !== 'grove')) break
       const index = Number(value)
-      if (!Number.isInteger(index) || !farm.trees[farm.island][index]) break
+      if (!Number.isInteger(index) || farm.trees[farm.island][index] === undefined) break
       treeSlot = index
       island.visit({kind:'tree',index})
       drawPanel()
@@ -2596,6 +2675,22 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
+    case 'store-tree': {
+      if (panel === 'tree' && Number(value) === treeSlot && perform(() => storeTree(farm, treeSlot))) {
+        dialogContent.scrollTop = 0
+        dialogContent.querySelector<HTMLButtonElement>('[data-action="return-nursery-tree"]')?.focus({ preventScroll: true })
+      }
+      break
+    }
+    case 'return-nursery-tree': {
+      if ((panel !== 'tree' && panel !== 'orchard') || (farm.island !== 'home' && farm.island !== 'grove')) break
+      const slot = panel === 'tree' ? treeSlot : farm.trees[farm.island].findIndex(tree => tree === null)
+      if (perform(() => returnNurseryTree(farm, slot, Number(value)))) {
+        dialogContent.scrollTop = 0
+        dialogContent.querySelector<HTMLButtonElement>(panel === 'tree' ? '[data-action="pick-fruit"], [data-action="store-tree"]' : `[data-action="visit-tree"][data-value="${slot}"]`)?.focus({ preventScroll: true })
+      }
+      break
+    }
     case 'buy-plant-tree': {const tree=treeIds.find(id=>id===value);if(tree && perform(()=>buyAndPlantTree(farm,treeSlot,tree)))playBaySound('orchard.sapling', 1, 0);break}
     case 'buy-sapling': {
       const tree = treeIds.find((id) => id === value)
@@ -2640,21 +2735,45 @@ function closeCurrentPanel() {
   else closeDialog()
 }
 closeButton.addEventListener('click', closeCurrentPanel)
-dialog.addEventListener('cancel', event => { if (communityRequest && (panel === 'cookery' || panel === 'workshop' || panel === 'arrangement')) { event.preventDefault(); void resumeCommunityRequest() } })
+function returnFromPanel(event: Event) {
+  if (event.defaultPrevented) return
+  if (communityRequest && (panel === 'cookery' || panel === 'workshop' || panel === 'arrangement')) {
+    event.preventDefault()
+    void resumeCommunityRequest()
+  } else if (panelHistory.length) {
+    event.preventDefault()
+    goBack()
+  }
+}
+dialog.addEventListener('cancel', returnFromPanel)
+dialog.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || event.defaultPrevented) return
+  // Handle keyboard return before the native dialog close request. Browsers may
+  // make repeated native cancel events non-cancelable between user activations.
+  if (event.repeat) event.preventDefault()
+  else returnFromPanel(event)
+})
 dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&panelHistory.length){event.preventDefault();goBack()}})
 dialog.addEventListener('keydown', event => {
-  if (event.altKey || event.ctrlKey || event.metaKey || !(event.target instanceof HTMLButtonElement)) return
-  const selector = event.target.closest('.island-selector,.house-selector,.tree-selector')
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !(event.target instanceof HTMLButtonElement)) return
+  const selector = event.target.closest('.island-selector,.house-selector,.tree-selector,.panel-tabs,.market-category-icons,.recipe-family-choices,.recipe-fish-choices')
   if (!selector || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
-  const choices = [...selector.querySelectorAll<HTMLButtonElement>('button')]
+  const choices = [...selector.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]
+    .filter(choice => choice.getClientRects().length > 0)
   const index = choices.indexOf(event.target)
+  if (index < 0) return
   const next = event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + choices.length) % choices.length
   event.preventDefault()
-  choices[next]?.click()
+  if (next === index) return
+  // Focus before the action: drawPanel replaces these buttons and restores the
+  // focused choice. Clicking first would keep keyboard focus on the old choice.
+  choices[next].focus({ preventScroll: true })
+  choices[next].click()
 })
 dialogContent.addEventListener('toggle',event=>{
   const detail=event.target
   if(detail instanceof HTMLDetailsElement && detail.classList.contains('journey-details')) journeyDetailsOpen=detail.open
+  if(detail instanceof HTMLDetailsElement && detail.classList.contains('discovery-roadmap')) journalDetailsOpen=detail.open
 },true)
 dialog.addEventListener('click', (event) => {
   if (event.target === dialog) closeDialog()
@@ -2698,6 +2817,9 @@ window.addEventListener('keydown', (event) => {
     useHotbar(tool)
   }
 })
+
+saveRecovery = mountSaveRecovery(saveStore)
+if (saveStore.issue) saveRecovery.show()
 
 refresh()
 if (fieldLayout.matches && farm.island === 'home') toggleFieldView()

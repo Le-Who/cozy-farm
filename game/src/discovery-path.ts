@@ -1,3 +1,4 @@
+import { getFruitSource } from './orchard-guidance.ts';
 import {
   boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeBloom, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
@@ -77,15 +78,14 @@ function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTas
   const id = `${purpose}-${item.kind}`;
   if (item.kind === 'produce') return cropSource(farm, item.item, purpose);
   if (item.kind === 'fruit') {
-    const island = item.item === 'pear' ? 'grove' : 'home';
+    const source = getFruitSource(farm, item.item), { island, slot } = source;
     if (farm.island !== island) return task(id, `Соберите плоды: ${treeDefinitions[item.item].name.toLowerCase()}`, `Загляните в сад: ${island === 'home' ? 'Родной остров' : 'Солёная роща'}. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: island === 'home' ? 'Домой' : 'В рощу', target: 'sail', value: island });
-    const trees = farm.trees[island];
-    const ripe = trees.findIndex(tree => tree?.tree === item.item && tree.fruitReady > 0);
-    if (ripe >= 0) return task(id, `Соберите плоды: ${treeDefinitions[item.item].name.toLowerCase()}`, `Отложите плоды: ${item.quantity}. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: 'К плодовому дереву', target: 'visit-tree', value: String(ripe) });
-    if (trees.some(tree => tree?.tree === item.item)) return rest(farm, purpose);
-    const empty = trees.findIndex(tree => tree === null);
+    if (source.kind === 'pick') return task(id, `Соберите плоды: ${treeDefinitions[item.item].name.toLowerCase()}`, `Отложите плоды: ${item.quantity}. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: 'К плодовому дереву', target: 'visit-tree', value: String(slot) });
+    if (source.kind === 'grow') return rest(farm, purpose);
+    if (source.kind === 'space') return task(id, 'Освободите место в саду', 'Перенесите любое дерево в питомник: возраст и плоды сохранятся. Затем посадите нужное дерево на свободное место.', `ui-tree-${item.item}`, { label: 'Открыть сад', target: 'orchard' });
+    if (source.kind === 'return') return task(id, `Верните дерево: ${treeDefinitions[item.item].name.toLowerCase()}`, 'Выберите дерево из питомника и бесплатно верните его в сад. Возраст и плоды сохранены.', `ui-tree-${item.item}`, { label: 'К свободному месту', target: 'visit-tree', value: String(slot) });
     if (!farm.saplings[item.item] && farm.coins < treeDefinitions[item.item].saplingPrice) return coins(farm, treeDefinitions[item.item].saplingPrice, `саженец: ${treeDefinitions[item.item].name.toLowerCase()}`);
-    return task(id, `Посадите дерево: ${treeDefinitions[item.item].name.toLowerCase()}`, `Садовое дерево даст нужные плоды. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: 'Выбрать саженец', target: 'visit-tree', value: String(Math.max(0, empty)) });
+    return task(id, `Посадите дерево: ${treeDefinitions[item.item].name.toLowerCase()}`, `Садовое дерево даст нужные плоды. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: 'Выбрать саженец', target: 'visit-tree', value: String(slot) });
   }
   if (item.kind === 'eggs' || item.kind === 'eggBaskets') {
     if (farm.island !== 'home') return home(farm, task(id, 'Соберите яйца в курятнике', `Запасите яйца. Цель: ${purpose}.`, 'egg', { label: 'К курятнику', target: 'visit-coop' }));

@@ -2,15 +2,49 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { BayAudio } from '../src/bay-audio.ts'
 
-class Parameter { value = 0; setValueAtTime() {} linearRampToValueAtTime() {} setTargetAtTime() {} cancelScheduledValues() {} }
-class Node { gain = new Parameter(); connect() {} disconnect() {} }
+class Parameter {
+  value = 0
+  targets: { value: number; time: number; constant: number }[] = []
+  setValueAtTime() {}
+  linearRampToValueAtTime() {}
+  setTargetAtTime(value: number, time: number, constant: number) { this.targets.push({value,time,constant}) }
+  cancelScheduledValues() {}
+}
+class Node {
+  gain = new Parameter()
+  destination: Node | null = null
+  disconnects = 0
+  connect(destination: Node) { this.destination = destination }
+  disconnect() { this.disconnects++ }
+}
 class Buffer {
   sampleRate = 1000; length = 1000; duration = 1; numberOfChannels = 2
   channels = [new Float32Array(1000).fill(.1), new Float32Array(1000).fill(.1)]
   getChannelData(index: number) { return this.channels[index] }
 }
+class Source extends Node {
+  buffer: Buffer | null = null
+  loop = false
+  playbackRate = new Parameter()
+  onended: (() => void) | null = null
+  stops: number[] = []
+  stopAt = Infinity
+  ended = false
+  context: Context
+  constructor(context: Context) { super(); this.context = context }
+  start() {}
+  stop(when = this.context.currentTime) { this.stops.push(when); this.stopAt = when }
+  finish() { if (!this.ended) { this.ended = true; this.onended?.() } }
+}
 class Context {
+  static latest: Context
   state = 'running'; currentTime = 1; destination = new Node()
+  sources: Source[] = []
+  constructor() { Context.latest = this }
+  advanceTo(time: number) {
+    this.currentTime = time
+    for (const source of this.sources) if (source.stopAt <= time) source.finish()
+  }
   resume() { this.state = 'running'; return Promise.resolve() }
   suspend() { this.state = 'suspended'; return Promise.resolve() }
   createGain() { return new Node() }
@@ -18,7 +52,7 @@ class Context {
   createAnalyser() { return Object.assign(new Node(), {fftSize:1024,getFloatTimeDomainData(data: Float32Array) { data.fill(0) }}) }
   decodeAudioData() { return Promise.resolve(new Buffer()) }
   createBuffer(_channels: number, length: number) { const buffer = new Buffer(); buffer.length=length; buffer.channels=[new Float32Array(length),new Float32Array(length)]; return buffer }
-  createBufferSource() { return Object.assign(new Node(), { buffer:null, loop:false, playbackRate:new Parameter(), start() {}, stop() {} }) }
+  createBufferSource() { const source = new Source(this); this.sources.push(source); return source }
 }
 
 test('audio demand cache, stale contact, missing file, loop and mute lifecycle', async () => {
@@ -44,6 +78,8 @@ test('audio demand cache, stale contact, missing file, loop and mute lifecycle',
     await audio.primeEvents(['muted']);audio.playEvent('muted')
     assert.equal(requests,3,'muted scenes do not fetch their banks')
     assert.deepEqual(audio.getDiagnostics().contacts,[])
+    assert.equal(audio.getDiagnostics().activeVoices,1,'muting preserves the contact release tail')
+    Context.latest.advanceTo(1.061)
     assert.equal(audio.getDiagnostics().activeVoices,0)
     audio.setSettings({muted:false})
     audio.setSettings({effects:0});await audio.primeEvents(['muted']);audio.playEvent('muted');audio.setContact('flow',true)
@@ -95,4 +131,126 @@ test('a later real action recovers a failed manifest once its backoff expires', 
     audio.playEvent('cut');await audio.primeEvents(['cut'])
     assert.equal(requests,3,'recovered manifest and sample remain cached')
   } finally { performance.now=previous.now;Object.assign(globalThis,{window:previous.window,document:previous.document,fetch:previous.fetch}) }
+})
+
+async function withAudio(run: (audio: BayAudio, context: Context) => Promise<void>) {
+  const previous = { window:globalThis.window, document:globalThis.document, fetch:globalThis.fetch }
+  Object.assign(globalThis, {window:{AudioContext:Context},document:{addEventListener() {}}})
+  globalThis.fetch = async () => new Response(new Uint8Array(4))
+  const audio = new BayAudio()
+  try { await audio.unlock(); await run(audio, Context.latest) }
+  finally { await audio.suspend(); Object.assign(globalThis,previous) }
+}
+
+test('stopping effects lets contact audio finish its 60 ms release before disconnecting', async () => {
+  await withAudio(async (audio, context) => {
+    audio.loadSampleManifest({flow:{url:'flow',loop:true}})
+    await audio.primeEvents(['flow'])
+    audio.setContact('flow',true)
+    const source = context.sources[0], envelope = source.destination!
+    audio.stopEffects()
+    assert.deepEqual(audio.getDiagnostics().contacts,[])
+    assert.equal(audio.getDiagnostics().activeVoices,1,'release remains owned until the scheduled source end')
+    assert.deepEqual(source.stops,[1.06],'the scheduled fade is not overwritten by an immediate stop')
+    assert.deepEqual(envelope.gain.targets.at(-1),{value:0,time:1,constant:.012})
+    assert.equal(source.disconnects,0)
+    assert.equal(envelope.disconnects,0)
+    context.advanceTo(1.059)
+    assert.equal(audio.getDiagnostics().activeVoices,1)
+    context.advanceTo(1.061)
+    assert.equal(audio.getDiagnostics().activeVoices,0)
+    assert.equal(source.disconnects,1)
+    assert.equal(envelope.disconnects,1)
+  })
+})
+
+test('ended or evicted contact sources do not leave an orphaned contact blocking the next gesture', async () => {
+  await withAudio(async (audio, context) => {
+    audio.loadSampleManifest({flow:{url:'flow',loop:true},cut:{url:'cut'}})
+    await audio.primeEvents(['flow','cut'])
+    audio.setContact('flow',true)
+    const ended = context.sources[0]
+    ended.finish()
+    assert.deepEqual(audio.getDiagnostics().contacts,[],'a native source end releases its contact as well as its voice')
+    assert.equal(ended.onended,null,'cleanup detaches the source callback')
+    audio.setContact('flow',true)
+    const evicted = context.sources[1]
+    for (let i=0;i<56;i++) audio.playEvent('cut')
+    assert.equal(evicted.disconnects,1,'voice budget evicts the oldest contact source')
+    assert.deepEqual(audio.getDiagnostics().contacts,[],'eviction does not leave a dead contact attached')
+    audio.setContact('flow',true)
+    assert.deepEqual(audio.getDiagnostics().contacts,['flow'])
+    assert.equal(context.sources.at(-1)?.loop,true,'a later real gesture starts a fresh loop')
+    assert.equal(audio.getDiagnostics().activeVoices,56)
+  })
+})
+
+test('selective and repeated stops preserve release tails, replacement contacts and music', async () => {
+  await withAudio(async (audio, context) => {
+    audio.loadSampleManifest({flow:{url:'flow',loop:true},other:{url:'other',loop:true},cut:{url:'cut'},'instrument.shaker':{url:'shaker'}})
+    await audio.primeEvents(['flow','other','cut','instrument.shaker'])
+    audio.setContact('flow',true)
+    audio.setContact('other',true)
+    audio.playEvent('cut')
+    audio.playNote('shaker',60)
+    const [old,other,cut,music] = context.sources
+    audio.stopEffects(['flow','cut'])
+    assert.deepEqual(audio.getDiagnostics().contacts,['other'])
+    assert.equal(cut.disconnects,1,'one-shot cleanup remains immediate')
+    assert.equal(other.disconnects,0,'another scene contact is untouched')
+    assert.equal(music.disconnects,0,'effect cancellation does not stop music')
+    context.advanceTo(1.02)
+    audio.stopEffects(['flow','cut'])
+    assert.deepEqual(old.stops,[1.06],'another stop does not cut short or extend an existing release')
+    audio.setContact('flow',true)
+    const replacement = context.sources.at(-1)!
+    context.advanceTo(1.061)
+    assert.equal(old.disconnects,1)
+    assert.equal(replacement.disconnects,0)
+    assert.deepEqual(audio.getDiagnostics().contacts,['other','flow'],'the old end callback does not erase the replacement')
+    audio.setContact('flow',false)
+    audio.stopEffects()
+    audio.stopEffects()
+    assert.equal(replacement.stops.length,1,'a release begun by loss of contact survives scene cleanup')
+    context.advanceTo(1.122)
+    assert.deepEqual(audio.getDiagnostics().contacts,[])
+    assert.equal(audio.getDiagnostics().activeVoices,1,'only the music source remains')
+    audio.stopMusic()
+    context.advanceTo(3)
+    assert.equal(audio.getDiagnostics().activeVoices,0)
+    for (const source of context.sources) {
+      assert.equal(source.disconnects,1)
+      assert.equal(source.destination?.disconnects,1)
+      assert.equal(source.onended,null)
+    }
+  })
+})
+
+test('cancelled pending contacts never start and suspend immediately clears releasing voices', async () => {
+  await withAudio(async (audio, context) => {
+    let finishFetch!: (value: Response) => void
+    globalThis.fetch = () => new Promise(resolve => { finishFetch = resolve })
+    audio.loadSampleManifest({flow:{url:'slow-flow',loop:true}})
+    audio.setContact('flow',true)
+    audio.stopEffects()
+    finishFetch(new Response(new Uint8Array(4)))
+    await audio.primeEvents(['flow'])
+    assert.deepEqual(audio.getDiagnostics().contacts,[])
+    assert.equal(audio.getDiagnostics().playedNotes,0,'late decoded audio cannot revive a cancelled gesture')
+    audio.setContact('flow',true)
+    const source = context.sources[0]
+    audio.stopEffects()
+    assert.equal(audio.getDiagnostics().activeVoices,1)
+    await audio.suspend()
+    assert.equal(audio.getDiagnostics().state,'suspended')
+    assert.equal(audio.getDiagnostics().activeVoices,0,'a suspended audio clock cannot strand a release tail')
+    assert.deepEqual(audio.getDiagnostics().contacts,[])
+    assert.equal(source.disconnects,1)
+    assert.equal(source.onended,null)
+    await audio.unlock()
+    context.advanceTo(2)
+    assert.equal(audio.getDiagnostics().activeVoices,0,'resume does not resurrect the old source')
+    audio.setContact('flow',true)
+    assert.equal(audio.getDiagnostics().activeVoices,1,'a new gesture still starts normally after resuming')
+  })
 })

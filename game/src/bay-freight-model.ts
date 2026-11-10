@@ -1,3 +1,4 @@
+import { createFerryExpeditions, restoreFerryExpeditions, advanceExpeditions, type FerryExpeditions } from './ferry-expeditions.ts';
 export const freightPorts = ['home', 'grove', 'cape', 'village'] as const;
 export type FreightPort = typeof freightPorts[number];
 export const freightPortNames: Record<FreightPort, string> = { home: 'Родной остров', grove: 'Солёная роща', cape: 'Цветочный мыс', village: 'Лавандовая гавань' };
@@ -12,6 +13,7 @@ export type FreightShip = { phase: 'docked'; port: FreightPort; cargo: FreightCa
   | { phase: 'sailing'; from: FreightPort; to: FreightPort; arrivesOn: number; cargo: FreightCargo[] };
 export type FreightEvent = { day: number; kind: 'loading' | 'sailing' | 'unloading' | 'production' | 'blocked'; port: FreightPort; items: FreightItem[]; to?: FreightPort };
 export type BayFreightState = {
+  expeditions: FerryExpeditions;
   harvestStore?: number;
   warehouses: Record<FreightPort, FreightStock>;
   route: { stops: FreightPort[]; mode: 'mixed' | 'priority'; running: boolean; pickups: Record<FreightPort, FreightPickup> };
@@ -30,6 +32,7 @@ const fail = (message: string): FreightResult => ({ ok: false, message });
 
 export function createFreight(day = 1): BayFreightState {
   return {
+    expeditions: createFerryExpeditions(day),
     harvestStore: 0,
     warehouses: { home: {}, grove: {}, cape: {}, village: {} },
     route: { stops: ['home', 'village'], mode: 'mixed', running: false, pickups: {
@@ -197,6 +200,7 @@ function produce(state: BayFreightState, day: number, openedPorts: readonly Frei
   }
 }
 export function advanceFreight(state: BayFreightState, day: number, openedPorts: readonly FreightPort[], waxAvailable=true): void {
+  advanceExpeditions(state.expeditions, day);
   const target = Math.max(state.lastDay, count(day));
   for (let current = state.lastDay + 1; current <= target; current++) {
     if (state.ship.phase === 'sailing' && current >= state.ship.arrivesOn) {
@@ -214,6 +218,7 @@ export function advanceFreight(state: BayFreightState, day: number, openedPorts:
 
 export function restoreFreight(value: unknown, day = 1): BayFreightState {
   const state = createFreight(day), raw = record(value), stores = record(raw.warehouses), route = record(raw.route), ship = record(raw.ship);
+  state.expeditions = restoreFerryExpeditions(raw.expeditions, day);
   state.harvestStore = count(raw.harvestStore, 3);
   state.lastDay = Math.min(state.lastDay, Math.max(1, count(raw.lastDay) || state.lastDay));
   for (const port of freightPorts) {

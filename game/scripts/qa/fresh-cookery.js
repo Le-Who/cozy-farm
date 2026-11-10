@@ -3,7 +3,7 @@
 async (page) => {
   const actions = [];
   const readSave = () => page.evaluate(() => {
-    const f = JSON.parse(localStorage.getItem('cozy-farm-island-v1'));
+    const f = JSON.parse(localStorage.getItem('cozy-farm-island-v2'));
     return { day: f.day, coins: f.coins, island: f.island, boat: f.boatOwned,
       buildingLevels: f.buildingLevels, specialization: f.farmhouseSpecialization,
       dishes: f.dishes, fruit: f.fruit, produce: f.produce, eggs: f.eggs,

@@ -11,7 +11,7 @@ async page=>{
   await page.getByRole('button',{name:'▶ Играть',exact:true}).click();
   await page.locator('.bay-music-play[aria-pressed=true]').waitFor();await page.waitForTimeout(250);
   await page.getByRole('button',{name:'Глиняный барабан',exact:true}).click();
-  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cozy-farm-island-v1')).musicGarden.tracks.ceramic.steps.includes(6));
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cozy-farm-island-v2')).musicGarden.tracks.ceramic.steps.includes(6));
   const playing=await page.evaluate(()=>({primeCalls:window.musicPrimeCalls,drawFrames:window.musicDrawFrames,status:document.querySelector('.bay-music-status').textContent}));
   if(playing.primeCalls!==0)throw new Error(mode+' requested samples');
   await page.getByRole('button',{name:'Ⅱ Пауза',exact:true}).click();

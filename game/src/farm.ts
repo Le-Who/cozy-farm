@@ -501,6 +501,8 @@ export type FarmState = {
   island: IslandId;
   boatOwned: boolean;
   trees: Record<OrchardIslandId, (TreeSlot | null)[]>;
+  treeNursery: { id: number; tree: TreeSlot }[];
+  treeNurserySerial: number;
   saplings: Record<TreeId, number>;
   fruit: Record<TreeId, number>;
   fish: Record<FishId, number>;
@@ -613,6 +615,8 @@ export function createFarm(): FarmState {
       home: [{ tree: 'apple', age: treeDefinitions.apple.days, fruitReady: fruitPerHarvest }, null, null],
       grove: [{ tree: 'pear', age: treeDefinitions.pear.days, fruitReady: fruitPerHarvest }, null, null],
     },
+    treeNursery: [],
+    treeNurserySerial: 0,
     saplings: { apple: 1, pear: 0, peach: 0 },
     fruit: { apple: 0, pear: 0, peach: 0 },
     fish: { perch: 0, seaBass: 0, moonfish: 0, lanternfish: 0 },
@@ -1020,6 +1024,33 @@ export function plantTree(farm: FarmState, slot: number, tree: TreeId): ActionRe
   orchard[slot] = { tree, age: 0, fruitReady: 0 };
   farm.workToday += 1;
   return { ok: true, message: `Посажен ${treeDefinitions[tree].saplingName.toLowerCase()}.` };
+}
+
+/** Nursery trees retain their exact state. Only planted trees grow or refill overnight. */
+export function storeTree(farm: FarmState, slot: number): ActionResult {
+  if (!isId(orchardIslandIds, farm.island)) return failure('Переносите деревья из сада.');
+  if (!Number.isInteger(slot) || slot < 0 || slot >= treeSlotCount) return failure('Выберите дерево в саду.');
+  const tree = farm.trees[farm.island][slot];
+  if (!tree) return failure('На этом месте уже нет дерева.');
+  if (farm.treeNurserySerial >= Number.MAX_SAFE_INTEGER) return failure('Сейчас нельзя перенести ещё одно дерево.');
+  const id = ++farm.treeNurserySerial;
+  farm.treeNursery.push({ id, tree: { ...tree } });
+  farm.trees[farm.island][slot] = null;
+  farm.workToday += 1;
+  return { ok: true, message: `${treeDefinitions[tree.tree].treeName} в питомнике. Возраст и плоды сохранены. Место свободно.` };
+}
+
+export function returnNurseryTree(farm: FarmState, slot: number, nurseryId: number): ActionResult {
+  if (!isId(orchardIslandIds, farm.island)) return failure('Верните дерево в сад на Родном острове или в Солёной роще.');
+  if (!Number.isInteger(slot) || slot < 0 || slot >= treeSlotCount || farm.trees[farm.island][slot] !== null) {
+    return failure('Сначала освободите место в саду: перенесите дерево в питомник.');
+  }
+  const index = farm.treeNursery.findIndex(entry => entry.id === nurseryId);
+  if (index < 0) return failure('Это дерево уже возвращено в сад.');
+  const [{ tree }] = farm.treeNursery.splice(index, 1);
+  farm.trees[farm.island][slot] = { ...tree };
+  farm.workToday += 1;
+  return { ok: true, message: `Снова в саду: ${treeDefinitions[tree.tree].treeName.toLowerCase()}. Перенос бесплатный. Возраст и плоды сохранены.` };
 }
 
 export function buySapling(farm: FarmState, tree: TreeId): ActionResult {
@@ -2082,6 +2113,13 @@ function isTreeSlot(value: unknown): value is TreeSlot | null {
   return value.age <= maturity && value.fruitReady <= (value.age === maturity ? fruitPerHarvest : 0);
 }
 
+function isTreeNursery(value: unknown, serial: number): value is FarmState['treeNursery'] {
+  return Array.isArray(value) && Array.from(value).every(entry => isRecord(entry)
+    && isQuantity(entry.id) && entry.id > 0 && entry.id <= serial
+    && entry.tree !== null && isTreeSlot(entry.tree))
+    && new Set(value.map(entry => entry.id)).size === value.length;
+}
+
 function isOrchard(value: unknown): value is (TreeSlot | null)[] {
   return Array.isArray(value) && value.length === treeSlotCount && Array.from(value).every(isTreeSlot);
 }
@@ -2152,8 +2190,9 @@ function restoreLivingBay(value: Record<string, unknown>, day: number, fairCompl
   if (!isQuantity(fairGuestsServed) || fairGuestsServed > day || fairGuestsServed > 0 && !fairComplete) return undefined;
   if (!isInventory(workshopShapes, handmade)
     || !isUniqueList(workshopPatterns, (shape): shape is WorkshopShape => isId(workshopShapes, shape))) return undefined;
-  if (workshopShapes.some((shape) => handmade[shape] > 0 && !workshopPatterns.includes(shape))
-    || workshopPatterns.length > 0 && !fairComplete) return undefined;
+  // Trading can grant baked goods before the player learns their recipe.
+  // Only actual workshop knowledge requires the fair; possession does not.
+  if (workshopPatterns.length > 0 && !fairComplete) return undefined;
   if (!isRecord(village) || typeof village.built !== 'boolean' || !isRecord(village.supplies)
     || !isQuantity(village.meals) || village.meals > day || !isQuantity(village.mealOn) || village.mealOn > day
     || (village.meals === 0) !== (village.mealOn === 0) || village.meals > village.mealOn
@@ -2202,6 +2241,8 @@ function restoreLivingBay(value: Record<string, unknown>, day: number, fairCompl
 
 export function restoreFarm(value: unknown): FarmState | undefined {
   if (!isRecord(value) || value.version !== 1) return undefined;
+  // Only the absence of both fields is a legacy save. Partial loss must not erase stored trees.
+  if (Object.hasOwn(value, 'treeNursery') !== Object.hasOwn(value, 'treeNurserySerial')) return undefined;
   const restored = createFarm();
   const { day, coins, water, selectedSeed, beds, seeds:savedSeeds, produce:savedProduce, feed, eggs, eggsReady, chickensFed, progress } = value;
   const seeds=isRecord(savedSeeds)?{strawberry:0,blueberry:0,raspberry:0,...savedSeeds}:savedSeeds;
@@ -2212,6 +2253,8 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     island = restored.island,
     boatOwned = restored.boatOwned,
     trees = restored.trees,
+    treeNursery = restored.treeNursery,
+    treeNurserySerial = restored.treeNurserySerial,
     saplings = restored.saplings,
     fruit = restored.fruit,
     fish: savedFish = restored.fish,
@@ -2256,7 +2299,8 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   if (!isQuantity(day) || day === 0 || !isQuantity(coins)) return undefined;
   const bayShop = restoreBayShop(value.bayShop, day);
   if (!bayShop) return undefined;
-  const freight = restoreFreight(value.freight, day);
+  let freight: BayFreightState;
+  try { freight = restoreFreight(value.freight, day); } catch { return undefined; }
   const musicGarden = normalizeBayMusicState(value.musicGarden);
   const concertDay = isQuantity(value.concertDay) && value.concertDay <= day ? value.concertDay : 0;
   const culinary=restoreCulinary(value.culinary,day),shoreline=restoreShoreline(value.shoreline,day);
@@ -2330,6 +2374,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     harborSupplies[key] = amount;
   }
   if (harborItems.length && harborItems.every((item) => harborSupplies[marketKey(item)] === item.quantity)) return undefined;
+  if (!isQuantity(treeNurserySerial) || !isTreeNursery(treeNursery, treeNurserySerial)) return undefined;
   if (!isOrchardMap(trees) || !isInventory(treeIds, saplings) || !isInventory(treeIds, fruit)) return undefined;
   if (!isInventory(fishIds, fish) || !isInventory(orchardIslandIds, fishCaughtToday)
     || orchardIslandIds.some((id) => fishCaughtToday[id] > getFishLimit({ island, projects }, id))) return undefined;
@@ -2401,6 +2446,8 @@ export function restoreFarm(value: unknown): FarmState | undefined {
       home: trees.home.map((tree) => tree && { ...tree }),
       grove: trees.grove.map((tree) => tree && { ...tree }),
     },
+    treeNursery: treeNursery.map(({ id, tree }) => ({ id, tree: { ...tree } })),
+    treeNurserySerial,
     saplings: { ...saplings },
     fruit: { ...fruit },
     fish: { ...fish },

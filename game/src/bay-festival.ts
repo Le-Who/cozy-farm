@@ -25,7 +25,7 @@ export const festivalDefinitions = {
   harvest: {
     name: 'Праздник урожая',
     description: 'Садовые плоды, разноцветные корзины и общий стол.',
-    effect: 'Расширение склада гавани и постоянные украшения урожая.',
+    effect: 'Доплата за поставки урожая в экспедициях и постоянные украшения.',
   },
   lights: {
     name: 'Огни причала',
@@ -222,7 +222,7 @@ function themedPreparations(active: FestivalPreparation, context?: FestivalConte
       detail:
         variant === 1
           ? 'Приготовьте угощение к рыбному ужину.'
-          : 'Дождитесь разгрузки парома в гавани после выбора праздника или принесите припасы вручную.',
+          : 'Получите торговый груз парома после выбора праздника или принесите припасы вручную.',
       requirements:
         variant === 1
           ? [req('treat', 'Угощение к ужину', 1 + scale, treats)]
@@ -289,7 +289,7 @@ function preparations(active: FestivalPreparation, context?: FestivalContext): P
         ? [
             { id: 'fish', label: 'Новый успешный улов', quantity: 1, event: 'fish' },
             { id: 'shore', label: 'Новая находка на берегу', quantity: 1, event: 'shore' },
-            { id: 'delivery', label: 'Новая разгрузка парома в гавани', quantity: 1, event: 'delivery' },
+            { id: 'delivery', label: 'Полученный торговый груз парома', quantity: 1, event: 'delivery' },
           ]
         : [];
   if (alternatives.length)
@@ -399,8 +399,7 @@ function nextFestivalReward(id: FestivalTradition, completed: number): string {
   if (completed >= 3) return 'Повторная программа · гонорар 12 монет';
   if (id === 'stage') return `Мелодия «${festivalMelodyNames[completed]}»`;
   if (id === 'lights') return `Гостей в день · ${6+completed} → ${7+completed}`;
-  const capacity = [36,48,52,56];
-  return `Мест на складе · ${capacity[completed]} → ${capacity[completed+1]}`;
+  return `Доплата за урожай в рейсе · до ${completed+1} монет`;
 }
 export function getBayFestivalChoices(state: BayFestivalState, context: FestivalContext) {
   return festivalTraditions.map((id) => ({

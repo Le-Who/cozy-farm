@@ -13,7 +13,7 @@ async page => {
     for (const crop of ['carrot', 'beetroot', 'pumpkin', 'leafyGreens', 'cabbage', 'wheat']) f.produce[crop] = 50;
     f.fruit = { apple: 50, pear: 50, peach: 50 }; f.handmade.round = 20; f.fish.perch = 20; f.seaSalt = 20;
     if (!m.restoreFarm(JSON.parse(JSON.stringify(f)))) throw new Error('Invalid harbour fixture');
-    localStorage.setItem('cozy-farm-island-v1', JSON.stringify(f));
+    localStorage.setItem('cozy-farm-island-v2', JSON.stringify(f));
     return { day: f.day, island: f.island, meals: f.village.meals };
   });
 }

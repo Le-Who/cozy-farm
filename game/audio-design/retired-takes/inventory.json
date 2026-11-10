@@ -1,0 +1,1094 @@
+{
+  "version": 1,
+  "archivedFromCommit": "d41d9c80649c9e3a33336fd04322650e3e0eaf6c",
+  "reason": "Prepared takes present in public/audio but absent from all current sound banks and the runtime manifest. Archived without changing bytes; no acceptance or cue mapping is changed.",
+  "takes": [
+    {
+      "file": "angling.lower.mp3",
+      "originalPath": "game/public/audio/angling.lower.mp3",
+      "bytes": 56885,
+      "sha256": "74d117f99e84e0096852cef70d9c33eeb6b358060a043041107bec4f516ee62f",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.lower.mp3",
+        "sha256": "df92dc81742eb92fad1fdb9b59f504b9222ded29a0f9942a6b70cf382ebe1267"
+      }
+    },
+    {
+      "file": "angling.lower@2.mp3",
+      "originalPath": "game/public/audio/angling.lower@2.mp3",
+      "bytes": 65244,
+      "sha256": "cb372c765f3cb70c4e18099a25ac24ea0badacf841679d7d728e6f5d46f3c886",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.lower@2.mp3",
+        "sha256": "64e419f2bb20e98f47d8f26baf9794f1099c67d8a5e48db6d229b0a90d9ead82"
+      }
+    },
+    {
+      "file": "angling.lower@3.mp3",
+      "originalPath": "game/public/audio/angling.lower@3.mp3",
+      "bytes": 65244,
+      "sha256": "0e9af43d115a1406427f0ef0b1402e1298484e54a3adf4d35bd5002abe229056",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.lower@3.mp3",
+        "sha256": "eb8d9dde6c5aefbe25a346bab50722c63997ba898f11fce5fcaeae84d3e93ffc"
+      }
+    },
+    {
+      "file": "angling.lower@4.mp3",
+      "originalPath": "game/public/audio/angling.lower@4.mp3",
+      "bytes": 65244,
+      "sha256": "380df814aff6524aeeba33cd4da91fb3ffaa93bbea008f6eeb7571bb6c57e713",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.lower@4.mp3",
+        "sha256": "8ccab382ad043e2445cf1e1d7a6f269e0d34fd7ce0bb4b8eca0e8b2456fdf3f4"
+      }
+    },
+    {
+      "file": "angling.lower@5.mp3",
+      "originalPath": "game/public/audio/angling.lower@5.mp3",
+      "bytes": 65244,
+      "sha256": "a16892ed0a4979b9065813c55d6a4609d2dcb8da77471a46e4a9b127566d7d81",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.lower@5.mp3",
+        "sha256": "aee63d321f6edb0cad313df76586fe89ecd14b2576186e05f52ed48ff4765c24"
+      }
+    },
+    {
+      "file": "angling.lower@6.mp3",
+      "originalPath": "game/public/audio/angling.lower@6.mp3",
+      "bytes": 63572,
+      "sha256": "5a083dad81e0058677e6953221476c854c943746ba304ab5b80bac8ecf56a08e",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.lower@6.mp3",
+        "sha256": "63029df94dede39886708220e0ebf2665a05ff7d74f74f4a8d1017516036e106"
+      }
+    },
+    {
+      "file": "angling.raise.mp3",
+      "originalPath": "game/public/audio/angling.raise.mp3",
+      "bytes": 56885,
+      "sha256": "822ae259554cce750aae96932d2e1557dc6d0a4d378091fb55956918964c1c4b",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.raise.mp3",
+        "sha256": "222dcb2169f7b49837da08637c53dba9f6f7cff66e3562026b5aba174e0dc9a1"
+      }
+    },
+    {
+      "file": "angling.raise@2.mp3",
+      "originalPath": "game/public/audio/angling.raise@2.mp3",
+      "bytes": 65244,
+      "sha256": "49a90f442d08e92af51e8ec852691eaaf9025c3b70986e22c00f87228f798e08",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.raise@2.mp3",
+        "sha256": "29b141f8e4d544ad41e6e6566d552428851f40ab3e4f0d0385fc9f9eb32636db"
+      }
+    },
+    {
+      "file": "angling.raise@3.mp3",
+      "originalPath": "game/public/audio/angling.raise@3.mp3",
+      "bytes": 65244,
+      "sha256": "a34fc593f8626aaaefc6e48b2ae90b6420cefede2aff9cb95fdd001095c73db0",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.raise@3.mp3",
+        "sha256": "a31d9ec24b708a81b42b9cdc6e1353501208e51ae9bfa6b9d449051c2ed008a4"
+      }
+    },
+    {
+      "file": "angling.raise@4.mp3",
+      "originalPath": "game/public/audio/angling.raise@4.mp3",
+      "bytes": 65244,
+      "sha256": "c68e74343ecfa0882abd397028a24dfa947f9ae3ef56f8ac2ad94ae5bf6f7002",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.raise@4.mp3",
+        "sha256": "b456722e7ea84c6c776626bd1f70afce05113e433e95a48f2ecef838cdfd44f0"
+      }
+    },
+    {
+      "file": "angling.raise@5.mp3",
+      "originalPath": "game/public/audio/angling.raise@5.mp3",
+      "bytes": 65244,
+      "sha256": "e0e064b5123ad37119278c36a51e41b43b5c07e75126c1281d74ae19fe9ff3a6",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.raise@5.mp3",
+        "sha256": "806c2f56fdfda1d8457a50fa34656bbb4d97d05f4a04d22962355a94f33b0fef"
+      }
+    },
+    {
+      "file": "angling.snag-boot.mp3",
+      "originalPath": "game/public/audio/angling.snag-boot.mp3",
+      "bytes": 6730,
+      "sha256": "d467601677a57f435be8db32ffaefd97ed98291ce5e4c79a4724f0a9c9510f7d",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.snag-boot.mp3",
+        "sha256": "a63d067a3e2e53d2f7c9b47d5d5394340c363fa200db84d9294f1f9dbfdeacfc"
+      }
+    },
+    {
+      "file": "angling.snag.mp3",
+      "originalPath": "game/public/audio/angling.snag.mp3",
+      "bytes": 6312,
+      "sha256": "8abd1a0ef90cd2df6cc604eeb8a83df322dfc93328b30f27f5a8d300f72f8b61",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.snag.mp3",
+        "sha256": "33be2cf357c4b71439784b8e6df9b38d8f4cd8ecd5d27681d65d3f7d72a93dcf"
+      }
+    },
+    {
+      "file": "angling.snag@2.mp3",
+      "originalPath": "game/public/audio/angling.snag@2.mp3",
+      "bytes": 7148,
+      "sha256": "edb208b49c9759b4d707494c66ff8f48a84ef86971589fbc0dd1fea8cbaa6e17",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/angling.snag@2.mp3",
+        "sha256": "a01db3dc5983f7b7dc3527bbf10080b091037925c70abdf0b6a3facc52d7aced"
+      }
+    },
+    {
+      "file": "apiary.collect.mp3",
+      "originalPath": "game/public/audio/apiary.collect.mp3",
+      "bytes": 24702,
+      "sha256": "6fd2092c33aedcf0f2e21229faddfeddcdebda9bf906080c25418266506e6242",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/apiary.collect.mp3",
+        "sha256": "df719052dca3d6ecc4eb50c9161ed4cd710eca93e3bfc2bff60c0d3bfe3156f4"
+      }
+    },
+    {
+      "file": "cook.batter-stir.mp3",
+      "originalPath": "game/public/audio/cook.batter-stir.mp3",
+      "bytes": 64826,
+      "sha256": "ff06b8299959b594c1647139588794ac31ae26679b1f7d178ae6ff15419d0582",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.batter-stir.mp3",
+        "sha256": "d8b60b51d99634b88269eae6ecab176b097b2b35ff88ba7b6f0c87b2ac9ea700"
+      },
+      "reviewRejection": "17dB body modulation and poor stirring identity"
+    },
+    {
+      "file": "cook.berry-pot.mp3",
+      "originalPath": "game/public/audio/cook.berry-pot.mp3",
+      "bytes": 7984,
+      "sha256": "2a42934ac17ec573a81c32d0bb0b2e49671298fc4d19832c08edab4b708ef119",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.berry-pot.mp3",
+        "sha256": "17ebb14550a85a0737214a0569da0a2d0331d5233979cbc37cf4616ba41bcaa1"
+      },
+      "reviewRejection": "CLAP strongly rubbery/flatulence"
+    },
+    {
+      "file": "cook.berry-pot@2.mp3",
+      "originalPath": "game/public/audio/cook.berry-pot@2.mp3",
+      "bytes": 4222,
+      "sha256": "3e04ea273287c25a79c9116f46f6ae048938569f92b99705cca759a7a3ccc155",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.berry-pot@2.mp3",
+        "sha256": "c1e60200d70e657f643bdd42c1c8805d1ce5d386b03e197c2a4b9d1756be661e"
+      },
+      "reviewRejection": "CLAP rubbery/flatulence greater than material"
+    },
+    {
+      "file": "cook.berry-pot@3.mp3",
+      "originalPath": "game/public/audio/cook.berry-pot@3.mp3",
+      "bytes": 6730,
+      "sha256": "e908418db2bc89adf920e9b05d9d325e59a97e872ddbb1a2204df544f51d0c1a",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.berry-pot@3.mp3",
+        "sha256": "dde075001182dba92e15758fc4d68ae68d2b84d3e742f541fa163b8a22e96f2e"
+      },
+      "reviewRejection": "CLAP rubbery/flatulence greater than material"
+    },
+    {
+      "file": "cook.berry-tart.mp3",
+      "originalPath": "game/public/audio/cook.berry-tart.mp3",
+      "bytes": 9656,
+      "sha256": "61327afe3f88837883aca9a3cc98dd0ef3504a86d3ade3891f2d321224172a17",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.berry-tart.mp3",
+        "sha256": "ea1b6219562735fd175cc3ef4bda0e9d3354407719b4ba4b93115c75d3e279b1"
+      },
+      "reviewRejection": "CLAP strongly rubbery/flatulence"
+    },
+    {
+      "file": "cook.berry-tart@2.mp3",
+      "originalPath": "game/public/audio/cook.berry-tart@2.mp3",
+      "bytes": 13835,
+      "sha256": "3c66dc0a9ecfed49458b5f9b41b6d8b0b69cfc1384408b8627b07c0eab95077e",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.berry-tart@2.mp3",
+        "sha256": "2eaa54ad287689a169b1aae0bb4c8b64037743e866a1459486c070553c16c7b1"
+      },
+      "reviewRejection": "CLAP strongly rubbery/flatulence"
+    },
+    {
+      "file": "cook.cream-flow.mp3",
+      "originalPath": "game/public/audio/cook.cream-flow.mp3",
+      "bytes": 48526,
+      "sha256": "18cdae0d29328fcc2210933a1cc028dd710c8e138443a99bc3db58c7d7765bd4",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.cream-flow.mp3",
+        "sha256": "b3a08f24ff89d0483a495c8cb332b99b0682ba1fee5f66a9af176bae16ecdc8b"
+      },
+      "reviewRejection": "27dB body modulation, separate drops instead of stream"
+    },
+    {
+      "file": "cook.dough-roll.mp3",
+      "originalPath": "game/public/audio/cook.dough-roll.mp3",
+      "bytes": 65244,
+      "sha256": "3fc48464156bba1e8514854bf6c6e7f9dcb9e2624b8505b9adc5274d31c74c73",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.dough-roll.mp3",
+        "sha256": "0eb93baf2eb0020b0c5e9ed238f8c17330e647a08b6588729f989dc1301c40af"
+      },
+      "reviewRejection": "Replaced with longer sustained five second contact"
+    },
+    {
+      "file": "cook.fruit-cream.mp3",
+      "originalPath": "game/public/audio/cook.fruit-cream.mp3",
+      "bytes": 8820,
+      "sha256": "9e7f9da268b46f1a1d932bb065cac0f040084c0f37a4804ae7609001527c6403",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.fruit-cream.mp3",
+        "sha256": "390b5d3c7b8fc8f686f3f7c7f21cab7c5cf5d5e7951887f090f88df6b424414d"
+      },
+      "reviewRejection": "CLAP strongly rubbery/flatulence"
+    },
+    {
+      "file": "cook.fruit-pot.mp3",
+      "originalPath": "game/public/audio/cook.fruit-pot.mp3",
+      "bytes": 5894,
+      "sha256": "7feb31dd33cf9338bab4b788e1b556db4b10059a0acd86980a1e811dd8a60c37",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.fruit-pot.mp3",
+        "sha256": "2c6b7a5a0b7feb68b89e9b7624d5d3e73082dfb6861955f8d816511a8929f170"
+      },
+      "reviewRejection": "Short mechanical click rather than resonant kitchen object"
+    },
+    {
+      "file": "cook.fruit-pot@2.mp3",
+      "originalPath": "game/public/audio/cook.fruit-pot@2.mp3",
+      "bytes": 4640,
+      "sha256": "a35d4e864cc6791843228b9efb633cad4db6bef2e72f51864c09968ebba50e3c",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.fruit-pot@2.mp3",
+        "sha256": "5ea3dec5323d207604c37bf7a3dbdd2682d89a501ac39657056d7e388e9ba139"
+      },
+      "reviewRejection": "Short mechanical click, weaker material identity"
+    },
+    {
+      "file": "cook.fruit-pot@3.mp3",
+      "originalPath": "game/public/audio/cook.fruit-pot@3.mp3",
+      "bytes": 12581,
+      "sha256": "ee5d256b15e8782de49e143eb47afece3ff385f751a6c784d129765192670018",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.fruit-pot@3.mp3",
+        "sha256": "621a434c8f9be1dadb02939ebd762c99f7033d30f8a7bf1ff301bc002c122493"
+      },
+      "reviewRejection": "Mechanical click and rubbery classifier confusion"
+    },
+    {
+      "file": "cook.fruit-tart@2.mp3",
+      "originalPath": "game/public/audio/cook.fruit-tart@2.mp3",
+      "bytes": 11327,
+      "sha256": "ea60b7763e66397c8e0621563f0d8a2cb7da15b80f736c2c95f3d609e6eb509d",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.fruit-tart@2.mp3",
+        "sha256": "3a104593f47c7497c33c3458ea9e9f151c78b0801765e040d31a39337b340d4c"
+      },
+      "reviewRejection": "CLAP rubbery/flatulence greater than material"
+    },
+    {
+      "file": "cook.honey-flow.mp3",
+      "originalPath": "game/public/audio/cook.honey-flow.mp3",
+      "bytes": 63990,
+      "sha256": "09e03b4a530069a1e4b065df658d4fa24b5545ab58b7de5b4842d41f85f1b1a6",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.honey-flow.mp3",
+        "sha256": "f5239753af352ca3ac235e1ff6ae2147fca90b3ba84ca366f17049512aa1259a"
+      },
+      "reviewRejection": "31dB body modulation, spoon identity instead of pouring"
+    },
+    {
+      "file": "cook.jam-flow.mp3",
+      "originalPath": "game/public/audio/cook.jam-flow.mp3",
+      "bytes": 63990,
+      "sha256": "26c3ced042ecd7ff03522735fd86c78f18d0aa66afa50119b3b2afd8f99839dd",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.jam-flow.mp3",
+        "sha256": "effbfcdd10989cfba27e66d94db75f655291f7830ccae272fdcff2e4a695f1bb"
+      },
+      "reviewRejection": "21dB 100ms body modulation; poorer liquid identity"
+    },
+    {
+      "file": "cook.jam-pour.mp3",
+      "originalPath": "game/public/audio/cook.jam-pour.mp3",
+      "bytes": 20941,
+      "sha256": "790591d55b9562ea49b723566f53a52e69bbe5dc0f3aa163f92bcc6dfd43f993",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.jam-pour.mp3",
+        "sha256": "79f8e9a1980a9324fff59cdddb0f59f19531bc1ba5c96f8e1fca77f015223c9a"
+      },
+      "reviewRejection": "Single action cannot follow visible flow, rubbery classifier confusion"
+    },
+    {
+      "file": "cook.jam-pour@2.mp3",
+      "originalPath": "game/public/audio/cook.jam-pour@2.mp3",
+      "bytes": 15925,
+      "sha256": "34523497a88a9f7ee858c970e00d3ed87f9dd2e04a19d1067f764f4fc3647fa0",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.jam-pour@2.mp3",
+        "sha256": "f0ff613fdabf9580bff1145761665333f8a6cdada4cf9576d1157d894dccc5c3"
+      },
+      "reviewRejection": "Late260ms onset and single action cannot follow visible flow"
+    },
+    {
+      "file": "cook.preserves-stir@2.mp3",
+      "originalPath": "game/public/audio/cook.preserves-stir@2.mp3",
+      "bytes": 97009,
+      "sha256": "561253775389f9596cb6f1df25625ded6afa2b6c71676d62c0f4dc501f7c1058",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.preserves-stir@2.mp3",
+        "sha256": "5ed3b03d28ecbb486110807588ad7f564762a4c3a722a0bafe612371081f16c1"
+      },
+      "reviewRejection": "CLAP rubbery .679; original .957 stirring with audible continuous body"
+    },
+    {
+      "file": "cook.salt@2.mp3",
+      "originalPath": "game/public/audio/cook.salt@2.mp3",
+      "bytes": 56885,
+      "sha256": "9af14124a61fb946bd763509b96d52969fc692436884d4502159a4ec67c6b007",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.salt@2.mp3",
+        "sha256": "13f1aa1a21a02299904f8875bf84a6f2fd02012a727d5c7711b4352576bf64d7"
+      },
+      "reviewRejection": "CLAP harsh continuous frying hiss .994"
+    },
+    {
+      "file": "cook.sugar@2.mp3",
+      "originalPath": "game/public/audio/cook.sugar@2.mp3",
+      "bytes": 56885,
+      "sha256": "c1e55616f7e4fc26278ca62d149e0cdffdb177deaf5ed63ed39ffd2a598b5720",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/cook.sugar@2.mp3",
+        "sha256": "4219deec2e432d8bd70c77773416b854101315fa8c014071c8cf1f926e18a036"
+      },
+      "reviewRejection": "CLAP harsh continuous frying hiss .987"
+    },
+    {
+      "file": "ferry.arrive.mp3",
+      "originalPath": "game/public/audio/ferry.arrive.mp3",
+      "bytes": 22194,
+      "sha256": "5472096f5e0cc43c74b4ff352af686f1e038f214c8c85e8915d3fed2e401e2c3",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/ferry.arrive.mp3",
+        "sha256": "cf69f2ecb10799f057c6fb549d5b22b2d884a6cf872268cd14e29fe2d840d13d"
+      }
+    },
+    {
+      "file": "ferry.depart.mp3",
+      "originalPath": "game/public/audio/ferry.depart.mp3",
+      "bytes": 21776,
+      "sha256": "819d95206eb30b09751cfdc7ce79762d77423d1e80b949196956bd1062431251",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/ferry.depart.mp3",
+        "sha256": "0035288dec09dd62f9d1bec5fac89d9dfc674fae568ef2363d20659debea49a8"
+      }
+    },
+    {
+      "file": "field.crop-pick.mp3",
+      "originalPath": "game/public/audio/field.crop-pick.mp3",
+      "bytes": 9238,
+      "sha256": "4dff153b94de28da8ee6430c75066b0228c9fef478769ac55b68871c59a2164f",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/field.crop-pick.mp3",
+        "sha256": "48f63afb47737a33914d5541c6524b603a50e0e628a7f0060747c9b856db6328"
+      }
+    },
+    {
+      "file": "field.crop-pick@2.mp3",
+      "originalPath": "game/public/audio/field.crop-pick@2.mp3",
+      "bytes": 5476,
+      "sha256": "8159df58a58a5e04fc95e85a59d8ee5deca242c48e504d2c3487ce04da3c3e8d",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/field.crop-pick@2.mp3",
+        "sha256": "facab94a064f9017d2310c36b6ac8ef8cb460d2ef2ee155f0dcea433defdfd65"
+      }
+    },
+    {
+      "file": "fish.cast.mp3",
+      "originalPath": "game/public/audio/fish.cast.mp3",
+      "bytes": 17597,
+      "sha256": "68c7679777c41648d4ca1fdc84f5333a4db89429ef7de9bc6216ffeeb91ec9ba",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/fish.cast.mp3",
+        "sha256": "555bbe6af3a85b26b7ea2114d8328139cd3bc264e299df5ada59029c484036b3"
+      }
+    },
+    {
+      "file": "fish.hook.mp3",
+      "originalPath": "game/public/audio/fish.hook.mp3",
+      "bytes": 10074,
+      "sha256": "c3ed0da30977a4c021ef53f55085aae26cb0ad92bf1f87c59d95b7536b6204df",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/fish.hook.mp3",
+        "sha256": "9446cd760292d8befc5fcc20675889baeabfe6f1b3df629ca9940f24f77d8117"
+      }
+    },
+    {
+      "file": "fish.land.mp3",
+      "originalPath": "game/public/audio/fish.land.mp3",
+      "bytes": 12163,
+      "sha256": "6ff81f384af862c5f0d8e884ddbaf7fb8dfcf65e59c6ae7291fade0921734a15",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/fish.land.mp3",
+        "sha256": "47b42b83025ccce61c78aedca45897c2f76e4840f57b26be5c9ae63fab87d846"
+      }
+    },
+    {
+      "file": "footsteps.grass.mp3",
+      "originalPath": "game/public/audio/footsteps.grass.mp3",
+      "bytes": 9238,
+      "sha256": "dce272ac8d219d298a9a5bcef2e1fe63e9de43197186987407e56107a1474a8e",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/footsteps.grass.mp3",
+        "sha256": "d4cd911bfca0502c49b2ef11cd55505aa99bc07ea478d08f9bef56db6bbe87bc"
+      }
+    },
+    {
+      "file": "footsteps.grass@2.mp3",
+      "originalPath": "game/public/audio/footsteps.grass@2.mp3",
+      "bytes": 10074,
+      "sha256": "1e4a1923e37a1bf47943b24804a6b8130dca0b0213127aee8d766e6cbe6673a2",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/footsteps.grass@2.mp3",
+        "sha256": "686248b0413c794080ab063c6891483b54ec6c325e00631dfc241f7f48b481b8"
+      }
+    },
+    {
+      "file": "footsteps.grass@3.mp3",
+      "originalPath": "game/public/audio/footsteps.grass@3.mp3",
+      "bytes": 9238,
+      "sha256": "bd122375b5f03858764eef8b4144c08c8dbb7491bde9e9b7e6808baf84502c06",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/footsteps.grass@3.mp3",
+        "sha256": "46dcb69884f75ba2fe99db5358841befca22e90ce07170d5e876371bc945d9cd"
+      }
+    },
+    {
+      "file": "freight.crate.mp3",
+      "originalPath": "game/public/audio/freight.crate.mp3",
+      "bytes": 7984,
+      "sha256": "c3b7e9d542de6480502387a0d840cc217fe24f196ca476d7b410f76f1b600ab8",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/freight.crate.mp3",
+        "sha256": "68a5d71e25e0a514d99ff2e3398a2148e4800f5e1e8b15d460999affafe0d689"
+      }
+    },
+    {
+      "file": "garden.harvest.mp3",
+      "originalPath": "game/public/audio/garden.harvest.mp3",
+      "bytes": 12163,
+      "sha256": "ceff3cb0cb566ecd6b70e770eb957865709fd9fa1460cdd0d45e929b9310a343",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/garden.harvest.mp3",
+        "sha256": "4f9a498ada59342adaf1332807853ea0868a9e28f4d08c88c5fb8e6b553cca8f"
+      }
+    },
+    {
+      "file": "garden.harvest@2.mp3",
+      "originalPath": "game/public/audio/garden.harvest@2.mp3",
+      "bytes": 12999,
+      "sha256": "44755ef849605d6bce5ed592440b950c46e71ef670651b02fe337ed4f047c655",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/garden.harvest@2.mp3",
+        "sha256": "28484192974b91c858afcf112cf9031cc8635956f56db2f84b0da5e84453c8d8"
+      }
+    },
+    {
+      "file": "garden.plant.mp3",
+      "originalPath": "game/public/audio/garden.plant.mp3",
+      "bytes": 11327,
+      "sha256": "a167059893d136496cb4008f5e7fb0cd94f5ee4f4f26fc83f71ad223b75d626b",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/garden.plant.mp3",
+        "sha256": "3edafd04559cad218d03b00d72bdfed28ebc594f8c264feb0d5f3628aee701b6"
+      }
+    },
+    {
+      "file": "garden.plant@2.mp3",
+      "originalPath": "game/public/audio/garden.plant@2.mp3",
+      "bytes": 5058,
+      "sha256": "18d77b66d9b72281381e8c2ebc33360ac47929b315a257cfbc876b298b5c0e09",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/garden.plant@2.mp3",
+        "sha256": "27d489eca6b6c7d6b1d2c8975eec2630af5a215f8041ed3b0f86e1402661e193"
+      }
+    },
+    {
+      "file": "garden.till.mp3",
+      "originalPath": "game/public/audio/garden.till.mp3",
+      "bytes": 14253,
+      "sha256": "18bb8575193e3582c3ff8ebae2a118df40699f69dc4704f5e104daac54ad2399",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/garden.till.mp3",
+        "sha256": "56570bedc2f4458d506ead51fa261f083ac1ca8a5ee432393e4a444b3795cbf5"
+      }
+    },
+    {
+      "file": "garden.water.mp3",
+      "originalPath": "game/public/audio/garden.water.mp3",
+      "bytes": 28882,
+      "sha256": "8bf068ea93c213f5f78287511a615a71748b7eab347ce7795f11977411775580",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/garden.water.mp3",
+        "sha256": "cf2ec3e54735ba31097d711f001c89f3c120eb207727990dba7cdb2130f7fc6f"
+      }
+    },
+    {
+      "file": "garden.water@2.mp3",
+      "originalPath": "game/public/audio/garden.water@2.mp3",
+      "bytes": 25538,
+      "sha256": "b384414d93ba7882759474a17e2dbd058dab6c5212e61df91d09c524ac5f2adb",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/garden.water@2.mp3",
+        "sha256": "e8b15ef9ef741256770710ce1569f4f1fe31044fdc012a678fc72851f674ce86"
+      }
+    },
+    {
+      "file": "hen.egg.mp3",
+      "originalPath": "game/public/audio/hen.egg.mp3",
+      "bytes": 10074,
+      "sha256": "fbe23c0ab6847ab17866aa30e83e0c00c29dfb48911c4e663d67d97575a2b1f5",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/hen.egg.mp3",
+        "sha256": "fef1433491d69d4d63dfd546d8fa1f3a22ff24936a71e31a3f8ced341c62926f"
+      }
+    },
+    {
+      "file": "hen.feed.mp3",
+      "originalPath": "game/public/audio/hen.feed.mp3",
+      "bytes": 12163,
+      "sha256": "398d4af34c53e7049b56c2d1c06bdb59ee2a4e8f443ddcaeaed3d89c93f23278",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/hen.feed.mp3",
+        "sha256": "9c1873864599585d599593873377e55c937c31737c81c1c66293455bd24c05b8"
+      }
+    },
+    {
+      "file": "hen.hatch.mp3",
+      "originalPath": "game/public/audio/hen.hatch.mp3",
+      "bytes": 14253,
+      "sha256": "4d981ff3cc6995072f7f6073e7ab23e965ba7cfa2181ea6b774c820e71d7ed2b",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/hen.hatch.mp3",
+        "sha256": "d50022a71973c5c60536136c21dc91e08257a7102aff464c7d80c58962789e84"
+      }
+    },
+    {
+      "file": "hen.pet.mp3",
+      "originalPath": "game/public/audio/hen.pet.mp3",
+      "bytes": 16343,
+      "sha256": "bcde59473fb0206fe7958f79f52e17dc7f9bf087a7694909352eb5025cfab2cb",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/hen.pet.mp3",
+        "sha256": "4c9cb853f1d7ebc5c24f19878ef2f1096c6bd30fb4fba28336c48df78a53fc44"
+      }
+    },
+    {
+      "file": "kitchen.cream.mp3",
+      "originalPath": "game/public/audio/kitchen.cream.mp3",
+      "bytes": 12581,
+      "sha256": "0e426a35803abf39af15f5ee34fd89b4346e0392e4b8f0ca3e32e07531b40897",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.cream.mp3",
+        "sha256": "2bc469f0f14b0287a0a69da5d16729faa0c2b7a7b2fefd2276a24a901e34e855"
+      }
+    },
+    {
+      "file": "kitchen.flip.mp3",
+      "originalPath": "game/public/audio/kitchen.flip.mp3",
+      "bytes": 13417,
+      "sha256": "a4509dea33f55bc6a4a788266f8468a82074f624fe3d1071ac3fc9d7ca82313c",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.flip.mp3",
+        "sha256": "b0847b8ae6f0a005980bf0e14bae1a17b479208ebca090c2f60e2694e1b4e057"
+      }
+    },
+    {
+      "file": "kitchen.flip@2.mp3",
+      "originalPath": "game/public/audio/kitchen.flip@2.mp3",
+      "bytes": 12581,
+      "sha256": "35161004daa22f20986febb543109f88d846af1a681c7fce048faab1793a4254",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.flip@2.mp3",
+        "sha256": "0b3010a8ea197350ec61f95093d4106366417612016cb3ad789a6e3cd3d60c22"
+      }
+    },
+    {
+      "file": "kitchen.fruit.mp3",
+      "originalPath": "game/public/audio/kitchen.fruit.mp3",
+      "bytes": 3386,
+      "sha256": "37540114f872d59ce8e105e02f61c66036d01a64ad59121f40065e32c6894b60",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.fruit.mp3",
+        "sha256": "45a0ce4d4035dd844237e7e03c55299eb436f00f416a5ecc23b2336eda31c91e"
+      }
+    },
+    {
+      "file": "kitchen.fruit@2.mp3",
+      "originalPath": "game/public/audio/kitchen.fruit@2.mp3",
+      "bytes": 10492,
+      "sha256": "015bc55c31df41cc5014267b5ef621485db78b272b4130dd2e3268be39de3624",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.fruit@2.mp3",
+        "sha256": "686f10de5bfc7d6caf67f1e2560fae411be75b0236ab8e78647522e3533a36fc"
+      }
+    },
+    {
+      "file": "kitchen.grill.mp3",
+      "originalPath": "game/public/audio/kitchen.grill.mp3",
+      "bytes": 14253,
+      "sha256": "9d1680b5c3a603bdcc640b67dbd08153a18a1f42445ad371649edcab82c32007",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.grill.mp3",
+        "sha256": "9f994dcc879549aab3459a637a4fb6c42f801102f9ebde30be54ece887482715"
+      }
+    },
+    {
+      "file": "kitchen.grill@2.mp3",
+      "originalPath": "game/public/audio/kitchen.grill@2.mp3",
+      "bytes": 56885,
+      "sha256": "d198f47453c64bba151928e71ea7bd693f25c8d6f1fe64a3140599e45c3242a8",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.grill@2.mp3",
+        "sha256": "77277a8d33bd25459182e97f97b943ce3c1093bee8132d71311693dd36f06152"
+      }
+    },
+    {
+      "file": "kitchen.honey.mp3",
+      "originalPath": "game/public/audio/kitchen.honey.mp3",
+      "bytes": 22612,
+      "sha256": "3cbc9d958ad9eb08d88ce0b11d20783ba5f301c2ac5e2e56475bb063ba65bddd",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.honey.mp3",
+        "sha256": "ff85bcbb35f32e90a1899dcec858657cff31a8d3ef084b42517a864d7e4488e4"
+      }
+    },
+    {
+      "file": "kitchen.honey@3.mp3",
+      "originalPath": "game/public/audio/kitchen.honey@3.mp3",
+      "bytes": 56885,
+      "sha256": "f2ec5015bcb00f58977bfe28d16423dde27643ad642d5953c34fae9b65591e40",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/kitchen.honey@3.mp3",
+        "sha256": "b073427d207a70fd86422377afb0acc2538d759a2bd34dee94a053257b08cabb"
+      }
+    },
+    {
+      "file": "kitchen.salt.mp3",
+      "originalPath": "game/public/audio/kitchen.salt.mp3",
+      "bytes": 9656,
+      "sha256": "ca416d9963cd18e642e114ca358c5a970c159777bc1eb6486e59c3dc2677ce5e",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.salt.mp3",
+        "sha256": "a0d29c2bd0de592a6ed457d826c2d5b036d81153b96b15339ec7de49fe53c15f"
+      }
+    },
+    {
+      "file": "kitchen.salt@2.mp3",
+      "originalPath": "game/public/audio/kitchen.salt@2.mp3",
+      "bytes": 10074,
+      "sha256": "641403067d0ad90eb21719df604a24c0a1a8f023f59eeba90fbf54ae733b44d7",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.salt@2.mp3",
+        "sha256": "fd070ef1743429c8d8af7e241eaab8b8bbda68cd552b82d8bde29da07182b86a"
+      }
+    },
+    {
+      "file": "kitchen.sprinkle.mp3",
+      "originalPath": "game/public/audio/kitchen.sprinkle.mp3",
+      "bytes": 10074,
+      "sha256": "cdaed6a7306d4023b72d4ed38ba0558d7ffa43684be26413792eb4cf621d6c5e",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.sprinkle.mp3",
+        "sha256": "c65edec76c03ba515c98b217efbf9b9865296a9f986f3b06bc2e76af65b2c501"
+      }
+    },
+    {
+      "file": "kitchen.stir.mp3",
+      "originalPath": "game/public/audio/kitchen.stir.mp3",
+      "bytes": 15507,
+      "sha256": "56995c9d4a6d8d62cdeb4afcfc3271f2250d19b6fcd76f9e8a8bde9c4b89eb61",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.stir.mp3",
+        "sha256": "ca9090938cf43959d339adc499d37c9ff0dc1300f6cddfd8e3793374ad08d158"
+      }
+    },
+    {
+      "file": "kitchen.stir@2.mp3",
+      "originalPath": "game/public/audio/kitchen.stir@2.mp3",
+      "bytes": 39331,
+      "sha256": "aeb1ce66fbb1785a696af3c76f764fb91236c8caa10fa0c105a4dedd0055fa98",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/kitchen.stir@2.mp3",
+        "sha256": "99b0fda425132e2adf1df50f8ad77d9c46b247b464cfb2da226eeee96bf01e2d"
+      }
+    },
+    {
+      "file": "market.buy.mp3",
+      "originalPath": "game/public/audio/market.buy.mp3",
+      "bytes": 9656,
+      "sha256": "3262eb41f5509c2c5762b56285452814cd00604bf9f7c3eff7ce8e4be68e58a8",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/market.buy.mp3",
+        "sha256": "81441dfe7967ac7b2b1a17466a9dc2a6771a153fcbf44f16ff2cd2bcdacdba5e"
+      }
+    },
+    {
+      "file": "market.sell.mp3",
+      "originalPath": "game/public/audio/market.sell.mp3",
+      "bytes": 15925,
+      "sha256": "a22fc629697271dbbbcd76d4af6aa57c836027d88104938ba2c7091c53b9002f",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/market.sell.mp3",
+        "sha256": "a550963593e8aaa2e90aecfbad5c4505d8284a1136d9fbbd516ad2261b05732e"
+      }
+    },
+    {
+      "file": "market.sell@2.mp3",
+      "originalPath": "game/public/audio/market.sell@2.mp3",
+      "bytes": 11327,
+      "sha256": "f08cdd4a1fe0c141eb1a799fad735035cddd0714dbb6d6f85c3b34b76d2fe4f1",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/market.sell@2.mp3",
+        "sha256": "de4080e8d596fede4cb14ef570ee67baabbfdf87be202e574f546c2c1667f2bb"
+      }
+    },
+    {
+      "file": "menu.close.mp3",
+      "originalPath": "game/public/audio/menu.close.mp3",
+      "bytes": 3386,
+      "sha256": "f4b80096a356589b8fff0d72028fb60235fa1e7c5990687f425516582f11b427",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/menu.close.mp3",
+        "sha256": "1dcc10c9034e0ec6c5864008512eb2b0f1876eb99fbc14a49aae185904c05774"
+      }
+    },
+    {
+      "file": "menu.open.mp3",
+      "originalPath": "game/public/audio/menu.open.mp3",
+      "bytes": 3386,
+      "sha256": "fb7f9e75440027793f5046e65a06a5dce97a00ccc5fcfbc47fb682c1c52234ef",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/menu.open.mp3",
+        "sha256": "f3cd048c2e4be4d8e7158e9248c8c52173fae07b795b3f8fd1c8ed8e074cd848"
+      }
+    },
+    {
+      "file": "orchard.fruit.mp3",
+      "originalPath": "game/public/audio/orchard.fruit.mp3",
+      "bytes": 7566,
+      "sha256": "e726573a0b1126bd755ceee7a288def53e7bdd3e7a5ab6e6e1c621faa1c4b69a",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/orchard.fruit.mp3",
+        "sha256": "ab21e7c31bc3260b95f55bab0d3b787a93724871a953f82915b607bf5ee79a02"
+      }
+    },
+    {
+      "file": "orchard.fruit@2.mp3",
+      "originalPath": "game/public/audio/orchard.fruit@2.mp3",
+      "bytes": 10492,
+      "sha256": "146e732b6d69a15aec95a31afadc09b0cbf38e40dfc2503a587df534ad57754e",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/orchard.fruit@2.mp3",
+        "sha256": "91dbfa2374099c4675ebb4909040eb462c90d4be08ad88f38c329c55f35cb2f1"
+      }
+    },
+    {
+      "file": "orchard.pick.mp3",
+      "originalPath": "game/public/audio/orchard.pick.mp3",
+      "bytes": 9656,
+      "sha256": "67a04e32034772f57c4a8d3c45a6fc7b6824455ba7dc5fc95074d5b9c32c838b",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/orchard.pick.mp3",
+        "sha256": "fa62af714d308e4b7fb1d72ceefe2d3bf1e7701add389b13b4b02b6bb957d5da"
+      }
+    },
+    {
+      "file": "page.fold@2.mp3",
+      "originalPath": "game/public/audio/page.fold@2.mp3",
+      "bytes": 11327,
+      "sha256": "130774139aa3bd1629e251e817f58a56e748ac8a5976479dbea1235306f92ab9",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/page.fold@2.mp3",
+        "sha256": "31564fe8193b0894d8e62e4449e7e09532c9d61835e762d799d6ecffcefbe902"
+      }
+    },
+    {
+      "file": "page.map@2.mp3",
+      "originalPath": "game/public/audio/page.map@2.mp3",
+      "bytes": 12163,
+      "sha256": "01cb7baa016c974aea97bd0508f4670e37d2b8b59472adf2cbdf50dec3e616a1",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/page.map@2.mp3",
+        "sha256": "c3e86c7f24684132cc3785b2ab8bd9e3e5a83d223868cb51ce0e84efe732819e"
+      }
+    },
+    {
+      "file": "page.unfold.mp3",
+      "originalPath": "game/public/audio/page.unfold.mp3",
+      "bytes": 11745,
+      "sha256": "48fe88b20326a5bcb2f3a96f6cdf72d7152d9556e1158c701f14900bddff0477",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "provider-takes/page.unfold.mp3",
+        "sha256": "332d1765a58967e9fee5020ab83fc677b7a2c5fa14caeba23f2f59801dac5199"
+      }
+    },
+    {
+      "file": "rest.dawn.mp3",
+      "originalPath": "game/public/audio/rest.dawn.mp3",
+      "bytes": 15089,
+      "sha256": "315c60e9a24885b76208a01e737a936fc258ad99bf7a4d558739ca0674711702",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/rest.dawn.mp3",
+        "sha256": "da90b4e86c1e2c362f9c11b7a67f10f4a154a2ad9e7794c542b35a228611fe2a"
+      }
+    },
+    {
+      "file": "shore.collect.mp3",
+      "originalPath": "game/public/audio/shore.collect.mp3",
+      "bytes": 13417,
+      "sha256": "46ba41c50474202d655276803a061a2529a85e1d8110a701bd85250f5f6bfd18",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/shore.collect.mp3",
+        "sha256": "cb317b519336990f99afe74da87040d3326b6a6ae572d8814314e010ec31133d"
+      }
+    },
+    {
+      "file": "table.place.mp3",
+      "originalPath": "game/public/audio/table.place.mp3",
+      "bytes": 4640,
+      "sha256": "67e55a72e60c6b8fc8184ce88106ee45b3452a184ad2e973406bc2b4f4ac7d85",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/table.place.mp3",
+        "sha256": "8aa414f58359fd9fc0a7995e8245e6ab1486b52f199fb0de3f5470e43e105494"
+      }
+    },
+    {
+      "file": "ui.confirm.mp3",
+      "originalPath": "game/public/audio/ui.confirm.mp3",
+      "bytes": 8820,
+      "sha256": "9a8f3721bd5d452c3cc15637220f668146fdd0d03acec28c0fe2e61555566d95",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/ui.confirm.mp3",
+        "sha256": "321a6a8c6536c9132c5828746f0c216b0e0f0e6ce89e4ffa4c79518ca41c49ed"
+      }
+    },
+    {
+      "file": "ui.error.mp3",
+      "originalPath": "game/public/audio/ui.error.mp3",
+      "bytes": 8820,
+      "sha256": "d8544ffc8a28e601da58be1e3efe203325e696eaf9b8ee7d4dec78a58d204069",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/ui.error.mp3",
+        "sha256": "65b0a5f24beda2e00443acbe0da6bd35d5e4cc60da0fae2ee99b479e773cc966"
+      }
+    },
+    {
+      "file": "ui.tap.mp3",
+      "originalPath": "game/public/audio/ui.tap.mp3",
+      "bytes": 2968,
+      "sha256": "c242ed2fb8819672784382d26d9b7f3bf944f7e386808867877f8707a20a0246",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/ui.tap.mp3",
+        "sha256": "6da2a5de0988bb66d283d964735e340f157c5fb9febb58270a0677dc5b95d942"
+      }
+    },
+    {
+      "file": "ui.tap@2.mp3",
+      "originalPath": "game/public/audio/ui.tap@2.mp3",
+      "bytes": 2968,
+      "sha256": "98f0a27f6020af99451d0b075719e724b60893c52920c6ade76a1c22edd45186",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/ui.tap@2.mp3",
+        "sha256": "b276d18f76ae5ca6a6bd14083b0232818ce2037daae43050dea364578959a79a"
+      }
+    },
+    {
+      "file": "well.fill.mp3",
+      "originalPath": "game/public/audio/well.fill.mp3",
+      "bytes": 21358,
+      "sha256": "6579aab1a1d18af72a881ac1fbd1ff27dc0c2d1de8fa7a6b98d9bacb7aac15a8",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/well.fill.mp3",
+        "sha256": "3a2bf3ba07fc39c4e522cdd032a52ddb17f39d8a973b2e9962087982190e6707"
+      }
+    },
+    {
+      "file": "workshop.complete.mp3",
+      "originalPath": "game/public/audio/workshop.complete.mp3",
+      "bytes": 23866,
+      "sha256": "7af9d557c93792cbbc80518f817dd1b56618243f2a60c993fc4ce6dbbf05bf1b",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/workshop.complete.mp3",
+        "sha256": "4f1eb34e1a78a06f971ea6557ec664f1f7e086c91633ef831c8e6f64b7b229c5"
+      }
+    },
+    {
+      "file": "workshop.cut.mp3",
+      "originalPath": "game/public/audio/workshop.cut.mp3",
+      "bytes": 8820,
+      "sha256": "a7815b2e34ebe2d97c72be311a6831aa488d66989e18b7e3cd2b767d2179b7de",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/workshop.cut.mp3",
+        "sha256": "d45f5f6fa7afcdc43396ef8f3400ef21982db81b4fdf9afb5176c728575724ed"
+      }
+    },
+    {
+      "file": "workshop.cut@2.mp3",
+      "originalPath": "game/public/audio/workshop.cut@2.mp3",
+      "bytes": 7984,
+      "sha256": "04790673df4f94a8875eb34e962ae8cccd1f169f8370eeeeecd799ededafaf7f",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/workshop.cut@2.mp3",
+        "sha256": "fec7e3f17a0dc031b57d33c21dd6e29cb1c413056c2c607cb1e70e5511a1f5bc"
+      }
+    },
+    {
+      "file": "workshop.knead.mp3",
+      "originalPath": "game/public/audio/workshop.knead.mp3",
+      "bytes": 5894,
+      "sha256": "fe0fc6821d3f2a8bf9fdf00629bc7756ac5005fca72f71b4c7e67fcdb31ac458",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/workshop.knead.mp3",
+        "sha256": "83c680cae9cc13a50329a54caa0b34d8196aff028a2b8b42c1d4a5bec895064d"
+      }
+    },
+    {
+      "file": "workshop.knead@2.mp3",
+      "originalPath": "game/public/audio/workshop.knead@2.mp3",
+      "bytes": 4640,
+      "sha256": "51243e15da0848075cb9f2bda0afd925b7bb8ea713696fe2019f00fdd43f9059",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/workshop.knead@2.mp3",
+        "sha256": "10f53cba4bcd8ceb4ca6bf8140ab10d919f714317fcdec15d54b8e49f453c55e"
+      }
+    },
+    {
+      "file": "workshop.roll.mp3",
+      "originalPath": "game/public/audio/workshop.roll.mp3",
+      "bytes": 15925,
+      "sha256": "951d482685de3d31b742d85dc21275075048b744bd18cae29e9a39a4a0740a7f",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/workshop.roll.mp3",
+        "sha256": "9cf3fedbff357258b486b5934c0b8b2122e27684252eb2f1409d99a1713181b0"
+      }
+    },
+    {
+      "file": "workshop.roll@2.mp3",
+      "originalPath": "game/public/audio/workshop.roll@2.mp3",
+      "bytes": 37659,
+      "sha256": "568987329587b9c5c7490d101eda9af4a637056276c17d04452fbee407b4a1a2",
+      "status": "absent-from-current-banks-and-manifest",
+      "source": {
+        "path": "source-takes/workshop.roll@2.mp3",
+        "sha256": "4109d4a811d2b3d78c3018310a9fe74c70b765cd86fee045f419333a2b766715"
+      }
+    }
+  ]
+}

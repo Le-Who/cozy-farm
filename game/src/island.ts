@@ -557,6 +557,7 @@ export function createIsland(
 
   function mooredFerry(farm:FarmState): Area[] {
     const ship=farm.freight.ship
+    if(farm.freight.expeditions.active?.phase==='sailing')return []
     if(!farm.boatOwned || ship.phase!=='docked' || ship.port!==farm.island)return []
     const dock=docks[farm.island]
     const side=dock.boat.x>=dock.end.x?-1:1

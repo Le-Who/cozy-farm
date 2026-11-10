@@ -173,7 +173,8 @@ test('invalid living saves and fishing awards cannot create goods or reset daily
   assert.equal(restoreFarm({ ...farm, island: 'village' }), undefined);
   assert.equal(restoreFarm({ ...farm, fairGuestsServed: 6 }), undefined);
   assert.equal(restoreFarm({ ...farm, handmade: null }), undefined);
-  assert.equal(restoreFarm({ ...farm, workshopPatterns: [] }), undefined);
+  // Owning traded pastry no longer proves the player has baked its pattern.
+  assert.deepEqual(restoreFarm({ ...farm, workshopPatterns: [] })?.workshopPatterns, []);
   assert.equal(restoreFarm({ ...farm, village: { ...farm.village, meals: 1, mealOn: 5 } }), undefined);
   assert.equal(contributeVillage(farm).ok, true);
   assert.equal(restoreFarm({ ...farm, village: { ...farm.village, residents: ['bea', 'bea'] } }), undefined);

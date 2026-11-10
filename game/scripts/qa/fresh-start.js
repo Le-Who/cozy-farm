@@ -1,7 +1,7 @@
 // playwright-cli -s=<isolated-new-profile> run-code --filename scripts/qa/fresh-start.js
 // Uses the running game and native input. Does not create or alter a save fixture.
 async (page) => {
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('cozy-farm-island-v1')));
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('cozy-farm-island-v2')));
   if (saved && (saved.day !== 1 || saved.workToday !== 0 || saved.boatOwned)) {
     throw new Error('Use a new isolated browser profile; this scenario preserves existing farms.');
   }
@@ -11,7 +11,7 @@ async (page) => {
   await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true });
   const ledger = [];
   const checkpoint = async label => {
-    const state = await page.evaluate(() => JSON.parse(localStorage.getItem('cozy-farm-island-v1')));
+    const state = await page.evaluate(() => JSON.parse(localStorage.getItem('cozy-farm-island-v2')));
     ledger.push({ label, day: state.day, coins: state.coins, progress: state.progress, orientation: state.orientation });
   };
   const close = async () => { if (await page.locator('dialog').isVisible()) await page.locator('.dialog-close').click(); };

@@ -3,7 +3,7 @@ import type { BayInstrumentId } from './bay-music-model'
 export type BaySample = { url: string; revision?: string; rootMidi?: number; gain?: number; tuned?: boolean; loop?: boolean }
 export type BaySampleManifest = Record<string, BaySample | BaySample[]>
 export type BayAudioSettings = { muted: boolean; volume: number; music: number; effects: number }
-type Voice = { sources: AudioScheduledSourceNode[]; envelope: GainNode; end: number; music: boolean; event?: string }
+type Voice = { sources: AudioScheduledSourceNode[]; envelope: GainNode; end: number; music: boolean; event?: string; releasing?: boolean }
 const settingsKey = 'cozy-bay-audio-v1'
 const finiteLevel = (value: unknown, fallback: number) => typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback
 
@@ -154,6 +154,7 @@ export class BayAudio {
       this.contacts.delete(id)
       if (contact?.voice && this.context) {
         const voice = contact.voice, now = this.currentTime
+        voice.releasing = true
         voice.envelope.gain.cancelScheduledValues(now); voice.envelope.gain.setTargetAtTime(0, now, .012)
         voice.end = now + .06; for (const source of voice.sources) source.stop(voice.end)
       }
@@ -190,7 +191,8 @@ export class BayAudio {
   stopEffects(ids?: readonly string[]): void {
     this.eventRevision++
     for (const id of this.contacts.keys()) if (!ids || ids.includes(id)) this.setContact(id, false)
-    for (const voice of this.voices) if (!voice.music && (!ids || voice.event && ids.includes(voice.event))) this.releaseVoice(voice)
+    // Keep contact tails connected until onended; repeated scene cleanup must not cut them off.
+    for (const voice of this.voices) if (!voice.music && !voice.releasing && (!ids || voice.event && ids.includes(voice.event))) this.releaseVoice(voice)
   }
 
   private instrumentSamples(id: BayInstrumentId): BaySample[] {
@@ -295,7 +297,12 @@ export class BayAudio {
 
   private releaseVoice(voice: Voice): void {
     if (!this.voices.delete(voice)) return
-    for (const source of voice.sources) { try { source.stop() } catch { /* Already ended. */ } source.disconnect() }
+    for (const [id, contact] of this.contacts) if (contact.voice === voice) this.contacts.delete(id)
+    for (const source of voice.sources) {
+      source.onended = null
+      try { source.stop() } catch { /* Already ended. */ }
+      source.disconnect()
+    }
     voice.envelope.disconnect()
   }
 

@@ -1,11 +1,43 @@
 import { canSailTo, ingredientCount, islandIds, marketStock, type FarmState } from './farm.ts'
-import { addFreightStock, consumeFreightStock, freightStock, takeFreightStock } from './bay-freight-model.ts'
+import { addFreightStock, freightStock, takeFreightStock } from './bay-freight-model.ts'
+import { noteFestivalDelivery } from './bay-festival.ts'
 import { BAY_MUSIC_EXPANSIONS } from './bay-music-model.ts'
 import { bayProductId } from './bay-product-id.ts'
+import { dispatchExpedition, finishExpedition, type ExpeditionWallet } from './ferry-expeditions.ts'
 export { bayProductId } from './bay-product-id.ts'
 
 const stockItems = new Map(marketStock.map(item => [bayProductId(item), item]))
 export const openedFreightPorts = (farm: FarmState) => islandIds.filter(id => canSailTo(farm,id))
+export function expeditionWallet(farm: FarmState): ExpeditionWallet {
+  return { harvestTier: farm.festivals.completed.harvest, boatOwned: farm.boatOwned, coins: farm.coins, bag: Object.fromEntries([...stockItems.keys()].map(id => [id, amount(farm, id)])) }
+}
+
+export function sendFerryExpedition(farm: FarmState, id: string) {
+  const result = dispatchExpedition(farm.freight.expeditions, id, farm.day, expeditionWallet(farm))
+  if (!result.ok || !result.manifest) return result
+  for (const item of result.manifest.outgoing) changeBag(farm, item.id, -item.quantity)
+  farm.coins -= result.manifest.payCoins
+  // The prototype's former circular route is retired, never a second active ferry.
+  for (const item of farm.freight.ship.cargo) changeBag(farm, item.id, item.quantity)
+  farm.freight.route.running = false
+  farm.freight.ship = { phase: 'docked', port: 'home', cargo: [] }
+  return { ok: true, message: result.message }
+}
+
+export function receiveFerryExpedition(farm: FarmState) {
+  const manifest = finishExpedition(farm.freight.expeditions, farm.day)
+  if (!manifest) return { ok: false, message: 'Паром ещё в пути.' }
+  for (const item of manifest.incoming) {
+    changeBag(farm, item.id, item.quantity)
+    const entry = stockItems.get(item.id)
+    if (entry?.kind === 'produce' || entry?.kind === 'fruit') (farm.discoveries[entry.item] ??= {}).regular = true
+    if (entry?.kind === 'fruit' && !farm.bayDiscoveries.includes(entry.item)) farm.bayDiscoveries.push(entry.item)
+    if (entry?.kind === 'dishes' && !farm.bayDiscoveries.includes(entry.item)) farm.bayDiscoveries.push(entry.item)
+  }
+  if (manifest.kind === 'trade') noteFestivalDelivery(farm.festivals, manifest.incoming.reduce((sum,item)=>sum+item.quantity,0))
+  farm.coins += manifest.earnCoins
+  return { ok: true, message: manifest.kind === 'explore' ? 'Новый порт открыт. Выберите его на карте.' : 'Груз и выручка в ваших припасах. У порта появились новые запасы.' }
+}
 
 function amount(farm: FarmState, id: string): number {
   const item = stockItems.get(id)
@@ -78,8 +110,17 @@ export function returnShopGoods(farm: FarmState, id: string, count: number) {
 
 export function installGardenInstrument(farm: FarmState): number | undefined {
   const next = BAY_MUSIC_EXPANSIONS.find(expansion => expansion.level === farm.musicGarden.level+1)
-  if (farm.island==='village' && farm.village.built && next && consumeFreightStock(farm.freight,'village',next.materials)) {
+  if (farm.island==='village' && farm.village.built && next && next.materials.every(item => amount(farm,item.id) + freightStock(farm.freight,'village',item.id) >= item.quantity)) {
+    for (const item of next.materials) {
+      const local = Math.min(item.quantity, freightStock(farm.freight,'village',item.id))
+      if (local) takeFreightStock(farm.freight,'village',item.id,local)
+      if (item.quantity > local) changeBag(farm,item.id,local-item.quantity)
+    }
     farm.musicGarden.level = next.level
     return next.level
   }
+}
+
+export function gardenMaterialStock(farm: FarmState): Record<string, number> {
+  return Object.fromEntries(['shells','seaSalt','beeswax'].map(id => [id,amount(farm,id)+freightStock(farm.freight,'village',id)]))
 }

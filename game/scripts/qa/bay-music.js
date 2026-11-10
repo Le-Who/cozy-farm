@@ -46,7 +46,7 @@ async page => {
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  check(await page.evaluate(()=>window.musicTouches)>0,'native touch selects and plays instrument');
  check((await page.locator('.bay-music-track:not([hidden]) h2').innerText())==='Глиняный барабан','touch updates composer selection');
- await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cozy-farm-island-v1')).musicGarden.tracks.ceramic.steps.some(note=>note===7));
+ await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cozy-farm-island-v2')).musicGarden.tracks.ceramic.steps.some(note=>note===7));
  check(true,'native touch recorded into saved active pattern');
  await page.getByRole('button',{name:'Ⅱ Пауза',exact:true}).click();
  check(!(await page.locator('.bay-music').evaluate(el=>el.classList.contains('is-playing'))),'stop transport');

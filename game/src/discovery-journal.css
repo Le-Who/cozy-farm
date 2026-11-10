@@ -1,0 +1,36 @@
+/* Quiet chapter markers use the existing Lavender Bay paper and icon palette. */
+.farm-dialog[data-panel="journal"] { width:min(620px,calc(100vw - 20px)); }
+.discovery-chapter { display:grid; grid-template-columns:48px minmax(0,1fr); gap:10px; align-items:center; margin-bottom:14px; }
+.discovery-chapter>.icon { width:48px; height:50px; }
+.discovery-chapter small { color:var(--muted); font-size:12px; }
+.discovery-chapter h2 { margin:3px 0 0; color:var(--plum); font:700 22px/1.15 Georgia,serif; }
+.discovery-chapter p { grid-column:1/-1; margin:0; font-size:14px; line-height:1.45; }
+.discovery-now { padding:12px; border:1px solid var(--rule); border-radius:15px; background:var(--paper-light); }
+.discovery-now h3 { margin:0; color:var(--plum); font-size:17px; line-height:1.25; }
+.discovery-now p { margin:7px 0; font-size:14px; line-height:1.4; }
+.discovery-now small { display:block; color:var(--moss); margin-top:6px; }
+.discovery-now .dialog-nav { margin-top:10px; }
+.discovery-now .dialog-button { white-space:normal; }
+.discovery-tip { margin:12px 1px; font-size:13px; color:var(--muted); line-height:1.45; }
+.discovery-next { padding:10px 0; border-top:1px solid var(--rule); font-size:14px; line-height:1.4; }
+.discovery-next strong { color:var(--plum); }
+.discovery-next p { margin:4px 0 0; }
+.discovery-roadmap { margin-top:8px; border-top:1px solid var(--rule); }
+.discovery-roadmap summary { cursor:pointer; min-height:44px; padding:12px 2px; color:var(--plum); font-size:14px; font-weight:700; }
+.discovery-roadmap ol { display:grid; gap:8px; list-style:none; padding:0; margin:0 0 10px; }
+.discovery-roadmap li { display:grid; grid-template-columns:30px minmax(0,1fr) auto; align-items:center; gap:8px; padding:7px; border-radius:10px; font-size:14px; }
+.discovery-roadmap li[data-current="true"] { background:#f0e0ef; }
+.discovery-roadmap li[data-complete="true"] strong { color:var(--moss); }
+.discovery-roadmap .icon { width:30px; height:32px; }
+.discovery-roadmap small { color:var(--muted); font-size:12px; }
+.discovery-activities { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; padding-top:12px; }
+.discovery-activities button { display:grid; grid-template-columns:34px minmax(0,1fr); gap:5px 8px; align-items:center; min-height:72px; padding:9px; border:1px solid var(--rule); border-radius:12px; background:var(--paper-light); text-align:start; }
+.discovery-activities .icon { width:34px; height:36px; }
+.discovery-activities strong { font-size:14px; line-height:1.2; color:var(--plum); }
+.discovery-activities small { grid-column:1/-1; font-size:12px; line-height:1.3; color:var(--muted); }
+@media(max-width:420px) {
+  .discovery-chapter h2 { font-size:20px; }
+  .discovery-roadmap li { grid-template-columns:25px minmax(0,1fr); }
+  .discovery-roadmap small { grid-column:2; }
+  .discovery-activities { grid-template-columns:1fr; }
+}

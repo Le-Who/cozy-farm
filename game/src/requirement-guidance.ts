@@ -1,3 +1,4 @@
+import { getFruitSource } from './orchard-guidance.ts';
 import { ruCount } from './ru.ts';
 import { getCoinGuidance, getSupplyGuidance, type DiscoveryTask } from './discovery-path.ts';
 import { getIslandJourneys } from './journey.ts';
@@ -40,18 +41,22 @@ function access(farm: FarmState, destination: IslandId): RequirementHint {
 }
 
 function stock(farm: FarmState, item: StockItem): RequirementHint {
-  const destination = item.kind === 'fruit' && item.item === 'pear' || item.kind === 'fish' && item.item !== 'perch'
+  const destination = item.kind === 'fruit' ? getFruitSource(farm, item.item).island : item.kind === 'fish' && item.item !== 'perch'
     || item.kind === 'seaSalt' || item.kind === 'shells' || item.kind === 'shoalFinds' ? 'grove'
     : item.kind === 'honey' || item.kind === 'windHoney' || item.kind === 'beeswax'
       || item.kind === 'dishes' && dishDefinitions[item.item].capeLevel ? 'cape' : undefined;
-  if (destination && !canSailTo(farm, destination)) return access(farm, destination);
+  if (destination && destination !== 'home' && !canSailTo(farm, destination)) return access(farm, destination);
   const tomorrow = (notice: string) => atHome(farm,{...route('focus-place','farmhouse'),notice});
   if (item.kind === 'fish' && !getFishAction({...farm,island:item.item==='perch'?'home':'grove'}).available) return tomorrow('Рыба вернётся в эти воды завтра.');
   if (item.kind === 'seaSalt' && farm.saltGatheredToday) return tomorrow('Соль появится на солончаках завтра.');
   if ((item.kind === 'honey' || item.kind === 'windHoney' || item.kind === 'beeswax') && farm.capeHoneyOn === farm.day) return tomorrow('Улей снова наполнится завтра.');
   if (item.kind === 'fruit') {
-    const orchard = farm.trees[item.item==='pear'?'grove':'home'].filter(tree=>tree?.tree===item.item);
-    if (orchard.length && orchard.every(tree=>tree!.fruitReady===0)) return tomorrow('Новые плоды в саду созреют следующим утром.');
+    const source = getFruitSource(farm, item.item);
+    if (source.kind === 'grow') return tomorrow('Деревья подрастают ночью. Отдохните дома, чтобы дождаться плодов.');
+    if (source.kind === 'space' || source.kind === 'return') {
+      const task = getSupplyGuidance(farm, item, 'нужные припасы');
+      return { ...safe(task), notice: task.detail };
+    }
   }
   if (item.kind === 'shells' || item.kind === 'shoalFinds') {
     if (farm.island !== 'grove') return route('sail', 'grove');
