@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Производство и торговля</title>
+<style>body{font:16px/1.5 system-ui;padding:20px;background:#faf7f0;color:#352447}button{padding:10px;margin:5px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #999}</style>
+<h1>Что делать, когда товар закончился</h1>
+<p>Синтетическая ферма из настоящих игровых действий. Запись только на localhost:4236.</p>
+<button data-fixture="empty">Куплены три булочки, порт пуст</button>
+<button data-fixture="waited">После недели ожидания</button>
+<button data-fixture="restocked">Зерно доставлено, партия готова</button>
+<button data-fixture="morning">Две булочки сейчас, третья к утру</button>
+<button id="inspect">Проверить сохранение</button><button id="remember">Запомнить состояние</button><button id="reload">Перезагрузить игру</button>
+<button data-size="390,844">390 × 844</button><button data-size="360,640">360 × 640</button><button data-size="568,320">568 × 320</button><button data-size="844,390">844 × 390</button><button data-size="1280,900">1280 × 900</button>
+<details><summary>Состояние сохранения</summary><pre id="result"></pre></details>
+<iframe title="Игра для проверки" width="568" height="320"></iframe>
+<script type="module">
+import {createFarm,restoreFarm,endDay,workBed,sellMarketItem,buyBoat} from '/src/farm.ts'
+import {sendFerryExpedition,receiveFerryExpedition} from '/src/harbour-economy.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4236'
+const result=document.querySelector('#result'),frame=document.querySelector('iframe')
+if(!allowed){result.textContent='Запись запрещена вне localhost:4236';document.querySelectorAll('button').forEach(b=>b.disabled=true)}
+function inspect(){
+  const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreFarm(JSON.parse(raw))
+  result.textContent=JSON.stringify({valid:!!f,unchanged:raw===sessionStorage.getItem('port-baseline'),day:f?.day,coins:f?.coins,wheat:f?.produce.wheat,buns:f?.handmade.round,market:f?.freight.expeditions.markets.mill,voyage:f?.freight.expeditions.active},null,2)
+}
+function seed(kind){
+  if(!allowed)return
+  let f=createFarm();f.discoveryPreferences.quiet=true
+  const act=result=>{if(!result.ok)throw new Error(result.message)}
+  const complete=id=>{act(sendFerryExpedition(f,id));act(endDay(f));act(receiveFerryExpedition(f));f=restoreFarm(f)}
+  act(workBed(f,2));act(sellMarketItem(f,'produce:cabbage',2));act(buyBoat(f))
+  for(const [bed,key,quantity] of [[3,'produce:tomato',3],[5,'produce:beetroot',2],[7,'produce:pumpkin',2]]){
+    act(workBed(f,bed));act(sellMarketItem(f,key,quantity))
+  }
+  act(workBed(f,4))
+  if(kind==='morning'){
+    act(workBed(f,11));act(endDay(f));act(workBed(f,11))
+    complete('mill-buy');complete('mill-buy');complete('mill-sale');complete('mill-grain')
+  }else for(let i=0;i<3;i++)complete('mill-buy')
+  if(kind==='waited')for(let i=0;i<7;i++)act(endDay(f))
+  if(kind==='restocked')complete('mill-sale')
+  const raw=JSON.stringify(f);localStorage.setItem(farmSaveKeys.primary,raw);sessionStorage.setItem('port-baseline',raw);inspect();frame.src='/'
+}
+document.querySelectorAll('[data-fixture]').forEach(b=>b.onclick=()=>seed(b.dataset.fixture))
+document.querySelector('#inspect').onclick=inspect
+document.querySelector('#remember').onclick=()=>{if(!allowed)return;sessionStorage.setItem('port-baseline',localStorage.getItem(farmSaveKeys.primary));inspect()}
+document.querySelector('#reload').onclick=()=>{frame.src='/'}
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h;if(!frame.src)frame.src='/'})
+inspect()
+</script>
+</html>

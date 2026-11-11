@@ -15,7 +15,7 @@ export class ActionClickGuard {
 }
 
 const guardedActions = new Set([
-  'ferry-return', 'expedition-rest', 'expedition-discovery', 'expedition-source', 'work-context', 'resume-recipe-draft', 'reset-recipe-draft',
+  'ferry-return', 'expedition-rest', 'expedition-discovery', 'expedition-restock', 'expedition-source', 'work-context', 'resume-recipe-draft', 'reset-recipe-draft',
   'forget-signature', 'follow-task', 'buy-feed', 'festival-contribute', 'market-next-rest', 'harbor-next-rest',
   'show-requirement', 'warehouse-supply', 'warehouse-supply-withdraw', 'recipe-repeat-home', 'recipe-warehouse-withdraw',
   'return-nursery-tree', 'supper-signature', 'share-meal', 'serve-guest',

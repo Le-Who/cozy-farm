@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "publishedCommit": "6ca84d8d41e60622fd73584cdbf92b3bc202b1de",
+  "publishedKey": "cozy-farm-island-v2",
+  "recoveredKey": "cozy-farm-island-v3",
+  "originalSnapshotPreserved": true,
+  "actualOldWriterCannotOverwriteRecoveredProgress": true,
+  "bothKitchensAndDishesSurviveReload": true
+}

@@ -4,6 +4,7 @@ import { freightPorts,
 import { expeditionPorts, expeditionPortNames, expeditionPortDescriptions, expeditionTrades, expeditionOfferIds, quoteExpedition, portDemand, portProjectComplete, portProjects, expeditionStock, type ExpeditionPort, type ExpeditionManifest } from './ferry-expeditions.ts';
 import './bay-freight.css';
 import { nextFerryExploration } from './ferry-discovery.ts';
+import { getFerryRestockPlan } from './ferry-restock.ts';
 
 export type FreightProduct = { id: string; name: string; icon: string; artwork?: string };
 export type FreightPanelContext = {
@@ -81,19 +82,29 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
     return `<div class="expedition-cargo-item">${picture(item.id, ctx)}<span><strong>${esc(item.id === 'handmade:round' ? 'Булочка' : entry.name)} ×${item.quantity}</strong>${outgoing ? `<small>${active ? 'Уже погружено' : available >= item.quantity ? `Есть ${available} · останется ${available - item.quantity}` : `Есть ${available} · нужно ещё ${item.quantity - available}`}</small>` : ''}</span></div>`;
   }).join('');
   const missing = !active && manifest.outgoing.find(item => (ctx.carried[item.id] ?? 0) < item.quantity);
+  const restock = getFerryRestockPlan(world,id,ctx.day,{bag:ctx.carried,harvestTier:ctx.harvestTier,coins:ctx.coins ?? 0,boatOwned:ctx.boatOwned ?? true});
   const hint = missing ? sourceHints[missing.id] : undefined;
-  const sourceAction = hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : `${id}|${missing.id}`, 'class="expedition-source"') : '';
+  const sourceAction = !restock && hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : `${id}|${missing.id}`, 'class="expedition-source"') : '';
   const production = world.markets[port].production;
   const effect = exploring ? 'Новый торговый порт будет открыт наверняка. Разведка не зависит от удачи.'
     : port === 'mill' ? 'Зерно и яйца идут в следующую выпечку.' : port === 'salt' ? 'Морковь и улов помогут открыть кухню у маяка.' : 'Яблоки идут на варенье, булочки ждут сборщики.';
   const displayPort = exploring && phase !== 'ready' ? 'Неизвестный берег' : expeditionPortNames[port];
   const nextExploration = nextFerryExploration(world, { bag:ctx.carried, coins:ctx.coins ?? 0, boatOwned:ctx.boatOwned ?? true });
-  const discovery = nextExploration && nextExploration.port !== port ? nextExploration : undefined;
-  const status = phase === 'sailing' ? `Вернётся утром дня ${active!.returnsOn}` : phase === 'ready' ? 'Паром вернулся. Груз вас дождётся.' : `${discovery ? `Выбран рейс «${manifest.name}». ` : ''}Вернётся следующим игровым утром`;
+  const discovery = !restock && nextExploration && nextExploration.port !== port ? nextExploration : undefined;
+  const stockLine = (item: {id:string;needed:number}, quantity: number) => `${esc(product(item.id,ctx).name)}: ${quantity} из нужных ${item.needed}`;
+  const recovery = !restock ? '' : `<section class="expedition-next-discovery" aria-label="Пополнение порта">
+    <h4>${restock.kind === 'rest' ? 'Новая партия к утру' : 'Нужна новая поставка'}</h4>
+    <p>Без новой поставки утром дня ${restock.day}: ${restock.stock.map(item=>stockLine(item,item.nextMorning)).join('; ')}.</p>
+    ${restock.kind === 'supply' ? `<p>Рейс «${esc(restock.offer.name)}» доставит порту: ${restock.offer.outgoing.map(item=>`${esc(product(item.id,ctx).name)} ×${item.quantity}`).join(', ')}.</p><p>После его прибытия: ${restock.stock.map(item=>stockLine(item,item.afterDelivery)).join('; ')}.${restock.complete ? '' : ' Этого пока недостаточно для всего выбранного заказа.'}</p>` : ''}
+    ${button(restock.kind === 'supply' ? 'Посмотреть поставку' : ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро','expedition-restock',id)}
+    <small>${restock.kind === 'supply' ? 'Это только выбор рейса. Припасы и оплата будут показаны перед отдельной отправкой.' : 'Переход не начинает ночь. После отдыха отдельно выберите и отправьте заказ.'}</small>
+  </section>`;
+  const status = phase === 'sailing' ? `Вернётся утром дня ${active!.returnsOn}` : phase === 'ready' ? 'Паром вернулся. Груз вас дождётся.' : `${discovery || restock ? `Выбран рейс «${manifest.name}». ` : ''}Вернётся следующим игровым утром`;
   return `<section class="bay-freight" data-expedition-phase="${phase}" data-combined="${combined}" aria-label="Торговые экспедиции">
     <header class="bay-freight-heading">${button('‹', 'back', '', 'class="bay-freight-back" aria-label="Назад"')}<h2>Паром «Ласточка»</h2><span class="expedition-balance">${ctx.icon('coin')} ${ctx.coins ?? 0}</span>${button('×', 'close', '', 'class="bay-freight-close" aria-label="Закрыть паром"')}</header>
     <div class="bay-freight-workspace">
       <div class="expedition-overview">
+        ${recovery}
         ${discovery ? `<section class="expedition-next-discovery" aria-label="Следующая разведка"><h4>Можно разведать новый берег</h4><p>${discovery.port === 'salt' ? 'После торговли с Мельничным посадом можно разведать неизвестный маяк.' : 'После торговли у Соляного маяка можно пойти по следам садовых лодок.'}</p><p>Для разведки: ${discovery.outgoing.map(item => `${esc(product(item.id,ctx).name)} ×${item.quantity}`).join(', ')}. Припасы спишутся только при отправке.</p>${button('Подготовить разведку','expedition-discovery',discovery.port)}<small>Это только выбор рейса. Новый порт откроется после отдельного получения.</small></section>` : ''}
         <div class="expedition-scene" data-port="${port}" data-unknown="${exploring && phase !== 'ready'}">
           <img class="expedition-port-art" src="${import.meta.env.BASE_URL}art/lavender/bay/${exploring && phase !== 'ready' ? 'freight-harbor' : portArt[port]}.webp" alt="${esc(exploring ? 'Бухта перед дальней разведкой' : expeditionPortNames[port])}">

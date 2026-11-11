@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "priorCommit": "b684e78f8792c79a45f1a43bbd21c037d92bd10e",
+  "sharedV3Key": "cozy-farm-island-v3",
+  "staleOldTabBlocked": true,
+  "oldReaderRejectsUnfamiliarPaidCargo": true,
+  "paidRawPreserved": true,
+  "newVersionResumesAndClaimsExactlyOnce": true,
+  "note": "This checks the active combined manifest, not arbitrary historical fields or bidirectional rollback."
+}

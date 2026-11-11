@@ -60,6 +60,7 @@ import { playBaySound } from './game-sound'
 import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
 import { combinedExpeditionId, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
+import { getFerryRestockPlan } from './ferry-restock'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
@@ -2569,6 +2570,18 @@ app.addEventListener('click', async (event) => {
       selectedExpeditionOffer = expeditionTrades(farm.freight.expeditions, next.port)[0].id
       drawPanel()
       dialogContent.querySelector<HTMLElement>('.bay-freight-close')?.focus({preventScroll:true})
+      break
+    }
+    case 'expedition-restock': {
+      if (panel !== 'bay-freight' || value !== selectedExpeditionOffer) break
+      const plan = getFerryRestockPlan(farm.freight.expeditions,value,farm.day,expeditionWallet(farm))
+      if (!plan || plan.port !== selectedExpeditionPort) break
+      if (plan.kind === 'rest') await visitPanelAt('home','rest')
+      else {
+        selectedExpeditionOffer = plan.offer.id
+        drawPanel()
+        dialogContent.querySelector<HTMLElement>('.bay-freight-close')?.focus({preventScroll:true})
+      }
       break
     }
     case 'expedition-source': {
