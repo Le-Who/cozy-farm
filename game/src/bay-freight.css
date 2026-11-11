@@ -60,3 +60,9 @@
 .expedition-return-row:has(.expedition-cargo-item + .expedition-cargo-item)>.expedition-money{align-self:flex-end}
 .bay-freight[data-combined=true] .expedition-cargo-item{min-width:0;flex-shrink:0}
 .bay-freight[data-combined=true] .expedition-cargo-item>span{min-width:0}.bay-freight[data-combined=true] .expedition-cargo-item strong{overflow-wrap:anywhere}
+
+/* An unlocked route is a separate choice, never the currently loaded trade. */
+.expedition-next-discovery{flex:none;min-width:0;padding:10px;border:1px solid var(--bf-gold);border-radius:15px;background:var(--bf-paper);font-size:12px;line-height:1.35}
+.expedition-next-discovery h4{font-size:15px;line-height:1.25;margin:0 0 6px}
+.expedition-next-discovery p{margin:6px 0}.expedition-next-discovery small{display:block;margin-top:6px;line-height:1.35}
+.bay-freight .expedition-next-discovery button{width:100%;min-height:44px;white-space:normal}

@@ -1,15 +1,25 @@
-import { canSailTo, ingredientCount, islandIds, marketStock, type FarmState } from './farm.ts'
+import { canSailTo, ingredientCount, islandIds, marketStock, type FarmState, type StockItem } from './farm.ts'
 import { addFreightStock, freightStock, takeFreightStock } from './bay-freight-model.ts'
 import { noteFestivalDelivery } from './bay-festival.ts'
 import { BAY_MUSIC_EXPANSIONS } from './bay-music-model.ts'
 import { bayProductId } from './bay-product-id.ts'
-import { dispatchExpedition, finishExpedition, type ExpeditionWallet } from './ferry-expeditions.ts'
+import { dispatchExpedition, finishExpedition, quoteExpedition, type ExpeditionWallet } from './ferry-expeditions.ts'
 export { bayProductId } from './bay-product-id.ts'
 
 const stockItems = new Map(marketStock.map(item => [bayProductId(item), item]))
 export const openedFreightPorts = (farm: FarmState) => islandIds.filter(id => canSailTo(farm,id))
 export function expeditionWallet(farm: FarmState): ExpeditionWallet {
   return { harvestTier: farm.festivals.completed.harvest, boatOwned: farm.boatOwned, coins: farm.coins, bag: Object.fromEntries([...stockItems.keys()].map(id => [id, amount(farm, id)])) }
+}
+
+/** Resolve the current shortage, never a seed purchase or an automatic transfer. */
+export function getFerrySupplyRequirement(farm: FarmState, offerId: string, itemId: string): { kind: 'stock'; item: StockItem } | undefined {
+  if (!farm.boatOwned || farm.freight.expeditions.active) return
+  const wallet = expeditionWallet(farm)
+  const quote = quoteExpedition(farm.freight.expeditions, offerId, wallet)
+  const cargo = quote?.outgoing.find(item => item.id === itemId && (wallet.bag[item.id] ?? 0) < item.quantity)
+  const item = stockItems.get(itemId)
+  return cargo && item ? { kind: 'stock', item: { ...item, quantity: cargo.quantity } } : undefined
 }
 
 export function sendFerryExpedition(farm: FarmState, id: string) {

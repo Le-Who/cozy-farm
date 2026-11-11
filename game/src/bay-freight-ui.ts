@@ -3,6 +3,7 @@ import { freightPorts,
   type BayFreightState, type FreightPort, type FreightResult } from './bay-freight-model.ts';
 import { expeditionPorts, expeditionPortNames, expeditionPortDescriptions, expeditionTrades, expeditionOfferIds, quoteExpedition, portDemand, portProjectComplete, portProjects, expeditionStock, type ExpeditionPort, type ExpeditionManifest } from './ferry-expeditions.ts';
 import './bay-freight.css';
+import { nextFerryExploration } from './ferry-discovery.ts';
 
 export type FreightProduct = { id: string; name: string; icon: string; artwork?: string };
 export type FreightPanelContext = {
@@ -54,9 +55,9 @@ const primaryStock: Record<ExpeditionPort, string> = { mill: 'handmade:round', s
 const demandLabels = { shortage: 'Высокий спрос', balanced: 'Припасов достаточно', surplus: 'Пока есть запас' };
 const demandNeeds: Record<string,string> = { wheat:'Нужно зерно', eggs:'Нужны яйца', carrot:'Нужны овощи', seaBass:'Нужен улов', apple:'Нужны яблоки', 'handmade:round':'Ждут булочки' };
 const sourceHints: Record<string, { label: string; panel: string }> = {
-  wheat: { label: 'Семена пшеницы', panel: 'market' }, carrot: { label: 'Семена моркови', panel: 'market' },
-  eggs: { label: 'К курочкам', panel: 'coop' }, seaBass: { label: 'На рыбалку', panel: 'fishing' },
-  apple: { label: 'К своему саду', panel: 'orchard' }, 'handmade:round': { label: 'К пекарю в посад', panel: 'mill' },
+  wheat: { label: 'Где взять пшеницу', panel: 'market' }, carrot: { label: 'Где взять морковь', panel: 'market' },
+  eggs: { label: 'Где взять яйца', panel: 'coop' }, seaBass: { label: 'Где взять улов', panel: 'fishing' },
+  apple: { label: 'Где взять яблоки', panel: 'orchard' }, 'handmade:round': { label: 'К пекарю в посад', panel: 'mill' },
 };
 
 export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelContext): string {
@@ -81,16 +82,19 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   }).join('');
   const missing = !active && manifest.outgoing.find(item => (ctx.carried[item.id] ?? 0) < item.quantity);
   const hint = missing ? sourceHints[missing.id] : undefined;
-  const sourceAction = hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : missing!.id, 'class="expedition-source"') : '';
-  const status = phase === 'sailing' ? `Вернётся утром дня ${active!.returnsOn}` : phase === 'ready' ? 'Паром вернулся. Груз вас дождётся.' : 'Вернётся следующим игровым утром';
+  const sourceAction = hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : `${id}|${missing.id}`, 'class="expedition-source"') : '';
   const production = world.markets[port].production;
   const effect = exploring ? 'Новый торговый порт будет открыт наверняка. Разведка не зависит от удачи.'
     : port === 'mill' ? 'Зерно и яйца идут в следующую выпечку.' : port === 'salt' ? 'Морковь и улов помогут открыть кухню у маяка.' : 'Яблоки идут на варенье, булочки ждут сборщики.';
   const displayPort = exploring && phase !== 'ready' ? 'Неизвестный берег' : expeditionPortNames[port];
+  const nextExploration = nextFerryExploration(world, { bag:ctx.carried, coins:ctx.coins ?? 0, boatOwned:ctx.boatOwned ?? true });
+  const discovery = nextExploration && nextExploration.port !== port ? nextExploration : undefined;
+  const status = phase === 'sailing' ? `Вернётся утром дня ${active!.returnsOn}` : phase === 'ready' ? 'Паром вернулся. Груз вас дождётся.' : `${discovery ? `Выбран рейс «${manifest.name}». ` : ''}Вернётся следующим игровым утром`;
   return `<section class="bay-freight" data-expedition-phase="${phase}" data-combined="${combined}" aria-label="Торговые экспедиции">
     <header class="bay-freight-heading">${button('‹', 'back', '', 'class="bay-freight-back" aria-label="Назад"')}<h2>Паром «Ласточка»</h2><span class="expedition-balance">${ctx.icon('coin')} ${ctx.coins ?? 0}</span>${button('×', 'close', '', 'class="bay-freight-close" aria-label="Закрыть паром"')}</header>
     <div class="bay-freight-workspace">
       <div class="expedition-overview">
+        ${discovery ? `<section class="expedition-next-discovery" aria-label="Следующая разведка"><h4>Можно разведать новый берег</h4><p>${discovery.port === 'salt' ? 'После торговли с Мельничным посадом можно разведать неизвестный маяк.' : 'После торговли у Соляного маяка можно пойти по следам садовых лодок.'}</p><p>Для разведки: ${discovery.outgoing.map(item => `${esc(product(item.id,ctx).name)} ×${item.quantity}`).join(', ')}. Припасы спишутся только при отправке.</p>${button('Подготовить разведку','expedition-discovery',discovery.port)}<small>Это только выбор рейса. Новый порт откроется после отдельного получения.</small></section>` : ''}
         <div class="expedition-scene" data-port="${port}" data-unknown="${exploring && phase !== 'ready'}">
           <img class="expedition-port-art" src="${import.meta.env.BASE_URL}art/lavender/bay/${exploring && phase !== 'ready' ? 'freight-harbor' : portArt[port]}.webp" alt="${esc(exploring ? 'Бухта перед дальней разведкой' : expeditionPortNames[port])}">
           <span class="expedition-place">${esc(displayPort)}</span>
@@ -126,7 +130,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
         }).join('')}</div></details>` : ''}
           ${world.last && !active ? `<p class="expedition-receipt">${world.last.explored ? 'Новый порт на карте' : 'Прошлый груз получен'} · день ${world.last.day}</p>` : ''}
         </div>
-        <footer class="expedition-departure"><p>${esc(status)}</p>${phase === 'sailing' ? `${button('Вернуться на ферму', 'close', '', 'class="bay-freight-primary"')}<small>Игровое утро начинается после сна. Настоящий таймер не идёт.</small>` : phase === 'ready' ? `${button(exploring ? 'Открыть новый порт' : 'Получить груз и выручку', 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения и потери груза.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
+        <footer class="expedition-departure"><p>${esc(status)}</p>${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь. Игровое утро начинается после сна. Настоящий таймер не идёт.</small>` : phase === 'ready' ? `${button(exploring ? 'Открыть новый порт' : 'Получить груз и выручку', 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения и потери груза.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
       </div>
     </div>
   </section>`;

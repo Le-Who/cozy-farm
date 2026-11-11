@@ -1,0 +1,67 @@
+[
+  {
+    "height": 640,
+    "hint": {
+      "height": 30,
+      "inside": true,
+      "text": "Где взять пшеницу",
+      "width": 120.984375,
+      "x": 66.046875,
+      "y": 538.1875
+    },
+    "overflow": false,
+    "width": 360
+  },
+  {
+    "height": 844,
+    "hint": {
+      "height": 30,
+      "inside": true,
+      "text": "Где взять пшеницу",
+      "width": 120.984375,
+      "x": 57.28125,
+      "y": 738.109375
+    },
+    "overflow": false,
+    "width": 390
+  },
+  {
+    "height": 320,
+    "hint": {
+      "height": 30,
+      "inside": true,
+      "text": "Где взять пшеницу",
+      "width": 120.984375,
+      "x": 390.921875,
+      "y": 224.1875
+    },
+    "overflow": false,
+    "width": 568
+  },
+  {
+    "height": 390,
+    "hint": {
+      "height": 30,
+      "inside": true,
+      "text": "Где взять пшеницу",
+      "width": 120.984375,
+      "x": 443.828125,
+      "y": 293.140625
+    },
+    "overflow": false,
+    "width": 844
+  },
+  {
+    "height": 900,
+    "hint": {
+      "height": 30,
+      "inside": true,
+      "text": "Где взять пшеницу",
+      "width": 120.984375,
+      "x": 810.15625,
+      "y": 642
+    },
+    "overflow": false,
+    "width": 1280
+  }
+]

@@ -1,0 +1,21 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Проверка возвращения к парому</title>
+<style>body{font:16px/1.5 system-ui;padding:24px;background:#faf7f0;color:#352447}button,a{display:inline-block;padding:12px;margin:8px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #999}</style>
+<h1>Только синтетическая ферма</h1><p>Проверочный адрес localhost:4231, отдельный от опубликованной игры.</p>
+<button id="seed">Создать рейс из рощи</button><button id="inspect">Проверить сохранение</button><button id="remember">Запомнить состояние</button><button id="reload">Перезагрузить игру</button><a href="/">Открыть игру</a>
+<button data-size="390,844">390 × 844</button><button data-size="360,640">360 × 640</button><button data-size="568,320">568 × 320</button><button data-size="844,390">844 × 390</button><button data-size="1280,900">1280 × 900</button>
+<details><summary>Состояние сохранения</summary><pre id="result"></pre></details><iframe title="Игра для проверки" width="390" height="844"></iframe>
+<script type="module">
+import {createFarm,restoreFarm} from '/src/farm.ts'
+import {sendFerryExpedition} from '/src/harbour-economy.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4231'
+const result=document.querySelector('#result'),frame=document.querySelector('iframe')
+if(!allowed){result.textContent='Запись запрещена вне отдельного localhost:4231';document.querySelectorAll('button').forEach(b=>b.disabled=true)}
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,unchanged:raw===sessionStorage.getItem('ferry-return-baseline'),day:f?.day,island:f?.island,coins:f?.coins,work:f?.workToday,wheat:f?.produce.wheat,eggs:f?.eggs,buns:f?.handmade.round,voyage:f?.freight.expeditions.active,completed:f?.freight.expeditions.completed},null,2)}
+document.querySelector('#seed').onclick=()=>{if(!allowed)return;const f=createFarm();f.boatOwned=true;f.island='grove';f.produce.wheat=8;f.eggs=4;f.discoveryPreferences.quiet=true;if(!sendFerryExpedition(f,'pair:mill-grain+mill-eggs').ok||!restoreFarm(f))throw new Error('Fixture failed');const raw=JSON.stringify(restoreFarm(f));localStorage.setItem(farmSaveKeys.primary,raw);sessionStorage.setItem('ferry-return-baseline',raw);inspect();frame.src='/'}
+document.querySelector('#inspect').onclick=inspect
+document.querySelector('#remember').onclick=()=>{if(!allowed)return;sessionStorage.setItem('ferry-return-baseline',localStorage.getItem(farmSaveKeys.primary));inspect()}
+document.querySelector('#reload').onclick=()=>{frame.src='/'}
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h;if(!frame.src)frame.src='/'})
+inspect()
+</script></html>

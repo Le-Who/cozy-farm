@@ -1,0 +1,23 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Следующая разведка парома</title>
+<style>body{font:16px/1.5 system-ui;padding:20px;background:#faf7f0;color:#352447}button{padding:10px;margin:5px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #999}</style>
+<h1>Следующая разведка · синтетическая ферма</h1><p>Только отдельный localhost:4234. Кнопки ниже заменяют лишь тестовое сохранение этого адреса.</p>
+<button data-fixture="first">После первого груза</button><button data-fixture="short">Не хватает пшеницы</button><button data-fixture="salt">Маяк уже открыт</button><button data-fixture="salt-trade">После торговли у маяка</button><button data-fixture="complete">Все порты открыты</button>
+<button id="inspect">Проверить сохранение</button><button id="remember">Запомнить состояние</button><button id="reload">Перезагрузить игру</button>
+<button data-size="390,844">390 × 844</button><button data-size="360,640">360 × 640</button><button data-size="568,320">568 × 320</button><button data-size="844,390">844 × 390</button><button data-size="1280,900">1280 × 900</button>
+<details><summary>Состояние сохранения</summary><pre id="result"></pre></details><iframe title="Игра для проверки" width="390" height="844"></iframe>
+<script type="module">
+import {createFarm,restoreFarm,endDay} from '/src/farm.ts'
+import {sendFerryExpedition,receiveFerryExpedition} from '/src/harbour-economy.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4234'
+const result=document.querySelector('#result'),frame=document.querySelector('iframe')
+if(!allowed){result.textContent='Запись запрещена вне localhost:4234';document.querySelectorAll('button').forEach(b=>b.disabled=true)}
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,unchanged:raw===sessionStorage.getItem('discovery-baseline'),day:f?.day,island:f?.island,coins:f?.coins,work:f?.workToday,wheat:f?.produce.wheat,carrot:f?.produce.carrot,buns:f?.handmade.round,salt:f?.seaSalt,discovered:f?.freight.expeditions.discovered,visits:Object.fromEntries(Object.entries(f?.freight.expeditions.markets??{}).map(([port,market])=>[port,market.visits])),voyage:f?.freight.expeditions.active,completed:f?.freight.expeditions.completed},null,2)}
+function seed(kind){if(!allowed)return;let f=createFarm();f.boatOwned=true;f.produce.wheat=10;f.produce.carrot=3;f.discoveryPreferences.quiet=true;function complete(id){if(!sendFerryExpedition(f,id).ok||!endDay(f).ok||!receiveFerryExpedition(f).ok)throw new Error('Fixture route failed');f=restoreFarm(f)}complete('mill-grain');if(kind==='short')f.produce.wheat=0;if(['salt','salt-trade','complete'].includes(kind))complete('explore-salt');if(['salt-trade','complete'].includes(kind))complete('salt-carrots');if(kind==='complete')complete('explore-orchard');f=restoreFarm(f);if(!f)throw new Error('Invalid fixture');const raw=JSON.stringify(f);localStorage.setItem(farmSaveKeys.primary,raw);sessionStorage.setItem('discovery-baseline',raw);inspect();frame.src='/'}
+document.querySelectorAll('[data-fixture]').forEach(b=>b.onclick=()=>seed(b.dataset.fixture))
+document.querySelector('#inspect').onclick=inspect
+document.querySelector('#remember').onclick=()=>{if(!allowed)return;sessionStorage.setItem('discovery-baseline',localStorage.getItem(farmSaveKeys.primary));inspect()}
+document.querySelector('#reload').onclick=()=>{frame.src='/'}
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h;if(!frame.src)frame.src='/'})
+inspect()
+</script></html>

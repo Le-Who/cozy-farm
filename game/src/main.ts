@@ -27,6 +27,8 @@ import { renderCoopMorning, renderCoopCapacityWarning } from './coop-preview'
 import './coop-preview.css'
 import { canConfirmRest } from './rest-preview'
 import { renderRestPreview } from './rest-preview-ui'
+import { renderFerryReturn } from './ferry-return'
+import { nextFerryExploration } from './ferry-discovery'
 import './rest-preview.css'
 import { chooseDiscoveryIdea, setDiscoveryPace, resumeDiscoveryIdea, forgetDiscoveryIdea } from './discovery-preferences'
 import { getGuidanceTask } from './discovery-guidance'
@@ -65,7 +67,7 @@ import { renderFreightPanel, freightControl } from './bay-freight-ui'
 import { getMusicMaterialGuidance, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
 import { createBayMusic, type BayMusicViewState } from './bay-music'
 import { describeFood } from './intent-orders'
-import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods, sendFerryExpedition, receiveFerryExpedition, gardenMaterialStock } from './harbour-economy'
+import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods, sendFerryExpedition, receiveFerryExpedition, expeditionWallet, getFerrySupplyRequirement, gardenMaterialStock } from './harbour-economy'
 import { berryCropIds, foodDescriptors, marketStock, unitPrice, islandIds as allPorts } from './farm'
 import './harbour-life.css'
 import {applyIngredientFinishes} from './ingredient-finish'
@@ -1662,7 +1664,7 @@ function drawPanel() {
         </div>`
       break
     case 'rest':
-      dialogContent.innerHTML = `${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderRestPreview(farm)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
+      dialogContent.innerHTML = `${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderFerryReturn(farm,harbourGoods())}${renderRestPreview(farm)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
         ${renderShopRest(farm)}<ul class="dialog-list">${row('moon', `День ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}`, '', button('До утра', 'sleep', true, {value:farm.day}))}</ul>
         ${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}`
       break
@@ -1673,7 +1675,7 @@ function drawPanel() {
         ? row('tool-rod', 'Рыбалка в роще', `Сегодня поймано: ${farm.fishCaughtToday.grove} / ${getFishLimit(farm, 'grove')}`)
           + row('ui-sea-salt', 'Морская соль', farm.saltGatheredToday ? 'Сегодня собрано' : 'Можно собрать на солончаках')
         : ''
-      dialogContent.innerHTML = `<section class="discovery-chapter">
+      dialogContent.innerHTML = `${renderFerryReturn(farm,harbourGoods())}<section class="discovery-chapter">
           ${icon(chapter?.icon ?? 'star')}<div><small>Знакомство с бухтой · ${journal.completed}/${journal.chapters.length}</small><h2>${chapter?.title ?? 'Бухта живёт дальше'}</h2></div>
           <p>${chapter?.detail ?? 'Продолжайте свои рецепты, встречи с соседями и новые праздники. Каждая традиция может расти дальше.'}</p>
         </section>
@@ -2549,13 +2551,31 @@ app.addEventListener('click', async (event) => {
     }
     case 'festival-village': openPanel('village-project');break
     case 'festival-meal': openPanel('village-meal');break
+    case 'ferry-return': {
+      const voyage = farm.freight.expeditions.active
+      if ((panel === 'journal' || panel === 'rest') && voyage && String(voyage.serial) === value) openPanel('bay-freight')
+      break
+    }
+    case 'expedition-rest': {
+      const voyage = farm.freight.expeditions.active
+      if (panel === 'bay-freight' && voyage?.phase === 'sailing' && String(voyage.serial) === value) await visitPanelAt('home','rest')
+      break
+    }
+    case 'expedition-discovery': {
+      if (panel !== 'bay-freight') break
+      const next = nextFerryExploration(farm.freight.expeditions, expeditionWallet(farm))
+      if (!next || next.port !== value) break
+      selectedExpeditionPort = next.port
+      selectedExpeditionOffer = expeditionTrades(farm.freight.expeditions, next.port)[0].id
+      drawPanel()
+      dialogContent.querySelector<HTMLElement>('.bay-freight-close')?.focus({preventScroll:true})
+      break
+    }
     case 'expedition-source': {
-      if (value === 'wheat' || value === 'carrot') {
-        marketTab='buy';marketCategory='seeds';previewSeed=value
-        await visitPanelAt('home','market')
-      } else if (value === 'seaBass') await visitPanelAt('grove','fishing')
-      else if (value === 'apple') await visitPanelAt(getFruitSource(farm,'apple').island,'orchard')
-      else if (value === 'eggs') await visitPanelAt('home','coop')
+      if (panel !== 'bay-freight') break
+      const [offerId,itemId] = (value ?? '').split('|')
+      const requirement = getFerrySupplyRequirement(farm,offerId,itemId)
+      if (requirement) await showRequirement(requirement,control)
       break
     }
     case 'expedition-port': {
