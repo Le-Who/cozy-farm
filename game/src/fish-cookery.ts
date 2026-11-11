@@ -1,3 +1,4 @@
+import { showCookeryRecovery } from './cookery-recovery'
 import { playBaySound, prepareBaySoundScene, setBaySoundContact } from './game-sound'
 import * as THREE from 'three'
 import {createFishPanView} from './fish-pan-view'
@@ -74,7 +75,7 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
   let boardPoint = new THREE.Vector3(-2.7,.34,.3), panPoint = new THREE.Vector3(2.4,.44,-.4), platePoint = new THREE.Vector3(2.5,.18,2.6)
   let renderer: THREE.WebGLRenderer
   try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' }) }
-  catch { status.textContent = 'Не удалось открыть кухню. Вернитесь и попробуйте снова.'; close.addEventListener('click', () => { if (cancelFish(model)) options.onCancel() }, { signal }); return { destroy() { abort.abort(); root.remove(); previousFocus?.focus() } } }
+  catch { showCookeryRecovery(root, { ...options, signal, onCancel: () => { if (cancelFish(model)) options.onCancel() } }); return { destroy() { abort.abort(); root.remove(); previousFocus?.focus() } } }
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.setClearColor(0,0); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95
   view.prepend(renderer.domElement)

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFarm, boatPrice } from '../src/farm.ts';
+import { createFarm, boatPrice, getProject } from '../src/farm.ts';
 import { getRequirementHint, type Requirement } from '../src/requirement-guidance.ts';
 
 test('each missing ingredient has its own source regardless of the onboarding task', () => {
@@ -71,4 +71,36 @@ test('a recipe keeps guiding its remote missing ingredient after arrival', () =>
   assert.equal(getRequirementHint(farm,preserves).action.target,'visit-tree');
   farm.fruit.pear=1;
   assert.equal(getRequirementHint(farm,preserves).action.value,'home');
+});
+
+test('honey ingredient links accept one blooming bed and stay Home after the daily harvest', () => {
+  const farm = createFarm(); farm.boatOwned = true; farm.day = 2;
+  for (const { item } of getProject(farm, 'dock').items) {
+    const key = 'item' in item ? `${item.kind}:${item.item}` : item.kind;
+    farm.projects.dock[key] = item.quantity;
+  }
+  farm.capeFlowers = [1, null, 2];
+  const honey: Requirement = { kind: 'stock', item: { kind: 'honey', quantity: 1 } };
+  const before = structuredClone(farm);
+  assert.equal(getRequirementHint(farm, honey).action.value, 'cape');
+  farm.island = 'cape';
+  assert.equal(getRequirementHint(farm, honey).action.target, 'visit-hive');
+  farm.island = before.island;
+  assert.deepEqual(farm, before);
+  farm.capeHoneyOn = farm.day;
+  farm.island = 'cape';
+  assert.equal(getRequirementHint(farm, honey).action.value, 'home');
+  farm.island = 'home';
+  assert.deepEqual(getRequirementHint(farm, honey).action, { label: '', target: 'focus-place', value: 'farmhouse' });
+});
+
+
+test('secondary kitchen ingredient links guide to cooking instead of asking for a duplicate upgrade', () => {
+  const farm = createFarm(); farm.buildingLevels.farmhouse = 3;
+  farm.farmhouseSpecialization = 'bakery'; farm.farmhouseSecondarySpecialization = 'preserves';
+  farm.fruit.apple = 1; farm.fruit.pear = 1;
+  assert.equal(getRequirementHint(farm, { kind: 'stock', item: { kind: 'dishes', item: 'orchardPreserves', quantity: 1 } }).action.target, 'kitchen');
+  farm.farmhouseSpecialization = 'preserves'; farm.farmhouseSecondarySpecialization = 'bakery';
+  farm.produce.wheat = 2; farm.eggs = 1;
+  assert.equal(getRequirementHint(farm, { kind: 'stock', item: { kind: 'dishes', item: 'farmhouseBread', quantity: 1 } }).action.target, 'kitchen');
 });

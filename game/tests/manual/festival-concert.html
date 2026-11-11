@@ -1,0 +1,14 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Новый концерт после выбора программы</title>
+<style>body{max-width:1000px;margin:6px auto;padding:6px;background:#faf7f0;color:#352447;font:16px/1.4 system-ui}button{margin:3px;padding:7px;font:inherit}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;margin:4px 0}iframe{border:1px solid #888;max-width:100%}</style>
+<h1 style="font-size:18px;margin:4px">Новый концерт после выбора программы</h1><p>Только localhost:4212. Синтетическая ферма. Сегодня концерт уже был. Затем выбрана программа с требованием нового концерта.</p><button data-fixture="next">Новый концерт для праздника</button><button id="inspect">Проверить сохранение</button><button data-size="390,844">390×844</button><button data-size="844,390">844×390</button><pre role="status">Сохранение не изменено.</pre><div id="frame"></div>
+<script type="module">
+import {festivalConcertFixture} from '../fixtures/festival-concert.ts'
+import {restoreFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4212',out=document.querySelector('pre')
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Запись разрешена только на localhost:4212.'}
+function show(f){out.textContent=JSON.stringify({valid:!!restoreFarm(f),day:f.day,island:f.island,coins:f.coins,workToday:f.workToday,produce:f.produce,fruit:f.fruit,festival:f.festivals,concertDay:f.concertDay,performances:f.musicGarden.performances})}
+document.querySelectorAll('[data-fixture]').forEach(b=>b.addEventListener('click',()=>{if(!allowed)return;document.getElementById('frame').innerHTML='';const farm=festivalConcertFixture();localStorage.removeItem('cozy-farm-community-selection-v1');localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm));show(farm)}))
+document.getElementById('inspect').addEventListener('click',()=>{if(!allowed)return;const f=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(f)show(f);else out.textContent='Нет корректного сохранения.'})
+document.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click',()=>{if(!allowed)return;const [w,h]=b.dataset.size.split(',');document.getElementById('frame').innerHTML=`<iframe title="Игра" src="/" width="${w}" height="${h}"></iframe>`}))
+</script></html>

@@ -1,0 +1,15 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка источников монет</title>
+<style>body{max-width:800px;margin:24px auto;padding:16px;background:#faf7f0;color:#352447;font:17px/1.5 system-ui}button,a{display:inline-block;margin:6px;padding:12px;font:inherit}pre{white-space:pre-wrap}iframe{max-width:100%;border:1px solid #888}</style>
+<h1>Готовый урожай и отдых</h1><p>Только localhost:4188. Кнопки заменяют синтетическую ферму этого адреса. Реальные сохранения других адресов не затрагиваются.</p>
+<button id="eggs">Создать: готовые яйца</button><button id="fruit">Создать: зрелое второе дерево</button><button id="rest">Создать: обе квоты исчерпаны</button><a href="/">Открыть игру</a><button id="inspect">Проверить сохранение</button><button id="compact">Открыть игру 360×640</button><div id="frame"></div><pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import {createFarm,restoreFarm} from '/src/farm.ts'
+import {getCoinGuidance,getDiscoveryTask} from '/src/discovery-path.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4188',out=document.querySelector('pre')
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Запись разрешена только на localhost:4188.'}
+function show(f){out.textContent=JSON.stringify({valid:!!restoreFarm(f),day:f.day,island:f.island,eggsReady:f.eggsReady,eggs:f.eggs,fruit:f.fruit,trees:f.trees,quota:f.fishCaughtToday,coins:f.coins,workToday:f.workToday,progress:f.progress,hint:getCoinGuidance(f,70,'лодка'),task:getDiscoveryTask(f,{collections:true,islands:true})},null,2)}
+for(const id of ['eggs','fruit','rest'])document.getElementById(id).addEventListener('click',()=>{if(!allowed)return;const f=createFarm();f.coins=0;f.beds=f.beds.map(()=>({kind:'empty'}));f.eggsReady=0;f.bayDiscoveries=['orchardTart','pear'];f.orientation={collections:true,islands:true};f.progress={till:1,plant:1,water:1,rest:1,harvest:3,sell:1,feed:1,collect:1};if(id==='eggs')f.eggsReady=2;if(id==='fruit')f.trees.home=[{tree:'apple',age:0,fruitReady:0},{tree:'pear',age:3,fruitReady:2},null];if(id==='rest'){f.boatOwned=true;f.island='grove';f.trees.home=[null,null,null];f.trees.grove=[null,null,null];for(const crop of Object.keys(f.seeds))f.seeds[crop]=0;f.fishCaughtToday={home:3,grove:3}}if(!restoreFarm(f))throw Error('Некорректная ферма');localStorage.setItem(farmSaveKeys.primary,JSON.stringify(f));show(f)})
+document.getElementById('inspect').addEventListener('click',()=>{if(!allowed)return;const f=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(f)show(f);else out.textContent='Нет корректного сохранения.'})
+document.getElementById('compact').addEventListener('click',()=>{if(allowed)document.getElementById('frame').innerHTML='<iframe title="Игра" src="/" width="360" height="640"></iframe>'})
+</script></html>

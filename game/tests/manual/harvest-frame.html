@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверочная грядка</title>
+<link rel="stylesheet" href="/src/style.css">
+<style>.qa-controls{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:4px;flex-wrap:wrap;font-size:12px}.qa-controls button{min-height:32px}.qa-status{position:absolute;top:80px;left:12px;right:12px;font-size:12px;white-space:pre-wrap}.qa-collect{position:absolute;top:180px;left:12px}.island-hint{left:50%;top:170px}</style>
+<div id="app"><main class="game-shell">
+<div class="qa-controls"><button data-bed="0">Первая грядка</button><button data-bed="1">Вторая грядка</button><button data-bed="2">Незрелая грядка</button><button id="reload">Сохранить и прочитать</button></div>
+<output class="qa-status"></output><div class="island-hint" aria-live="polite"></div><button class="qa-collect">Собрать выбранную грядку</button>
+<div class="hud-bottom"><div class="field-context"><img class="icon" src="/art/icons/carrot.webp" alt=""><span id="copy-slot"></span><button class="dialog-button" data-action="work-context" aria-describedby="context-copy"></button></div><div class="hotbar"></div></div>
+</main></div>
+<script type="module">
+import { createFarm, getBedHarvestPreview, workBed, restoreFarm } from '/src/farm.ts'
+import { harvestPreviewCopy, fieldContextCopyMarkup, updateFieldContextCopy } from '/src/harvest-preview.ts'
+let farm = createFarm(), selected = 0
+farm.beds[0] = { kind: 'crop', crop: 'carrot', growth: 1, watered: false, trait: 'rainbow' }
+farm.beds[1] = { kind: 'crop', crop: 'carrot', growth: 1, watered: false }
+farm.beds[2] = { kind: 'crop', crop: 'carrot', growth: 0, watered: true }
+farm.culinary.picnic = { day: farm.day, processing: 'chunky' }
+document.querySelector('#copy-slot').outerHTML = fieldContextCopyMarkup
+document.querySelector('.hotbar').innerHTML = ['hoe','can','seeds','feed','crate','hen','rod','boat'].map((tool,index) => `<button class="hotbar-slot" aria-label="Инструмент ${index+1}"><span class="slot-icon"><img class="icon" alt="" src="/art/lavender/tool-${tool}.webp"></span></button>`).join('')
+function draw(message = '') {
+  const preview = getBedHarvestPreview(farm, selected), copy = preview && harvestPreviewCopy(preview)
+  updateFieldContextCopy(document.querySelector('.field-context'), 'Морковь', copy?.detail, copy?.bonus)
+  const button = document.querySelector('[data-action="work-context"]')
+  button.textContent = copy?.action ?? 'Нет урожая'; button.disabled = !preview
+  document.querySelector('.qa-collect').disabled = !preview
+  document.querySelector('.island-hint').textContent = copy?.hint ?? 'Морковь · Нет спелого урожая'
+  document.querySelector('.qa-status').textContent = `Обычных: ${farm.produce.carrot}; радужных: ${farm.variants.carrot?.rainbow ?? 0}; пикник: ${farm.culinary.picnic ? 'готов' : 'использован'}. ${message}`
+}
+function harvest() { const result = workBed(farm, selected); draw(result.message) }
+document.querySelector('[data-action="work-context"]').addEventListener('click', harvest)
+document.querySelector('.qa-collect').addEventListener('click', harvest)
+document.querySelectorAll('[data-bed]').forEach(button => button.addEventListener('click', () => { selected = Number(button.dataset.bed); draw() }))
+document.querySelector('#reload').addEventListener('click', () => { farm = restoreFarm(JSON.parse(JSON.stringify(farm))); if (!farm) throw new Error('Сохранение не восстановилось'); draw('Состояние восстановлено.') })
+draw()
+</script></html>

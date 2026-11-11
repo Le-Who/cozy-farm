@@ -1,0 +1,15 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка пересадки</title>
+<style>body{max-width:780px;margin:24px auto;padding:16px;background:#faf7f0;color:#352447;font:17px/1.5 system-ui}button,a{display:inline-block;margin:8px;padding:12px;font:inherit}pre{white-space:pre-wrap}iframe{border:1px solid #888;max-width:100%}</style>
+<h1>Пересадка без изменения посадки</h1><p>Кнопка заменяет только синтетическую ферму на localhost:4185. Первая грядка: политая радужная тыква, рост 1/3. Вторая и четвёртая вспаханы, третья целина.</p>
+<button id="create">Создать проверочную ферму</button><a href="/">Открыть игру</a><button id="inspect">Проверить сохранение</button>
+<button id="compact">Открыть игру 360×640</button><button id="wide">Открыть игру 568×320</button><div id="frame"></div><pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import {createFarm,restoreFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4185',out=document.querySelector('pre')
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Запись разрешена только на localhost:4185.'}
+function show(f){out.textContent=JSON.stringify({valid:!!restoreFarm(f),day:f.day,beds:f.beds,water:f.water,seeds:f.seeds,produce:f.produce,variants:f.variants,coins:f.coins,workToday:f.workToday,progress:f.progress,picnic:f.culinary.picnic},null,2)}
+document.querySelector('#create').addEventListener('click',()=>{if(!allowed)return;const f=createFarm();f.beds[0]={kind:'crop',crop:'pumpkin',growth:1,watered:true,wateredAt:1234,trait:'rainbow'};f.beds[1]={kind:'tilled'};f.beds[2]={kind:'empty'};f.beds[3]={kind:'tilled'};if(!restoreFarm(f))throw Error('Некорректная ферма');localStorage.setItem(farmSaveKeys.primary,JSON.stringify(f));show(f)})
+document.querySelector('#inspect').addEventListener('click',()=>{if(!allowed)return;const f=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(f)show(f);else out.textContent='Нет корректного сохранения.'})
+for(const [id,width,height] of [['compact',360,640],['wide',568,320]])document.getElementById(id).addEventListener('click',()=>{if(allowed)document.querySelector('#frame').innerHTML=`<iframe title="Игра" src="/" width="${width}" height="${height}"></iframe>`})
+</script></html>

@@ -1,0 +1,5 @@
+.market-return{margin-top:10px;padding-top:9px;border-top:1px solid var(--rule)}
+.market-return summary{cursor:pointer;color:var(--plum);font-size:15px;line-height:1.4;font-weight:700}
+.market-return p,.market-return-note{font-size:13px;line-height:1.45;margin:8px 0;color:var(--muted)}
+.market-return .ingredients{margin:8px 0}
+.market-return-help{font-size:13px;line-height:1.45;margin:0 0 12px;color:var(--muted)}

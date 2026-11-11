@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка выбора фестиваля</title></head>
+<body>
+  <main style="padding:20px;min-height:100vh">
+    <p>Изолированная проверка компонента. Ферма создана в памяти; сохранения браузера не читаются и не изменяются.</p>
+    <button id="reset" type="button">Начать проверку заново</button>
+    <output id="ledger" aria-live="polite" style="display:block;margin:12px 0"></output>
+    <section class="farm-dialog" data-panel="festival" style="position:static;max-height:none;margin:20px auto;padding:20px"><div id="panel"></div></section>
+  </main>
+  <script type="module">
+    import '/src/style.css';
+    import { createFarm, beginFestival, cancelFestival, contributeFestival } from '/src/farm.ts';
+    import { renderFestivalPanel } from '/src/bay-festival-ui.ts';
+    const width = Number(new URLSearchParams(location.search).get('width'));
+    if ([360, 390, 568, 844].includes(width)) {
+      const frame = document.createElement('iframe');
+      frame.width = String(width); frame.height = width >= 568 ? '390' : '844'; frame.src = location.pathname;
+      frame.title = 'Проверка панели в узком окне'; document.body.replaceChildren(frame);
+    } else {
+    const panel = document.querySelector('#panel'), ledger = document.querySelector('#ledger');
+    let farm;
+    function draw(message = '') {
+      panel.innerHTML = renderFestivalPanel(farm);
+      ledger.textContent = `Монеты: ${farm.coins}; яблоки: ${farm.fruit.apple}; действий: ${farm.workToday}. ${message}`;
+    }
+    function reset() {
+      farm = createFarm(); farm.village.built = true; farm.village.meals = 1; farm.island = 'village';
+      farm.fruit.apple = 3;
+      draw();
+    }
+    document.querySelector('#reset').addEventListener('click', reset);
+    panel.addEventListener('click', event => {
+      const control = event.target.closest('button[data-action]');
+      if (!control || control.disabled) return;
+      const { action, value } = control.dataset;
+      const result = action === 'festival-begin' ? beginFestival(farm, value)
+        : action === 'festival-cancel' ? cancelFestival(farm, value)
+        : action === 'festival-contribute' ? contributeFestival(farm, ...value.split('|')) : undefined;
+      if (result) draw(result.message);
+    });
+    reset();
+    }
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFarm, storeTree } from '../src/farm.ts';
+import { createFarm, storeTree, returnNurseryTree, getTreeAction } from '../src/farm.ts';
 import { getSupplyGuidance } from '../src/discovery-path.ts';
 import { getRequirementHint } from '../src/requirement-guidance.ts';
 
@@ -38,8 +38,42 @@ test('nursery trees are returned before asking for another purchase', () => {
   farm.trees.home[1] = { tree: 'peach', age: 3, fruitReady: 2 };
   storeTree(farm, 1);
   const next = getSupplyGuidance(farm, peach, 'парфе');
-  assert.equal(next.action.target, 'visit-tree');
+  assert.equal(next.action.target, 'orchard');
   assert.equal(next.action.value, '1');
   assert.match(next.label, /Верните/);
   assert.match(next.detail, /бесплатно/);
+});
+
+test('ripe nursery fruit comes before waiting for an orchard tree of the same kind', () => {
+  const farm = createFarm();
+  farm.trees.home[0] = { tree: 'peach', age: 0, fruitReady: 0 };
+  farm.trees.home[1] = { tree: 'peach', age: 3, fruitReady: 2 };
+  assert.equal(storeTree(farm, 1).ok, true);
+  const before = structuredClone(farm);
+  const next = getSupplyGuidance(farm, peach, 'парфе');
+  assert.equal(next.action.target, 'orchard');
+  assert.equal(next.action.value, '1');
+  assert.match(next.label, /Верните/);
+  assert.match(next.detail, /бесплатно/);
+  assert.equal(getRequirementHint(farm, { kind: 'stock', item: peach }).action.target, 'orchard');
+  assert.deepEqual(farm, before);
+});
+
+test('ripe nursery guidance frees space first and leaves ready orchard fruit as the first choice', () => {
+  const farm = createFarm(); farm.boatOwned = true;
+  farm.trees.home[1] = { tree: 'peach', age: 3, fruitReady: 2 };
+  assert.equal(storeTree(farm, 1).ok, true);
+  for (const island of ['home', 'grove'] as const) farm.trees[island] = Array.from({ length: 3 }, () => ({ tree: 'peach', age: 0, fruitReady: 0 }));
+  assert.equal(getSupplyGuidance(farm, peach, 'парфе').action.target, 'orchard');
+  assert.match(getRequirementHint(farm, { kind: 'stock', item: peach }).notice!, /питомник/);
+  farm.trees.grove[2] = null;
+  assert.equal(getSupplyGuidance(farm, peach, 'парфе').action.value, 'grove');
+  farm.island = 'grove';
+  assert.equal(getSupplyGuidance(farm, peach, 'парфе').action.value, String(farm.treeNursery[0].id));
+  assert.equal(returnNurseryTree(farm, 2, farm.treeNursery[0].id).ok, true);
+  assert.equal(getTreeAction(farm, 2).kind, 'pick');
+  farm.island = 'home';
+  assert.equal(getSupplyGuidance(farm, peach, 'парфе').action.value, 'grove');
+  farm.island = 'grove';
+  assert.deepEqual(getSupplyGuidance(farm, peach, 'парфе').action, { label: 'К плодовому дереву', target: 'visit-tree', value: '2' });
 });

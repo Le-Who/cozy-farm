@@ -1,4 +1,7 @@
+import { getFestivalShoreRoute } from './festival-shore-route.ts';
 import { getFestivalChoices, getFestivalStatus, type FarmState } from './farm.ts';
+import { getFestivalHarvestRoute } from './festival-harvest-route.ts';
+import { getFestivalFishingRoute } from './festival-fishing-route.ts';
 import type { FestivalTradition } from './bay-festival.ts';
 import { ruCount } from './ru.ts';
 import './bay-festival.css';
@@ -15,8 +18,8 @@ function asset(path: string): string { return `${import.meta.env.BASE_URL}${artR
 function picture(tradition: FestivalTradition, className = ''): string {
   return `<div class="festival-picture ${className}" data-tradition="${tradition}" aria-hidden="true"><img class="festival-reward-art" src="${asset(`festivals/${tradition}`)}" alt="" draggable="false"></div>`;
 }
-function button(label: string, action: string, value = '', available = true, className = ''): string {
-  return `<button type="button" class="dialog-button festival-button ${className}" data-action="${action}" data-value="${escape(value)}"${available ? '' : ' disabled'}>${label}</button>`;
+function button(label: string, action: string, value = '', available = true, className = '', descriptionId = ''): string {
+  return `<button type="button" class="dialog-button festival-button ${className}"${descriptionId ? ` aria-describedby="${escape(descriptionId)}"` : ''} data-action="${action}" data-value="${escape(value)}"${available ? '' : ' disabled'}>${label}</button>`;
 }
 const ingredientIcons: Record<string, string> = {
   carrot: 'carrot', cabbage: 'cabbage', beetroot: 'beetroot', tomato: 'tomato', pumpkin: 'pumpkin', wheat: 'wheat', leafyGreens: 'leafyGreens',
@@ -31,6 +34,20 @@ const ingredientIcons: Record<string, string> = {
 function ingredientPicture(id: string, icon?: FestivalViewOptions['icon']): string {
   const name = ingredientIcons[id.split(':').at(-1)!];
   return name && icon ? icon(name, 'festival-ingredient-icon') : '';
+}
+
+/** Preview only the already chosen next step; availability is checked again when it opens. */
+function nextPreparationPreview(active: NonNullable<ReturnType<typeof getFestivalStatus>['active']>): string {
+  if (!active.waitingNight || active.stage >= 3 || !active.requirements.length) return '';
+  return `<details class="festival-next-preview"><summary>Что подготовить к утру</summary>
+    <p>Внести вклад можно с ${active.readyOn}-го игрового дня. Припасы не резервируются.</p>
+    <p>Ниже — количество для всей оставшейся группы, если выбрать один вариант. Варианты можно сочетать.</p>
+    <ul>${active.requirements.map(requirement => {
+      const remaining = Math.max(0, requirement.quantity - requirement.delivered);
+      return `<li><strong>${escape(requirement.label)} · ${ruCount(remaining, 'вклад', 'вклада', 'вкладов')}</strong>
+        <p>${requirement.alternatives.map(alternative => `${escape(alternative.label)} <b>×${remaining * alternative.quantity}</b>`).join(' или ')}</p></li>`;
+    }).join('')}</ul>
+  </details>`;
 }
 
 export function renderFestivalPanel(farm: FarmState, options: FestivalViewOptions = {}): string {
@@ -48,7 +65,7 @@ export function renderFestivalPanel(farm: FarmState, options: FestivalViewOption
       ${picture(choice.id)}
       <div class="festival-choice-copy"><h2>${escape(choice.name)}</h2><p class="festival-effect">${escape(choice.effect)}</p>
       ${choice.completed > 0 ? `<small class="festival-history">✓ Отмечено: ${choice.completed}</small>` : ''}</div>
-      ${button(choice.completed > 0 ? `Подготовить выпуск ${choice.completed + 1}` : 'Начать подготовку', 'festival-begin', choice.id, choice.available)}
+      ${button(choice.completed > 0 ? `Выбрать выпуск ${choice.completed + 1}` : 'Выбрать программу', 'festival-begin', choice.id, choice.available)}
     </article>`).join('')}</div>
   </section>`;
   const choice = choices.find(item => item.id === active.tradition)!;
@@ -60,6 +77,20 @@ export function renderFestivalPanel(farm: FarmState, options: FestivalViewOption
       if (alternative.available === 0) {
         if (alternative.id === 'concert') return button('Сыграть в саду', 'festival-music', '', !active.waitingNight, 'festival-contribution');
         if (alternative.id === 'delivery') return button('Отправить паром', 'festival-freight', '', !active.waitingNight, 'festival-contribution');
+        if (alternative.id === 'harvest') {
+          const route = getFestivalHarvestRoute(farm);
+          return button(route?.label ?? activityLabels.harvest, 'festival-activity', 'harvest', !!route, 'festival-contribution');
+        }
+        if (alternative.id === 'shore') {
+          const route = getFestivalShoreRoute(farm);
+          return button(route?.label ?? activityLabels.shore, 'festival-activity', 'shore', !!route, 'festival-contribution')
+            + (route?.panel === 'rest' ? '<p class="festival-note">Доступные ракушки и находки отмели сегодня собраны. Дома можно отдельно отдохнуть до следующего игрового дня.</p>' : '');
+        }
+        if (alternative.id === 'fish') {
+          const route = getFestivalFishingRoute(farm);
+          return button(route?.label ?? activityLabels.fish, 'festival-activity', 'fish', !!route, 'festival-contribution')
+            + (route?.panel === 'rest' ? '<p class="festival-note">На доступных берегах сегодняшняя квота исчерпана. Дома можно отдельно отдохнуть до следующего игрового дня.</p>' : '');
+        }
         if (activityLabels[alternative.id]) return button(activityLabels[alternative.id], 'festival-activity', alternative.id, !active.waitingNight, 'festival-contribution');
       }
       return button(`${ingredientPicture(alternative.id, options.icon)}<span>${escape(alternative.label)} <b>×${alternative.quantity}</b>${alternative.available === 0 ? '<small>Где найти</small>' : ''}</span>`,
@@ -72,10 +103,12 @@ export function renderFestivalPanel(farm: FarmState, options: FestivalViewOption
     </li>`;
   }).join('');
   return `<section class="bay-festival festival-active" aria-label="${escape(active.name)}">
-    <header class="festival-active-heading">${picture(active.tradition)}<div><small>Выпуск ${active.edition} · ${escape(active.editionName)}</small><h2>${escape(active.name)}</h2><p class="festival-effect">${escape(choice.effect)}</p></div></header>
+    <header class="festival-active-heading">${picture(active.tradition)}<div><small>Выбранная программа · выпуск ${active.edition} · ${escape(active.editionName)}</small><h2>${escape(active.name)}</h2><p class="festival-effect">${escape(choice.effect)}</p></div></header>
+    <div class="festival-selection"><p class="festival-note" id="festival-cancel-reason">${escape(active.canCancel ? 'Пока вы не внесли припасы и не участвовали в делах бухты, выбор можно отменить.' : active.cancelReason)}</p>
+      ${button('Отменить выбор', 'festival-cancel', active.tradition, active.canCancel, 'festival-secondary', 'festival-cancel-reason')}</div>
     <ol class="festival-stages" aria-label="Подготовка праздника">${['1', '2', '3', 'Праздник'].map((label, index) => `<li data-complete="${index < active.stage}"${index === active.stage ? ' aria-current="step"' : ''}><span>${index < active.stage ? '✓' : label}</span></li>`).join('')}</ol>
     <div class="festival-stage-heading"><span>${finale ? 'Всё готово к встрече' : `Подготовка ${stageNumber}/3`}</span><h3>${escape(active.label)}</h3><p>${escape(active.detail)}</p></div>
-    ${requirements && !active.waitingNight ? `<ul class="festival-requirements">${requirements}</ul>` : ''}
+    ${requirements && !active.waitingNight ? `<ul class="festival-requirements">${requirements}</ul>` : nextPreparationPreview(active)}
     <p class="festival-return">Припасы: ${active.materialValue} + организация: ${ruCount(active.honorarium, 'монета', 'монеты', 'монет')}</p>
     ${active.waitingNight ? `<div class="festival-night"><p class="festival-wait" role="status"><span aria-hidden="true">☾</span><span>На сегодня всё<small>Утро ${active.readyOn}-го дня</small></span></p>${button('Отдохнуть дома', 'festival-rest', '', true, 'festival-secondary')}</div>` : finale ? button('Провести праздник', 'festival-finish', '', active.canFinish) : active.requirements.every(item => item.delivered >= item.quantity) ? button('Собрать подготовку', 'festival-contribute', '', active.canContribute) : ''}
   </section>`;

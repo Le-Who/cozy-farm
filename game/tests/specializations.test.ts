@@ -21,7 +21,7 @@ function specialtyOrder(farm: FarmState) {
   return getMarketOrders(farm).find(({ lane }) => lane === 'specialty');
 }
 
-test('farmhouse specialization requires level two and payment at Home, and the choice is permanent', () => {
+test('farmhouse specialization requires level two and payment at Home, and each learned branch is permanent', () => {
   const farm = createFarm();
   farm.coins = 250;
   const starter = structuredClone(farm);
@@ -51,7 +51,9 @@ test('farmhouse specialization requires level two and payment at Home, and the c
   const restored = restoreFarm(JSON.parse(JSON.stringify(farm)));
   assert.ok(restored);
   assert.equal(specializeFarmhouse(restored, 'bakery').ok, false);
-  assert.equal(specializeFarmhouse(restored, 'preserves').ok, false);
+  assert.equal(specializeFarmhouse(restored, 'preserves').ok, true);
+  farm.coins -= 58;
+  farm.farmhouseSecondarySpecialization = 'preserves';
   assert.equal(upgradeBuilding(restored, 'farmhouse').ok, false);
   assert.deepEqual(restored, farm);
 });

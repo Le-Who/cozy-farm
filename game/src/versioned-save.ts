@@ -1,6 +1,10 @@
 import { ProtectedSave, type SaveIssue, type SaveStorage } from './protected-save.ts'
 
-export type SaveKeys = { primary: string; legacy: string; journal: string }
+export type SaveKeys = {
+  primary: string; legacy: string; journal: string
+  /** Older-than-legacy data is eligible only if no legacy migration ever started. */
+  legacyFallback?: { key: string; journal: string }
+}
 export type ExclusiveSave = <R>(operation: () => R) => Promise<R>
 export type RecoveryOrigin = 'primary' | 'legacy' | 'snapshot' | 'journal'
 type MigrationJournal = { version: 1; phase: 'pending' | 'complete'; legacyRaw: string | null; initialRaw: string }
@@ -61,6 +65,22 @@ export class VersionedSave<T> {
     } catch { return undefined }
   }
 
+  private readLegacy(storage: SaveStorage): { raw: string | null } | undefined {
+    const raw = storage.getItem(this.keys.legacy)
+    if (raw !== null || !this.keys.legacyFallback) return { raw }
+    const fallback = this.keys.legacyFallback
+    const journal = storage.getItem(fallback.journal)
+    if (journal !== null) {
+      // A missing previous-generation primary is not a fresh install. Never
+      // resurrect older progress while silently discarding its migration record.
+      this.original = journal
+      this.origin = 'journal'
+      this.problem = 'missing-primary'
+      return
+    }
+    return { raw: storage.getItem(fallback.key) }
+  }
+
   private async loadOnce(): Promise<T | undefined> {
     if (!this.exclusive) return this.readOnly()
     try { return await this.exclusive(() => this.initialize()) }
@@ -86,7 +106,9 @@ export class VersionedSave<T> {
         if (journal.phase === 'complete') { this.problem = 'missing-primary'; return }
         return this.decode(journal.initialRaw)
       }
-      this.original = storage.getItem(this.keys.legacy)
+      const legacy = this.readLegacy(storage)
+      if (!legacy) return
+      this.original = legacy.raw
       this.origin = 'legacy'
       if (this.original === null) return
       const value = this.decode(this.original)
@@ -123,7 +145,11 @@ export class VersionedSave<T> {
     }
     if (primary === null && !journal) {
       let legacy: string | null
-      try { legacy = storage.getItem(this.keys.legacy) }
+      try {
+        const source = this.readLegacy(storage)
+        if (!source) return
+        legacy = source.raw
+      }
       catch { this.problem = 'read-failed'; return }
       this.original = legacy
       this.origin = 'legacy'

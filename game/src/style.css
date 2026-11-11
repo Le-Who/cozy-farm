@@ -41,8 +41,8 @@ button:disabled { cursor: default; }
   border: 1px solid #c99170; border-radius: 16px; box-shadow: 0 2px 0 #6e454e44;
 }
 .island-hint {
-  max-width: calc(100% - 20px); padding: 5px 12px; transform: translate(-50%, -100%); text-align: center;
-  font-size: clamp(13px, 1.2vw, 18px); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  width: max-content; max-width: min(32rem, calc(100% - 20px)); padding: 5px 12px; transform: translate(-50%, -100%); text-align: center;
+  font-size: clamp(13px, 1.2vw, 18px); font-weight: 700; white-space: normal; overflow-wrap: anywhere;
 }
 .island-render-status { inset: 50% auto auto 50%; width: min(26rem, calc(100% - 2rem)); padding: 14px 18px; transform: translate(-50%, -50%); text-align: center; }
 
@@ -398,7 +398,9 @@ button.requirement-link:focus-visible { outline:3px solid #a985b4; outline-offse
   }
   .hud-bottom:has(.field-context:not([hidden])) .hud-hint { display: none; }
   .field-context > .icon { width: 41px; height: 41px; }
-  .context-copy { font-size: 14px; font-weight: 800; line-height: 1.2; }
+  .context-copy { min-width: 0; display: grid; gap: 3px; font-size: 14px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+  .context-detail, .context-bonus { font-size: 11px; line-height: 1.25; font-weight: 650; }
+  .context-bonus { color: #536a38; }
   .field-context .dialog-button { max-width: min(38vw, 180px); padding-inline: 7px; font-size: 13px; }
   .toast { bottom: calc(var(--bottom) + 2 * var(--slot) + 87px); }
   .dialog-row { gap: 6px; }

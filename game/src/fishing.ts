@@ -18,10 +18,13 @@ export type FishingGameOptions = {
   seed?: number;
   fish: 'perch' | 'seaBass';
   habitat?: FishingHabitat;
+  practiceOnly?: boolean;
   onCast?: () => boolean | void;
   /** Return false when the cast used the last available attempt. */
   onFinish: (result: { count: number; depth: number; catches: FishingLoot[] }) => boolean | void;
   onAgain?: () => void;
+  /** Explicit opt-in after the rewarded daily quota is exhausted. */
+  onPractice?: () => void;
   onCancel?: () => void;
 };
 
@@ -54,8 +57,9 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   const root = document.createElement('section');
   root.className = 'fishing-game';
   root.dataset.phase = model.phase;
-  root.setAttribute('aria-label', 'Подводная рыбалка');
+  root.setAttribute('aria-label', options.practiceOnly ? 'Тренировочная рыбалка без наград' : 'Подводная рыбалка');
   root.innerHTML = `
+    ${options.practiceOnly ? '<div class="fishing-practice-banner"><p><strong>Тренировка без наград</strong><span>Без улова, опыта и прогресса. Все находки останутся в воде.</span></p><button class="fishing-practice-shore fishing-leave" type="button">На берег</button></div>' : ''}
     <div class="fishing-stage" tabindex="0" role="application" aria-label="Управляйте крючком стрелками влево и вправо или перетаскиванием. Пробел — опустить крючок или начать подъём раньше.">
       <div class="fishing-hud">
         <div class="fishing-depth"><span class="fishing-direction" aria-hidden="true">↓</span><strong>0</strong><span>м</span></div>
@@ -72,7 +76,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
         <p class="fishing-result-summary"></p>
         <ul class="fishing-result-catches"></ul>
         <p class="fishing-result-quota" hidden>На сегодня рыбалка закончена</p>
-        <div class="fishing-result-actions"><button class="fishing-again fishing-action" type="button">Ещё раз</button><button class="fishing-leave" type="button">На берег</button></div>
+        <div class="fishing-result-actions"><button class="fishing-again fishing-action" type="button">Ещё раз</button><button class="fishing-practice fishing-action" type="button" hidden>Тренироваться без наград</button><button class="fishing-leave" type="button">На берег</button></div>
       </section>
     </div>
     <p class="fishing-live" role="status" aria-live="polite"></p><div class="fishing-controls"><button class="fishing-action" type="button">Закинуть удочку <span aria-hidden="true">↓</span></button></div>`;
@@ -96,7 +100,9 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   const resultCatches = root.querySelector<HTMLElement>('.fishing-result-catches')!;
   const resultQuota = root.querySelector<HTMLElement>('.fishing-result-quota')!;
   const again = root.querySelector<HTMLButtonElement>('.fishing-again')!;
-  const leave = root.querySelector<HTMLButtonElement>('.fishing-leave')!;
+  const leave = root.querySelector<HTMLButtonElement>('.fishing-result .fishing-leave')!;
+  const practice = root.querySelector<HTMLButtonElement>('.fishing-practice')!;
+  const shore = root.querySelector<HTMLButtonElement>('.fishing-practice-shore');
   for (let i = 0; i < model.capacity; i++) {
     const slot = document.createElement('i'); slot.className = 'fishing-slot'; slots.append(slot);
   }
@@ -112,9 +118,11 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     renderStatus.hidden = false;
     renderStatus.textContent = 'Не удалось открыть рыбалку. Вернитесь на берег и попробуйте ещё раз.';
     action.textContent = 'На берег';
+    if (shore) controls.hidden = true;
     const cancel = () => options.onCancel?.();
     action.addEventListener('click', cancel);
-    return { destroy() { action.removeEventListener('click', cancel); root.remove(); } };
+    shore?.addEventListener('click', cancel);
+    return { destroy() { action.removeEventListener('click', cancel); shore?.removeEventListener('click', cancel); root.remove(); } };
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setClearColor('#a9dcd9');
@@ -356,6 +364,11 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   action.addEventListener('click', performAction, { signal });
   again.addEventListener('click', () => { if (finished && !again.disabled) { again.disabled = true; options.onAgain?.(); } }, { signal });
   leave.addEventListener('click', () => options.onCancel?.(), { signal });
+  shore?.addEventListener('click', () => options.onCancel?.(), { signal });
+  practice.addEventListener('click', () => {
+    if (!finished || practice.hidden || practice.disabled) return;
+    practice.disabled = true; options.onPractice?.();
+  }, { signal });
   const keyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') { event.preventDefault(); options.onCancel?.(); return; }
     if ((event.target as HTMLElement).closest('button') || model.phase === 'done') return;
@@ -449,7 +462,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
         announce('Крючок поднимается. Проведите им через переднюю часть рыбы, чтобы поймать её.');
       } else if (model.phase === 'done') {
         controls.hidden = true; directionLabel.textContent = '✓';
-        const message = model.caught.length ? `На берег доставлено: ${ruCount(model.caught.length, 'находка', 'находки', 'находок')}` : 'Крючок пуст. На подъёме цельтесь в переднюю часть рыбы.';
+        const message = options.practiceOnly ? 'Тренировка завершена. Все находки остались в воде.' : model.caught.length ? `На берег доставлено: ${ruCount(model.caught.length, 'находка', 'находки', 'находок')}` : 'Крючок пуст. На подъёме цельтесь в переднюю часть рыбы.';
         announce(message); callout.classList.remove('visible');
       }
     }
@@ -574,11 +587,13 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       const depth = Math.round(model.deepest / fishingDepth * maxDepth);
       const canRecast = options.onFinish({ count: catches.length, depth, catches }) !== false;
       if (destroyed) return;
-      resultTitle.textContent = catches.length ? 'Ваш улов' : 'Пустой крючок';
-      resultSummary.textContent = catches.length
+      resultTitle.textContent = options.practiceOnly ? 'Тренировка завершена' : catches.length ? 'Ваш улов' : 'Пустой крючок';
+      resultSummary.textContent = options.practiceOnly
+        ? `Глубина: ${formatRuNumber(depth)} м · Все находки остались в воде. Наград и прогресса нет.`
+        : catches.length
         ? `Глубина: ${formatRuNumber(depth)} м`
         : `Глубина: ${formatRuNumber(depth)} м · Ловите рыбу за переднюю часть`;
-      for (const loot of catches) {
+      for (const loot of options.practiceOnly ? [] : catches) {
         const item = document.createElement('li');
         const img = document.createElement('img'); img.src = lootArt(loot); img.alt = '';
         if (loot.kind === 'shell' && loot.variant === 'moon') img.className = 'moon-shell';
@@ -586,11 +601,12 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
         item.append(img, label); resultCatches.append(item);
       }
       again.hidden = !canRecast || !options.onAgain;
-      resultQuota.hidden = canRecast;
+      resultQuota.hidden = canRecast || !!options.practiceOnly;
+      practice.hidden = canRecast || !!options.practiceOnly || !options.onPractice;
       controls.hidden = true; callout.classList.remove('visible'); result.hidden = false;
       stage.removeAttribute('role'); stage.tabIndex = -1;
-      announce(`${resultTitle.textContent}. ${resultSummary.textContent}. ${canRecast ? 'Попробуйте ещё раз или вернитесь на берег.' : 'На сегодня рыбалка закончена. Вернитесь на берег.'}`);
-      (again.hidden ? leave : again).focus({ preventScroll: true });
+      announce(`${resultTitle.textContent}. ${resultSummary.textContent}. ${canRecast ? 'Попробуйте ещё раз или вернитесь на берег.' : practice.hidden ? 'Вернитесь на берег.' : 'На сегодня улов закончен. Можно потренироваться без наград или вернуться на берег.'}`);
+      (again.hidden ? practice.hidden ? leave : practice : again).focus({ preventScroll: true });
     }
   }
   frame = requestAnimationFrame(animate);

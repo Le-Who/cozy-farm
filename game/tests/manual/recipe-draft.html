@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="UTF-8">
+<title>Возврат к задумке рецепта</title>
+<h1>Возврат к задумке рецепта</h1>
+<p>Только loopback:5224. Существующая ферма не заменяется.</p>
+<button id="create">Создать проверочную ферму</button>
+<a href="/">Открыть игру</a>
+<button id="inspect">Проверить сохранение</button>
+<pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import { restoreFarm } from '/src/farm.ts';
+import { recipeDraftFixture } from '../fixtures/recipe-draft.ts';
+import { farmSaveKeys } from '/src/farm-save-keys.ts';
+
+const allowed = ['localhost', '127.0.0.1'].includes(location.hostname) && location.port === '5224';
+const out = document.querySelector('pre');
+const baseline = 'cozy-recipe-draft-baseline';
+if (!allowed) document.querySelectorAll('button').forEach(button => button.disabled = true);
+
+function show() {
+  const raw = localStorage.getItem(farmSaveKeys.primary);
+  const farm = raw && restoreFarm(JSON.parse(raw));
+  const original = JSON.parse(localStorage.getItem(baseline) ?? 'null');
+  const economy = farm && structuredClone(farm);
+  if (economy) delete economy.recipeDraft;
+  out.textContent = farm ? JSON.stringify({
+    valid: true,
+    onlyDraftChanged: JSON.stringify(economy) === JSON.stringify(original),
+    recipeDraft: farm.recipeDraft ?? null,
+    saveBytesUnchanged: raw === localStorage.getItem(baseline),
+    day: farm.day, coins: farm.coins, work: farm.workToday,
+    produce: farm.produce, fruit: farm.fruit, trees: farm.trees.home, variants: farm.variants,
+    warehouse: farm.freight.warehouses.home,
+    recipes: farm.culinary.recipes, stock: farm.culinary.stock,
+  }, null, 2) : 'Нет корректной фермы.';
+}
+
+document.querySelector('#create').onclick = () => {
+  if (!allowed) return;
+  if (localStorage.getItem(farmSaveKeys.primary) || localStorage.getItem(farmSaveKeys.legacy)) {
+    out.textContent = 'Имеющаяся ферма не заменена.';
+    return;
+  }
+  const raw = JSON.stringify(recipeDraftFixture());
+  localStorage.setItem(farmSaveKeys.primary, raw);
+  localStorage.setItem(baseline, raw);
+  show();
+};
+document.querySelector('#inspect').onclick = () => { if (allowed) show(); };
+</script>
+</html>

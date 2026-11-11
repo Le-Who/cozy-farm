@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createFarm, endDay, feedChickens, getProject, workBed, type FarmState, type ProjectId } from '../src/farm.ts';
-import { getDiscoveryTask } from '../src/discovery-path.ts';
+import { getDiscoveryTask, getSupplyGuidance, getCoinGuidance } from '../src/discovery-path.ts';
 
 const seen = { collections: true, islands: true };
 
@@ -17,6 +17,8 @@ test('the new harbour leads to a neighbour, correctly shaped suppers and the sec
   farm.village.meals = 2;
   assert.equal(getDiscoveryTask(farm, seen)?.action.value, '1');
   farm.village.residents[1] = 'finn';
+  assert.equal(getDiscoveryTask(farm, seen)?.id, 'first-shop');
+  farm.handmade.folded = 0;
   assert.equal(getDiscoveryTask(farm, seen)?.id, 'own-recipe');
 });
 
@@ -26,12 +28,14 @@ test('a harbour pastry can be shaped locally and earning never demands an unaffo
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'workshop');
   farm.village.built = false; farm.island = 'home'; farm.boatOwned = false; farm.bayDiscoveries.push('orchardTart');
   farm.progress = {till:1,plant:1,water:1,rest:1,harvest:3,sell:1,feed:1,collect:1};
-  farm.coins = 0; farm.produce.wheat = 0; farm.eggs = 0; farm.beds = farm.beds.map(() => ({kind:'empty'}));
+  farm.coins = 0; farm.produce.wheat = 0; farm.eggs = 0; farm.eggsReady = 0; farm.beds = farm.beds.map(() => ({kind:'empty'}));
+  farm.trees.home[0]!.fruitReady = 0;
   farm.seeds = {carrot:0,cabbage:0,beetroot:0,tomato:0,pumpkin:0,wheat:2,leafyGreens:0};
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'focus-bed');
   farm.beds[0] = {kind:'tilled'};
   assert.deepEqual(getDiscoveryTask(farm, seen)?.action, {label:'Выбрать семена',target:'open-panel',value:'seeds'});
   farm.seeds.wheat = 0;
+  farm.trees.home[0]!.fruitReady = 2;
   assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'visit-tree');
 });
 function starterDone(): FarmState {
@@ -184,4 +188,78 @@ test('Cape introduction plants all beds, returns Home for the night and collects
   farm.bayDiscoveries.push('honey');
   assert.equal(getDiscoveryTask(farm, seen)?.id, 'upgrade-coop');
   assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'home');
+});
+
+test('one blooming Cape bed guides to available honey before empty or young beds', () => {
+  const farm = established(); complete(farm, 'dock'); farm.day = 2;
+  farm.capeFlowers = [1, null, 2];
+  const before = structuredClone(farm);
+  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'cape');
+  farm.island = 'cape';
+  assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'visit-hive');
+  farm.island = before.island;
+  assert.deepEqual(farm, before);
+  farm.capeHoneyOn = farm.day;
+  farm.island = 'cape';
+  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'home');
+  farm.island = 'home';
+  assert.equal(getDiscoveryTask(farm, seen)?.action.target, 'visit-rest');
+});
+
+test('exhausted fishing supplies keep guiding Home to rest rather than back to Grove', () => {
+  const farm = createFarm(); farm.boatOwned = true; farm.island = 'grove';
+  farm.fishCaughtToday.grove = 3;
+  const fish = { kind: 'fish', item: 'seaBass', quantity: 1 } as const;
+  const before = structuredClone(farm);
+  assert.equal(getSupplyGuidance(farm, fish, 'общий ужин').action.value, 'home');
+  farm.island = 'home';
+  assert.equal(getSupplyGuidance(farm, fish, 'общий ужин').action.target, 'visit-rest');
+  farm.island = before.island;
+  assert.deepEqual(farm, before);
+});
+
+test('earning fallback never recommends a pier after the Home catch limit', () => {
+  const farm = createFarm(); farm.boatOwned = true; farm.island = 'grove';
+  farm.beds = farm.beds.map(() => ({ kind: 'empty' }));
+  for (const crop of Object.keys(farm.seeds) as (keyof typeof farm.seeds)[]) farm.seeds[crop] = 0;
+  farm.trees.home = [null, null, null];
+  farm.trees.grove = [null, null, null];
+  farm.eggsReady = 0;
+  farm.fishCaughtToday.home = 3;
+  const before = structuredClone(farm);
+  assert.equal(getCoinGuidance(farm, 100, 'улучшение дома').action.value, 'home');
+  farm.island = 'home';
+  assert.equal(getCoinGuidance(farm, 100, 'улучшение дома').action.target, 'visit-rest');
+  farm.island = before.island;
+  assert.deepEqual(farm, before);
+  farm.fishCaughtToday.home = 0;
+  farm.island = 'home';
+  assert.equal(getCoinGuidance(farm, 100, 'улучшение дома').action.target, 'visit-pier');
+});
+
+test('the first shop uses ready pastries and local warehouse food before proposing another recipe', () => {
+  const farm = established(); complete(farm, 'fair'); farm.village.built = true;
+  farm.village.residents = ['bea', 'finn']; farm.village.meals = 2;
+  farm.island = 'village'; farm.handmade.folded = 1;
+  const before = structuredClone(farm);
+  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'bay-shop');
+  assert.match(getDiscoveryTask(farm, seen)!.detail, /слойка/i);
+  assert.deepEqual(farm, before);
+  farm.handmade.folded = 0;
+  farm.freight.warehouses.village['handmade:long'] = 1;
+  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'bay-shop');
+  assert.match(getDiscoveryTask(farm, seen)!.detail, /батон/i);
+  farm.island = 'home';
+  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'village');
+  farm.freight.warehouses.village = {};
+  farm.dishes.farmhouseBread = 1;
+  farm.island = 'village';
+  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'bay-shop');
+  farm.dishes.farmhouseBread = 0;
+  farm.freight.warehouses.village['dish:appleJam'] = 1;
+  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'bay-shop');
+  farm.freight.warehouses.village = {};
+  farm.freight.warehouses.home['handmade:long'] = 1;
+  farm.island = 'village';
+  assert.notEqual(getDiscoveryTask(farm, seen)?.action.value, 'bay-shop', 'distant warehouse food is not available on the shop shelves');
 });

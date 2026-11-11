@@ -1,3 +1,4 @@
+import { showCookeryRecovery } from './cookery-recovery'
 import { playBaySound, prepareBaySoundScene, setBaySoundContact } from './game-sound'
 import { loadArtTexture } from './art-texture';
 import * as THREE from 'three'
@@ -81,7 +82,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   close.addEventListener('click', cancel, { signal })
   function makeRenderer(canvas?: HTMLCanvasElement) { const value = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' }); value.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); value.outputColorSpace = THREE.SRGBColorSpace; value.setClearColor('#aa7852'); value.domElement.setAttribute('aria-hidden', 'true'); return value }
   let renderer: THREE.WebGLRenderer
-  try { renderer = makeRenderer(); view.prepend(renderer.domElement) } catch { status.textContent = 'Не удалось открыть медовую кухню. Вернитесь на кухню и попробуйте снова.'; return { destroy() { destroyed = true; abort.abort(); plane.dispose(); root.remove(); previousFocus?.focus({ preventScroll: true }) } } }
+  try { renderer = makeRenderer(); view.prepend(renderer.domElement) } catch { showCookeryRecovery(root, { ...options, signal, onCancel: cancel }); return { destroy() { destroyed = true; abort.abort(); plane.dispose(); root.remove(); previousFocus?.focus({ preventScroll: true }) } } }
   function texture(url: string): Promise<THREE.Texture> { return new Promise((resolve, reject) => { const value = loadArtTexture(url, loaded => { if (destroyed) { loaded.dispose(); reject(new DOMException('Кухня закрыта', 'AbortError')); return }; loaded.colorSpace = THREE.SRGBColorSpace; resolve(loaded) }, reject); textures.add(value) }) }
   const url = (path: string) => /^(?:https?:|data:|\/)/.test(path) ? path : path.startsWith('art/') ? base + path : artBase + path
   function shadow(map: THREE.Texture, geometry?: THREE.BufferGeometry): Shadow {

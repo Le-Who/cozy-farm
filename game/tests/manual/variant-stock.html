@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="UTF-8">
+<title>Точный вид припасов</title>
+<h1>Точный вид припасов</h1>
+<p>Только loopback:5223. Существующая ферма не заменяется.</p>
+<label>Склад
+  <select id="mode">
+    <option value="ordinary">Только обычные ягоды</option>
+    <option value="exact">Обычные и радужные ягоды</option>
+  </select>
+</label>
+<button id="create">Создать проверочную ферму</button>
+<a href="/">Открыть игру</a>
+<button id="inspect">Проверить сохранение</button>
+<pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import { restoreFarm } from '/src/farm.ts';
+import { variantStockFixture } from '../fixtures/variant-stock.ts';
+import { farmSaveKeys } from '/src/farm-save-keys.ts';
+
+const allowed = ['localhost', '127.0.0.1'].includes(location.hostname) && location.port === '5223';
+const out = document.querySelector('pre');
+const baseline = 'cozy-variant-stock-baseline';
+if (!allowed) document.querySelectorAll('button').forEach(button => button.disabled = true);
+
+function show() {
+  const raw = localStorage.getItem(farmSaveKeys.primary);
+  const farm = raw && restoreFarm(JSON.parse(raw));
+  out.textContent = farm ? JSON.stringify({
+    valid: true,
+    saveBytesUnchanged: raw === localStorage.getItem(baseline),
+    day: farm.day, coins: farm.coins, work: farm.workToday,
+    produce: farm.produce, variants: farm.variants,
+    warehouse: farm.freight.warehouses.home,
+    recipes: farm.culinary.recipes, stock: farm.culinary.stock,
+  }, null, 2) : 'Нет корректной фермы.';
+}
+
+document.querySelector('#create').onclick = () => {
+  if (!allowed) return;
+  if (localStorage.getItem(farmSaveKeys.primary) || localStorage.getItem(farmSaveKeys.legacy)) {
+    out.textContent = 'Имеющаяся ферма не заменена.';
+    return;
+  }
+  const raw = JSON.stringify(variantStockFixture(document.querySelector('#mode').value === 'exact'));
+  localStorage.setItem(farmSaveKeys.primary, raw);
+  localStorage.setItem(baseline, raw);
+  show();
+};
+document.querySelector('#inspect').onclick = () => { if (allowed) show(); };
+</script>
+</html>

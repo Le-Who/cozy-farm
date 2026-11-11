@@ -1,0 +1,26 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка удержания и груза</title>
+<style>body{max-width:720px;margin:32px auto;padding:16px;background:#faf7f0;color:#352447;font:17px/1.5 system-ui}button,a{display:inline-block;margin:8px;padding:12px;font:inherit}pre{white-space:pre-wrap}</style>
+<h1>Распаковка и получение груза</h1><p>Только localhost:4184. Кнопка заменяет синтетическое сохранение этого адреса, не опубликованную ферму.</p>
+<button id="create">Создать упаковки и прибывший груз</button><a href="/">Открыть игру</a><button id="inspect">Проверить сохранение</button>
+<button id="key-check">Проверить удержание Enter</button><output id="keys">Событий клавиши: 0</output><pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import { createFarm, packEggBasket, packEggCrate, endDay, restoreFarm } from '/src/farm.ts'
+import { sendFerryExpedition } from '/src/harbour-economy.ts'
+import { farmSaveKeys } from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4184', out=document.querySelector('pre')
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Запись разрешена только наlocalhost:4184.'}
+function show(farm){out.textContent=JSON.stringify({valid:!!restoreFarm(farm),day:farm.day,eggs:farm.eggs,baskets:farm.eggBaskets,crates:farm.eggCrates,coins:farm.coins,workToday:farm.workToday,wheat:farm.produce.wheat,buns:farm.handmade.round,serial:farm.freight.expeditions.serial,completed:farm.freight.expeditions.completed,active:farm.freight.expeditions.active},null,2)}
+document.querySelector('#create').addEventListener('click',()=>{
+  if(!allowed)return
+  const farm=createFarm();farm.boatOwned=true;farm.coins=100;farm.produce.wheat=30;farm.eggs=100;farm.buildingLevels.coop=3;farm.coopSpecialization='packing'
+  for(let i=0;i<3;i++)if(!packEggBasket(farm).ok)throw new Error('Не создана корзина')
+  if(!packEggCrate(farm).ok||!sendFerryExpedition(farm,'mill-grain').ok||!endDay(farm).ok||!restoreFarm(farm))throw new Error('Некорректная проверочная ферма')
+  localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm));show(farm)
+})
+document.querySelector('#inspect').addEventListener('click',()=>{
+  if(!allowed)return
+  const farm=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(farm)show(farm);else out.textContent='Проверочное сохранение отсутствует или повреждено.'
+})
+let downs=0,repeats=0
+document.querySelector('#key-check').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();downs++;repeats+=Number(event.repeat);document.querySelector('#keys').textContent=`Событий клавиши: ${downs}; повторных: ${repeats}`}})
+</script></html>

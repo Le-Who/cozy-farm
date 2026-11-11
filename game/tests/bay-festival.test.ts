@@ -6,6 +6,7 @@ import {
   inviteResident,
   serveVillageMeal,
   beginFestival,
+  cancelFestival,
   contributeFestival,
   finishFestival,
   getFestivalChoices,
@@ -19,7 +20,7 @@ import {
   finishFishingTrip,
   type FarmState,
 } from '../src/farm.ts';
-import { createBayFestival, restoreBayFestival, type FestivalTradition } from '../src/bay-festival.ts';
+import { createBayFestival, restoreBayFestival, noteFestivalActivity, noteFestivalDelivery, type FestivalTradition } from '../src/bay-festival.ts';
 import { addFreightStock, startFreight } from '../src/bay-freight-model.ts';
 
 function harbour(): FarmState {
@@ -243,4 +244,86 @@ test('a new full concert on the day of an earlier concert counts without grantin
   assert.equal(farm.concertDay, farm.day);
   assert.equal(farm.bayShop.visitsToday, 0);
   assert.ok(restoreFarm(JSON.parse(JSON.stringify(farm))));
+});
+
+
+test('an untouched festival selection can be cancelled and replaced without changing inventory or rewards', () => {
+  const farm = harbour(), before = structuredClone(farm);
+  assert.equal(beginFestival(farm, 'harvest').ok, true);
+  assert.equal(getFestivalStatus(farm).active!.canCancel, true);
+  assert.equal(cancelFestival(farm, 'harvest').ok, true);
+  assert.deepEqual(farm, before);
+  assert.equal(cancelFestival(farm, 'harvest').ok, false);
+  assert.deepEqual(farm, before);
+  assert.equal(beginFestival(farm, 'lights').ok, true);
+  assert.equal(farm.festivals.active!.tradition, 'lights');
+  const selected = structuredClone(farm);
+  assert.equal(cancelFestival(farm, 'harvest').ok, false, 'a stale cancel button cannot clear a different selection');
+  assert.deepEqual(farm, selected);
+  assert.ok(restoreFarm(JSON.parse(JSON.stringify(farm))));
+});
+
+test('material contributions permanently protect the chosen program, including after reload', () => {
+  let farm = harbour();
+  assert.equal(beginFestival(farm, 'harvest').ok, true);
+  assert.equal(contributeFestival(farm, 'fruit', 'apple').ok, true);
+  assert.equal(getFestivalStatus(farm).active!.canCancel, false);
+  assert.match(getFestivalStatus(farm).active!.cancelReason, /Подготовка уже началась/);
+  const before = structuredClone(farm);
+  assert.equal(cancelFestival(farm, 'harvest').ok, false);
+  assert.deepEqual(farm, before, 'no refund, stock mutation, reward or progress loss');
+  farm = restoreFarm(JSON.parse(JSON.stringify(farm)))!;
+  assert.ok(farm);
+  assert.equal(getFestivalStatus(farm).active!.canCancel, false);
+  const restored = structuredClone(farm);
+  assert.equal(cancelFestival(farm, 'harvest').ok, false);
+  assert.deepEqual(farm, restored);
+});
+
+test('any recorded activity, real cargo or new concert protects even an unfilled first stage', () => {
+  for (const action of [
+    (farm: FarmState) => { liveHarvest(farm); },
+    (farm: FarmState) => { noteFestivalActivity(farm.festivals, 'bake'); },
+    (farm: FarmState) => { noteFestivalActivity(farm.festivals, 'fish'); },
+    (farm: FarmState) => { noteFestivalActivity(farm.festivals, 'shore'); },
+    (farm: FarmState) => { noteFestivalDelivery(farm.festivals, 1); },
+    (farm: FarmState) => { farm.musicGarden.performances++; },
+  ]) {
+    let farm = harbour();
+    assert.equal(beginFestival(farm, 'harvest').ok, true);
+    action(farm);
+    assert.equal(farm.festivals.active!.stage, 0);
+    assert.deepEqual(farm.festivals.active!.delivered, {});
+    assert.equal(getFestivalStatus(farm).active!.canCancel, false);
+    const before = structuredClone(farm);
+    assert.equal(cancelFestival(farm, 'harvest').ok, false);
+    assert.deepEqual(farm, before);
+    farm = restoreFarm(JSON.parse(JSON.stringify(farm)))!;
+    assert.ok(farm);
+    assert.equal(getFestivalStatus(farm).active!.canCancel, false);
+  }
+});
+
+test('old activity, browsing, an empty delivery and sleeping do not consume an untouched selection', () => {
+  let farm = harbour(); farm.musicGarden.performances = 2;
+  liveHarvest(farm);
+  noteFestivalDelivery(farm.festivals, 3);
+  assert.equal(beginFestival(farm, 'lights').ok, true);
+  noteFestivalDelivery(farm.festivals, 0);
+  const beforeRead = structuredClone(farm);
+  getFestivalChoices(farm); getFestivalStatus(farm);
+  assert.deepEqual(farm, beforeRead);
+  assert.equal(sail(farm, 'home').ok, true);
+  const away = structuredClone(farm);
+  assert.equal(getFestivalStatus(farm).active!.canCancel, false);
+  assert.equal(cancelFestival(farm, 'lights').ok, false);
+  assert.deepEqual(farm, away);
+  assert.equal(endDay(farm).ok, true);
+  assert.equal(sail(farm, 'village').ok, true);
+  farm = restoreFarm(JSON.parse(JSON.stringify(farm)))!;
+  assert.ok(farm);
+  assert.equal(getFestivalStatus(farm).active!.canCancel, true);
+  const beforeCancel = structuredClone(farm); beforeCancel.festivals.active = null;
+  assert.equal(cancelFestival(farm, 'lights').ok, true);
+  assert.deepEqual(farm, beforeCancel);
 });

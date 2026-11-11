@@ -1,0 +1,14 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Просьба перед отдыхом</title>
+<style>body{max-width:1000px;margin:20px auto;padding:12px;background:#faf7f0;color:#352447;font:16px/1.4 system-ui}button{margin:5px;padding:10px;font:inherit}pre{white-space:pre-wrap}iframe{border:1px solid #888;max-width:100%}</style>
+<h1>Просьба перед отдыхом</h1><p>Только localhost:4206. Синтетическая ферма. Выберите состояние, затем размер игры.</p><button id="fixture">Просьбы шестого дня</button><button id="inspect">Проверить сохранение</button><button data-size="360,640">360×640</button><button data-size="390,844">390×844</button><button data-size="568,320">568×320</button><button data-size="844,390">844×390</button><div id="frame"></div><pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import {intentDeadlineFixture} from '../fixtures/intent-deadline.ts'
+import {restoreFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4206',out=document.querySelector('pre')
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Запись разрешена только на localhost:4206.'}
+function show(f){out.textContent=JSON.stringify({valid:!!restoreFarm(f),day:f.day,island:f.island,coins:f.coins,stock:f.culinary.stock,eggs:f.eggs,apple:f.fruit.apple,wheat:f.produce.wheat,batches:f.culinary.recipes.map(r=>r.batches),shop:f.bayShop,neighbors:f.neighbors,requests:f.intentOrders,selection:JSON.parse(localStorage.getItem('cozy-farm-community-selection-v1')??'null')},null,2)}
+for(const id of ['fixture'])document.getElementById(id).addEventListener('click',()=>{if(!allowed)return;document.getElementById('frame').innerHTML='';const {farm}=intentDeadlineFixture();localStorage.removeItem('cozy-farm-community-selection-v1');localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm));show(farm)})
+document.getElementById('inspect').addEventListener('click',()=>{if(!allowed)return;const f=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(f)show(f);else out.textContent='Нет корректного сохранения.'})
+document.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click',()=>{if(!allowed)return;const [w,h]=b.dataset.size.split(',');document.getElementById('frame').innerHTML=`<iframe title="Игра" src="/" width="${w}" height="${h}"></iframe>`}))
+</script></html>

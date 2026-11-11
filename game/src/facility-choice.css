@@ -1,0 +1,5 @@
+.facility-choice-details{margin-top:12px;padding:10px 12px;border:1px solid var(--trim);border-radius:12px;background:var(--paper-light);font-size:13px;line-height:1.4;color:var(--ink)}
+.facility-choice-details h2{margin:0 0 6px;font-size:16px;color:var(--plum)}
+.facility-choice-details ul{margin:0;padding-left:18px;display:grid;gap:5px}
+.facility-choice-details p{margin:8px 0 0}
+.facility-choice-help{font-size:13px;line-height:1.4;color:var(--muted);margin:8px 0}

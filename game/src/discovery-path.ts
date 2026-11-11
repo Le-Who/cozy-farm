@@ -1,8 +1,18 @@
-import { getFruitSource } from './orchard-guidance.ts';
+import { getOrdinaryHoneyWait } from './ordinary-honey-guidance.ts';
+import { seaSaltRestNotice } from './salt-guidance.ts';
+import { getWindHoneySource } from './wind-honey-guidance.ts';
+import { getNextCropBed, getNextHarvestBed } from './crop-guidance.ts';
+import { getLocalWarehouseSupply, warehouseRequestValue } from './warehouse-guidance.ts';
+import { getReadySignatureSuppers } from './shared-supper.ts';
+import { getFishSource, rareFishClue } from './fish-guidance.ts';
+import { getPackedEggSource } from './packed-egg-guidance.ts';
+import { getFruitSource, nurseryFruitDetail } from './orchard-guidance.ts';
+import { freightStock } from './bay-freight-model.ts';
+import { bayShopDailyLimit } from './bay-shop-model.ts';
 import {
   boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
-  getBedAction, getBedStage, getCapeBloom, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
-  getFestivalStatus, getMarketOrders, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
+  getBedAction, getBedStage, getCapeHoney, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
+  foodDescriptors, getFestivalStatus, getMarketOrders, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
   treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
 } from './farm.ts';
 import {ruCount} from './ru.ts';
@@ -45,22 +55,26 @@ function feed(farm: FarmState, purpose: string): DiscoveryTask {
 }
 
 function capeHoney(farm: FarmState, purpose: string): DiscoveryTask {
+  const ordinary=getOrdinaryHoneyWait(farm);
+  if(ordinary)return home(farm,task('cape-ordinary-honey-rest','Цветочный мёд после отдыха',ordinary.detail,'ui-honey',{label:'К отдыху дома',target:'visit-rest'}));
+  if (farm.capeHoneyOn === farm.day) return rest(farm, purpose);
+  if (getCapeHoney({ ...farm, island: 'cape' }).available) return task('cape-honey', 'Соберите мёд мыса', 'На мысе уже есть цветущая клумба. Соберите доступный мёд в улье.', 'ui-honey', farm.island === 'cape'
+    ? { label: 'К улью', target: 'visit-hive' } : { label: 'На Цветочный мыс', target: 'sail', value: 'cape' });
   const empty = farm.capeFlowers.findIndex(day => day === null);
   if (empty >= 0) return task('cape-flowers', 'Засейте клумбы мыса', 'Засейте три клумбы рядом с ульем. Местные семена бесплатны; цветы распустятся после ночи.', 'ui-honey',
     farm.island === 'cape' ? { label: 'К свободной клумбе', target: 'focus-flower', value: String(empty) }
       : { label: 'На Цветочный мыс', target: 'sail', value: 'cape' }, farm.capeFlowers.length - farm.capeFlowers.filter(day => day === null).length, farm.capeFlowers.length);
-  if (farm.capeFlowers.some((_, i) => getCapeBloom(farm, i) !== 'bloom') || farm.capeHoneyOn === farm.day) return rest(farm, purpose);
-  return task('cape-honey', 'Соберите первый мёд мыса', 'Цветы распустились. Соберите мёд в улье.', 'ui-honey', farm.island === 'cape'
-    ? { label: 'К улью', target: 'visit-hive' } : { label: 'На Цветочный мыс', target: 'sail', value: 'cape' });
+  return rest(farm, purpose);
 }
 
 function cropSource(farm: FarmState, crop: CropId, purpose: string): DiscoveryTask {
   if (farm.island !== 'home') return home(farm, task(`${purpose}-${crop}`, `Урожай: ${cropDefinitions[crop].name.toLowerCase()}`, `Вырастите урожай: ${cropDefinitions[crop].name.toLowerCase()}. Цель: ${purpose}.`, crop, { label: 'Домой', target: 'sail', value: 'home' }));
-  const ready = farm.beds.findIndex(bed => bed.kind === 'crop' && bed.crop === crop && getBedStage(bed) === 'ripe');
-  if (ready >= 0) return bedTask(farm, ready, purpose);
-  const growing = farm.beds.findIndex(bed => bed.kind === 'crop' && bed.crop === crop && !bed.watered);
-  if (growing >= 0) return bedTask(farm, growing, purpose);
-  if (farm.beds.some(bed => bed.kind === 'crop' && bed.crop === crop)) return rest(farm, purpose);
+  const next = getNextCropBed(farm,crop);
+  if (next !== undefined) {
+    const bed=farm.beds[next];
+    if (getBedStage(bed)==='ripe' || bed.kind==='crop'&&!bed.watered) return bedTask(farm,next,purpose);
+    return {...rest(farm,purpose),detail:`Ближайшая посадка (${cropDefinitions[crop].name.toLowerCase()}) уже полита и подрастёт этой ночью. Цель: ${purpose}.`};
+  }
   const empty = farm.beds.findIndex(bed => bed.kind === 'empty');
   const tilled = farm.beds.findIndex(bed => bed.kind === 'tilled');
   if (tilled >= 0 && farm.selectedSeed === crop && farm.seeds[crop] > 0) return bedTask(farm, tilled, purpose);
@@ -68,26 +82,42 @@ function cropSource(farm: FarmState, crop: CropId, purpose: string): DiscoveryTa
     : task(`${purpose}-${crop}`, `Купите семена: ${cropDefinitions[crop].name.toLowerCase()}`, `Купите семена, чтобы получить нужный урожай. Цель: ${purpose}.`, crop, { label: 'На рынок', target: 'visit-market', value: 'buy' });
   if (tilled >= 0) return task(`${purpose}-${crop}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}, затем засейте подготовленную грядку.`, crop, { label: 'Выбрать семена', target: 'open-panel', value: 'seeds' });
   if (empty >= 0) return bedTask(farm, empty, purpose);
-  const ripe = farm.beds.findIndex(bed => getBedStage(bed) === 'ripe');
-  if (ripe >= 0) return bedTask(farm, ripe, purpose);
-  const thirsty = farm.beds.findIndex(bed => bed.kind === 'crop' && !bed.watered);
-  return thirsty >= 0 ? bedTask(farm, thirsty, `свободная грядка · ${purpose}`) : rest(farm, purpose);
+  const space = getNextHarvestBed(farm);
+  const bed = space === undefined ? undefined : farm.beds[space];
+  if (space !== undefined && bed?.kind === 'crop') {
+    const name=cropDefinitions[bed.crop].name.toLowerCase(), nights=Math.max(0,cropDefinitions[bed.crop].days-bed.growth);
+    const care=nights===0 ? `Урожай уже готов: ${name}. Соберите его отдельным действием.`
+      : `Грядка ${space+1} (${name}): ${bed.watered?'уже полита':'сначала нужен полив'}. До зрелости: ${ruCount(nights,'ночь','ночи','ночей')} при политой грядке перед каждой ночью роста. Затем отдельно соберите урожай.`;
+    const next=nights===0||!bed.watered?bedTask(farm,space,purpose):rest(farm,purpose);
+    return {...next,id:`${purpose}-${crop}-crop-space`,detail:`Все грядки заняты. ${care} После сбора появится место для посева: ${cropDefinitions[crop].name.toLowerCase()}. Нужная культура пока не посеяна.`};
+  }
+  return rest(farm,purpose);
 }
 
 function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTask {
   const id = `${purpose}-${item.kind}`;
+  const stored = getLocalWarehouseSupply(farm, item);
+  if (stored) return task(id, 'Припасы уже на местном складе', `Заберите недостающее: ${stored.quantity}. Перенос нужно подтвердить отдельно. Цель: ${purpose}.`, 'ui-bag', { label: 'Посмотреть запас', target: 'warehouse-supply', value: warehouseRequestValue(item) });
+  if(item.kind === 'honey' && farm.honey >= item.quantity)return task(id,'Цветочный мёд уже в припасах',`В припасах: ${farm.honey}. Дополнительный сбор не нужен.`,'ui-honey',{label:'Открыть запасы',target:'open-panel',value:'inventory'});
   if (item.kind === 'produce') return cropSource(farm, item.item, purpose);
   if (item.kind === 'fruit') {
     const source = getFruitSource(farm, item.item), { island, slot } = source;
+    if (source.kind === 'grow' && (island === 'home' || farm.boatOwned)) return home(farm, task(id, 'Дождитесь плодов в саду', `До плодов: ${ruCount(source.nights!, 'ночь', 'ночи', 'ночей')}. Дерево растёт во время отдыха дома. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: 'К отдыху дома', target: 'visit-rest' }));
     if (farm.island !== island) return task(id, `Соберите плоды: ${treeDefinitions[item.item].name.toLowerCase()}`, `Загляните в сад: ${island === 'home' ? 'Родной остров' : 'Солёная роща'}. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: island === 'home' ? 'Домой' : 'В рощу', target: 'sail', value: island });
     if (source.kind === 'pick') return task(id, `Соберите плоды: ${treeDefinitions[item.item].name.toLowerCase()}`, `Отложите плоды: ${item.quantity}. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: 'К плодовому дереву', target: 'visit-tree', value: String(slot) });
-    if (source.kind === 'grow') return rest(farm, purpose);
-    if (source.kind === 'space') return task(id, 'Освободите место в саду', 'Перенесите любое дерево в питомник: возраст и плоды сохранятся. Затем посадите нужное дерево на свободное место.', `ui-tree-${item.item}`, { label: 'Открыть сад', target: 'orchard' });
-    if (source.kind === 'return') return task(id, `Верните дерево: ${treeDefinitions[item.item].name.toLowerCase()}`, 'Выберите дерево из питомника и бесплатно верните его в сад. Возраст и плоды сохранены.', `ui-tree-${item.item}`, { label: 'К свободному месту', target: 'visit-tree', value: String(slot) });
+    if (source.kind === 'space') return task(id, 'Освободите место в саду', 'Перенесите любое дерево в питомник: возраст и плоды сохранятся. Затем верните нужное дерево из питомника или посадите саженец на свободное место.', `ui-tree-${item.item}`, { label: 'Открыть сад', target: 'orchard' });
+    if (source.kind === 'return') {
+      const tree = farm.treeNursery.find(entry => entry.id === source.nurseryId)!.tree;
+      return task(id, `Верните дерево: ${treeDefinitions[item.item].name.toLowerCase()}`, `Верните выделенное дерево из питомника бесплатно. ${nurseryFruitDetail(tree)} В питомнике рост на паузе.`, `ui-tree-${item.item}`, { label: 'К дереву в питомнике', target: 'orchard', value: String(source.nurseryId) });
+    }
     if (!farm.saplings[item.item] && farm.coins < treeDefinitions[item.item].saplingPrice) return coins(farm, treeDefinitions[item.item].saplingPrice, `саженец: ${treeDefinitions[item.item].name.toLowerCase()}`);
     return task(id, `Посадите дерево: ${treeDefinitions[item.item].name.toLowerCase()}`, `Садовое дерево даст нужные плоды. Цель: ${purpose}.`, `ui-tree-${item.item}`, { label: 'Выбрать саженец', target: 'visit-tree', value: String(slot) });
   }
   if (item.kind === 'eggs' || item.kind === 'eggBaskets') {
+    const packed = item.kind === 'eggs' && getPackedEggSource(farm, item.quantity);
+    if (packed) return home(farm, task(`${id}-unpack-${packed.kind}`, packed.kind === 'basket' ? 'Распакуйте корзину яиц' : 'Распакуйте ящик яиц',
+      `В запасе уже есть ${packed.kind === 'basket' ? 'корзина' : 'ящик'}: ${ruCount(packed.eggs, 'яйцо', 'яйца', 'яиц')}. Распакуйте бесплатно в курятнике. Цель: ${purpose}.`,
+      'egg', { label: 'К готовым яйцам', target: 'open-panel', value: 'coop' }));
     if (farm.island !== 'home') return home(farm, task(id, 'Соберите яйца в курятнике', `Запасите яйца. Цель: ${purpose}.`, 'egg', { label: 'К курятнику', target: 'visit-coop' }));
     if (item.kind === 'eggBaskets' && farm.eggs >= eggsPerBasket) return task(id, 'Упакуйте корзину яиц', `В улучшенном курятнике можно упаковать ${eggsPerBasket} яиц в корзину. Цель: ${purpose}.`, 'egg', { label: 'К курятнику', target: 'visit-coop' });
     if (farm.eggsReady > 0) return task(id, 'Соберите свежие яйца', `Отложите яйца. Цель: ${purpose}.`, 'egg', { label: 'К курятнику', target: 'visit-coop' });
@@ -95,17 +125,31 @@ function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTas
   }
   if (item.kind === 'dishes') return recipe(farm, item.item, purpose);
   if (item.kind === 'fish' || item.kind === 'seaSalt') {
-    const destination = item.kind === 'seaSalt' || 'item' in item && item.item !== 'perch' ? 'grove' : 'home';
-    if (farm.island !== destination) return task(id, 'Отправьтесь к воде', `Запасите ${item.kind === 'seaSalt' ? 'морскую соль' : 'рыбу'}. Цель: ${purpose}.`, 'boat', { label: destination === 'grove' ? 'В рощу' : 'Домой', target: 'sail', value: destination });
-    if (item.kind === 'seaSalt') return farm.saltGatheredToday ? rest(farm, purpose)
-      : task(id, 'Соберите морскую соль', `Соберите соль на солончаках рощи. Цель: ${purpose}.`, 'ui-sea-salt', { label: 'К солончакам', target: 'gather-salt' });
+    if (item.kind === 'seaSalt' && farm.seaSalt >= item.quantity) return task(id, 'Морская соль уже в припасах', `В припасах: ${farm.seaSalt}. Цель: ${purpose}. Дополнительный сбор не нужен.`, 'ui-sea-salt', {label:'Открыть запасы',target:'open-panel',value:'inventory'});
+    if (item.kind === 'seaSalt' && farm.saltGatheredToday) return home(farm, task(id, 'Морская соль после отдыха', seaSaltRestNotice(farm), 'ui-sea-salt', {label:'К отдыху дома',target:'visit-rest'}));
+    const destination = item.kind === 'fish' ? getFishSource(farm, item.item) : 'grove';
+    const clue = item.kind === 'fish' && rareFishClue(item.item);
+    if (item.kind === 'fish' && !getFishAction({ ...farm, island: destination }).available) return clue
+      ? home(farm, task(id, 'Рыбалка после отдыха', `Дневной улов на доступных берегах уже собран. Новый день начнётся после отдыха дома. ${clue}`, 'sun', { label: 'К отдыху дома', target: 'visit-rest' }))
+      : rest(farm, purpose);
+    if (farm.island !== destination) return task(id, 'Отправьтесь к воде', `${clue || `Запасите ${item.kind === 'seaSalt' ? 'морскую соль' : 'рыбу'}.`} Цель: ${purpose}.`, 'boat', { label: destination === 'grove' ? 'В рощу' : 'Домой', target: 'sail', value: destination });
+    if (clue) return task(id, 'Ищите рыбу на глубине', `${clue} Цель: ${purpose}.`, 'boat', { label: 'К рыбалке', target: 'open-panel', value: 'fishing' });
+    if (item.kind === 'seaSalt') return task(id, 'Соберите морскую соль', `Соберите соль на солончаках рощи. Цель: ${purpose}.`, 'ui-sea-salt', { label: 'К солончакам', target: 'gather-salt' });
     return getFishAction(farm).available ? task(id, 'Поймайте рыбу', `Отложите нужную рыбу. Цель: ${purpose}.`, 'fish', { label: 'К рыбацкому причалу', target: 'visit-pier' }) : rest(farm, purpose);
   }
   if (item.kind === 'handmade') {
     const missing = [{ kind: 'produce', item: 'wheat', quantity: 2 }, { kind: 'eggs', quantity: 1 }] as const;
     const ingredient = missing.find(value => ingredientCount(farm, value) < value.quantity);
-    const next = task(id, 'Испеките булочку вручную', `Слепите изделие «${workshopDefinitions[item.item].name}» в кондитерской. Цель: ${purpose}.`, `ui-handmade-${item.item}`, { label: 'В кондитерскую', target: 'workshop' });
+    const next = task(id, 'Испеките булочку вручную', `Слепите изделие «${workshopDefinitions[item.item].name}» в кондитерской. Цель: ${purpose}.`, `ui-handmade-${item.item}`, { label: 'В кондитерскую', target: 'workshop', value: item.item });
     return ingredient ? supply(farm, ingredient, 'ручная выпечка') : farm.island === 'village' ? next : home(farm, next);
+  }
+  if (item.kind === 'windHoney') {
+    const source = getWindHoneySource(farm);
+    const action: DiscoveryTask['action'] = source.kind === 'locked' ? {label:'Путь на мыс',target:'open-panel',value:'boat'}
+      : farm.island !== 'cape' ? {label:'На Цветочный мыс',target:'sail',value:'cape'}
+      : source.kind === 'plant' ? {label:'К свободной клумбе',target:'focus-flower',value:String(source.index)}
+      : {label:source.kind === 'ready' ? 'К редкому мёду' : 'Посмотреть прогноз',target:'open-panel',value:'hive'};
+    return task(id, source.kind === 'ready' ? 'Соберите мёд ветров' : 'Мёд ветров: следующий сбор', source.detail, 'ui-wind-honey', action);
   }
   return capeHoney(farm, purpose);
 }
@@ -125,12 +169,22 @@ function coins(farm: FarmState, amount: number, purpose: string): DiscoveryTask 
   if (getSale(farm).items > 0) return home(farm, task(`${purpose}-coins`, `Накопите монеты`, `Продайте лишний урожай на рынке. Нужно монет: ${amount}. Цель: ${purpose}.`, 'coin', { label: 'На рынок', target: 'visit-market', value: 'sell' }, farm.coins, amount));
   const ripe = farm.beds.findIndex(bed => getBedStage(bed) === 'ripe');
   if (ripe >= 0) return home(farm, bedTask(farm, ripe, `продажа · ${purpose}`));
+  if (farm.eggsReady > 0) return home(farm, task(`${purpose}-eggs`, 'Соберите готовые яйца для рынка',
+    `В курятнике уже ${ruCount(farm.eggsReady,'яйцо','яйца','яиц')}. Соберите их и продайте на рынке. Цель: ${purpose}.`, 'egg', {label:'К курятнику',target:'visit-coop'}));
+  const orchards = farm.boatOwned ? farm.island === 'grove' ? ['grove','home'] as const : ['home','grove'] as const : ['home'] as const;
+  for (const island of orchards) {
+    const ready = farm.trees[island].find(tree => tree !== null && tree.fruitReady > 0);
+    if (ready) return supply(farm, {kind:'fruit',item:ready.tree,quantity:ready.fruitReady}, `продажа · ${purpose}`);
+  }
+  const stored = farm.treeNursery.find(entry => entry.tree.fruitReady > 0);
+  if (stored) return supply(farm, {kind:'fruit',item:stored.tree.tree,quantity:stored.tree.fruitReady}, `продажа · ${purpose}`);
   const growing = farm.beds.find(bed => bed.kind === 'crop');
   if (growing?.kind === 'crop') return cropSource(farm, growing.crop, `продажа · ${purpose}`);
   const owned = cropIds.find(crop => farm.seeds[crop] > 0);
   if (owned) return cropSource(farm, owned, `продажа · ${purpose}`);
   const fruit = farm.trees.home.find(tree => tree !== null);
   if (fruit) return supply(farm, { kind: 'fruit', item: fruit.tree, quantity: 1 }, `продажа · ${purpose}`);
+  if (!getFishAction({ ...farm, island: 'home' }).available) return rest(farm, purpose);
   return home(farm, task('earn-by-fishing', 'Наловите рыбы для рынка', `Продайте улов. Цель: ${purpose}.`, 'fish', {label:'К рыбацкому причалу',target:'visit-pier'}));
 }
 
@@ -180,12 +234,23 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
       const shape = workshopShapes.find(shape => farm.handmade[shape] > 0) ?? farm.workshopPatterns[0] ?? 'round';
       const meal = getVillageMeal(farm, shape);
       if (meal.served) return rest(farm, 'следующий общий ужин');
-      const missing = meal.items.find(item => ingredientCount(farm, item) < item.quantity);
+      const signature = getReadySignatureSuppers(farm)[0];
+      const missing = meal.items.find(item => (item.kind !== 'handmade' || !signature) && ingredientCount(farm, item) < item.quantity);
       if (missing) return supply(farm, missing, 'общий ужин');
+      if (signature && !farm.handmade[shape]) return arrive(task('shared-suppers', 'Принесите готовое блюдо к общему столу',
+        `Авторское блюдо уже есть. Выберите у стола 1 порцию и подайте с 1 рыбой. Два ужина в разные дни откроют второй домик.`,
+        'ui-signature-bright', { label: 'Выбрать блюдо к ужину', target: 'village-meal' }, farm.village.meals, 2));
       return arrive(task('shared-suppers', 'Поужинайте вместе у воды', 'Два общих ужина в разные дни откроют второй домик.', 'ui-handmade-round', { label: 'Накрыть стол', target: 'village-meal', value: shape }, farm.village.meals, 2));
     }
     const empty = farm.village.residents.findIndex(resident => resident === null);
     if (empty >= 0) return arrive(task('second-neighbour', 'Встретьте ещё одного соседа', 'Второй домик готов к заселению.', 'ui-finn', { label: 'К свободному домику', target: 'visit-cottage', value: String(empty) }));
+    const shopFood = farm.bayShop.sold === 0 && foodDescriptors(farm).find(food => food.count > 0
+      || freightStock(farm.freight, 'village', food.id) > 0
+      || farm.bayShop.slots.some(slot => slot?.product.id === food.id && slot.quantity > 0));
+    if (shopFood && farm.bayShop.visitsToday < bayShopDailyLimit(Number(farm.concertDay === farm.day), farm.bayShop.festivalVisitors)) {
+      return arrive(task('first-shop', 'Предложите готовое угощение в лавке', `«${shopFood.name}» уже готово. Выставьте его на прилавок и откройте лавку.`, 'bay/pavilion',
+        { label: 'В свою лавку', target: 'open-panel', value: 'bay-shop' }));
+    }
     if(farm.culinary.recipes.length===0)return arrive(task('own-recipe','Создайте своё угощение','Выберите фрукты, приготовьте угощение вручную и предложите соседям.','ui-signature-bright',{label:'Мои рецепты',target:'open-panel',value:'recipes'}));
     const untasted=farm.village.residents.find(id=>id&&farm.culinary.tastings[id].visits===0);
     if(untasted&&Object.values(farm.culinary.stock).some(count=>count>0))return arrive(task('first-tasting','Угостите соседей по своему рецепту','Соседи запоминают любимые фрукты и способы приготовления.','ui-'+untasted,{label:'Угостить',target:'open-panel',value:'recipes'}));

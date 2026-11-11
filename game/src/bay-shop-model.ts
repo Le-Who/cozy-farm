@@ -59,11 +59,16 @@ function arrive(state: BayShopState): BayShopVisitor {
   return { id: person.id, serial: state.serial, phase: 'approaching', elapsed: 0,
     budget: person.budget + (Math.floor((state.serial - 1) / bayShopVisitors.length) % 3) * 8, outcome: null };
 }
-/** Display stock is a separate stock owner. The caller transfers inventory before this command. */
-export function stockBayShop(state: BayShopState, index: number, product: BayShopProduct, quantity: number): boolean {
+export function canStockBayShop(state: BayShopState, index: number, product: BayShopProduct, quantity: number): boolean {
   if (!integer(index, 3) || !isBayShopProduct(product) || !integer(quantity, 999) || quantity < 1) return false;
   const slot = state.slots[index];
-  if (slot && (slot.product.id !== product.id || slot.product.identity !== product.identity || slot.quantity + quantity > 999)) return false;
+  return !slot || slot.product.id === product.id && slot.product.identity === product.identity && slot.quantity + quantity <= 999;
+}
+
+/** Display stock is a separate stock owner. The caller transfers inventory before this command. */
+export function stockBayShop(state: BayShopState, index: number, product: BayShopProduct, quantity: number): boolean {
+  if (!canStockBayShop(state, index, product, quantity)) return false;
+  const slot = state.slots[index];
   if (slot) slot.quantity += quantity;
   else state.slots[index] = { product: copyProduct(product), quantity, price: product.basePrice };
   return true;

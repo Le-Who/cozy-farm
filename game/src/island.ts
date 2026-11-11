@@ -970,7 +970,7 @@ export function createIsland(
     const x = offset.x + area.center.x * scale;
     const y = offset.y + (area.center.y - Math.min(area.h * 0.54, 57) - 10) * scale;
     hint.style.left = `${clamp(x, hint.offsetWidth / 2 + 10, viewport.width - hint.offsetWidth / 2 - 10)}px`;
-    hint.style.top = `${Math.max(36, y)}px`;
+    hint.style.top = `${Math.max(hint.offsetHeight + 8, y)}px`;
   }
 
   function paintWaypoint(x: number, y: number, time: number, color: string): void {

@@ -1,0 +1,10 @@
+.bed-transplant .dialog-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.transplant-step { font-size:1.1rem; margin:0 0 8px; }
+.transplant-beds { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.transplant-bed { min-width:0; min-height:100px; display:flex; flex-direction:column; gap:6px; padding:12px 8px; border:1px solid var(--rule); border-radius:12px; background:var(--paper-light); color:var(--ink); text-align:left; font:inherit; overflow-wrap:anywhere; }
+.transplant-bed span,.transplant-bed small { font-size:.85rem; line-height:1.35; }
+.transplant-bed:disabled { opacity:.65; }
+.transplant-bed[aria-pressed="true"] { border:2px solid var(--deep); opacity:1; background:color-mix(in srgb, var(--lavender) 30%, var(--paper-light)); }
+.transplant-bed:not(:disabled):hover { background:var(--paper-deep); }
+.transplant-bed:focus-visible { outline:3px solid var(--deep); outline-offset:2px; }
+@media(max-width:650px) { .transplant-beds { grid-template-columns:repeat(2,minmax(0,1fr)); } }

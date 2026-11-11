@@ -1,0 +1,14 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка повторной покупки</title>
+<style>body{max-width:1000px;margin:20px auto;padding:12px;background:#faf7f0;color:#352447;font:16px/1.4 system-ui}button,a{display:inline-block;margin:5px;padding:10px;font:inherit}pre{white-space:pre-wrap}iframe{border:1px solid #888;max-width:100%}</style>
+<h1>Обычная и любимая покупка</h1><p>Только localhost:4191. Кнопки заменяют синтетическое сохранение этого адреса. Следующая гостья — Беа, уже купившая этот товар.</p><button id="apple">Создать: обычное яблоко</button><button id="pear">Создать: любимая груша</button><button id="inspect">Проверить сохранение</button><button data-size="360,640">360×640</button><button data-size="390,844">390×844</button><button data-size="568,320">568×320</button><button data-size="844,390">844×390</button><div id="frame"></div><pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import {shopSpeechFixture} from '../fixtures/shop-speech.ts'
+import {restoreFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4191',out=document.querySelector('pre')
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Запись разрешена только на localhost:4191.'}
+function show(f){out.textContent=JSON.stringify({valid:!!restoreFarm(f),day:f.day,coins:f.coins,shop:f.bayShop},null,2)}
+for(const id of ['apple','pear'])document.getElementById(id).addEventListener('click',()=>{if(!allowed)return;document.getElementById('frame').innerHTML='';const f=shopSpeechFixture(id==='pear');localStorage.setItem(farmSaveKeys.primary,JSON.stringify(f));show(f)})
+document.getElementById('inspect').addEventListener('click',()=>{if(!allowed)return;const f=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(f)show(f);else out.textContent='Нет корректного сохранения.'})
+document.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click',()=>{if(!allowed)return;const [w,h]=b.dataset.size.split(',');document.getElementById('frame').innerHTML=`<iframe title="Игра" src="/" width="${w}" height="${h}"></iframe>`}))
+</script></html>

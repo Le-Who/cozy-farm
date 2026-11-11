@@ -23,6 +23,16 @@ export function settleCove(shoreline:ShorelineState,day:number):ShorelineState{
  for(const id of found)if(!observations.includes(id))observations.push(id)
  return {...shoreline,settled:choices,pending:null,settledOn:day,revision:shoreline.revision+1,observations}
 }
+/** Identifies the displayed pending plan without adding persisted fields. */
+export function covePlanKey(shoreline: ShorelineState): string | null {
+ const plan=shoreline.pending
+ return plan ? `${shoreline.revision}:${shoreline.changedOn}:${plan.flow}:${plan.cover}:${plan.refuge}` : null
+}
+/** A detached preview of the next tide, never an early application or discovery. */
+export function getCoveForecast(shoreline: ShorelineState, day: number) {
+ if (!shoreline.pending) return null
+ return { day: day + 1, ecology: getCoveEcology(settleCove(shoreline, day + 1), day + 1) }
+}
 export function restoreShoreline(value:unknown,day:number):ShorelineState|undefined{
  if(value===undefined)return createShoreline()
  if(!value||typeof value!=='object')return

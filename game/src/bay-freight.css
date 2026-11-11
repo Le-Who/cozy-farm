@@ -49,3 +49,14 @@
 }
 @media(max-height:500px){.expedition-cargo-item small,.expedition-market-status{font-size:12px}}
 .expedition-chart-reveal{position:absolute;inset:0;pointer-events:none}.expedition-chart-reveal[data-revealed=salt]{clip-path:inset(0 24% 0 49%)}.expedition-chart-reveal[data-revealed=orchard]{clip-path:inset(0 0 0 76%)}
+
+/* A two-order manifest keeps every cargo label on its own readable row. */
+.expedition-selection{padding:6px 8px;margin:0 0 8px;border:1px solid var(--bf-gold);border-radius:10px;background:#fff8e8;font-size:12px;line-height:1.35}
+.expedition-selection ol{margin:0 0 5px;padding-left:20px}.expedition-selection li{overflow-wrap:anywhere}
+.bay-freight .expedition-selection button{width:100%;min-height:32px;font-size:12px}
+.expedition-offer-choice{display:flex;flex-direction:column;gap:4px;min-width:0}.expedition-offer-choice>button{width:100%}
+.bay-freight .expedition-add-order{min-height:34px;font-size:12px;background:#f0e5f2}
+.expedition-return-row:has(.expedition-cargo-item + .expedition-cargo-item){flex-direction:column;align-items:stretch}
+.expedition-return-row:has(.expedition-cargo-item + .expedition-cargo-item)>.expedition-money{align-self:flex-end}
+.bay-freight[data-combined=true] .expedition-cargo-item{min-width:0;flex-shrink:0}
+.bay-freight[data-combined=true] .expedition-cargo-item>span{min-width:0}.bay-freight[data-combined=true] .expedition-cargo-item strong{overflow-wrap:anywhere}

@@ -1,0 +1,12 @@
+<!doctype html><html lang="ru"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка своего ритма</title>
+<style>body{max-width:720px;margin:32px auto;padding:16px;font:17px/1.5 system-ui;background:#faf7f0;color:#352447}button,a{padding:12px;margin:5px;font:inherit;display:inline-block}pre{white-space:pre-wrap;padding:16px;background:white}</style>
+<h1>Проверка «В своём ритме»</h1><p>Синтетическая ферма только на localhost:5195. Создание разрешено лишь при отсутствии сохранения. Эта страница не заменяет существующую ферму.</p>
+<button id="create">Создать проверочную ферму</button><a href="/">Открыть игру</a><button id="inspect">Прочитать проверочное состояние</button><pre id="result" role="status">Сохранение не изменено.</pre>
+<script type="module">
+import {createFarm,restoreFarm} from '/src/farm.ts';import{farmSaveKeys}from'/src/farm-save-keys.ts';
+const allowed=['127.0.0.1','localhost'].includes(location.hostname)&&location.port==='5195',output=document.querySelector('#result');
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);output.textContent='Проверка разрешена только на localhost:5195.';}
+function summary(farm){return{valid:!!restoreFarm(farm),day:farm.day,coins:farm.coins,workToday:farm.workToday,progress:farm.progress,preferences:farm.discoveryPreferences};}
+document.querySelector('#create').addEventListener('click',()=>{if(!allowed)return;if(localStorage.getItem(farmSaveKeys.primary)||localStorage.getItem(farmSaveKeys.legacy)){output.textContent='Сохранение уже есть. Оно не заменено.';return;}const farm=createFarm();localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm));output.textContent=JSON.stringify(summary(farm),null,2);});
+document.querySelector('#inspect').addEventListener('click',()=>{if(!allowed)return;const raw=localStorage.getItem(farmSaveKeys.primary),farm=raw&&restoreFarm(JSON.parse(raw));output.textContent=farm?JSON.stringify(summary(farm),null,2):'Сохранение не найдено или не прошло проверку.';});
+</script></html>

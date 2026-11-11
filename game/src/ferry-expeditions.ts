@@ -69,6 +69,31 @@ const trades: readonly Trade[] = [
   { id: 'orchard-peaches', port: 'orchard', name: 'Персики для рецепта', outgoing: [], incoming: [lot('peach', 2)] },
   { id: 'orchard-mixed', port: 'orchard', name: 'Фруктовая корзина', outgoing: [], incoming: [lot('apple', 1), lot('pear', 1), lot('peach', 1)], project: true },
 ];
+/** Selection is at most two distinct existing trades of one port, never exploration. */
+export function combinedExpeditionId(first: string, second: string): string | undefined {
+  const a = trades.find(trade => trade.id === first), b = trades.find(trade => trade.id === second);
+  return a && b && a.id !== b.id && a.port === b.port ? `pair:${a.id}+${b.id}` : undefined;
+}
+export function expeditionOfferIds(id: string): string[] {
+  if (trades.some(trade => trade.id === id)) return [id];
+  if (!id.startsWith('pair:')) return [];
+  const ids = id.slice(5).split('+');
+  return ids.length === 2 && combinedExpeditionId(ids[0], ids[1]) === id ? ids : [];
+}
+function mergeCargo(items: readonly ExpeditionItem[]): ExpeditionItem[] {
+  const totals = new Map<string, number>();
+  for (const item of items) totals.set(item.id, (totals.get(item.id) ?? 0) + item.quantity);
+  return [...totals].sort(([a],[b]) => a.localeCompare(b)).map(([id, quantity]) => ({ id, quantity }));
+}
+function selectedTrade(id: string): Trade | undefined {
+  const ids = expeditionOfferIds(id);
+  if (!ids.length) return;
+  const selected = ids.map(value => trades.find(trade => trade.id === value)!);
+  if (selected.length === 1) return selected[0];
+  return { id, port: selected[0].port, name: selected.map(trade => trade.name).join(' + '),
+    outgoing: mergeCargo(selected.flatMap(trade => trade.outgoing)), incoming: mergeCargo(selected.flatMap(trade => trade.incoming)),
+    ...(selected.some(trade => trade.project) ? { project: true } : {}) };
+}
 const bids: Record<ExpeditionPort, Record<string, number>> = {
   mill: { wheat: 5, eggs: 5 }, salt: { carrot: 4, seaBass: 12 }, orchard: { apple: 5, 'handmade:round': 24 },
 };
@@ -112,7 +137,7 @@ export function explorationReason(state: FerryExpeditions, port: ExpeditionPort)
   return port === 'mill' ? 'Этот порт уже нанесён на карту.' : '';
 }
 export function quoteExpedition(state: FerryExpeditions, id: string, wallet: ExpeditionWallet): ExpeditionQuote | undefined {
-  const trade = trades.find(entry => entry.id === id);
+  const trade = selectedTrade(id);
   const explorePort = id.startsWith('explore-') ? id.slice(8) : '';
   const exploring = !trade && isPort(explorePort) && explorePort !== 'mill';
   if (!trade && !exploring) return;
@@ -205,7 +230,7 @@ export function restoreFerryExpeditions(value: unknown, day = 1): FerryExpeditio
     state.markets[port].visits = count(saved.visits);
     state.markets[port].production = safeItems(saved.production);
   }
-  const active = record(raw.active), trade = trades.find(entry => entry.id === active.id);
+  const active = record(raw.active), trade = typeof active.id === 'string' ? selectedTrade(active.id) : undefined;
   const exploration = active.id === 'explore-salt' || active.id === 'explore-orchard';
   if (isPort(active.port) && (trade?.port === active.port || exploration && active.id === 'explore-' + active.port)
     && (active.phase === 'sailing' || active.phase === 'ready')) {
@@ -217,6 +242,17 @@ export function restoreFerryExpeditions(value: unknown, day = 1): FerryExpeditio
         harvestBonus: count(active.harvestBonus, 3), payCoins: count(active.payCoins, 100), earnCoins: count(active.earnCoins, 100), serial: count(active.serial) || state.serial,
         departedOn: Math.min(day, Math.max(1, count(active.departedOn))), returnsOn: Math.min(day + 1, Math.max(1, count(active.returnsOn))), phase: active.phase };
     }
+  }
+  if (state.active && expeditionOfferIds(state.active.id).length === 2 && trade) {
+    const cropUnits = trade.outgoing.filter(item => ['wheat','carrot','apple'].includes(item.id)).reduce((sum,item) => sum + item.quantity, 0);
+    const bonus = active.harvestBonus;
+    const cost = trade.incoming.reduce((sum,item) => sum + (asks[trade.port][item.id] ?? 0) * item.quantity, 0);
+    const highest = trade.outgoing.reduce((sum,item) => sum + (bids[trade.port][item.id] ?? 0) * item.quantity, 0) - cost;
+    const lowest = trade.outgoing.reduce((sum,item) => { const bid = bids[trade.port][item.id] ?? 0; return sum + (bid ? Math.max(1,bid - 2) : 0) * item.quantity; }, 0) - cost;
+    const balance = state.active.earnCoins - state.active.payCoins;
+    if (!Number.isSafeInteger(bonus) || Number(bonus) < 0 || Number(bonus) > Math.min(3,cropUnits)
+      || state.active.payCoins > 0 && state.active.earnCoins > 0
+      || balance < lowest + Number(bonus) || balance > highest + Number(bonus)) throw new Error('Invalid combined ferry settlement');
   }
   const last = record(raw.last);
   if (isPort(last.port) && typeof last.name === 'string') state.last = { port: last.port, name: last.name.slice(0, 100), day: Math.min(day, count(last.day)), explored: last.explored === true };

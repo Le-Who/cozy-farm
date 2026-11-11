@@ -1,0 +1,14 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка двух заказов парома</title>
+<style>body{margin:20px;font:16px/1.4 system-ui;background:#faf7ef;color:#352447}button,a{display:inline-block;padding:10px;margin:4px;font:inherit}pre{white-space:pre-wrap;max-height:180px;overflow:auto}iframe{border:1px solid #888;max-width:none}</style>
+<h1>Два заказа одного порта</h1><p>Только localhost:4192. Кнопки создают или заменяют только синтетическую ферму этого тестового адреса. Другие адреса и реальные сохранения не используются.</p>
+<button id="mill">Создать: зерно и яйца</button><button id="orchard">Создать: две покупки фруктов</button><a href="/">Открыть игру</a><button id="inspect">Проверить сохранение</button>
+<nav><button data-size="360,640">360×640</button><button data-size="390,844">390×844</button><button data-size="568,320">568×320</button><button data-size="844,390">844×390</button></nav><pre role="status">Данные не изменены.</pre><div id="frame"></div>
+<script type="module">
+import {createFarm,restoreFarm} from '/src/farm.ts';import {farmSaveKeys} from '/src/farm-save-keys.ts';
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4192',out=document.querySelector('pre'),mark='combined-ferry-fixture';
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Только localhost:4192.'}
+function show(f){out.textContent=JSON.stringify({valid:!!restoreFarm(f),day:f.day,island:f.island,coins:f.coins,wheat:f.produce.wheat,eggs:f.eggs,fruit:f.fruit,buns:f.handmade.round,workToday:f.workToday,expeditions:f.freight.expeditions},null,2)}
+for(const id of ['mill','orchard'])document.getElementById(id).onclick=()=>{if(!allowed)return;if(localStorage.getItem(farmSaveKeys.primary)&&sessionStorage.getItem(mark)!=='yes'){out.textContent='На этом адресе уже есть неизвестное сохранение. Оно не заменено.';return}const f=createFarm();f.boatOwned=true;f.coins=100;f.produce.wheat=30;f.eggs=20;f.orientation={collections:true,islands:true};if(id==='orchard')f.freight.expeditions.discovered=['mill','salt','orchard'];if(!restoreFarm(f))throw Error('Invalid synthetic farm');localStorage.setItem(farmSaveKeys.primary,JSON.stringify(f));sessionStorage.setItem(mark,'yes');show(f)};
+document.getElementById('inspect').onclick=()=>{if(!allowed)return;const f=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(f)show(f);else out.textContent='Нет корректного сохранения.'};
+for(const button of document.querySelectorAll('[data-size]'))button.onclick=()=>{if(!allowed)return;const[w,h]=button.dataset.size.split(',').map(Number);const holder=document.getElementById('frame'),frame=holder.querySelector('iframe');if(frame){frame.width=String(w);frame.height=String(h)}else holder.innerHTML=`<iframe title="Настоящая игра" src="/" width="${w}" height="${h}"></iframe>`};
+</script></html>

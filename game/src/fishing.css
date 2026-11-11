@@ -55,3 +55,8 @@
 @media(max-height:480px){.fishing-hud{top:14px;left:18px}.fishing-contacts{left:24px;top:70px}.fishing-zone{left:18px;top:91px}.fishing-controls{bottom:14px;right:18px}.fishing-action{padding:10px 16px;min-height:44px}.fishing-intro{bottom:16px;left:18px;max-width:calc(100% - 205px);padding:8px 12px}.fishing-intro p{font-size:12px}.fishing-callout{bottom:69px}.fishing-depth-track{top:80px;bottom:84px}}
 @media(max-height:480px){.fishing-result{bottom:12px;max-height:calc(100% - 24px);padding:15px 18px}.fishing-result h2{font-size:21px}.fishing-result-catches{margin:9px 0;gap:9px}.fishing-result-catches img{height:40px;width:65px}.fishing-result-actions{margin-top:10px}.fishing-game[data-phase=done] .fishing-hud{display:none}}
 @media(prefers-reduced-motion:reduce){.fishing-game *{transition:none!important}}
+.fishing-practice-banner{display:flex;align-items:center;gap:12px;flex-shrink:0;padding:12px 68px 12px 18px;background:var(--fishing-cream);border-bottom:1px solid #d6d7d1}
+.fishing-practice-banner p{flex:1;min-width:0;margin:0;font-size:13px;line-height:1.4}
+.fishing-practice-banner span{display:block;margin-top:3px;font-size:12px}
+.fishing-practice-shore{flex-shrink:0}
+.fishing-practice[hidden]{display:none}

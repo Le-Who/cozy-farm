@@ -1,0 +1,15 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Вклады в праздник</title>
+<style>body{max-width:1000px;margin:20px auto;padding:12px;background:#faf7f0;color:#352447;font:16px/1.4 system-ui}button{margin:5px;padding:10px;font:inherit}pre{white-space:pre-wrap}iframe{border:1px solid #888;max-width:100%}</style>
+<h1>Вклады в праздник</h1><p>Только localhost:4200. Синтетическая ферма. Выберите состояние, затем размер игры.</p><button data-fixture="start">Три плода для праздника</button><button data-fixture="last">Остался один плод</button><button data-fixture="warehouse">Точный рецепт и склад</button><button id="inspect">Проверить сохранение</button><button data-size="360,640">360×640</button><button data-size="390,844">390×844</button><button data-size="568,320">568×320</button><button data-size="844,390">844×390</button><div id="frame"></div><pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import {festivalContributionsFixture} from '../fixtures/festival-contributions.ts'
+import {recipeWarehouseReturnFixture} from '../fixtures/recipe-warehouse-return.ts'
+import {restoreFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4200',out=document.querySelector('pre')
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Запись разрешена только на localhost:4200.'}
+function show(f){out.textContent=JSON.stringify({valid:!!restoreFarm(f),day:f.day,island:f.island,coins:f.coins,wheat:f.produce.wheat,apple:f.fruit.apple,eggs:f.eggs,baskets:f.eggBaskets,warehouse:f.freight.warehouses.home,recipes:f.culinary.recipes.map(r=>({id:r.id,batches:r.batches})),stock:f.culinary.stock,festivals:f.festivals},null,2)}
+document.querySelectorAll('[data-fixture]').forEach(b=>b.addEventListener('click',()=>{if(!allowed)return;document.getElementById('frame').innerHTML='';const {farm}=b.dataset.fixture==='warehouse'?recipeWarehouseReturnFixture():festivalContributionsFixture(b.dataset.fixture);localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm));show(farm)}))
+document.getElementById('inspect').addEventListener('click',()=>{if(!allowed)return;const f=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(f)show(f);else out.textContent='Нет корректного сохранения.'})
+document.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click',()=>{if(!allowed)return;const [w,h]=b.dataset.size.split(',');document.getElementById('frame').innerHTML=`<iframe title="Игра" src="/" width="${w}" height="${h}"></iframe>`}))
+</script></html>

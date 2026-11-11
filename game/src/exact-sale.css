@@ -1,0 +1,6 @@
+.exact-sale { display: grid; gap: 10px; min-width: 0; }
+.exact-sale h2, .exact-sale p { margin: 0; overflow-wrap: anywhere; }
+.exact-sale label { font-weight: 800; }
+.exact-sale input { width: 100%; max-width: 12rem; min-height: 44px; padding: 8px 12px; border: 1px solid var(--trim); border-radius: 10px; color: var(--ink); background: var(--paper-light); font: inherit; }
+.exact-sale-summary { min-height: 2.5em; font-weight: 700; }
+.exact-sale-receipt { padding: 12px; border: 1px solid var(--trim); border-radius: 12px; background: var(--paper-light); }

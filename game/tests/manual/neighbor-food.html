@@ -1,0 +1,15 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка угощения Беа</title>
+<style>body{max-width:800px;margin:24px auto;padding:16px;background:#faf7f0;color:#352447;font:17px/1.5 system-ui}button,a{display:inline-block;margin:6px;padding:12px;font:inherit}pre{white-space:pre-wrap}iframe{max-width:100%;border:1px solid #888}</style>
+<h1>Встреча с недостающим угощением</h1><p>Только localhost:4186. Кнопки заменяют синтетическую ферму этого адреса. Беа ждёт выбранный яблочный тарт: порция уже потрачена.</p>
+<button id="spent">Создать: порция потрачена</button><button id="deleted">Создать: рецепт удалён</button><button id="missing">Создать: нет ингредиентов</button><a href="/">Открыть игру</a><button id="inspect">Проверить сохранение</button><button id="compact">Открыть игру 360×640</button><div id="frame"></div><pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import {neighborFoodFixture} from '../fixtures/neighbor-food.ts'
+import {restoreFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4186',out=document.querySelector('pre')
+if(!allowed){document.querySelectorAll('button').forEach(b=>b.disabled=true);out.textContent='Запись разрешена только на localhost:4186.'}
+function show(f){out.textContent=JSON.stringify({valid:!!restoreFarm(f),island:f.island,neighbors:f.neighbors,stock:f.culinary.stock,recipes:f.culinary.recipes,apples:f.fruit.apple,wheat:f.produce.wheat,eggs:f.eggs,strawberryTarts:f.dishes.strawberryTart,coins:f.coins,workToday:f.workToday},null,2)}
+for(const id of ['spent','deleted','missing'])document.getElementById(id).addEventListener('click',()=>{if(!allowed)return;const {farm}=neighborFoodFixture(id==='deleted');if(id==='missing')farm.fruit.apple=0;localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm));show(farm)})
+document.getElementById('inspect').addEventListener('click',()=>{if(!allowed)return;const f=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'));if(f)show(f);else out.textContent='Нет корректного сохранения.'})
+document.getElementById('compact').addEventListener('click',()=>{if(allowed)document.getElementById('frame').innerHTML='<iframe title="Игра" src="/" width="360" height="640"></iframe>'})
+</script></html>

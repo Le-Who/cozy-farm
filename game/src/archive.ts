@@ -1,3 +1,5 @@
+import { rareFishClue } from './fish-guidance'
+import { shoalReturnCopy } from './shoal-return'
 import './archive.css'
 import { nextWeatherDay, weatherNames, type Trait, type Weather } from './climate'
 import { isLunarTide } from './tide'
@@ -14,10 +16,9 @@ export function archiveCards(farm: FarmState, group: ArchiveGroup, itemIcon: (na
   const clue=(id:string,series:string)=>{
     const sky=skyFor[id]
     if(sky) return `${weatherNames[sky]} · ${when(nextWeatherDay(farm.day,sky))}`
-    if(id==='pearl') return `Лунная отмель · прилив ${nextEvent(isLunarTide)}`
+    if(id==='pearl') return `Лунная отмель · ${shoalReturnCopy(farm,'pearl')}`
     if(id==='moon') return `Лунный прилив в роще · ${nextEvent(isLunarTide)}`
-    if(id==='moonfish')return 'Рыбачьте глубже 75 м'
-    if(id==='lanternfish')return 'Рыбачьте глубже 100 м'
+    if(id==='moonfish'||id==='lanternfish')return rareFishClue(id)
     if(id==='perch')return 'Рыбачьте на Родном острове'
     if(id==='seaBass')return 'Рыбачьте в Солёной роще'
     if(id==='glass')return 'Найдите оба вида ракушек и загляните на отмель'

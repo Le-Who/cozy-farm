@@ -1,0 +1,21 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка цепочки Enter в игре</title>
+<style>body{margin:0;font:16px system-ui;background:#faf7f0}header{padding:8px;display:flex;gap:8px;flex-wrap:wrap}button{padding:8px;font:inherit}iframe{width:100%;height:calc(100vh - 100px);border:0}output{padding:8px;display:block}</style>
+<header><button data-key-target="unpack-egg-basket">Удержание Enter: корзина</button><button data-key-target="unpack-egg-crate">Удержание Enter: ящик</button></header>
+<output>Синтетическая цепочка клавиатурных событий в настоящем интерфейсе. Не заменяет проверку физической клавиатуры.</output><iframe src="/" title="Игра"></iframe>
+<script type="module">
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4184'
+const output=document.querySelector('output'),frame=document.querySelector('iframe')
+document.querySelectorAll('[data-key-target]').forEach(button=>button.addEventListener('click',()=>{
+  if(!allowed){output.textContent='Проверка разрешена только наlocalhost:4184.';return}
+  const doc=frame.contentDocument,win=frame.contentWindow,target=doc.querySelector(`[data-action="${button.dataset.keyTarget}"]:not(:disabled)`)
+  if(!target){output.textContent='Откройте нужную упаковку в разделе запасов игры.';return}
+  target.focus();let blocked=0,accepted=0
+  for(let i=0;i<21;i++){
+    const focused=doc.activeElement
+    const event=new win.KeyboardEvent('keydown',{key:'Enter',code:'Enter',repeat:i>0,bubbles:true,cancelable:true})
+    if(focused.dispatchEvent(event)){accepted++;focused.click()}else blocked++
+  }
+  doc.activeElement.dispatchEvent(new win.KeyboardEvent('keyup',{key:'Enter',code:'Enter',bubbles:true}))
+  output.textContent=`Попыток: 21; допущено: ${accepted}; остановлено: ${blocked}; меню открыто: ${!!doc.querySelector('dialog[open]')}.`
+}))
+</script></html>

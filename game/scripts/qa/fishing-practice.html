@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка тренировочной рыбалки</title>
+<style>body{overflow:auto!important}main{padding:12px}#scene{height:650px;max-height:calc(100dvh - 180px);min-height:280px;position:relative}.qa-close{position:absolute;right:12px;top:12px;z-index:10;width:40px;height:40px;border-radius:50%;background:#fff7e9;border:1px solid #d6d7d1}</style></head>
+<body><main>
+  <p>Изолированная проверка. Сохранения браузера не читаются и не изменяются.</p>
+  <label>Место <select id="place"><option value="home">Родной остров</option><option value="grove">Солёная роща</option></select></label>
+  <output id="ledger" aria-live="polite" style="display:block;margin:12px 0"></output>
+  <div id="entry"></div><div id="scene" hidden></div>
+</main>
+<script type="module">
+  import '/src/style.css';
+  import { createFarm, getFishLimit } from '/src/farm.ts';
+  import { createFishingPractice } from '/src/fishing-practice.ts';
+  import { renderFishingPracticeEntry } from '/src/fishing-practice-ui.ts';
+  import { createFishingGame } from '/src/fishing.ts';
+  const width = Number(new URLSearchParams(location.search).get('width'));
+  if ([360, 390, 568, 844].includes(width)) {
+    const frame = document.createElement('iframe'); frame.width = width; frame.height = width >= 568 ? 390 : 844;
+    frame.src = location.pathname; frame.title = 'Проверка рыбалки в узком окне'; document.body.replaceChildren(frame);
+  } else {
+    const entry = document.querySelector('#entry'), scene = document.querySelector('#scene'), ledger = document.querySelector('#ledger');
+    let farm, baseline, session, game;
+    function status(message) {
+      ledger.textContent = `${message} Лимит: ${farm.fishCaughtToday[farm.island]}/${getFishLimit(farm)}. Полное состояние фермы ${JSON.stringify(farm) === baseline ? 'не изменилось' : 'ИЗМЕНИЛОСЬ'}.`;
+    }
+    function shore() {
+      session?.cancel(); session = undefined; game?.destroy(); game = undefined;
+      scene.hidden = true; scene.replaceChildren(); entry.hidden = false; entry.innerHTML = renderFishingPracticeEntry(farm);
+      status('На берегу.');
+    }
+    function start() {
+      shore(); session = createFishingPractice(farm); if (!session) return;
+      const current = session;
+      entry.hidden = true; scene.hidden = false;
+      const host = document.createElement('div'); host.style.height = '100%'; scene.append(host);
+      game = createFishingGame(host, {
+        practiceOnly: true, seed: current.seed, fish: current.fish, capacity: current.config.capacity,
+        maxDepth: current.config.depth, resilience: current.config.resilience, habitat: current.config.habitat,
+        onCast: () => current === session && current.cast(),
+        onFinish(result) { const completed = current === session && current.finish(result); status('Тренировка завершена.'); return completed; },
+        onCancel: shore, onAgain: start,
+      });
+      const close = document.createElement('button'); close.className = 'qa-close'; close.textContent = '×'; close.ariaLabel = 'Закрыть'; close.addEventListener('click', shore); scene.append(close);
+      status('Тренировка без наград.');
+    }
+    function reset() {
+      farm = createFarm(); farm.island = document.querySelector('#place').value;
+      farm.fishCaughtToday[farm.island] = getFishLimit(farm); baseline = JSON.stringify(farm); shore();
+    }
+    entry.addEventListener('click', event => { const action = event.target.closest('[data-action]')?.dataset.action; if (action === 'fishing-practice') start(); else if (action === 'close') shore(); });
+    document.querySelector('#place').addEventListener('change', reset); reset();
+  }
+</script></body></html>

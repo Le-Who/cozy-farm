@@ -1,0 +1,25 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка точной продажи</title>
+<style>body{max-width:700px;margin:32px auto;padding:16px;background:#faf7f0;color:#352447;font:17px/1.5 system-ui}button,a{display:inline-block;margin:8px;padding:12px;font:inherit}pre{white-space:pre-wrap}</style>
+<h1>Точная продажа и повтор</h1><p>Проверочное сохранение только на localhost:4183. Кнопка заменяет исключительно синтетическую ферму этого адреса.</p>
+<button id="create">Создать 30 яблок и личный рецепт</button><a href="/">Открыть игру</a><button id="inspect">Проверить сохранение</button><pre role="status">Сохранение не изменено.</pre>
+<script type="module">
+import { createFarm, completeSignature, restoreFarm } from '/src/farm.ts'
+import { farmSaveKeys } from '/src/farm-save-keys.ts'
+const allowed = ['127.0.0.1','localhost'].includes(location.hostname) && location.port === '4183'
+const out = document.querySelector('pre')
+if (!allowed) { document.querySelectorAll('button').forEach(b=>b.disabled=true); out.textContent='Запись разрешена только на localhost:4183.' }
+function show(farm) { out.textContent = JSON.stringify({ valid:!!restoreFarm(farm), apples:farm.fruit.apple, coins:farm.coins, wheat:farm.produce.wheat, eggs:farm.eggs, workToday:farm.workToday, recipes:farm.culinary.recipes, stock:farm.culinary.stock }, null, 2) }
+document.querySelector('#create').addEventListener('click',()=>{
+  if (!allowed) return
+  const farm=createFarm(); farm.coins=500; farm.buildingLevels.farmhouse=2
+  farm.eggs=farm.produce.wheat=100; farm.fruit.apple=32; farm.progress.sell=1
+  const made=completeSignature(farm,{base:'tart',ingredients:[{id:'apple',quantity:2}]},{family:'decorate',processing:'chunky',fruit:[{ingredientId:'apple',x:.2,y:-.3,angle:.4}],steps:['fruit','dust'],baking:{method:'oven',finish:'golden',seconds:90}})
+  if(!made.ok||!restoreFarm(farm))throw new Error('Некорректная проверочная ферма')
+  localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm)); show(farm)
+})
+document.querySelector('#inspect').addEventListener('click',()=>{
+  if (!allowed) return
+  const farm=restoreFarm(JSON.parse(localStorage.getItem(farmSaveKeys.primary)??'null'))
+  if(farm)show(farm);else out.textContent='Проверочное сохранение отсутствует или повреждено.'
+})
+</script></html>

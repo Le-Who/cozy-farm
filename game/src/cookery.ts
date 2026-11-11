@@ -1,3 +1,4 @@
+import { showCookeryRecovery } from './cookery-recovery'
 import { playBaySound, prepareBaySoundScene, setBaySoundContact } from './game-sound'
 import { preserveFillMask } from './preserve-mask'
 import {finishedIngredient, applyIngredientFinishes} from './ingredient-finish'
@@ -143,7 +144,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     renderer = makeRenderer()
     view.prepend(renderer.domElement)
   } catch {
-    status.textContent = 'Не удалось открыть стол. Вернитесь на кухню и попробуйте снова.'
+    showCookeryRecovery(root, { ...options, signal, onCancel: cancel })
     return { destroy() { destroyed = true; abort.abort(); plane.dispose(); root.remove(); previousFocus?.focus({ preventScroll: true }) } }
   }
 

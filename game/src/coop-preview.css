@@ -1,0 +1,8 @@
+.coop-morning{margin:10px 0;padding:12px;border:1px solid var(--rule);border-radius:15px;background:var(--paper-light)}
+.coop-morning h2{margin:0;color:var(--plum);font-size:18px;line-height:1.3}
+.coop-morning p,.coop-capacity-note p{margin:8px 0;font-size:13px;line-height:1.45}
+.coop-morning-detail{color:var(--muted)}
+.coop-capacity-note{margin:12px 0;padding:10px;border-left:3px solid var(--rule);background:var(--paper-light);border-radius:8px}
+.coop-morning .coop-capacity-note{padding:8px 0 0;border-left:0;border-top:1px solid var(--rule);border-radius:0;margin-bottom:0}
+.coop-capacity-note strong{font-size:14px;line-height:1.35;color:var(--plum)}
+.coop-capacity-note .dialog-button{min-height:44px;white-space:normal;max-width:100%}

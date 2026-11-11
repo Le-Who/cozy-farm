@@ -101,6 +101,8 @@ const baking = [
   stock('folded', 'Слойка', { kind: 'handmade', item: 'folded', quantity: 1 }),
   stock('long', 'Батон', { kind: 'handmade', item: 'long', quantity: 1 }),
   stock('appleJam', 'Яблочное варенье', { kind: 'dishes', item: 'appleJam', quantity: 1 }),
+  stock('farmhouseBread', 'Домашний хлеб', { kind: 'dishes', item: 'farmhouseBread', quantity: 1 }),
+  stock('orchardPreserves', 'Садовый конфитюр', { kind: 'dishes', item: 'orchardPreserves', quantity: 1 }),
   stock('orchardTart', 'Фруктовый пирог', { kind: 'dishes', item: 'orchardTart', quantity: 1 }),
 ];
 const honey = [
@@ -426,6 +428,18 @@ function available(alt: Alternative, active: FestivalPreparation, context: Festi
   if (alt.event && alt.event !== 'delivery') return Number(active.activity[alt.event]);
   return Math.max(0, active.cargoDelivered - (active.delivered.cargo ?? 0));
 }
+function festivalCancellationReason(state: BayFestivalState, context: FestivalContext): string {
+  const active = state.active;
+  if (!active) return 'Сначала выберите программу праздника.';
+  if (context.island !== 'village') return 'Вернитесь в гавань, чтобы отменить выбор программы.';
+  if (active.stage > 0 || active.materialValue > 0 || Object.values(active.delivered).some(amount => amount > 0)
+    || active.cargoDelivered > 0 || Object.values(active.activity).some(Boolean)
+    || context.musicGarden.performances > active.performanceBaseline) {
+    return 'Подготовка уже началась: внесены припасы или было участие в делах бухты. Сохраните вклад и продолжайте выбранную программу.';
+  }
+  return '';
+}
+
 export function getBayFestivalStatus(state: BayFestivalState, context: FestivalContext) {
   const a = state.active;
   if (!a) return { active: null };
@@ -451,6 +465,7 @@ export function getBayFestivalStatus(state: BayFestivalState, context: FestivalC
     };
   });
   const honorarium = state.completed[a.tradition] === 0 ? 24 : 12;
+  const cancelReason = festivalCancellationReason(state, context);
   return {
     active: {
       tradition: a.tradition,
@@ -466,6 +481,8 @@ export function getBayFestivalStatus(state: BayFestivalState, context: FestivalC
       honorarium,
       reward: a.materialValue + honorarium,
       requirements,
+      canCancel: cancelReason === '',
+      cancelReason,
       canContribute:
         context.island === 'village' && !waitingNight && requirements.some((req) => req.available > 0),
       canFinish: context.island === 'village' && !waitingNight && a.stage === 3,
@@ -497,6 +514,20 @@ export function beginBayFestival(
   };
   return success('Традиция выбрана. Готовьтесь в своём темпе: припасы и прогресс сохранятся без срока.');
 }
+/** Only an unused selection may be cleared; cancellation never returns stock or pays a reward. */
+export function cancelBayFestival(
+  state: BayFestivalState,
+  context: FestivalContext,
+  expectedTradition: FestivalTradition,
+): FestivalResult {
+  if (!tradition(expectedTradition) || state.active?.tradition !== expectedTradition)
+    return fail('Выбор программы изменился. Откройте текущий праздник заново.');
+  const reason = festivalCancellationReason(state, context);
+  if (reason) return fail(reason);
+  state.active = null;
+  return success('Выбор отменён. Можно выбрать другую программу праздника.');
+}
+
 export function contributeBayFestival(
   state: BayFestivalState,
   context: FestivalContext,

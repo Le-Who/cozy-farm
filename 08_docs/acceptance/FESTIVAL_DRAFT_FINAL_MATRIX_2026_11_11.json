@@ -1,0 +1,91 @@
+{
+  "status": "PASS",
+  "scenarios": [
+    {
+      "scenario": "shore",
+      "day": 6,
+      "stage": 0,
+      "delivered": {
+        "participation": 1
+      },
+      "draft": {
+        "base": "preserves",
+        "slots": [
+          {
+            "id": "apple",
+            "quantity": 1,
+            "trait": "rainbow"
+          },
+          null
+        ],
+        "activeSlot": 1
+      },
+      "legacyUnchanged": true,
+      "staleWriterBlocked": true
+    },
+    {
+      "scenario": "harvest",
+      "day": 6,
+      "stage": 0,
+      "delivered": {
+        "participation": 1
+      },
+      "draft": {
+        "base": "preserves",
+        "slots": [
+          {
+            "id": "apple",
+            "quantity": 1,
+            "trait": "rainbow"
+          },
+          null
+        ],
+        "activeSlot": 1
+      },
+      "legacyUnchanged": true,
+      "staleWriterBlocked": true
+    },
+    {
+      "scenario": "fish",
+      "day": 6,
+      "stage": 0,
+      "delivered": {
+        "participation": 1
+      },
+      "draft": {
+        "base": "preserves",
+        "slots": [
+          {
+            "id": "apple",
+            "quantity": 1,
+            "trait": "rainbow"
+          },
+          null
+        ],
+        "activeSlot": 1
+      },
+      "legacyUnchanged": true,
+      "staleWriterBlocked": true
+    },
+    {
+      "scenario": "concert",
+      "day": 21,
+      "stage": 1,
+      "delivered": {},
+      "draft": {
+        "base": "preserves",
+        "slots": [
+          {
+            "id": "apple",
+            "quantity": 1,
+            "trait": "rainbow"
+          },
+          null
+        ],
+        "activeSlot": 1
+      },
+      "legacyUnchanged": true,
+      "staleWriterBlocked": true
+    }
+  ]
+}

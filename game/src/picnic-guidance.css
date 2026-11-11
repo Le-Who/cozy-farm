@@ -1,0 +1,6 @@
+.picnic-status{padding:12px;margin:0 0 14px;border:1px solid var(--rule);border-radius:15px;background:var(--paper-light);color:var(--plum)}
+.picnic-status h2{font-size:18px;line-height:1.35;margin:0}
+.picnic-status p,.picnic-offer p{font-size:13px;line-height:1.45;margin:7px 0 0}
+.picnic-offer{margin:12px 0;padding:10px;border-radius:10px;background:var(--paper-light);color:var(--muted)}
+.picnic-offer strong{color:var(--plum);font-size:13px}
+.picnic-limit{border-left:3px solid var(--rule);padding-left:8px;color:var(--plum)}

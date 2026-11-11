@@ -1,0 +1,6 @@
+.recipe-repeat-guide{border-top:1px solid var(--rule);padding-top:10px;margin-top:10px}
+.recipe-repeat-guide summary{cursor:pointer;color:var(--plum);font-size:13px;font-weight:700;min-height:34px;padding:7px 0}
+.recipe-repeat-guide .ingredients{margin:8px 0;flex-wrap:wrap}
+.recipe-repeat-reason,.recipe-repeat-note{font-size:12px;line-height:1.4;margin:5px 0;color:var(--muted)}
+.recipe-repeat-guide>.dialog-button{font-size:13px;min-height:44px;margin-top:8px}
+@media(max-height:460px){.recipe-repeat-guide{padding-top:6px;margin-top:7px}}

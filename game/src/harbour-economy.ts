@@ -90,6 +90,7 @@ export function transferBayGoods(farm: FarmState, direction: 'deposit'|'withdraw
       return {ok:false,message:'Проверьте запас и свободное место на складе.'}
     changeBag(farm,id,-count)
   } else {
+    if (id === 'beeswax' && (farm.capeLevel < 2 || farm.capeHoneyOn === 0)) return {ok:false,message:'Сначала откройте пасеку на Цветочном мысе. Воск остаётся на складе.'}
     if (!takeFreightStock(farm.freight,farm.island,id,count)) return {ok:false,message:'На складе недостаточно товара.'}
     changeBag(farm,id,count)
   }
@@ -98,6 +99,7 @@ export function transferBayGoods(farm: FarmState, direction: 'deposit'|'withdraw
 
 export function reserveShopGoods(farm: FarmState, id: string, count: number): boolean {
   if (farm.island !== 'village' || !farm.village.built || !Number.isSafeInteger(count) || count < 1) return false
+  if (!stockItems.has(id) && !farm.culinary.recipes.some(recipe => 'signature:'+recipe.id === id)) return false
   const local = Math.min(count,freightStock(farm.freight,'village',id))
   if (amount(farm,id) < count-local) return false
   if (local && !takeFreightStock(farm.freight,'village',id,local)) return false

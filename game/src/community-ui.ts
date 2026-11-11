@@ -1,3 +1,6 @@
+import { renderIntentDeadline } from './intent-deadline';
+import { getNeighborFoodRecovery } from './neighbor-food-recovery';
+import { neighborHelpStatus } from './neighbor-help';
 import { getCommunityOrders, getIntentOffers, getNeighborPlans, type FarmState, type ResidentId } from './farm';
 import { qualityNames, type IntentId } from './intent-orders';
 import './community-ui.css';
@@ -21,6 +24,12 @@ const purpose = {
 } as const;
 const phaseLabels = { preparing: 'Готовится к встрече', joined: 'Выберите угощение', arranging: 'Всё для встречи', celebrating: 'Хорошо вместе', remembered: 'Тёплое воспоминание' } as const;
 
+export function neighborHelpCard(farm: FarmState, resident: ResidentId, link = false): string {
+  const help = neighborHelpStatus(farm, resident);
+  if (!help) return '';
+  return `<aside class="community-help" aria-label="${help.title}"><strong>${help.title}</strong><p>${help.detail}</p><p>${help.next}</p>${link ? control(`К помощи ${resident === 'bea' ? 'Беа' : 'Финна'}`, 'neighbor-help-house', resident, '', true) : ''}</aside>`;
+}
+
 function offerChoices(offers: Offer[], art: CommunityArt, context: { kind: 'intent'; id: string } | { kind: 'neighbor'; id: string }): string {
   const choices = offers.filter(offer => offer.eligible).sort((left, right) => Number(right.available) - Number(left.available) || Number(right.available && right.source === 'signature') - Number(left.available && left.source === 'signature') || Number(right.canCook) - Number(left.canCook));
   const otherRecipes = offers.filter(o => o.source === 'signature' && o.count > 0 && !o.eligible)
@@ -41,7 +50,7 @@ function offerChoices(offers: Offer[], art: CommunityArt, context: { kind: 'inte
 
 export function communityBoard(farm: FarmState, art: CommunityArt): string {
   const orders = getCommunityOrders(farm);
-  return `<section class="community-board community-root" aria-label="Просьбы соседей"><div class="community-occasions">${orders.map(order => {
+  return `<section class="community-board community-root" aria-label="Просьбы соседей">${orders.some(order => order.unlocked) ? renderIntentDeadline(farm) : ''}<div class="community-occasions">${orders.map(order => {
     const picture = motif[order.intentId];
     return `<button type="button" class="community-occasion" data-action="open-intent" data-value="${escape(order.id)}" data-complete="${order.delivered}" aria-label="${escape(order.title)}${order.delivered ? '. Выполнено' : ''}">
       <span class="community-occasion-picture">${prop(picture.kind)}${art.icon(picture.icon, 'community-occasion-ingredient')}</span>
@@ -58,7 +67,7 @@ export function communityIntent(farm: FarmState, orderId: string, art: Community
   return `<section class="community-intent community-root" aria-label="${escape(order.title)}"><header class="community-brief">${prop(picture.kind)}<div><h2>${escape(order.title)}</h2>${chips(order.chips)}</div></header>
     ${order.delivered ? `<div class="community-thanks"><span aria-hidden="true">✓</span><p>Спасибо за угощение!</p><small>Новые просьбы — завтра.</small></div>`
       : !order.unlocked ? '<p class="community-note">Сначала откройте ярмарку в проектах Родного острова.</p>'
-      : `${offerChoices(order.offers, art, { kind: 'intent', id: order.id })}<p class="community-reward">Стоимость блюда + ${order.rewardBonus} монет за помощь</p>`}</section>`;
+      : `${renderIntentDeadline(farm)}${offerChoices(order.offers, art, { kind: 'intent', id: order.id })}<p class="community-reward">Стоимость блюда + ${order.rewardBonus} монет за помощь</p>`}</section>`;
 }
 
 export function neighborDetail(farm: FarmState, resident: ResidentId, art: CommunityArt): string {
@@ -77,8 +86,14 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
       break;
     case 'arranging': {
       const offer = getIntentOffers(farm, plan.intentId).find(offer => offer.id === plan.food?.id);
-      content = `<div class="community-selected"><span class="community-selected-picture">${offer ? art.offerIcon(offer) : prop(plan.arrangement)}</span><strong>${escape(plan.food!.name)}</strong>${control(plan.arrangement === 'table' ? 'Накрыть стол' : 'Собрать корзинку', 'arrange-neighbor', plan.id)}</div>
-        <details class="community-alternatives"><summary>Выбрать другое угощение</summary>${offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id })}</details>`;
+      const recovery = getNeighborFoodRecovery(farm, plan.id)!;
+      const ready = recovery.state === 'ready';
+      const repair = recovery.shelved && offer ? control('В лавку за угощением', 'neighbor-shelf-food', plan.id, `data-food="${escape(offer.id)}"`)
+        : recovery.state === 'spent' && offer ? offer.source === 'signature' && offer.canCook
+        ? control('Повторить точно ×1', 'neighbor-repeat-food', plan.id)
+        : control(offer.canCook ? 'Приготовить ещё' : 'К рецепту', 'cook-intent-offer', offer.id, `data-plan="${escape(plan.id)}"`) : '';
+      content = `<div class="community-selected"><span class="community-selected-picture">${offer ? art.offerIcon(offer) : prop(plan.arrangement)}</span><strong>${escape(plan.food!.name)}</strong>${ready ? control(plan.arrangement === 'table' ? 'Накрыть стол' : 'Собрать корзинку', 'arrange-neighbor', plan.id) : `<p class="community-note" role="status">${recovery.message}</p>${repair}`}</div>
+        <details class="community-alternatives" ${!ready ? 'open' : ''}><summary>Выбрать другое угощение</summary>${offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id })}</details>`;
       break;
     }
     case 'celebrating':
@@ -88,7 +103,7 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
       content = `${prop(plan.arrangement, 'community-celebration')}${farm.day >= plan.nextAvailableOn ? control('Узнать новую затею', 'ack-neighbor', plan.id) : '<p class="community-note">Новая затея — завтра.</p>'}`;
       break;
   }
-  return `<section class="community-neighbor community-root" data-phase="${plan.phase}" aria-label="${escape(plan.title)}">${header}${content}${memory}</section>`;
+  return `<section class="community-neighbor community-root" data-phase="${plan.phase}" aria-label="${escape(plan.title)}">${header}${content}${neighborHelpCard(farm, resident, true)}${memory}</section>`;
 }
 
 export function neighborPlanLinks(farm: FarmState, art: CommunityArt): string {

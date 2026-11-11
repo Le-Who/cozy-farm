@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Проверка восстановленных действий</title>
+<style>body{max-width:780px;margin:40px auto;padding:16px;font:17px/1.5 system-ui;color:#352447;background:#faf7f0}button,a{display:inline-block;padding:12px;margin:6px;font:inherit}pre{white-space:pre-wrap;background:white;padding:16px;border:1px solid #ccc}</style>
+<h1>Синтетическая ферма для проверки</h1>
+<p>Только локальная проверка на отдельном порту 4181. Кнопки заменяют исключительно проверочное сохранение этого адреса, не опубликованную ферму. Откройте игру в этой же вкладке.</p>
+<button data-fixture="recipe">Создать один личный рецепт</button><button data-fixture="full">Создать полную книгу</button><button data-fixture="eggs">Создать упаковки яиц</button><button data-fixture="harbor">Создать неполную посылку</button><button data-fixture="festival">Создать ферму для фестиваля</button><button data-fixture="fishing">Создать исчерпанную рыбалку</button>
+<p><a href="/">Открыть игру</a><button id="inspect">Проверить сохранённое состояние</button></p><pre id="result" role="status">Сохранение не изменено.</pre>
+<script type="module">
+import { createFarm, completeSignature, packEggBasket, packEggCrate, deliverHarborOrder, getFishLimit, getProject, getVillageProject, restoreFarm } from '/src/farm.ts'
+import { farmSaveKeys } from '/src/farm-save-keys.ts'
+const output = document.querySelector('#result')
+const allowed = ['127.0.0.1', 'localhost'].includes(location.hostname) && location.port === '4181'
+if (!allowed) {
+  output.textContent = 'Проверочная запись разрешена только на localhost:4181.'
+  document.querySelectorAll('button').forEach(button => button.disabled = true)
+}
+function summary(farm) {
+  return { valid: !!restoreFarm(farm), day: farm.day, island: farm.island, coins: farm.coins, workToday: farm.workToday,
+    eggs: farm.eggs, eggBaskets: farm.eggBaskets, eggCrates: farm.eggCrates, rareEggs: farm.variants.egg,
+    apples: farm.fruit.apple, wheat: farm.produce.wheat, recipes: farm.culinary.recipes.map(recipe => ({ id: recipe.id, count: farm.culinary.stock[recipe.id], batches: recipe.batches, name: recipe.name, result: recipe.result })),
+    seaBass: farm.fish.seaBass, seaSalt: farm.seaSalt, bread: farm.dishes.farmhouseBread,
+    harbor: farm.orders.harbor, reserved: farm.harborSupplies, fishCaughtToday: farm.fishCaughtToday, saltGatheredToday: farm.saltGatheredToday, festival: farm.festivals.active }
+}
+document.querySelectorAll('[data-fixture]').forEach(button => button.addEventListener('click', () => {
+  if (!allowed) return
+  const farm = createFarm(), kind = button.dataset.fixture
+  farm.day = 5; farm.coins = 500; farm.boatOwned = true
+  farm.buildingLevels.farmhouse = farm.buildingLevels.coop = 3
+  farm.farmhouseSpecialization = 'bakery'; farm.farmhouseSecondarySpecialization = 'preserves'; farm.coopSpecialization = 'packing'
+  farm.fruit.apple = farm.produce.wheat = farm.eggs = 100
+  farm.variants.egg = { star: 2 }; farm.discoveries.egg = { star: true }
+  if (kind === 'recipe' || kind === 'full') {
+    for (let index = 0; index < (kind === 'full' ? 24 : 1); index++) {
+      const made = completeSignature(farm, { base: 'tart', ingredients: [{ id: 'apple', quantity: 2 }] }, { family: 'decorate', processing: 'chunky', fruit: [{ ingredientId: 'apple', x: .2, y: -.3, angle: index * .1 }], steps: ['fruit', 'dust'], baking: { method: 'oven', finish: 'golden', seconds: 90 } })
+      if (!made.ok) throw new Error(made.message)
+    }
+  }
+  if (kind === 'eggs') { packEggBasket(farm); packEggCrate(farm) }
+  if (kind === 'harbor') {
+    farm.projects.dock = { 'dishes:appleJam': 1, 'fruit:pear': 2, seaSalt: 2 }
+    farm.island = 'grove'; farm.orders.harbor = { completed: 1, deliveredOn: 4 }
+    farm.dishes.farmhouseBread = farm.seaSalt = 1; farm.fishCaughtToday.grove = 1; farm.saltGatheredToday = true
+    const delivered = deliverHarborOrder(farm)
+    if (!delivered.ok) throw new Error(delivered.message)
+  }
+  if (kind === 'festival') {
+    const key = item => 'item' in item ? `${item.kind}:${item.item}` : item.kind
+    for (const id of ['fair', 'dock']) for (const { item } of getProject(farm, id).items) farm.projects[id][key(item)] = item.quantity
+    farm.fairGuestsServed = farm.guestServedOn = 1
+    for (const { item } of getVillageProject(farm).items) farm.village.supplies[key(item)] = item.quantity
+    farm.village.built = true; farm.village.meals = farm.village.mealOn = 1
+    farm.island = 'village'; farm.fruit.apple = 3
+  }
+  if (kind === 'fishing') farm.fishCaughtToday.home = getFishLimit(farm)
+  if (!restoreFarm(farm)) throw new Error('Синтетическая ферма не прошла проверку.')
+  localStorage.setItem(farmSaveKeys.primary, JSON.stringify(farm))
+  if (kind === 'fishing') sessionStorage.setItem('cozy-recovery-fishing-baseline', JSON.stringify(farm))
+  output.textContent = JSON.stringify(summary(farm), null, 2)
+}))
+document.querySelector('#inspect').addEventListener('click', () => {
+  if (!allowed) return
+  const raw = localStorage.getItem(farmSaveKeys.primary)
+  const farm = raw && restoreFarm(JSON.parse(raw))
+  output.textContent = farm ? JSON.stringify({ ...summary(farm), practiceSaveBytesUnchanged: raw === sessionStorage.getItem('cozy-recovery-fishing-baseline') }, null, 2) : 'Проверочного сохранения нет или оно повреждено.'
+})
+</script></html>

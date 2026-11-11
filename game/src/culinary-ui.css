@@ -11,3 +11,16 @@
 @media(max-height:460px){.recipe-base-tabs{gap:8px;margin-bottom:8px}.recipe-base-tabs .dialog-button{display:flex;align-items:center;gap:5px;min-height:40px;padding:5px 10px}.recipe-base-tabs .icon{width:28px;height:28px}.recipe-portions{margin:8px 0}.recipe-portion{min-height:74px;padding:6px}.recipe-portion .icon{width:48px;height:48px}.recipe-studio footer{padding-top:6px}.recipe-studio footer .dialog-button{min-height:40px;padding:5px 12px}}
 .cove-effect{margin:9px 2px 0;font-size:12px;line-height:1.35;color:#80634f}
 @media(max-height:460px){.cove-effect{margin-top:5px;font-size:11px}}
+.signature-capacity{padding:14px 16px;border:1px solid #ceb888;border-radius:12px;background:#fff3d8;color:#6c4a31;font-size:14px;line-height:1.5}
+.cove-plan{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid #e1c19b}
+.cove-plan>span{flex:1;font-size:12px;line-height:1.35}
+.cove-plan .dialog-button{min-height:44px;flex-shrink:0;font-size:13px;padding:8px 12px;margin:0}
+.cove-confirmation{margin:9px 2px 0;font-size:12px;line-height:1.35;font-weight:700}
+.farm-dialog[data-panel=cove] .dialog-content{max-height:calc(100dvh - 84px);overflow:auto;overscroll-behavior:contain}
+
+.signature-tastings{display:grid;gap:9px;width:100%;min-width:0}.signature-tastings>p,.signature-tasting p{margin:0;font-size:13px;line-height:1.45}.signature-tasting .dialog-button{width:100%;min-width:0;margin:0;padding:8px;white-space:normal}.signature-tasting p{margin:5px 3px 0}.signature-tasting .icon{flex-shrink:0}
+.signature-warehouse{margin:0 0 12px;padding:10px;border:1px solid #d9b995;border-radius:12px}.signature-warehouse p{margin:0 0 8px;font-size:13px;line-height:1.45}.signature-warehouse .dialog-button{width:100%;min-width:0;min-height:44px;margin:0;padding:8px;font-size:14px;white-space:normal}
+
+.recipe-draft-card{border:1px solid var(--rule);border-radius:14px;padding:12px;margin:0 0 14px;background:var(--cream)}
+.recipe-draft-card p{font-size:13px;line-height:1.4;margin:6px 0;color:var(--muted)}
+.recipe-draft-card .dialog-button{min-height:44px;margin:4px 6px 0 0}

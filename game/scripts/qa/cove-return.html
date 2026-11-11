@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка плана заводи</title>
+<style>body{overflow:auto!important}.qa-toolbar{position:relative;z-index:2;padding:16px;max-width:720px}.qa-toolbar button{min-height:44px;margin:3px}.qa-toolbar p{margin:8px 0;font-size:13px}#ledger{display:block;font-size:13px;line-height:1.4;margin:8px 0}</style></head>
+<body>
+  <header class="qa-toolbar">
+    <p>Изолированная панель. Сохранения браузера не читаются и не изменяются.</p>
+    <button id="rest" type="button">Отдохнуть дома и вернуться</button>
+    <button id="reload" type="button">Перечитать JSON фермы</button>
+    <button id="reset" type="button">Сбросить проверку</button>
+    <output id="ledger" aria-live="polite"></output>
+  </header>
+  <section class="farm-dialog" data-panel="cove"><div class="dialog-panel"><div class="dialog-content" id="panel"></div></div></section>
+  <script type="module">
+    import '/src/style.css';
+    import { createFarm, changeCove, cancelCovePlan, endDay, restoreFarm } from '/src/farm.ts';
+    import { coveControls } from '/src/culinary-ui.ts';
+    const width = Number(new URLSearchParams(location.search).get('width'));
+    if ([360,390,568,844].includes(width)) {
+      const frame=document.createElement('iframe'); frame.width=width; frame.height=width>=568?390:844;
+      frame.src=location.pathname; frame.title='Проверка заводи в узком окне'; document.body.replaceChildren(frame);
+    } else {
+      const panel=document.querySelector('#panel'),ledger=document.querySelector('#ledger');let farm;
+      function draw(message='') {
+        panel.innerHTML=coveControls(farm);
+        ledger.textContent=`День ${farm.day}; монеты ${farm.coins}; действий ${farm.workToday}; приливов ${farm.shoreline.revision}; наблюдений ${farm.shoreline.observations.length}; план ${farm.shoreline.pending?'есть':'нет'}. ${message}`;
+      }
+      function reset() {farm=createFarm();farm.boatOwned=true;farm.shellDiscoveries=['regular'];farm.island='grove';draw();}
+      document.querySelector('#reset').addEventListener('click',reset);
+      document.querySelector('#reload').addEventListener('click',()=>{const restored=restoreFarm(JSON.parse(JSON.stringify(farm)));if(!restored)throw new Error('Ферма не прошла проверку');farm=restored;draw('Ферма перечитана из JSON.');});
+      document.querySelector('#rest').addEventListener('click',()=>{farm.island='home';const result=endDay(farm);farm.island='grove';draw(result.message);});
+      panel.addEventListener('click',event=>{
+        const control=event.target.closest('button[data-action]');if(!control||control.disabled)return;
+        const {action,value}=control.dataset;
+        if(action==='cove-choice'){const [key,choice]=value.split(':');draw(changeCove(farm,{[key]:choice}).message);}
+        else if(action==='cove-cancel')draw(cancelCovePlan(farm,value).message);
+      });reset();
+    }
+  </script>
+</body></html>

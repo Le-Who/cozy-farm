@@ -1,0 +1,9 @@
+.shop-rest{margin:12px 0;padding:12px;border:1px solid var(--rule);border-radius:15px;background:var(--paper-light)}
+.shop-rest h2{margin:0;color:var(--plum);font-size:18px;line-height:1.25}
+.shop-rest p,.shop-rest details{font-size:13px;line-height:1.4;margin:9px 0}
+.shop-rest summary{cursor:pointer;min-height:30px;align-content:center}
+.shop-rest ul{list-style:none;padding:0;margin:7px 0}
+.shop-rest li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;border-top:1px solid var(--rule);padding:7px 0}
+.shop-rest li span{overflow-wrap:anywhere}.shop-rest li small{grid-column:1/-1;color:var(--muted)}
+.shop-rest-note{color:var(--muted)}
+.shop-rest nav{display:flex;flex-wrap:wrap;gap:8px}.shop-rest .dialog-button{min-height:44px;white-space:normal}

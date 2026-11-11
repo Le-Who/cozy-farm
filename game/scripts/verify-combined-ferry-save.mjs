@@ -1,0 +1,41 @@
+// Prove rollback behavior with the actual earlier v3 reader, not a simulated writer.
+// Usage: node scripts/verify-combined-ferry-save.mjs /path/to/pre-combined/game
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import * as current from '../src/farm.ts';
+import { combinedExpeditionId } from '../src/ferry-expeditions.ts';
+import { sendFerryExpedition, receiveFerryExpedition } from '../src/harbour-economy.ts';
+import { VersionedSave } from '../src/versioned-save.ts';
+import { farmSaveKeys } from '../src/farm-save-keys.ts';
+const base='b684e78f8792c79a45f1a43bbd21c037d92bd10e';
+assert.ok(process.argv[2]);const prior=resolve(process.argv[2]);
+assert.equal(execFileSync('git',['-C',prior,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),base);
+assert.equal(execFileSync('git',['-C',prior,'status','--porcelain','--untracked-files=no'],{encoding:'utf8'}).trim(),'');
+const old=await import(pathToFileURL(resolve(prior,'src/farm.ts')).href);
+const {VersionedSave:OldSave}=await import(pathToFileURL(resolve(prior,'src/versioned-save.ts')).href);
+const {farmSaveKeys:oldKeys}=await import(pathToFileURL(resolve(prior,'src/farm-save-keys.ts')).href);
+assert.equal(oldKeys.primary,farmSaveKeys.primary);
+class Storage {items=new Map();getItem(k){return this.items.get(k)??null}setItem(k,v){this.items.set(k,v)}}
+const storage=new Storage(),lock=async op=>op();
+const openOld=()=>new OldSave(()=>storage,oldKeys,old.restoreFarm,old.createFarm,lock);
+const openNew=()=>new VersionedSave(()=>storage,farmSaveKeys,current.restoreFarm,current.createFarm,lock);
+const oldSession=openOld(),initial=await oldSession.load();assert.ok(initial);
+initial.boatOwned=true;initial.coins=100;initial.produce.wheat=30;initial.eggs=20;
+assert.equal(await oldSession.save(initial),true);
+const session=openNew(),farm=await session.load();assert.ok(farm);
+const id=combinedExpeditionId('mill-grain','mill-eggs');assert.ok(id);assert.equal(sendFerryExpedition(farm,id).ok,true);
+assert.equal(await session.save(farm),true);const paidRaw=storage.getItem(farmSaveKeys.primary);
+assert.equal(await oldSession.save(initial),false,'stale earlier v3 tab cannot overwrite the paid manifest');
+assert.equal(storage.getItem(farmSaveKeys.primary),paidRaw);
+const oldReopened=openOld();assert.equal(await oldReopened.load(),undefined,'earlier v3 rejects unfamiliar manifest');
+assert.ok(oldReopened.issue);assert.equal(await oldReopened.save(old.createFarm()),false);
+assert.equal(storage.getItem(farmSaveKeys.primary),paidRaw,'unreadable paid cargo is preserved byte for byte');
+const resumed=openNew(),loaded=await resumed.load();assert.ok(loaded);assert.equal(loaded.freight.expeditions.active.id,id);
+assert.equal(current.endDay(loaded).ok,true);assert.equal(await resumed.save(loaded),true);
+const readySession=openNew(),ready=await readySession.load();assert.ok(ready);assert.equal(ready.freight.expeditions.active.phase,'ready');
+assert.equal(receiveFerryExpedition(ready).ok,true);assert.equal(ready.handmade.round,2);assert.equal(ready.coins,110);
+assert.equal(receiveFerryExpedition(ready).ok,false);assert.equal(await readySession.save(ready),true);
+assert.deepEqual(await openNew().load(),ready);
+console.log(JSON.stringify({status:'passed',priorCommit:base,sharedV3Key:farmSaveKeys.primary,staleOldTabBlocked:true,oldReaderRejectsUnfamiliarPaidCargo:true,paidRawPreserved:true,newVersionResumesAndClaimsExactlyOnce:true,note:'This checks the active combined manifest, not arbitrary historical fields or bidirectional rollback.'},null,2));

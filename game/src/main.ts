@@ -1,17 +1,68 @@
+import { getFestivalShoreRoute } from './festival-shore-route.ts'
+import { rememberRecipeDraft, resumeRecipeDraft, resetRecipeDraft } from './recipe-draft'
+import { canReturnToDailyIntent, renderIntentDeadline, renderSelectedIntentRest, selectedDailyIntent } from './intent-deadline'
+import { renderFacilityChoiceDetails } from './facility-choice'
+import './facility-choice.css'
+import { getWindHoneySource } from './wind-honey-guidance'
+import { canVisitHarborRest, getNextHarborOrder, renderNextHarborOrder } from './harbor-return'
+import './harbor-return.css'
+import { renderVillageBudget } from './village-budget'
+import { withdrawStoredSignature } from './stored-signature'
+import './village-budget.css'
+import { treeVariantCopy } from './ready-variant-guidance'
+import { canVisitMarketRest, getNextMarketOrders, renderNextMarketOrder } from './market-return'
+import './market-return.css'
+import { renderFairReturn } from './fair-return'
+import './fair-return.css'
+import { getLocalWarehouseSupply, warehouseRequest, warehouseSupplyCopy, warehouseConfirmation, warehouseConfirmationValue, withdrawWarehouseSupply } from './warehouse-guidance'
+import { getReadySignatureSuppers, renderSignatureSuppers } from './shared-supper'
+import './shared-supper.css'
+import { renderShopRest, closeShopBeforeRest } from './shop-rest'
+import './shop-rest.css'
+import { shoalReturnCopy } from './shoal-return'
+import { getApiaryCopy } from './apiary-preview'
+import './apiary-preview.css'
+import { renderPicnicStatus } from './picnic-guidance'
+import { renderCoopMorning, renderCoopCapacityWarning } from './coop-preview'
+import './coop-preview.css'
+import { canConfirmRest } from './rest-preview'
+import { renderRestPreview } from './rest-preview-ui'
+import './rest-preview.css'
+import { chooseDiscoveryIdea, setDiscoveryPace, resumeDiscoveryIdea, forgetDiscoveryIdea } from './discovery-preferences'
+import { getGuidanceTask } from './discovery-guidance'
+import { renderDiscoveryPreferences } from './discovery-preferences-ui'
+import { getNeighborFoodRecovery, repeatNeighborFood, repeatRequestedSignature } from './neighbor-food-recovery'
+import { BedTransplantSelection, renderBedTransplant } from './bed-transplant'
+import './bed-transplant.css'
+import { cancelCovePlan } from './farm'
+import { renderFishingPracticeEntry } from './fishing-practice-ui'
+import { canPracticeFishing, createFishingPractice } from './fishing-practice'
+import { getEggUnpackAction, unpackEggBasket, unpackEggCrate, getHarborWithdrawal, withdrawHarborSupplies } from './farm'
+import { installActionClickGuard } from './action-click-guard'
+import { exactSaleQuote, saleStock, type SaleTarget } from './exact-sale'
+import './exact-sale.css'
+import { getBedHarvestPreview } from './farm'
+import { fieldContextCopyMarkup, harvestPreviewCopy, updateFieldContextCopy } from './harvest-preview'
+import { signatureBookCapacity } from './signature-book'
+import { hasFarmhouseSpecialization, getFarmhouseSpecializationAction } from './farm'
 import { VersionedSave, browserSaveLock } from './versioned-save'
 import { farmSaveKeys } from './farm-save-keys'
 import { mountSaveRecovery } from './save-recovery'
 import { renderFestivalPanel } from './bay-festival-ui'
+import { getFestivalConcertState } from './festival-concert-guidance'
+import { getFestivalHarvestRoute } from './festival-harvest-route'
+import { getFestivalFishingRoute } from './festival-fishing-route'
 import { festivalTraditions, type FestivalTradition } from './bay-festival'
-import { beginFestival, contributeFestival, finishFestival, getFestivalChoices, getFestivalStatus, getShellAt } from './farm'
+import { beginFestival, cancelFestival, contributeFestival, finishFestival, getFestivalChoices, getFestivalStatus, getShellAt } from './farm'
 import { playBaySound } from './game-sound'
 import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
-import { expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
+import { combinedExpeditionId, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
 import { renderFreightPanel, freightControl } from './bay-freight-ui'
+import { getMusicMaterialGuidance, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
 import { createBayMusic, type BayMusicViewState } from './bay-music'
 import { describeFood } from './intent-orders'
 import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods, sendFerryExpedition, receiveFerryExpedition, gardenMaterialStock } from './harbour-economy'
@@ -25,13 +76,15 @@ import { archiveCards } from './archive'
 import { getIslandJourneys } from './journey'
 import { getDiscoveryTask } from './discovery-path'
 import { getDiscoveryJournal } from './discovery-journal'
-import { getFruitSource } from './orchard-guidance'
+import { getFruitSource, nurseryFruitDetail } from './orchard-guidance'
 import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
 import {signatureBook,signatureStudio,coveControls,signaturePortionStock,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
-import { communityBoard, communityIntent, neighborDetail, type CommunityArt } from './community-ui'
+import { communityBoard, communityIntent, neighborDetail, neighborHelpCard, type CommunityArt } from './community-ui'
+import { neighborHelpStatus } from './neighbor-help'
+import { communityReturnRoute } from './community-return'
 import {
   boatPrice,
   fishDailyLimit, villageGuestTarget,
@@ -99,7 +152,6 @@ import {
   getCapeBloom,
   getCapeHoney,
   getCapeUpgrade,
-  getCapeWax,
   getCookAction,
   getDayPhase,
   getFishAction,
@@ -175,7 +227,7 @@ const createArrangement = lazyScene(() => import('./arrangement').then(m => m.cr
 import { createIsland, type IslandTarget } from './island'
 import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
-import { shoalDefinitions, shoalFindIds, getShoalFindAt } from './shoal'
+import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
 
 const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreFarm, createFarm, browserSaveLock(farmSaveKeys.lock))
 const farm = await saveStore.load() ?? createFarm()
@@ -224,10 +276,11 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
+const transplantSelection = new BedTransplantSelection()
 let activeTool: Tool = 'seeds'
 let panel: Panel | undefined
 let celebratedFestival: FestivalTradition | undefined
@@ -236,6 +289,9 @@ let treeSlot = 0
 let marketTab: 'buy' | 'sell' | 'orders' | 'projects' = 'buy'
 let marketCategory:'seeds'|'trees'|'care'|'buildings'='seeds'
 let marketSellGroup:'all'|'harvest'|'kitchen'|'shore'='all'
+let selectedSale: (SaleTarget & { name: string }) | undefined
+let saleQuantity = '1'
+let saleReceipt: { quantity: number; total: number; remaining: number } | undefined
 let inventoryGroup: 'harvest'|'kitchen'|'shore' = 'harvest'
 let boatIsland = farm.island
 let journeyDetailsOpen = false
@@ -254,6 +310,11 @@ let signatureBase: SignatureDraft['base'] = 'preserves'
 let signatureSlots: (SignatureIngredient|null)[] = [null,null]
 let signatureSlot=0
 let signatureRepeatId:string|undefined
+function rememberCurrentRecipeDraft() {
+  if (!signatureRepeatId && rememberRecipeDraft(farm, {base:signatureBase, slots:signatureSlots, activeSlot:signatureSlot})) saveFarm()
+}
+
+let expandedRepeatId:string|undefined
 let cookingMode:'dish'|'signature'='dish'
 type KitchenTart = 'orchardTart' | 'strawberryTart' | 'blueberryTart' | 'raspberryTart' | 'mixed'
 type KitchenPreserves = 'appleJam' | 'orchardPreserves' | 'custom'
@@ -346,7 +407,7 @@ app.innerHTML = `
       </button>
       <div class="field-context" hidden>
         <img class="icon" src="${iconUrl('tool-hoe')}" alt="" draggable="false">
-        <span class="context-copy" id="context-copy"></span>
+        ${fieldContextCopyMarkup}
         <button class="dialog-button" type="button" data-action="work-context" aria-describedby="context-copy"></button>
       </div>
       <div class="hotbar" role="group" aria-label="Инструменты">
@@ -421,7 +482,8 @@ function notify(message: string, ok = true, resultVisible = false) {
 }
 
 function currentTask() {
-  const next = getDiscoveryTask(farm, farm.orientation)
+  if (farm.discoveryPreferences.quiet) return undefined
+  const next = getGuidanceTask(farm.discoveryPreferences, getDiscoveryTask(farm, farm.orientation))
   if (next || farm.island === 'home') return next
   if (farm.island === 'village') return { label: 'Дом у гавани', detail: 'Приглашайте соседей и ужинайте вместе у воды.', progress: Math.min(2, farm.village.meals), target: 2, reward: undefined }
   if (farm.island === 'cape') {
@@ -461,6 +523,8 @@ function status() {
   updateCommunityReturn()
   const tool = tools.find(({ id }) => id === activeTool)!
   const goal = currentTask()
+  const bookmarkOnly = !!goal && 'bookmarkOnly' in goal && goal.bookmarkOnly
+  taskCard.hidden = farm.discoveryPreferences.quiet
   const atHome = farm.island === 'home'
   const taskArt = taskCard.querySelector<HTMLImageElement>('.task-medallion .icon')!
   const taskSource = iconUrl(goal && 'icon' in goal ? goal.icon : farm.island === 'cape' ? 'ui-honey' : farm.island === 'village' ? 'ui-bea' : 'carrot')
@@ -489,12 +553,12 @@ function status() {
   textAt('status-tool', tool.label)
 
   textAt('task-name', goal?.label ?? 'Заказы рынка')
-  textAt('task-count', goal ? `${goal.progress}/${goal.target}` : '')
+  textAt('task-count', goal && !bookmarkOnly ? `${goal.progress}/${goal.target}` : '')
   textAt('task-reward', goal?.reward === undefined ? '' : `Награда: ${quantity(goal.reward, 'монета')}`)
   taskReward.hidden = goal?.reward === undefined
   taskProgress.max = goal?.target ?? 1
   taskProgress.value = goal?.progress ?? 1
-  taskProgress.hidden = !goal
+  taskProgress.hidden = !goal || !!bookmarkOnly
   delete taskCard.dataset.panel
   taskCard.dataset.action = 'follow-task'
   taskCard.title = goal && 'action' in goal ? goal.action.label : 'Открыть дневник (J)'
@@ -510,7 +574,7 @@ function status() {
   islandLocation.querySelector('span')!.textContent = tide ? 'Лунный прилив' : honeyWind ? 'Медовый ветер' : islandNames[farm.island]
   islandLocation.title = `${islandNames[farm.island]}${tide ? ' · Лунный прилив' : honeyWind ? ' · Медовый ветер' : ''}`
   fieldViewButton.hidden = !atHome
-  hintText.textContent = farm.island === 'grove' && goal?.progress === goal?.target
+  hintText.textContent = farm.discoveryPreferences.quiet ? '' : farm.island === 'grove' && goal?.progress === goal?.target
     ? 'Загляните в сад или вернитесь на Родной остров.'
     : goal?.detail ?? 'Порыбачьте у причала или отправьтесь на Солёную рощу и Цветочный мыс.'
 
@@ -537,7 +601,10 @@ function status() {
 }
 
 const panelTitles: Record<Panel, string> = {
-  festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
+  'warehouse-supply': 'Местный склад',
+  transplant: 'Пересадка культур',
+  sale: 'Продажа товара',
+  'music-supplies':'Материалы музыки', festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
   market: 'Рынок',
   inventory: 'Запасы',
   archive: 'Коллекции',
@@ -567,7 +634,10 @@ const panelTitles: Record<Panel, string> = {
 }
 
 const panelEmblems: Record<Panel, string> = {
-  festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
+  'warehouse-supply': 'ui-bag',
+  transplant: 'tool-seeds',
+  sale: 'ui-market',
+  'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
   market: 'ui-market', inventory: 'ui-bag', archive: 'orchard', settings: 'gear', journal: 'star', coop: 'tool-hen',
   rest: 'moon', guide: 'island', seeds: 'ui-bag', fishing: 'tool-rod', boat: 'tool-boat',
   orchard: 'orchard', tree: 'orchard', upgrades: 'hammer', kitchen: 'ui-kitchen',
@@ -657,7 +727,7 @@ function goods() {
     if (item.kind === 'eggCrates') return farm.coopSpecialization === 'packing'
     if (count > 0 || item.kind !== 'dishes') return true
     const branch = dishDefinitions[item.item].specialization
-    return !branch || farm.farmhouseSpecialization === branch
+    return !branch || hasFarmhouseSpecialization(farm, branch)
   })
     .map(({ item, ...listing }) => ({ ...listing, item, ...stockLabel(item), group:['dishes','handmade','eggBaskets','eggCrates'].includes(item.kind)?'kitchen':['fish','shells','shoalFinds','seaSalt'].includes(item.kind)?'shore':'harvest', trait: item.kind === 'variants' ? item.trait : undefined }))
 }
@@ -669,12 +739,18 @@ function fishSource(id: FishId): string {
 
 function inventoryStockRow(listing: ReturnType<typeof goods>[number]): string {
   const { image, name, count, trait, item, key, price } = listing
+  if(item.kind==='eggBaskets'||item.kind==='eggCrates'){
+    const kind=item.kind==='eggBaskets'?'basket':'crate',action=getEggUnpackAction(farm,kind)
+    return row(image,name,`×${count}`,button(farm.island==='home'?`Распаковать · +${action.eggs}`:'Распаковать дома',kind==='basket'?'unpack-egg-basket':'unpack-egg-crate',action.available,{secondary:true}),trait)
+  }
   if(item.kind!=='fish')return row(image,name,`×${count}`,'',trait)
   return row(image,name,`×${count} · ${fishSource(item.item)}`,button('На гриль','fish-kitchen',true,{value:item.item})+button(`Продать 1 · ${price}`,farm.island==='home'?'sell-item':'fish-market',true,{value:key,secondary:true}))
 }
 
 function specializationCards() {
   const choice = previewSpecialization ? branchDefinitions[previewSpecialization] : undefined
+  const houseChoice = previewSpecialization === 'bakery' || previewSpecialization === 'preserves'
+    ? getFarmhouseSpecializationAction(farm, previewSpecialization) : undefined
   return `<p class="coin-balance">${icon('coin')} ${numberFormat.format(farm.coins)}<span class="sr-only"> ${ruPlural(farm.coins, ['монета','монеты','монет'])}</span></p>
     <div class="specialization-grid">${branchChoices[specializationBuilding].map((id) => {
       const definition = branchDefinitions[id]
@@ -685,11 +761,13 @@ function specializationCards() {
       return `<button class="specialization-option" type="button" data-action="preview-specialization" data-value="${id}"
         aria-pressed="${id === previewSpecialization}">
         <img class="specialization-preview" src="${import.meta.env.BASE_URL}art/${path}.webp" alt="" draggable="false">
-        <strong>${definition.name}</strong><span>${icon(image)}${benefit}</span>
+        <strong>${definition.name}</strong><span>${icon(image)}${benefit}</span>${(id==='bakery'||id==='preserves')&&hasFarmhouseSpecialization(farm,id)?'<span>Уже освоено</span>':''}
       </button>`
     }).join('')}</div>
-    <footer class="specialization-footer"><p>Выбор навсегда</p>
-      ${button('Построить', 'build-specialization', choice !== undefined && farm.coins >= choice.price,
+    ${specializationBuilding !== 'farmhouse' ? previewSpecialization && previewSpecialization !== 'bakery' && previewSpecialization !== 'preserves'
+      ? renderFacilityChoiceDetails(farm,previewSpecialization) : '<p class="facility-choice-help">Выберите карточку, чтобы прочитать условия. Просмотр вариантов бесплатный.</p>' : ''}
+    <footer class="specialization-footer"><p>${specializationBuilding==='farmhouse'?(houseChoice?.label??'Освойте направление кухни. Позже можно изучить второе, сохранив прежние рецепты и заказы.'):'После постройки направление нельзя сменить или добавить второе.'}</p>
+      ${button(specializationBuilding==='farmhouse'?'Освоить':'Построить', 'build-specialization', houseChoice?houseChoice.available:choice !== undefined && farm.coins >= choice.price,
         choice ? { value: previewSpecialization, context: `${choice.name}, ${quantity(choice.price, 'монета')}`,
           cost: { icon: 'coin', amount: choice.price } } : {})}</footer>`
 }
@@ -753,7 +831,7 @@ function recipeCards(recipes: readonly DishId[]) {
     const ingredients = getCookIngredients(farm, dish, cookingFish)
     const rawValue = ingredients.reduce((sum,item)=>sum+item.quantity*unitPrice(item,farm),0)
     const fishChoices = dish === 'grilledFish' ? `<div class="recipe-fish-choices" role="group" aria-label="Рыба для гриля">${fishIds.map(id=>`<button type="button" data-action="grill-fish" data-value="${id}" aria-pressed="${cookingFish===id}" aria-label="${fishDefinitions[id].name}, в наличии ${farm.fish[id]}" title="${fishDefinitions[id].name}">${icon(fishImage(id))}<span>×${farm.fish[id]}</span></button>`).join('')}</div>` : ''
-    const locked = recipe.capeLevel ? farm.capeLevel < recipe.capeLevel : farm.buildingLevels.farmhouse < recipe.requiredLevel || !!recipe.specialization && farm.farmhouseSpecialization !== recipe.specialization
+    const locked = recipe.capeLevel ? farm.capeLevel < recipe.capeLevel : farm.buildingLevels.farmhouse < recipe.requiredLevel || !!recipe.specialization && !hasFarmhouseSpecialization(farm, recipe.specialization)
     return `<section class="recipe${locked ? ' recipe-locked' : ''}">
       <header class="recipe-summary">${icon(dishIcons[dish], 'recipe-art')}<div><h2>${recipe.name}</h2>
         <p class="recipe-value" title="Стоимость ингредиентов → цена блюда">${icon('tool-crate')} <span class="sr-only">Сырьё: </span>${rawValue} <span aria-hidden="true">→</span> ${icon('coin')} <span class="sr-only">Блюдо: </span><strong>${recipe.sellPrice}</strong></p></div></header>
@@ -769,7 +847,7 @@ function kitchenFamilies() {
   const preserves = familyChoices('preserves', kitchenPreserves, [{ id: 'appleJam', image: 'apple', name: 'Яблочное варенье' }, { id: 'orchardPreserves', image: 'ui-pear', name: 'Садовый конфитюр' }, { id: 'custom', image: 'ui-signature-bright', name: 'Варенье: выбрать фрукты' }])
   const tartCard = kitchenTart === 'mixed' ? `<section class="recipe">${icon('ui-tart', 'recipe-art')}<h2>Ягодный тарт</h2>${button('Выбрать ягоды', 'family-signature', true, { value: 'berries' })}</section>` : recipeCards([kitchenTart])
   const preservesCard = kitchenPreserves === 'custom' ? `<section class="recipe">${icon('ui-apple-jam', 'recipe-art')}<h2>Фруктовое варенье</h2>${button('Выбрать фрукты', 'family-signature', true, { value: 'preserves' })}</section>` : recipeCards([kitchenPreserves])
-  const others = dishIds.filter(dish => !isTartDish(dish) && dish !== 'appleJam' && dish !== 'orchardPreserves' && !dishDefinitions[dish].capeLevel && (dish !== 'honeyCake' || canSailTo(farm, 'cape')) && (!dishDefinitions[dish].specialization || dishDefinitions[dish].specialization === farm.farmhouseSpecialization))
+  const others = dishIds.filter(dish => !isTartDish(dish) && dish !== 'appleJam' && dish !== 'orchardPreserves' && !dishDefinitions[dish].capeLevel && (dish !== 'honeyCake' || canSailTo(farm, 'cape')) && (!dishDefinitions[dish].specialization || hasFarmhouseSpecialization(farm, dishDefinitions[dish].specialization!)))
   return `<div class="kitchen-family-list"><div class="recipe-family">${tarts}${tartCard}</div><div class="recipe-family">${preserves}${preservesCard}</div>${recipeCards(others)}</div>`
 }
 function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily): string | undefined {
@@ -782,6 +860,7 @@ function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily)
 }
 
 function marketOrders() {
+  const next = getNextMarketOrders(farm)
   const rank = { ready: 0, waiting: 1, upgrade: 1, delivered: 2 }
   const orders = getMarketOrders(farm).sort((a, b) => rank[a.status] - rank[b.status])
   const cards = orders.map((order) => {
@@ -789,7 +868,7 @@ function marketOrders() {
     return `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
       <header class="order-header"><h2 id="order-${order.lane}">${order.name}</h2>
         <span class="order-reward">${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></header>
-      ${delivered ? '<p class="order-done">✓ Доставлено</p>'
+      ${delivered ? `<p class="order-done">✓ Доставлено</p>${next.filter(item=>item.lane===order.lane).map(item=>renderNextMarketOrder(item,stockTile)).join('')}`
         : `<ul class="ingredients order-items">${order.items.map(stockTile).join('')}</ul>
           ${order.status === 'upgrade' ? button('Улучшить дом', 'upgrades', true, { secondary: true })
             : button('Доставить', 'deliver-order', order.status === 'ready', { value: order.lane, context: order.name })}`}
@@ -797,7 +876,7 @@ function marketOrders() {
   })
   const waiting = orders.findIndex(({ status }) => status !== 'ready')
   cards.splice(waiting < 0 ? cards.length : waiting, 0, harborCard())
-  return `<div class="order-list">${cards.join('')}</div>`
+  return `<p class="market-return-help">После доставки следующий заказ появится после отдыха дома. Несданные заказы не сгорают от сна.</p><div class="order-list">${cards.join('')}</div>${next.length ? nav(button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)})) : ''}`
 }
 
 function deliveryItems(items: ReturnType<typeof getProject>['items']) {
@@ -812,13 +891,16 @@ function deliveryItems(items: ReturnType<typeof getProject>['items']) {
 function harborCard() {
   const order = getHarborOrder(farm)
   if (!order) return ''
+  const withdrawal=getHarborWithdrawal(farm)
+  const next=getNextHarborOrder(farm)
   return `<section class="market-order project-card" aria-labelledby="harbor-order">
     <header class="order-header"><h2 id="harbor-order">${order.name}</h2>
       <span class="order-reward">${icon('coin')} ${order.reward}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></header>
     <ul class="ingredients project-items">${deliveryItems(order.items)}</ul>
-    ${order.status === 'completed' ? '<p class="order-done">✓ Доставлено</p>'
+    ${order.status === 'completed' ? `<p class="order-done">✓ Доставлено</p>${next ? renderNextHarborOrder(next,stockTile)+button('К отдыху дома','harbor-next-rest',true,{secondary:true,value:String(farm.day)}) : ''}`
       : farm.island !== 'grove' ? button('В рощу', 'sail',canSailTo(farm,'grove'), {value:'grove',secondary:true})
       : button('Доставить', 'deliver-harbor', order.status === 'ready', { context: order.name })}
+    ${order.status!=='completed'&&withdrawal.items.length?`<p class="dialog-status">Неполную посылку можно забрать у причала. Припасы вернутся в запас, заказ и дневной лимит не изменятся.</p>${button('Вернуть припасы','withdraw-harbor',withdrawal.available,{secondary:true})}`:''}
   </section>`
 }
 
@@ -901,7 +983,7 @@ function marketCards() {
     return `${controls}
       ${panelTabs('market-sell-group',marketSellGroup,[['all','Всё'],['harvest','Урожай'],['kitchen','Кухня'],['shore','Берег']])}
       <ul class="dialog-list">${listings.map(({ image, name, count, price, key, trait }) =>
-        row(image, name, `×${count}`, button(`Продать 1 · ${price}`, 'sell-item', true, { value: key, context: `${name}, ${quantity(price, 'монета')}` }), trait)).join('')}</ul>
+        row(image, name, `×${count} · ${price} за 1`, button('Выбрать количество', 'sell-item', true, { value: key, context: name }), trait)).join('')}</ul>
       ${!listings.length&&marketSellGroup!=='all'?`<div class="market-empty">${icon('tool-crate')}<span>Пусто</span></div>`:''}
       ${marketSellGroup==='all'?`<section class="market-total">${icon('tool-crate')}<div><strong>${sale.items ? `${quantity(sale.items, 'предмет')} · ${quantity(sale.coins, 'монета')}` : 'Корзина пуста'}</strong>${button('Продать всё', 'sell', sale.items > 0)}</div></section>`:''}
       ${farm.culinary.recipes.length?nav(button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}`
@@ -947,18 +1029,21 @@ function nurseryCard(slot?: number) {
     <p class="dialog-intro">Перенос бесплатный. Возраст и созревшие плоды сохраняются. В питомнике рост и новые плоды на паузе.${available ? '' : ' Чтобы вернуть дерево, сначала освободите место в саду.'}</p>
     <ul class="dialog-list">${farm.treeNursery.map(({ id, tree }) => {
       const definition = treeDefinitions[tree.tree]
-      const detail = tree.age < definition.days ? `${quantity(definition.days - tree.age, 'ночь')} до зрелости` : `Плодов к сбору: ${tree.fruitReady}`
+      const detail = [nurseryFruitDetail(tree), treeVariantCopy(tree)].filter(Boolean).join(' ')
       return row('ui-tree-' + tree.tree, definition.treeName, detail, button(slot === undefined ? 'Вернуть в сад' : 'Посадить здесь', 'return-nursery-tree', available, { value: id, context: definition.treeName }), tree.trait)
     }).join('')}</ul></section>`
 }
 
 let fishingGame: ReturnType<typeof createFishingGame> | undefined
 let fishingToken: number | undefined
+let fishingPractice: ReturnType<typeof createFishingPractice>
 let workshopGame: ReturnType<typeof createWorkshop> | undefined
 let cookeryGame: ReturnType<typeof createCookery> | undefined
 let arrangementGame: ReturnType<typeof createArrangement> | undefined
 
 function stopFishing() {
+  fishingPractice?.cancel()
+  fishingPractice = undefined
   fishingGame?.destroy()
   fishingGame = undefined
   if (fishingToken !== undefined) {
@@ -994,22 +1079,27 @@ function updateCommunityReturn() {
     }
   } catch { /* The current menu also works without browser storage. */ }
   const request = currentCommunityRequest()
+  const route = communityReturnRoute(communityRequest?.kind ?? 'intent', farm.island, 'recipe',
+    requestedFood ? communityOffers().find(offer => offer.id === requestedFood)?.count : undefined)
   communityResume.hidden = !communityRequest || dialog.open || island.isCrossing()
-  communityResume.querySelector('span')!.textContent = requestedFood && communityOffers().find(offer => offer.id === requestedFood)?.count === 0 ? 'К рецепту' : 'К просьбе'
-  communityResume.setAttribute('aria-label', request ? `Вернуться: ${request.title}` : 'Вернуться к соседям')
+  communityResume.querySelector('span')!.textContent = route.label
+  communityResume.setAttribute('aria-label', request ? `Вернуться: ${request.title}. ${route.label}` : 'Вернуться к соседям')
 }
 async function resumeCommunityRequest(mode: 'request' | 'recipe' = 'request') {
   const request = communityRequest
-  if (!request) return
-  const destination = request.kind === 'intent' ? 'home' : 'village'
-  if (farm.island !== destination && mode === 'request') {
-    if (!canSailTo(farm, destination)) { openPanel('boat'); return }
+  if (!request || island.isCrossing()) return
+  const route = communityReturnRoute(request.kind, farm.island, mode,
+    requestedFood ? communityOffers().find(offer => offer.id === requestedFood)?.count : undefined)
+  if (route.mode === 'recipe') { panelHistory.length = 0; openPanel('request-food', false); return }
+  const destination = route.destination
+  if (route.travel) {
+    if (!canSailTo(farm, destination)) { openPanel('boat', true, destination); return }
     if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
     closeDialog()
     await island.crossIsland(() => perform(() => sail(farm, destination), false, true))
+    if (farm.island !== destination) return
   }
   panelHistory.length = 0
-  if (mode === 'recipe' && requestedFood && communityOffers().some(offer => offer.id === requestedFood && offer.count === 0)) { openPanel('request-food', false); return }
   requestedFood = undefined
   if (request.kind === 'intent') {
     communityOrderId = request.orderId
@@ -1036,11 +1126,16 @@ function requestedRecipe() {
 }
 function requestedRecipeCard() {
   const source = requestedRecipe()
-  if (!source) return `<p class="dialog-status">Выберите угощение для просьбы.</p>${button('К просьбе', 'resume-community')}`
+  const deadline = selectedDailyIntent(farm, communityRequest) ? renderIntentDeadline(farm) : ''
+  if (!source) {
+    const recovery = communityRequest?.kind === 'neighbor' ? getNeighborFoodRecovery(farm, communityRequest.planId) : undefined
+    return `<p class="dialog-status">${recovery?.message || 'Этот рецепт больше недоступен. Выберите другое угощение.'}</p>${button('Выбрать другое угощение', 'resume-community')}`
+  }
   const { offer, ingredients, action } = source
+  if (offer.available) return `${deadline}<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2>${escapeHtml(offer.name)}</h2><p class="dialog-intro">Угощение готово. В запасе: ${offer.count}.</p>${button(communityRequest?.kind === 'neighbor' ? 'К встрече' : 'К просьбе', 'resume-community')}</section>`
   const sourceLabel = farm.island !== source.destination ? 'К месту готовки' : ingredients.some(item => ingredientCount(farm, item) < item.quantity) ? 'Найти ингредиенты' : 'Что нужно для рецепта'
-  return `<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2>${escapeHtml(offer.name)}</h2><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>
-    ${action.available ? button('Готовить', 'request-start-cook') : `${button(sourceLabel, 'request-food-source')}<p class="recipe-reason">${action.label}</p>`}${nav(button('Другое угощение', 'resume-community', true, { secondary: true }))}</section>`
+  return `${deadline}<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2>${escapeHtml(offer.name)}</h2><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>
+    ${action.available ? button(offer.source === 'signature' ? 'Повторить точно ×1' : 'Готовить', offer.source === 'signature' ? 'request-repeat-exact' : 'request-start-cook') : `${button(sourceLabel, 'request-food-source')}<p class="recipe-reason">${action.label}</p>`}${nav(button('Другое угощение', 'resume-community', true, { secondary: true }))}</section>`
 }
 async function guideRequestedFood() {
   const source = requestedRecipe()
@@ -1048,7 +1143,7 @@ async function guideRequestedFood() {
   if (source.offer.source === 'dish') {
     const dish = source.offer.identity as DishId, definition = dishDefinitions[dish]
     if (definition.capeLevel && (!canSailTo(farm, 'cape') || farm.capeLevel < definition.capeLevel)
-      || !definition.capeLevel && (farm.buildingLevels.farmhouse < definition.requiredLevel || definition.specialization && farm.farmhouseSpecialization !== definition.specialization)) {
+      || !definition.capeLevel && (farm.buildingLevels.farmhouse < definition.requiredLevel || definition.specialization && !hasFarmhouseSpecialization(farm, definition.specialization))) {
       await showRequirement({ kind: 'stock', item: { kind: 'dishes', item: dish, quantity: 1 } }); return
     }
   } else if (source.offer.source === 'signature' && source.offer.identity === 'preserves' && farm.buildingLevels.farmhouse < 2) {
@@ -1066,33 +1161,45 @@ async function guideRequestedFood() {
 function startRequestedFood() {
   const source = requestedRecipe()
   if (!source || !source.action.available) { void guideRequestedFood(); return }
-  if (source.offer.source === 'handmade') { workshopRecipe = 'pastry'; openPanel('workshop'); return }
+  if (source.offer.source === 'handmade') {
+    pastryShape = source.offer.identity as WorkshopShape
+    workshopRecipe = 'pastry'; openPanel('workshop'); return
+  }
   if (source.offer.source === 'dish') {
     cookingDish = source.offer.identity as DishId; cookingMode = 'dish'
     if(cookingDish==='grilledFish')cookingFish=getGrillFish(farm)
     if (cookingDish === 'farmhouseBread') { workshopRecipe = 'bread'; openPanel('workshop') } else openPanel('cookery')
     return
   }
-  const recipe = farm.culinary.recipes.find(recipe => `signature:${recipe.id}` === source.offer.id)
-  if (!recipe) return
-  signatureFamily = undefined
-  signatureBase = recipe.base; signatureSlots = recipe.ingredients.flatMap(part => Array.from({ length: part.quantity }, () => ({ ...part, quantity: 1 })))
-  signatureRepeatId = recipe.id; cookingMode = 'signature'; openPanel('cookery')
+  repeatRequestedFood()
+}
+function repeatRequestedFood() {
+  const request = currentCommunityRequest()
+  if (panel !== 'request-food' || !request || !requestedFood) return
+  perform(() => repeatRequestedSignature(farm, request.intentId, requestedFood!), false, true)
 }
 
-function mountFishing() {
+function mountFishing(practiceOnly = false) {
   stopFishing()
-  if (!getFishAction(farm).available) return
-  const config = getFishingTripConfig(farm)
+  const practice = practiceOnly ? createFishingPractice(farm) : undefined
+  if (practiceOnly ? !practice : !getFishAction(farm).available) return
+  fishingPractice = practice
+  const config = practice?.config ?? getFishingTripConfig(farm)
   const remaining = getFishLimit(farm) - (farm.island === 'grove' ? farm.fishCaughtToday.grove : farm.fishCaughtToday.home)
   dialogContent.innerHTML = '<div class="fishing-host"></div>'
   const host = dialogContent.querySelector<HTMLElement>('.fishing-host')!
   fishingGame = createFishingGame(host, {
-    seed: farm.day*1009+(farm.fishingTripSerial+1)*9176+(farm.island==='grove'?71:17),
-    capacity: Math.min(config.capacity, remaining), maxDepth: config.depth, resilience: config.resilience,
+    practiceOnly,
+    seed: practice?.seed ?? farm.day*1009+(farm.fishingTripSerial+1)*9176+(farm.island==='grove'?71:17),
+    capacity: practice ? config.capacity : Math.min(config.capacity, remaining), maxDepth: config.depth, resilience: config.resilience,
     habitat:config.habitat,
-    fish: farm.island === 'grove' ? 'seaBass' : 'perch',
+    fish: practice?.fish ?? (farm.island === 'grove' ? 'seaBass' : 'perch'),
     onCast() {
+      if (practice) {
+        if (practice !== fishingPractice || !practice.cast()) return false
+        island.setFishing(true)
+        return true
+      }
       const trip = beginFishingTrip(farm)
       if (!trip.ok || trip.token === undefined) { notify(trip.message, false); return false }
       fishingToken = trip.token
@@ -1100,9 +1207,15 @@ function mountFishing() {
       saveFarm()
       return true
     },
-    onCancel: closeDialog,
-    onAgain: mountFishing,
+    onCancel: () => { if (!practice || practice === fishingPractice) closeDialog() },
+    onAgain: () => { if (!practice || practice === fishingPractice) mountFishing(practiceOnly) },
+    onPractice: practiceOnly ? undefined : () => mountFishing(true),
     onFinish({ catches }) {
+      if (practice) {
+        if (practice !== fishingPractice) return false
+        island.setFishing(false)
+        return practice.finish(catches)
+      }
       const token = fishingToken
       fishingToken = undefined
       island.setFishing(false)
@@ -1111,7 +1224,7 @@ function mountFishing() {
       return getFishAction(farm).available
     },
   })
-  host.querySelector<HTMLButtonElement>('.fishing-controls .fishing-action')?.focus({ preventScroll: true })
+  host.querySelector<HTMLButtonElement>('.fishing-practice-shore, .fishing-controls .fishing-action')?.focus({ preventScroll: true })
 }
 
 function pastryChoices() {
@@ -1127,6 +1240,7 @@ function villageProjectCard() {
   return `<div class="harbour-preview"><img src="${iconUrl('village-plate')}" alt="Домики, мастерская и стол для ужина в Лавандовой гавани"></div>
     ${unlocked ? '' : `<ul class="dialog-list">${row('ui-market', 'Гости ярмарки', `${Math.min(villageGuestTarget, farm.fairGuestsServed)}/${villageGuestTarget}`)}${isProjectComplete(farm, 'fair') ? '' : row('ui-market', 'Ярмарка', '', button('К стройке', 'fair-project'))}</ul>`}
     <ul class="ingredients">${deliveryItems(project.items)}</ul>
+    ${renderVillageBudget(farm,icon('coin'),(content,ready)=>requirementLink(content,{kind:'journey',island:'village',id:'village-coins'},'ingredient','Монеты для постройки Живой бухты',ready))}
     ${nav(button(buildAction ? 'Построить' : 'Внести припасы', 'build-village', project.status === 'ready', buildAction ? { cost: { icon: 'coin', amount: project.coins } } : {}), button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair'), { secondary: true }))}`
 }
 
@@ -1143,11 +1257,12 @@ function neighboursCard() {
       const def = residentDefinitions[id]
       const service = getResidentService(farm, id, pastryShape)
       const here = resident === id
-      return `<section class="resident-card" data-present="${here}">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2><div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 булочки в день':'+1 рыба · крепче снасть'}</span></div>
+      return `<section class="resident-card" data-present="${here}">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2><div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${neighborHelpStatus(farm,id)?.summary ?? (id==='bea'?'3 изделия в день':'+1 рыба · крепче снасть')}</span></div>
         ${here ? button('Замысел соседа', 'open-neighbor', true, { value: id, secondary: true }) : ''}
         ${here ? (id === 'bea' ? `<div class="resident-patterns">${pastryChoices()}</div><ul class="ingredients">${[{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }].map(item => stockTile(item as StockItem)).join('')}</ul>${button(farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?'Испечь ×4':'Испечь ×3', 'resident-service', service.available, { value: id })}`
           : button(farm.village.scouting ? 'Маршрут готов · +1 рыба' : 'Разведать · +1 рыба', 'resident-service', service.available, { value: id }))
         : button('Пригласить', 'invite-resident', true, { value: id })}
+        ${here ? neighborHelpCard(farm,id) : ''}
         ${here&&!service.available?`<p class="dialog-status">${service.label}</p>${id==='bea'&&!farm.workshopPatterns.includes(pastryShape)?button(`Освоить: ${workshopDefinitions[pastryShape].name.toLowerCase()}`,'practice-pattern',true,{value:pastryShape}):''}`:''}
       </section>`
     }).join('')}</div>`}
@@ -1155,7 +1270,10 @@ function neighboursCard() {
     ${nav(button('Кухня', 'kitchen'),button('Кондитерская', 'workshop', true, {secondary:true}))}`
 }
 
+let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  marketNextOpen: string[];
+  warehouseRequest: StockItem | undefined;
   expeditionPort: ExpeditionPort; expeditionOffer: string;
   warehouse: typeof selectedWarehouse; freightPlanOpen: boolean; journeyDetailsOpen: boolean; journalDetailsOpen: boolean;
   inventoryGroup: 'harvest'|'kitchen'|'shore'; boatIsland: (typeof islandIds)[number];
@@ -1163,7 +1281,7 @@ type PanelVisit = {
   treeSlot: number; previewSeed: CropId; specializationBuilding: BuildingId; previewSpecialization: BuildingBranch | undefined;
   irrigationMode: 'row'|'pair'; villageSlot: number; pastryShape: WorkshopShape;
   workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; cookingFish: FishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
-  signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;cookingMode:'dish'|'signature';
+  signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;expandedRepeatId:string|undefined;cookingMode:'dish'|'signature';
   communityOrderId:string;communityResident:ResidentId;requestedFood:FoodOfferId|undefined;
   kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;signatureFamily:SignatureFamily;
 }
@@ -1176,8 +1294,8 @@ function focusKey(button: HTMLButtonElement) {
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
-  return {expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
-    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
+  return {marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
   const previous=panelHistory.pop()
@@ -1185,6 +1303,7 @@ function goBack() {
   journeyDetailsOpen=previous.journeyDetailsOpen
   journalDetailsOpen=previous.journalDetailsOpen
   selectedExpeditionPort=previous.expeditionPort; selectedExpeditionOffer=previous.expeditionOffer
+  selectedWarehouseRequest=previous.warehouseRequest
   selectedWarehouse=previous.warehouse; freightPlanOpen=previous.freightPlanOpen
   inventoryGroup=previous.inventoryGroup;boatIsland=previous.boatIsland
   marketTab=previous.marketTab;marketCategory=previous.marketCategory;marketSellGroup=previous.marketSellGroup;bagTab=previous.bagTab;archiveGroup=previous.archiveGroup;treeSlot=previous.treeSlot
@@ -1192,10 +1311,11 @@ function goBack() {
   irrigationMode=previous.irrigationMode;villageSlot=previous.villageSlot;pastryShape=previous.pastryShape
   workshopRecipe=previous.workshopRecipe;cookingDish=previous.cookingDish;cookingFish=previous.cookingFish
   seedPickerBed=previous.seedPickerBed
-  signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;cookingMode=previous.cookingMode
+  signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;expandedRepeatId=previous.expandedRepeatId;cookingMode=previous.cookingMode
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;signatureFamily=previous.signatureFamily
   openPanel(previous.panel,false,farm.island,'page.fold')
+  dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next]').forEach(item=>item.open=previous.marketNextOpen.includes(item.dataset.marketNext!))
   const restoredVersion = panelRenderVersion
   requestAnimationFrame(()=>{
     // A newer selection or dismissal must not receive an old page’s scroll or focus.
@@ -1248,6 +1368,8 @@ function openShopScene(host:HTMLElement) {
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
     onOpenFreight:()=>openPanel('bay-freight'),
+    onOpenMusic:()=>openPanel('bay-music'),
+    onGoRest:()=>{void visitPanelAt('home','rest')},
     performanceBonus:()=>Number(farm.concertDay === farm.day),
     renderProduct(product,cls) {
       const entry=byId.get(product.id)
@@ -1265,7 +1387,7 @@ function openShopScene(host:HTMLElement) {
   applyIngredientFinishes(host)
 }
 function openMusicScene(host:HTMLElement) {
-  harbourScene=createBayMusic(host,{state:farm.musicGarden,viewState:musicView,onViewChange:view=>{ musicView=view },getMaterialStock:()=>gardenMaterialStock(farm),
+  harbourScene=createBayMusic(host,{state:farm.musicGarden,viewState:musicView,onViewChange:view=>{ musicView=view },getMaterialStock:()=>gardenMaterialStock(farm),getMaterialSources:()=>getMusicMaterialGuidance(farm).sources,
     onSave:state=>{farm.musicGarden=state;saveHarbour()},onClose:leaveScene,
     onPerformance:()=>{
       if(farm.concertDay===farm.day)return false
@@ -1273,14 +1395,50 @@ function openMusicScene(host:HTMLElement) {
       saveHarbour()
       return true
     },
+    isConcertDone:()=>farm.concertDay===farm.day,
+    getFestivalConcertState:()=>getFestivalConcertState(farm),
+    onOpenShop:()=>openPanel('bay-shop'),
     onRequestMaterials:()=>{const level=installGardenInstrument(farm);if(level!==undefined){saveHarbour();bayAudio.playEvent('menu.accept')}return level},
-    onOpenFreight:()=>{selectedWarehouse='village';openPanel('bay-freight')},
+    onOpenSupplies:()=>openPanel('music-supplies'),
   })
 }
 function harbourPlaces() {
   return nav(button('Праздники гавани','open-panel',true,{value:'festival'})+button('Своя лавка','open-panel',true,{value:'bay-shop'})+
     button('Грузовой паром','open-panel',true,{value:'bay-freight'})+
     button('Музыкальный сад','open-panel',true,{value:'bay-music'}))
+}
+
+function beginExactSale(target: SaleTarget) {
+  const stock = saleStock(farm, target)
+  if (!stock || stock.count < 1) return
+  const name = target.kind === 'signature' ? farm.culinary.recipes.find(recipe => recipe.id === target.key)!.name
+    : goods().find(item => item.key === target.key)!.name
+  selectedSale = { ...target, name }; saleQuantity = '1'; saleReceipt = undefined
+  openPanel('sale')
+  const input = dialogContent.querySelector<HTMLInputElement>('[data-sale-quantity]')
+  input?.focus({ preventScroll: true }); input?.select()
+}
+
+function updateSaleQuote() {
+  if (panel !== 'sale' || !selectedSale || saleReceipt) return
+  const stock = saleStock(farm, selectedSale)
+  const quote = stock && exactSaleQuote(saleQuantity, stock.count, stock.price)
+  const summary = dialogContent.querySelector<HTMLElement>('.exact-sale-summary')
+  const confirm = dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')
+  if (summary) summary.textContent = quote?.valid ? `Цена: ${quantity(quote.total, 'монета')}. Останется: ${quote.remaining}.`
+    : `Введите целое число от 1 до ${stock?.count ?? 0}.`
+  if (confirm) { confirm.disabled = !quote?.valid; confirm.textContent = quote?.valid ? `Продать ${quote.quantity} · ${quote.total}` : 'Продать выбранное' }
+}
+
+function confirmExactSale() {
+  if (panel !== 'sale' || !selectedSale || saleReceipt) return
+  const stock = saleStock(farm, selectedSale)
+  const quote = stock && exactSaleQuote(saleQuantity, stock.count, stock.price)
+  if (!quote?.valid) { updateSaleQuote(); return }
+  const result = selectedSale.kind === 'signature' ? sellSignature(farm, selectedSale.key, quote.quantity)
+    : sellMarketItem(farm, selectedSale.key, quote.quantity)
+  if (result.ok) saleReceipt = { quantity: quote.quantity, total: quote.total, remaining: quote.remaining }
+  if (perform(() => result, false, true)) playBaySound('trade.receive')
 }
 
 
@@ -1312,6 +1470,15 @@ function drawPanel() {
     : undefined
 
   switch (panel) {
+    case 'sale': {
+      const stock = selectedSale && saleStock(farm, selectedSale)
+      if (!selectedSale || !stock) { dialogContent.innerHTML = '<p class="dialog-intro">Товар недоступен.</p>'; break }
+      dialogContent.innerHTML = `<section class="exact-sale"><h2>${escapeHtml(selectedSale.name)}</h2>${saleReceipt
+        ? `<p class="exact-sale-receipt" role="status">Продано: ${saleReceipt.quantity}. Цена: ${quantity(saleReceipt.total, 'монета')}. Осталось: ${saleReceipt.remaining}.</p>${nav(button('Продать ещё', 'sale-again', stock.count > 0), button('Назад', 'back', true, { secondary: true }))}`
+        : `<p>В запасе: ${stock.count}. За 1: ${quantity(stock.price, 'монета')}.</p><label for="sale-quantity">Количество</label><input id="sale-quantity" data-sale-quantity type="number" min="1" max="${stock.count}" step="1" inputmode="numeric" value="${escapeHtml(saleQuantity)}" aria-describedby="sale-quote"><p id="sale-quote" class="exact-sale-summary" aria-live="polite"></p>${nav(button('Продать выбранное', 'confirm-sale', false), button('Отмена', 'back', true, { secondary: true }))}`}</section>`
+      updateSaleQuote()
+      break
+    }
     case 'festival':
       dialogContent.innerHTML=renderFestivalPanel(farm,{celebrated:celebratedFestival,celebrationEffect:celebrationReceipt?.effect,celebrationCoins:celebrationReceipt?.coins,icon})
       break
@@ -1320,6 +1487,26 @@ function drawPanel() {
       const host=document.createElement('section')
       dialogContent.replaceChildren(host)
       if(panel==='bay-shop')openShopScene(host);else openMusicScene(host)
+      break
+    }
+    case 'warehouse-supply': {
+      const request = selectedWarehouseRequest, supply = request && getLocalWarehouseSupply(farm, request)
+      dialogContent.innerHTML = request ? `<section class="music-supply"><h2>${itemIcon(stockLabel(request).image)} ${escapeHtml(stockLabel(request).name)}</h2><p>${escapeHtml(warehouseSupplyCopy(farm, request))}</p><p>Перенос только в припасы. Ничего не готовится и не вносится в проект.</p>${supply ? button(`Забрать в припасы ×${supply.quantity}`, 'warehouse-supply-withdraw', true, {value:warehouseConfirmationValue(supply)}) : ''}</section>${nav(button('Назад', 'back', panelHistory.length > 0, {secondary:true}))}` : '<p>Выберите нужный запас через подсказку ингредиента.</p>'
+      break
+    }
+    case 'music-supplies': {
+      const guide = getMusicMaterialGuidance(farm), stock = gardenMaterialStock(farm)
+      dialogContent.innerHTML = `<p class="dialog-intro">Инструмент использует припасы и склад Лавандовой гавани. С других складов материалы нужно забрать лично.</p>${guide.materials.map(item => {
+        const missing = Math.max(0,item.quantity-stock[item.id]), name = musicMaterialNames[item.id]
+        const warehouses = islandIds.filter(port => (farm.freight.warehouses[port][item.id] ?? 0) > 0)
+          .sort((a,b) => Number(b === guide.warehouse)-Number(a === guide.warehouse))
+        return `<section class="music-supply"><h2>${name} · ${stock[item.id]}/${item.quantity}</h2><p>${guide.sources[item.id]}</p>${warehouses.map(port => {
+          const amount = farm.freight.warehouses[port][item.id]!, count = Math.min(missing,amount)
+          return `<p>${islandNames[port]}: ${amount}</p>${count && port !== 'village' ? nav(port === farm.island
+            ? button(`Забрать в припасы ×${count}`,'freight-withdraw',true,{value:`${port}|${item.id}|${count}`})
+            : button(`К складу: ${islandNames[port]}`,'music-warehouse-visit',canSailTo(farm,port),{value:port})) : ''}`
+        }).join('')}${missing ? `<ul class="ingredients">${requirementLink(`<span>Где собрать: ${name}</span>`,{kind:'stock',item:{...musicMaterialItems[item.id],quantity:missing}},'ingredient',name)}</ul>` : '<p>Материалы готовы для инструмента.</p>'}</section>`
+      }).join('')}${nav(button('Вернуться в музыкальный сад','open-panel',true,{value:'bay-music'}))}`
       break
     }
     case 'bay-freight': {
@@ -1340,6 +1527,10 @@ function drawPanel() {
         dialogContent.innerHTML = `<p class="dialog-status">Выберите угощение перед встречей.</p>${button('К просьбе', 'resume-community')}`; break
       }
       const food = plan?.food ? getIntentOffers(farm, plan.intentId).find(offer => offer.id === plan.food!.id) : undefined
+      if (plan && !food?.available) {
+        dialogContent.innerHTML = `<p class="dialog-status">${getNeighborFoodRecovery(farm, plan.id)?.message ?? 'Угощение недоступно.'}</p>${button('Вернуться к встрече', 'resume-community')}`
+        break
+      }
       let completed = false
       dialogContent.innerHTML = '<div class="arrangement-host"></div>'
       arrangementGame = createArrangement(dialogContent.querySelector<HTMLElement>('.arrangement-host')!, {
@@ -1364,6 +1555,9 @@ function drawPanel() {
     case 'market':
       dialogContent.innerHTML = marketCards() + (farm.village.built ? nav(button('Своя лавка','open-panel',true,{value:'bay-shop'})) : '')
       break
+    case 'transplant':
+      dialogContent.innerHTML = renderBedTransplant(farm, transplantSelection)
+      break
     case 'inventory':
     case 'seeds': {
       const inventory = panel === 'inventory'
@@ -1375,7 +1569,7 @@ function drawPanel() {
           ${goods().filter(({count,group})=>count>0&&group===inventoryGroup).map(inventoryStockRow).join('')}
           ${inventoryGroup==='harvest'?treeIds.filter(tree=>farm.saplings[tree]>0).map((tree) => row('ui-tree-'+tree, treeDefinitions[tree].saplingName, `×${farm.saplings[tree]}`)).join(''):''}
           ${inventoryGroup==='shore'&&!goods().some(({count,group})=>count>0&&group==='shore')?'<li class="dialog-status">Пока пусто</li>':''}
-        </ul>` : seedCards()}`
+        </ul>` : seedCards() + (farm.island === 'home' ? nav(button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true})) : '')}`
       break
     }
     case 'archive':
@@ -1383,18 +1577,24 @@ function drawPanel() {
         + archiveCards(farm, archiveGroup, (name, trait) => itemIcon(archiveIcons[name] ?? name, trait))
       break
     case 'hive': {
-      const honey = getCapeHoney(farm)
-      const harvested = farm.capeHoneyOn === farm.day
+      const preview = getApiaryCopy(farm)
+      const wind = getWindHoneySource(farm)
+      const harvest = preview.harvest
       const upgrade = getCapeUpgrade(farm)
       dialogTitle.textContent = farm.capeLevel >= 2 ? 'Цветочная пасека' : 'Улей мыса'
       dialogTitle.setAttribute('aria-label', dialogTitle.textContent)
-      dialogContent.innerHTML = `<p class="dialog-intro">${harvested ? 'Новый мёд будет завтра.'
-        : honey.blooms ? `Цветущие клумбы: ${honey.blooms}/${capeFlowerSlotCount}.` : 'Цветы распустятся после ночи на Родном острове.'}</p>
-        <ul class="dialog-list">${row('ui-honey', 'Цветочный мёд', `×${honey.honey}`)}
-          ${honey.windHoney ? row('ui-wind-honey', 'Мёд ветров', `×${honey.windHoney}`) : ''}
-          ${getCapeWax(farm) ? row('ui-beeswax', 'Пчелиный воск', `×${getCapeWax(farm)}`) : ''}</ul>
-        ${nav(button(harvested ? 'Собрано' : 'Собрать мёд', 'collect-honey', honey.available),
-          upgrade ? button('Улучшить', 'cape-upgrade', true, { secondary: true }) : button('Медовая кухня', 'visit-honey-kitchen', true, { secondary: true }))}`
+      dialogContent.innerHTML = `<div class="apiary-preview"><p class="dialog-intro">${preview.summary}</p>
+        ${harvest ? `<section aria-label="${preview.heading}"><h2 class="dialog-status">${preview.heading}</h2>
+          <ul class="dialog-list">${row('ui-honey', 'Цветочный мёд', `×${harvest.honey}`)}
+            ${harvest.windHoney ? row('ui-wind-honey', 'Мёд ветров', `×${harvest.windHoney}`) : ''}
+            ${harvest.wax ? row('ui-beeswax', 'Пчелиный воск', `×${harvest.wax}`) : ''}</ul>
+          ${harvest.windHoney ? '<p class="dialog-intro">Мёд ветров заменяет одну обычную порцию.</p>' : ''}</section>` : ''}
+        ${preview.note ? `<p class="dialog-intro">${preview.note}</p>` : ''}
+        <section aria-label="Мёд ветров"><h2 class="dialog-status">Мёд ветров</h2><p class="dialog-intro">${wind.detail}</p></section>
+        ${wind.kind === 'wait' && !preview.waiting ? nav(button('Домой к отдыху', 'visit-rest', true, {secondary:true})) : ''}
+        ${nav(preview.planted && preview.waiting ? button('Домой к отдыху', 'visit-rest')
+          : button(preview.harvested ? 'Собрано' : 'Собрать мёд', 'collect-honey', preview.now.available),
+          upgrade ? button('Улучшить', 'cape-upgrade', true, { secondary: true }) : button('Медовая кухня', 'visit-honey-kitchen', true, { secondary: true }))}</div>`
       break
     }
     case 'cape-upgrade': {
@@ -1414,7 +1614,7 @@ function drawPanel() {
       dialogContent.innerHTML = recipeCards(capeDishIds)
       break
     }
-    case 'recipes': dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile});break
+    case 'recipes': dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile},expandedRepeatId);break
     case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile},currentCommunityRequest()?.intentId);break
     case 'cove': {
       const action=getCoveActions(farm)
@@ -1423,8 +1623,8 @@ function drawPanel() {
     }
     case 'shoal': {
       const available = shoalFindIds.filter(id=>getShoalFindAt(farm,id))
-      dialogContent.innerHTML = `<ul class="dialog-list">${shoalFindIds.map(id=>row(shoalDefinitions[id].icon,shoalDefinitions[id].name,
-        available.includes(id)?'На берегу':farm.shoalCollectedToday.includes(id)?'Сегодня собрано':id==='pearl'?'Бывает при лунном приливе':'Вернётся завтра',
+      dialogContent.innerHTML = `<p class="dialog-intro">Не каждый лунный прилив приносит жемчужину. Здесь указаны дни фермы: новый день начинается после отдыха дома.</p><ul class="dialog-list">${shoalFindIds.map(id=>row(shoalDefinitions[id].icon,shoalDefinitions[id].name,
+        shoalReturnCopy(farm,id),
         available.includes(id)?button('Собрать','shoal-pick',true,{value:id}):'')).join('')}</ul>${!available.length?nav(button('Домой','sail',true,{value:'home'})):''}`
       break
     }
@@ -1434,16 +1634,16 @@ function drawPanel() {
       dialogTitle.textContent = guest.name
       dialogTitle.setAttribute('aria-label', `${guest.name}, гость ярмарки`)
       const ready = ingredientCount(farm, guest.item) >= guest.item.quantity
-      dialogContent.innerHTML = guest.served ? `<p class="dialog-status">Следующий гость придёт завтра.</p>${button('До утра','visit-rest')}`
+      dialogContent.innerHTML = (guest.served ? `<p class="dialog-status">Сегодняшний гость уже угощён.</p>${button('К отдыху дома','visit-rest')}`
         : `<ul class="ingredients">${stockTile(guest.item)}</ul>
           <ul class="dialog-list">${row('coin', 'Монеты', `+${guest.reward}`)}
             ${row(`ui-seed-${guest.seeds.crop}`, `Семена: ${cropDefinitions[guest.seeds.crop].name.toLowerCase()}`, `+${guest.seeds.count}`)}</ul>
-          ${nav(button('Угостить', 'serve-guest', ready))}`
+          ${nav(button('Угостить', 'serve-guest', ready))}`) + renderFairReturn(farm,stockTile)
       break
     }
     case 'coop':
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
-      dialogContent.innerHTML = `<div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>
+      dialogContent.innerHTML = `${renderCoopMorning(farm)}<div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>
         ${button('Улучшения', 'upgrades', true, { secondary: true })}</div>
         <ul class="dialog-list">
           ${flockFeedRow()}
@@ -1452,9 +1652,9 @@ function drawPanel() {
             ? row('egg', 'Инкубатор', farm.hatchDay === null ? `Нужно 1 · в запасе ${farm.eggs}` : quantity(farm.hatchDay - farm.day, 'ночь'),
               farm.hatchDay === null ? button('Положить яйцо', 'incubate-egg', farm.eggs > 0) : '') : ''}
           ${farm.coopSpecialization === 'packing' ? row('ui-egg-crate', `Ящики яиц · ${farm.eggCrates}`, `Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,
-            button('Упаковать', 'pack-egg-crate', farm.eggs >= eggsPerCrate, { context: 'ящик яиц' })) : ''}
-          ${farm.buildingLevels.coop >= 2 ? row('ui-egg-basket', `Корзины яиц · ${farm.eggBaskets}`, `Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,
-            button('Упаковать', 'pack-egg-basket', farm.eggs >= eggsPerBasket, { context: 'корзина яиц' })) : ''}
+            button('Упаковать', 'pack-egg-crate', farm.eggs >= eggsPerCrate, { context: 'ящик яиц' })+button(`Распаковать · +${eggsPerCrate}`, 'unpack-egg-crate', getEggUnpackAction(farm,'crate').available, {secondary:true})) : ''}
+          ${farm.buildingLevels.coop >= 2 || farm.eggBaskets > 0 ? row('ui-egg-basket', `Корзины яиц · ${farm.eggBaskets}`, `Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,
+            button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket, { context: 'корзина яиц' })+button(`Распаковать · +${eggsPerBasket}`, 'unpack-egg-basket', getEggUnpackAction(farm,'basket').available, {secondary:true})) : ''}
         </ul><div class="hen-grid" role="group" aria-label="Курочки">${Array.from({ length: farm.flockSize }, (_, index) => {
             const petted = farm.pettedChickens.includes(index)
             return `<button type="button" class="hen-card" data-action="pet" data-value="${index}" aria-label="Курочка ${index+1}, ${petted?'сегодня поглажена, погладить снова':'погладить'}">${icon('tool-hen')}<span>${index+1}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
@@ -1462,9 +1662,9 @@ function drawPanel() {
         </div>`
       break
     case 'rest':
-      dialogContent.innerHTML = `${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
-        ${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}
-        <ul class="dialog-list">${row('moon', `День ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}`, '', button('До утра', 'sleep'))}</ul>`
+      dialogContent.innerHTML = `${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderRestPreview(farm)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
+        ${renderShopRest(farm)}<ul class="dialog-list">${row('moon', `День ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}`, '', button('До утра', 'sleep', true, {value:farm.day}))}</ul>
+        ${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}`
       break
     case 'journal': {
       const goal = currentTask(), journal = getDiscoveryJournal(farm)
@@ -1477,9 +1677,10 @@ function drawPanel() {
           ${icon(chapter?.icon ?? 'star')}<div><small>Знакомство с бухтой · ${journal.completed}/${journal.chapters.length}</small><h2>${chapter?.title ?? 'Бухта живёт дальше'}</h2></div>
           <p>${chapter?.detail ?? 'Продолжайте свои рецепты, встречи с соседями и новые праздники. Каждая традиция может расти дальше.'}</p>
         </section>
-        ${goal ? `<section class="discovery-now" aria-label="Ближайший шаг"><h3>${goal.label}</h3><p>${goal.detail}</p>
+        ${goal && !farm.discoveryPreferences.idea ? `<section class="discovery-now" aria-label="Ближайший шаг"><h3>${goal.label}</h3><p>${goal.detail}</p>
           ${goal.target > 1 || goal.reward !== undefined ? `<small>${goal.progress}/${goal.target}${goal.reward === undefined ? '' : ` · Награда: ${quantity(goal.reward, 'монета')}`}</small>` : ''}
           ${'action' in goal ? nav(button(goal.action.label, 'follow-task')) : ''}</section>` : ''}
+        ${renderDiscoveryPreferences(farm.discoveryPreferences, getDiscoveryTask(farm, farm.orientation))}
         <p class="discovery-tip">${journal.tip}</p>
         ${journal.next ? `<section class="discovery-next"><strong>Впереди: ${journal.next.title.toLowerCase()}</strong><p>${journal.next.detail}</p></section>` : ''}
         <details class="discovery-roadmap"${journalDetailsOpen ? ' open' : ''}><summary>Все открытия бухты</summary><ol>${journal.chapters.map(chapter => `<li data-current="${chapter.id === journal.current?.id}" data-complete="${chapter.complete}">${icon(chapter.icon)}<strong>${chapter.title}</strong><small>${chapter.complete ? 'Открыто' : chapter.id === journal.current?.id ? 'Сейчас' : 'Впереди'}</small></li>`).join('')}</ol></details>
@@ -1501,15 +1702,18 @@ function drawPanel() {
         `<button class="explore-tile" type="button" data-action="${action}" data-value="${value}">${icon(image)}<strong>${name}</strong></button>`
       if (home || farm.island === 'grove') places.push(tile('Сад','ui-tree-apple','orchard'),tile('Рыбалка','tool-rod','fishing'))
       if (home) {
-        places.push(tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
-        if (isProjectComplete(farm,'fair')) places.push(tile('Просьбы соседей','ui-bea','intents'))
+        places.push(tile('Пересадка культур','tool-seeds','transplant'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
+        if (isProjectComplete(farm,'fair')) places.push(tile('Гость ярмарки','ui-market','guest'),tile('Просьбы соседей','ui-bea','intents'))
       }
       if (village) places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'),tile('Общий ужин','ui-grilled-fish','village-meal'))
       if (farm.island === 'cape') {
         places.push(tile('Пасека','ui-honey','hive'))
         if (farm.capeLevel >= 3) places.push(tile('Медовая кухня','ui-honey-biscuits','honey-kitchen'))
       }
-      if (farm.island === 'grove') places.push(tile('Живая заводь','ui-shell','cove'))
+      if (farm.island === 'grove') {
+        places.push(tile('Живая заводь','ui-shell','cove'))
+        if (hasShoal(farm)) places.push(tile('Лунная отмель','ui-moon-pearl','shoal'))
+      }
       if (village || home && isProjectComplete(farm,'fair')) places.push(tile('Кондитерская','ui-handmade-round','workshop'))
       if (village) places.push(tile('Праздники гавани','festivals/lights','festival'))
       if (farm.boatOwned) places.push(tile('Грузовой паром','bay/ferry','bay-freight'))
@@ -1543,6 +1747,11 @@ function drawPanel() {
       const recipe = dishDefinitions[cookingDish], preparedFish = cookingFish, ingredients = getCookIngredients(farm,cookingDish,preparedFish)
       const signature=cookingMode==='signature',draft:SignatureDraft={base:signatureBase,ingredients:signatureSlots.filter((part):part is SignatureIngredient=>part!==null).map(part=>({...part}))},repeatId=signatureRepeatId,preparedDish=cookingDish
       const savedRecipe=signature&&repeatId?farm.culinary.recipes.find(recipe=>recipe.id===repeatId):undefined, familyName=signature?familyRecipeName(draft,signatureFamily):undefined
+      const capacity=signatureBookCapacity(farm.culinary)
+      if(signature&&!capacity.canCreate){
+        dialogContent.innerHTML=`<p class="signature-capacity" role="status">${capacity.message}</p>${nav(button('Мои рецепты','open-panel',true,{value:'recipes'}))}`
+        break
+      }
       const action=signature?getSignatureAction(farm,draft):getCookAction(farm,preparedDish,preparedFish)
       if (!action.available) {
         dialogContent.innerHTML = `<ul class="ingredients">${(signature?getSignatureAction(farm,draft).items:ingredients).map(stockTile).join('')}</ul>${nav(button(signature?'Мои рецепты':'Кухня',signature?'open-panel':'kitchen',true,signature?{value:'recipes'}:{}))}`
@@ -1556,14 +1765,14 @@ function drawPanel() {
         recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??familyName??'Мой рецепт':preparedDish==='grilledFish'?`${fishDefinitions[preparedFish].name} на гриле`:recipe.name, kind, signature,processing:savedRecipe?.processing,fishSpecies:preparedDish==='grilledFish'?preparedFish:undefined,
           selectedFruit,fruitOptions:selectedFruit.map(part=>({id:part.id,name:signatureFruitNames[part.id as typeof signatureFruitIds[number]],art:part.id==='apple'?'apple-slice':part.id==='pear'?'pear-piece':part.id==='peach'?'peach-slice':part.id})),
           ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity,...(item.kind==='variants'?{trait:item.trait}:{})})) },
-        returnLabel: communityRequest ? 'К просьбе' : undefined,
+        returnLabel: communityRequest ? 'К просьбе' : signature ? 'Мои рецепты' : 'На кухню',
         onComplete(result) {if(made)return true;if(panel!=='cookery')return false;made=perform(()=>{
           const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
           const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
           if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
           return receipt
         },false,true);return made},
-        onCancel(){if(communityRequest)void resumeCommunityRequest();else if(signature&&made){panelHistory.length=0;openPanel('recipes',false)}else leaveScene()},
+        onCancel(){if(communityRequest)void resumeCommunityRequest();else if(signature){panelHistory.length=0;openPanel('recipes',false)}else leaveScene()},
       })
       break
     }
@@ -1571,14 +1780,19 @@ function drawPanel() {
     case 'village': dialogContent.innerHTML = neighboursCard() + harbourPlaces(); break
     case 'village-meal': {
       const meal = getVillageMeal(farm, pastryShape)
-      dialogContent.innerHTML = `${pastryChoices()}<ul class="ingredients">${meal.items.map(stockTile).join('')}</ul>
-        ${meal.served?`<p class="dialog-status">Следующий ужин завтра</p>${button('Домой','sail',true,{value:'home'})}`:nav(button('Ужин вместе','share-meal',meal.available))}`
+      const signatures = getReadySignatureSuppers(farm)
+      dialogContent.innerHTML = meal.served ? `<p class="dialog-status">Сегодня общий ужин уже состоялся. Следующий ужин завтра.</p>${button('Домой','sail',true,{value:'home'})}`
+        : `<p class="shared-supper-intro">Выберите одно угощение: ручную выпечку или готовое авторское блюдо. Ужин расходует 1 порцию выбранного угощения и 1 рыбу.</p>
+          <ul class="ingredients">${meal.items.filter(item=>item.kind==='fish').map(stockTile).join('')}</ul>
+          ${renderSignatureSuppers(farm,recipe=>signatureResultPicture(recipe,{icon}))}
+          <details class="shared-supper-pastry" ${!signatures.length || meal.available ? 'open' : ''}><summary>Ручная выпечка</summary>${pastryChoices()}<ul class="ingredients">${meal.items.filter(item=>item.kind==='handmade').map(stockTile).join('')}</ul>${nav(button('Подать выпечку · 1 порция','share-meal',meal.available))}</details>`
       break
     }
     case 'fishing': {
       const action = getFishAction(farm)
       if (action.available) mountFishing()
-      else dialogContent.innerHTML = `<p class="dialog-status">${action.label}</p>${groveDockActions()}`
+      else dialogContent.innerHTML = `<p class="dialog-status">${action.label}</p>
+        ${renderFishingPracticeEntry(farm)}${groveDockActions()}`
       break
     }
     case 'boat': {
@@ -1637,7 +1851,7 @@ function drawPanel() {
       if(slot){
         const definition=treeDefinitions[slot.tree],growing=slot.age<definition.days
         dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong>${growing ? 'До зрелости: ' + quantity(definition.days-slot.age,'ночь') : 'Новые плоды завтра'}</strong>`}
-          ${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):''}</div>
+          ${treeVariantCopy(slot)?`<p class="dialog-intro">${treeVariantCopy(slot)}</p>`:''}${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):''}</div>
           <p class="dialog-intro">Освободите место бесплатно: дерево, его возраст и созревшие плоды сохранятся в питомнике. Там рост и новые плоды на паузе. Вернуть дерево можно на любое свободное место.</p>
           ${nav(button('Перенести в питомник','store-tree',true,{value:treeSlot,secondary:true}))}`
       }else{
@@ -1661,7 +1875,7 @@ function drawPanel() {
           return row(`upgrade-${building}-card`, branch ? branchDefinitions[branch].name : definition.name,
             level === 1 ? definition.benefit : `Ур. ${level}`,
             level >= 2 ? button(label, action, true, { secondary: true }) +
-              (level === 2 ? button('Выбрать направление', 'specialize', true, { value: building, context: definition.name }) : '')
+              (level === 2 || building === 'farmhouse' && level === 3 && !farm.farmhouseSecondarySpecialization ? button(level===3?'Освоить второе направление':'Выбрать направление', 'specialize', true, { value: building, context: definition.name }) : '')
               : button('Улучшить', 'upgrade-building', farm.coins >= definition.upgradePrice, {
                 value: building, context: `${definition.name}, ${quantity(definition.upgradePrice, 'монета')}`,
                 cost: { icon: 'coin', amount: definition.upgradePrice },
@@ -1693,8 +1907,9 @@ function drawPanel() {
 // A map shortcut continues at the chosen place after the crossing. Only global
 // pages can be revisited on the new island; a local building belongs to its shore.
 async function visitPanelAt(destination: typeof farm.island, next: Panel) {
-  if (island.isCrossing() || !canSailTo(farm,destination)) return
+  if (island.isCrossing()) return
   if (farm.island === destination) { openPanel(next); return }
+  if (!canSailTo(farm,destination)) return
   const returnPath = dialog.open && panel ? [...panelHistory,rememberPanel()].filter(visit =>
     ['guide','boat','archive','bay-freight','inventory','journal'].includes(visit.panel)) : []
   if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
@@ -1707,6 +1922,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
 
 function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold') {
   if (island.isCrossing()) return
+  if (next === 'shoal' && (farm.island !== 'grove' || !hasShoal(farm))) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival') && farm.island!=='village') {
     void visitPanelAt('village',next)
@@ -1717,7 +1933,9 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if ((next === 'cape-upgrade' || next === 'honey-kitchen') && farm.island !== 'cape') return
   if (next === 'honey-kitchen' && farm.capeLevel < 3) return
   if(next==='cove'&&farm.island!=='grove')return
+  if (next === 'transplant' && farm.island !== 'home') return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
+  if (next !== panel) transplantSelection.reset()
   if (next !== 'seeds') seedPickerBed = undefined
   if (remember && next==='bay-freight' && next!==panel) {
     freightPlanOpen=false
@@ -1756,6 +1974,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
 }
 
 function closeDialog() {
+  transplantSelection.reset()
   celebratedFestival=undefined
   island.setViewMode('world')
   app.dataset.scene=''
@@ -1836,12 +2055,13 @@ function updateFieldContext(index: number | undefined) {
   const label = bed.kind === 'crop' ? cropDefinitions[bed.crop].name : bed.kind === 'tilled' ? 'Вспаханная земля' : 'Целина'
   const refill = !action.available && action.kind === 'water'
   const chooseSeeds = !action.available && action.kind === 'plant'
-  const title = action.kind === 'harvest' ? `${label} · Можно собирать` : refill ? 'Лейка пуста' : !action.available ? action.label : label
+  const harvest = getBedHarvestPreview(farm, index)
+  const preview = harvest && harvestPreviewCopy(harvest)
+  const title = refill ? 'Лейка пуста' : !action.available ? action.label : label
   const cta = refill ? 'К колодцу' : chooseSeeds ? 'Выбрать семена'
-    : action.kind === 'harvest' && bed.kind === 'crop' ? `Собрать +${cropDefinitions[bed.crop].yield}` : action.label
+    : preview ? preview.action : action.label
   const source = iconUrl(bed.kind === 'crop' ? bed.crop : bed.kind === 'tilled' ? 'tool-seeds' : 'tool-hoe')
-  const copy = contextCard.querySelector<HTMLElement>('.context-copy')!
-  if (copy.textContent !== title) copy.textContent = title
+  updateFieldContextCopy(contextCard, title, preview?.detail, preview?.bonus)
   if (contextButton.textContent !== cta) contextButton.textContent = cta
   const command = refill ? 'refill' : chooseSeeds ? 'context-seeds' : 'work-context'
   if (contextButton.dataset.action !== command) contextButton.dataset.action = command
@@ -1900,7 +2120,8 @@ const island = createIsland(canvas, {
     }
     const name = cropDefinitions[bed.crop].name
     const stage = getBedStage(bed)
-    if (stage === 'ripe') return `${name} · Урожай созрел`
+    const harvest = getBedHarvestPreview(farm, target.index)
+    if (harvest) return harvestPreviewCopy(harvest).hint
     const growth = stage === 'seedling' && !bed.watered ? 'Новый посев' : 'Растёт'
     const moisture = bed.watered ? 'Сегодня полито' : action.available ? 'Нужна вода' : 'Нужна вода (лейка пуста)'
     return `${name} · ${growth} · ${moisture}`
@@ -2133,6 +2354,10 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
     if (places[target]) place = {kind:places[target]} as IslandTarget
   }
   if (place) {
+    if (target === 'workshop') {
+      const shape = workshopShapes.find(shape => shape === value)
+      if (shape) pastryShape = shape
+    }
     closeDialog()
     if (place.kind !== 'bed' && fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
     island.focusTarget(place)
@@ -2146,11 +2371,18 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
   }
   else if (target === 'show-upgrade') { openPanel('upgrades');highlightControl(dialogContent.querySelector<HTMLElement>(`[data-value="${value}"]`));return }
   else if (target === 'upgrades') openPanel('upgrades')
+  else if (target === 'inspect-tree') {
+    const index=Number(value)
+    if((farm.island!=='home'&&farm.island!=='grove')||!Number.isInteger(index)||!farm.trees[farm.island][index]?.fruitReady)return
+    treeSlot=index
+    openPanel('tree')
+  }
   else if (target === 'orchard') openPanel('orchard')
   else if (target === 'project-dock') openPanel('dock-project')
   else if (target === 'visit-harbor') openPanel('harbor')
   else if (target === 'fair-project') {marketTab='projects';openPanel('market')}
   else if (target === 'village-project') openPanel('village-project')
+  else if (target === 'warehouse-supply') { selectedWarehouseRequest=warehouseRequest(value);openPanel('warehouse-supply') }
   else if (target === 'open-panel' && value && value in panelTitles) openPanel(value as Panel)
   else {openPanel('boat');return}
   const selector = hint.selector ?? (target === 'visit-market' ? marketTab === 'sell' ? '[data-action="sell-item"]'
@@ -2164,6 +2396,7 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
 
 // Scene handlers own material sounds. Fill in a quiet control cue only when the
 // completed gesture has produced neither a sound nor a transition of its own.
+installActionClickGuard(app)
 app.addEventListener('click',event=>{
   if (!(event.target instanceof Element) || island.isCrossing()) return
   const control=event.target.closest<HTMLElement>('button,summary')
@@ -2217,15 +2450,46 @@ app.addEventListener('click', async (event) => {
   let value = control.dataset.value
   let action = control.dataset.action
   if (action === 'follow-task') {
-    const task = getDiscoveryTask(farm, farm.orientation)
-    if (!task) { openPanel('journal'); return }
+    const task = currentTask()
+    if (!task || !('action' in task)) { openPanel('journal'); return }
     action = task.action.target; value = task.action.value
-    if (action === 'visit-market' && (value === 'buy' || value === 'sell' || value === 'orders')) {marketTab=value;if(value==='buy')marketCategory=task.id.includes('feed')?'care':'seeds'}
+    if (action === 'visit-market' && (value === 'buy' || value === 'sell' || value === 'orders')) {marketTab=value;if(value==='buy')marketCategory=('id' in task && task.id.includes('feed'))?'care':'seeds'}
   }
   switch (action) {
+    case 'discovery-pace':
+      if (value === 'quiet' || value === 'guided') { setDiscoveryPace(farm.discoveryPreferences, value === 'quiet'); saveFarm(); refresh() }
+      break
+    case 'discovery-pin': {
+      const suggested = getDiscoveryTask(farm, farm.orientation)
+      if (suggested && value && chooseDiscoveryIdea(farm.discoveryPreferences, suggested, value)) { saveFarm(); refresh() }
+      else { notify('Подсказка обновилась. Выберите актуальную задумку.', false); if (panel === 'journal') drawPanel() }
+      break
+    }
+    case 'discovery-resume':
+      if (resumeDiscoveryIdea(farm.discoveryPreferences)) { saveFarm(); refresh() }
+      break
+    case 'discovery-forget':
+      forgetDiscoveryIdea(farm.discoveryPreferences); saveFarm(); refresh()
+      break
+    case 'transplant-source':
+      if (panel === 'transplant' && transplantSelection.choose(farm, Number(value))) {
+        drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true})
+      }
+      break
+    case 'transplant-destination':
+      if (panel === 'transplant') perform(() => transplantSelection.move(farm, Number(value)), false, true)
+      break
+    case 'transplant-reset':
+      if (panel === 'transplant') { transplantSelection.reset(); drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true}) }
+      break
     case 'festival-begin': {
       const tradition=festivalTraditions.find(id=>id===value)
       if(tradition){celebratedFestival=undefined; if(perform(()=>beginFestival(farm,tradition),false,true)) playBaySound('menu.accept')}
+      break
+    }
+    case 'festival-cancel': {
+      const tradition=festivalTraditions.find(id=>id===value)
+      if(tradition){celebratedFestival=undefined;perform(()=>cancelFestival(farm,tradition),false,true)}
       break
     }
     case 'festival-contribute': {
@@ -2256,23 +2520,31 @@ app.addEventListener('click', async (event) => {
     }
     case 'festival-activity': {
       if(value==='bake'){ openPanel('kitchen'); break }
-      if(value==='fish'){ await visitPanelAt('grove','fishing');break }
-      const shore=value==='shore'
-      if(!shore && value!=='harvest')break
-      const destination=shore?'grove':'home'
-      if(farm.island!==destination && !canSailTo(farm,destination))break
-      closeDialog()
-      if(farm.island!==destination)await island.crossIsland(()=>perform(()=>sail(farm,destination),false,true))
-      if(farm.island!==destination)break
-      if(shore) {
-        const index=[0,1,2].find(spot=>getShellAt(farm,spot))
-        if(index!==undefined)island.focusTarget({kind:'shell',index})
-        else { island.focusTarget({kind:'pier'});notify('На берегу всё собрано. На причале можно поймать рыбу.') }
-      } else {
-        const bed=farm.beds.findIndex(b=>getBedStage(b)==='ripe')
-        const tree=farm.trees.home.findIndex(t=>t && t.fruitReady>0)
-        island.focusTarget(bed>=0 ? {kind:'bed',index:bed} : tree>=0 ? {kind:'tree',index:tree} : {kind:'bed',index:0})
+      if(value==='fish'){
+        if (panel !== 'festival' || !dialog.open) break
+        const route = getFestivalFishingRoute(farm)
+        if (route) await visitPanelAt(route.island, route.panel)
+        break
       }
+      if(value==='harvest'){
+        if(panel!=='festival'||!dialog.open)break
+        const program=farm.festivals.active,route=getFestivalHarvestRoute(farm)
+        if(!route)break
+        closeDialog()
+        if(farm.island!==route.island)await island.crossIsland(()=>perform(()=>sail(farm,route.island),false,true))
+        const current=getFestivalHarvestRoute(farm)
+        if(farm.festivals.active===program && current?.island===farm.island)island.focusTarget(current.target)
+        break
+      }
+      if(value!=='shore'||panel!=='festival'||!dialog.open)break
+      const program=farm.festivals.active,route=getFestivalShoreRoute(farm)
+      if(!route)break
+      closeDialog()
+      if(farm.island!==route.island)await island.crossIsland(()=>perform(()=>sail(farm,route.island),false,true))
+      const current=getFestivalShoreRoute(farm)
+      if(farm.festivals.active!==program||current?.island!==farm.island)break
+      if(current.panel==='rest')openPanel('rest')
+      else island.focusTarget(current.target)
       break
     }
     case 'festival-village': openPanel('village-project');break
@@ -2298,6 +2570,17 @@ app.addEventListener('click', async (event) => {
       if(offer){selectedExpeditionOffer=offer.id;drawPanel()}
       break
     }
+    case 'expedition-pair': {
+      if (farm.freight.expeditions.active || panel !== 'bay-freight') break
+      const offers = expeditionTrades(farm.freight.expeditions, selectedExpeditionPort)
+      const current = expeditionOfferIds(selectedExpeditionOffer)
+      const first = offers.find(offer => offer.id === current[0])?.id ?? offers[0].id
+      if (value && offers.some(offer => offer.id === value)) {
+        const next = current[1] === value ? first : combinedExpeditionId(first, value)
+        if (next) { selectedExpeditionOffer = next; drawPanel() }
+      }
+      break
+    }
     case 'expedition-send': {
       if(perform(()=>sendFerryExpedition(farm,value??'')))bayAudio.playEvent('harbour.castoff')
       break
@@ -2306,6 +2589,11 @@ app.addEventListener('click', async (event) => {
       const voyage=farm.freight.expeditions.active
       if(voyage){selectedExpeditionPort=voyage.port;selectedExpeditionOffer=expeditionTrades(farm.freight.expeditions,voyage.port)[0].id}
       if(perform(()=>receiveFerryExpedition(farm)))bayAudio.playEvent('harbour.crate')
+      break
+    }
+    case 'music-warehouse-visit': {
+      const port = islandIds.find(id => id === value)
+      if (port && panel === 'music-supplies') await visitPanelAt(port,'music-supplies')
       break
     }
     case 'freight-unlock': {
@@ -2339,6 +2627,14 @@ app.addEventListener('click', async (event) => {
       if (resident && plan) { communityResident = resident; requestedFood = undefined; communityRequest = { kind: 'neighbor', resident, planId: plan.id }; openPanel('neighbor') }
       break
     }
+    case 'neighbor-help-house': {
+      const resident = residentIds.find(resident => resident === value)
+      if (resident && neighborHelpStatus(farm, resident)) {
+        villageSlot = farm.village.residents.indexOf(resident)
+        await visitPanelAt('village', 'village')
+      }
+      break
+    }
     case 'join-neighbor': {
       const plan = getNeighborPlans(farm).find(plan => plan.id === value)
       if (plan) { communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }; perform(() => joinNeighborPlan(farm, plan.id), false, true) }
@@ -2352,9 +2648,32 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
+    case 'neighbor-shelf-food': {
+      if(!dialog.open||panel!=='neighbor')break
+      const recovery=value?getNeighborFoodRecovery(farm,value):undefined
+      if(!recovery||recovery.plan.resident!==communityResident)break
+      if(!recovery.shelved||!recovery.offer||recovery.offer.id!==control.dataset.food){drawPanel();break}
+      communityRequest={kind:'neighbor',resident:recovery.plan.resident,planId:recovery.plan.id}
+      requestedFood=undefined
+      await visitPanelAt('village','bay-shop')
+      break
+    }
+    case 'neighbor-repeat-food': {
+      const recovery = value ? getNeighborFoodRecovery(farm, value) : undefined
+      if (panel === 'neighbor' && recovery?.plan.resident === communityResident) {
+        communityRequest = { kind: 'neighbor', resident: recovery.plan.resident, planId: recovery.plan.id }
+        perform(() => repeatNeighborFood(farm, recovery.plan.id), false, true)
+      }
+      break
+    }
     case 'arrange-neighbor': {
       const plan = getNeighborPlans(farm).find(plan => plan.id === value)
-      if (plan?.phase === 'arranging') { communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }; arrangementRequest = { kind: 'neighbor', id: plan.id }; openPanel('arrangement') }
+      if (plan?.phase === 'arranging') {
+        communityResident = plan.resident
+        communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }
+        if (getNeighborFoodRecovery(farm, plan.id)?.state !== 'ready') { openPanel('neighbor'); break }
+        arrangementRequest = { kind: 'neighbor', id: plan.id }; openPanel('arrangement')
+      }
       break
     }
     case 'ack-neighbor': {
@@ -2380,7 +2699,11 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'request-start-cook': startRequestedFood(); break
+    case 'request-repeat-exact': repeatRequestedFood(); break
     case 'request-food-source': await guideRequestedFood(); break
+    case 'rest-intent-request':
+      if (canReturnToDailyIntent(farm,communityRequest,value,{panel,open:dialog.open})) await resumeCommunityRequest('request')
+      break
     case 'resume-community': await resumeCommunityRequest(control === communityResume ? 'recipe' : 'request'); break
     case 'intent-own-recipe': signatureBase = 'tart'; signatureSlots = [null, null]; signatureSlot = 0; signatureRepeatId = undefined; signatureFamily = undefined; openPanel('signature'); break
     case 'recipe-family': {
@@ -2405,23 +2728,49 @@ app.addEventListener('click', async (event) => {
       journeyDetailsOpen=false
       if(islandIds.some(id=>id===value)){boatIsland=value as typeof boatIsland;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="boat-island"][data-value="${value}"]`)?.focus({preventScroll:true})}break
     case 'market-sell-group':if(value==='all'||value==='harvest'||value==='kitchen'||value==='shore'){marketSellGroup=value;drawPanel();dialogContent.scrollTop=0}break
+    case 'resume-recipe-draft': {
+      if (!dialog.open || panel !== 'recipes') break
+      const draft = resumeRecipeDraft(farm, value)
+      if (!draft) break
+      signatureBase = draft.base; signatureSlots = draft.slots; signatureSlot = draft.activeSlot
+      signatureRepeatId = undefined; signatureFamily = undefined; cookingMode = 'signature'
+      openPanel('signature')
+      break
+    }
+    case 'reset-recipe-draft':
+      if (dialog.open && panel === 'recipes' && resetRecipeDraft(farm, value)) {
+        saveFarm(); drawPanel()
+      }
+      break
     case 'new-signature':
       signatureBase=value==='tart'?'tart':'preserves';signatureSlots=[null,null];signatureSlot=0;signatureRepeatId=undefined;signatureFamily=undefined;openPanel('signature');break
     case 'signature-base':
-      if(value==='preserves'||value==='tart'){signatureBase=value;signatureRepeatId=undefined;drawPanel()}break
-    case 'signature-slot':signatureSlot=value==='1'?1:0;drawPanel();break
+      if(value==='preserves'||value==='tart'){signatureBase=value;signatureRepeatId=undefined;rememberCurrentRecipeDraft();drawPanel()}break
+    case 'signature-slot':signatureSlot=value==='1'?1:0;rememberCurrentRecipeDraft();drawPanel();break
     case 'signature-fruit':{
       const id=signatureFruitIds.find(id=>id===value)
       if(!id)break
       const trait=control.dataset.trait as Trait|undefined,part:SignatureIngredient={id,quantity:1,...(trait?{trait}:{})}
       if(signaturePortionStock(farm,part)===0){const item:StockItem=trait?{kind:'variants',item:id,trait,quantity:1}:id==='apple'||id==='pear'||id==='peach'?{kind:'fruit',item:id,quantity:1}:{kind:'produce',item:id,quantity:1};await showRequirement({kind:'stock',item},control);break}
-      signatureSlots[signatureSlot]=part;signatureSlot=signatureSlot===0?1:0;signatureRepeatId=undefined;drawPanel();break
+      signatureSlots[signatureSlot]=part;signatureSlot=signatureSlot===0?1:0;signatureRepeatId=undefined;rememberCurrentRecipeDraft();drawPanel();break
     }
     case 'start-signature':cookingMode='signature';openPanel('cookery');break
     case 'signature-home':
       if(canSailTo(farm,'home')){closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true));openPanel('recipes',false);openPanel('signature')}
       break
-    case 'make-signature':{
+    case 'recipe-repeat-home': {
+      const recipe=farm.culinary.recipes.find(recipe=>recipe.id===value)
+      if(!recipe)break
+      expandedRepeatId=recipe.id
+      await visitPanelAt('home','recipes')
+      if(panel==='recipes'&&farm.island==='home')highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(recipe.id)}"]`))
+      break
+    }
+    case 'recipe-warehouse-withdraw':
+      if(dialog.open&&panel==='recipes'&&perform(()=>withdrawStoredSignature(farm,value),false,true))bayAudio.playEvent('harbour.crate')
+      break
+    case 'make-signature':if(value)perform(()=>repeatSignature(farm,value!,undefined,1),false,true);break
+    case 'manual-signature':{
       signatureFamily=undefined
       const recipe=farm.culinary.recipes.find(recipe=>recipe.id===value)
       if(recipe){signatureBase=recipe.base;signatureSlots=recipe.ingredients.flatMap(part=>Array.from({length:part.quantity},()=>({...part,quantity:1})));signatureRepeatId=recipe.id;cookingMode='signature';if(getSignatureAction(farm,recipe).available)openPanel('cookery');else openPanel('signature')}
@@ -2430,7 +2779,7 @@ app.addEventListener('click', async (event) => {
     case 'batch-signature':if(value)perform(()=>repeatSignature(farm,value!,undefined,3),false,true);break
     case 'favorite-signature':if(value)perform(()=>favoriteSignature(farm,value!),false,true);break
     case 'forget-signature':if(value)perform(()=>forgetSignature(farm,value!),false,true);break
-    case 'sell-signature':if(value && perform(()=>sellSignature(farm,value!),false,true))playBaySound('trade.receive');break
+    case 'sell-signature':if(value)beginExactSale({kind:'signature',key:value});break
     case 'use-signature':if(value)perform(()=>useSignature(farm,value!),false);break
     case 'taste-signature':{const id=residentIds.find(id=>id===control.dataset.resident);if(value&&id)perform(()=>tasteSignature(farm,value!,id),false);break}
     case 'supper-signature':if(value)perform(()=>deliverSignature(farm,value!),false);break
@@ -2439,6 +2788,7 @@ app.addEventListener('click', async (event) => {
       if((key==='flow'&&['open','sheltered'].includes(choice))||(key==='cover'&&['kelp','meadow'].includes(choice))||(key==='refuge'&&['sand','stones'].includes(choice)))perform(()=>changeCove(farm,{[key]:choice}),false,true)
       break
     }
+    case 'cove-cancel': if (panel === 'cove' && value) perform(() => cancelCovePlan(farm, value), false, true); break
     case 'cove-fish':openPanel('fishing');break
     case 'shoal-pick': {
       const id=shoalFindIds.find(id=>id===value)
@@ -2463,6 +2813,16 @@ app.addEventListener('click', async (event) => {
       if(farm.island!=='home'){closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))}
       openPanel('market');break
     case 'cove-shells':closeDialog();island.focusTarget({kind:'shell',index:[0,1,2].find(index=>!farm.shellsCollectedToday.includes(index))??0});break
+    case 'warehouse-supply': {
+      selectedWarehouseRequest=warehouseRequest(value)
+      if(selectedWarehouseRequest)openPanel('warehouse-supply')
+      break
+    }
+    case 'warehouse-supply-withdraw': {
+      if(panel!=='warehouse-supply'||!dialog.open)break
+      if(perform(()=>withdrawWarehouseSupply(farm,selectedWarehouseRequest,warehouseConfirmation(value))))bayAudio.playEvent('harbour.crate')
+      break
+    }
     case 'show-requirement': {
       const requirement = value === undefined ? undefined : requirementLinks.get(value)
       if (requirement) await showRequirement(requirement,control)
@@ -2502,6 +2862,10 @@ app.addEventListener('click', async (event) => {
     case 'project-boat': openPanel('boat',true,'grove');break
     case 'project-dock': openPanel('dock-project');break
     case 'visit-harbor': openPanel('harbor');break
+    case 'harbor-next-rest':
+      if(canVisitHarborRest(farm,value,{panel,open:dialog.open,tab:marketTab}))await visitPanelAt('home','rest')
+      break
+    case 'withdraw-harbor':perform(()=>withdrawHarborSupplies(farm),false,true);break
     case 'deliver-harbor': if(perform(()=>deliverHarborOrder(farm),false,true))playBaySound(getHarborOrder(farm)?.status==='completed'?'trade.receive':'harbour.crate'); break
     case 'deliver-project': {
       const id = projectIds.find((project) => project === value)
@@ -2530,7 +2894,9 @@ app.addEventListener('click', async (event) => {
       if (value && cropIds.includes(value as CropId)) chooseSeed(value as CropId)
       break
     case 'sell': if(perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('trade.receive'); break
-    case 'sell-item': if (value && perform(() => sellMarketItem(farm,value),false,farm.progress.sell>0))playBaySound('trade.receive'); break
+    case 'sell-item': if(value)beginExactSale({kind:'market',key:value}); break
+    case 'confirm-sale': confirmExactSale(); break
+    case 'sale-again': if(selectedSale)beginExactSale(selectedSale); break
     case 'buy-feed': if(perform(() => buyFeed(farm)))playBaySound('trade.pay'); break
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
     case 'buy-seeds':
@@ -2538,11 +2904,20 @@ app.addEventListener('click', async (event) => {
       break
     case 'feed': if(perform(() => feedChickens(farm), false, farm.progress.feed > 0))playBaySound('flock.feed', 1, 0); break
     case 'collect': if(perform(() => collectEggs(farm)))playBaySound('flock.eggs', 1, 0); break
+    case 'unpack-egg-basket':perform(()=>unpackEggBasket(farm),false,true);break
+    case 'unpack-egg-crate':perform(()=>unpackEggCrate(farm),false,true);break
     case 'pack-egg-basket': arrangementRequest = { kind: 'packing', mode: 'eggs' }; openPanel('arrangement'); break
     case 'pack-egg-crate': arrangementRequest = { kind: 'packing', mode: 'crate' }; openPanel('arrangement'); break
     case 'incubate-egg': perform(() => incubateEgg(farm)); break
-    case 'visit-rest':
+    case 'rest-close-shop':
+      if (panel === 'rest' && dialog.open) perform(() => closeShopBeforeRest(farm, value), false, true)
+      break
+    case 'market-next-rest':
+      if(canVisitMarketRest(farm,value,{panel,open:dialog.open,tab:marketTab}))await visitPanelAt('home','rest')
+      break
+    case 'visit-rest': await visitPanelAt('home','rest'); break
     case 'sleep': {
+      if (panel !== 'rest' || !dialog.open || !canConfirmRest(farm,value)) break
       const flockSize = farm.flockSize
       const oldShip=farm.freight.ship
       const expeditionWasSailing=farm.freight.expeditions.active?.phase==='sailing'
@@ -2573,6 +2948,7 @@ app.addEventListener('click', async (event) => {
     }
     case 'visit-coop': activateTarget({ kind: 'coop' }); break
     case 'visit-market': activateTarget({ kind: 'market' }); break
+    case 'fishing-practice': if (panel === 'fishing' && canPracticeFishing(farm)) mountFishing(true); break
     case 'visit-pier': activateTarget({ kind: 'pier' }); break
     case 'visit-hive': activateTarget({ kind: 'hive' }); break
     case 'visit-honey-kitchen': activateTarget({ kind: 'honey-kitchen' }); break
@@ -2600,11 +2976,14 @@ app.addEventListener('click', async (event) => {
     case 'pet': activateTarget({ kind: 'hen', index: Number(value) }); break
     case 'gather-salt': activateTarget({ kind: 'salt' }); break
     case 'guide': openPanel('guide'); break
-    case 'orchard': openPanel('orchard'); break
+    case 'orchard':
+      openPanel('orchard')
+      if (value && farm.treeNursery.some(entry => entry.id === Number(value))) highlightControl(dialogContent.querySelector<HTMLElement>(`[data-action="return-nursery-tree"][data-value="${Number(value)}"]`))
+      break
     case 'upgrades': openPanel('upgrades'); break
     case 'specialize': {
       const building = buildingIds.find((id) => id === value)
-      if (building && farm.island === 'home' && farm.buildingLevels[building] === 2) {
+      if (building && farm.island === 'home' && (farm.buildingLevels[building] === 2 || building === 'farmhouse' && farm.buildingLevels.farmhouse === 3 && !farm.farmhouseSecondarySpecialization)) {
         specializationBuilding = building
         previewSpecialization = undefined
         openPanel('specialize')
@@ -2628,7 +3007,11 @@ app.addEventListener('click', async (event) => {
       openPanel('kitchen')
       break
     case 'close': closeDialog(); break
-    case 'workshop': workshopRecipe = 'pastry'; openPanel('workshop'); break
+    case 'workshop': {
+      const shape = workshopShapes.find(shape => shape === value)
+      if (shape) pastryShape = shape
+      workshopRecipe = 'pastry'; openPanel('workshop'); break
+    }
     case 'open-village': openPanel('village'); break
     case 'village-project': openPanel('village-project'); break
     case 'fair-project': marketTab = 'projects'; openPanel('market'); break
@@ -2650,7 +3033,15 @@ app.addEventListener('click', async (event) => {
     }
     case 'pastry-shape': {
       const shape = workshopShapes.find(shape => shape === value)
-      if (shape) { pastryShape = shape; drawPanel() }
+      const keepPastryOpen = dialogContent.querySelector<HTMLDetailsElement>('.shared-supper-pastry')?.open
+      if (shape) {
+        pastryShape = shape; drawPanel()
+        const choices = dialogContent.querySelector<HTMLDetailsElement>('.shared-supper-pastry')
+        if (keepPastryOpen && choices) {
+          choices.open = true
+          choices.querySelector<HTMLButtonElement>(`[data-action="pastry-shape"][data-value="${shape}"]`)?.focus({preventScroll:true})
+        }
+      }
       break
     }
     case 'share-meal': perform(() => serveVillageMeal(farm, pastryShape), true, true); break
@@ -2771,6 +3162,11 @@ dialog.addEventListener('keydown', event => {
   choices[next].click()
 })
 dialogContent.addEventListener('toggle',event=>{
+  const details=event.target
+  if(details instanceof HTMLDetailsElement&&details.isConnected&&panel==='recipes'&&details.dataset.repeatGuide){
+    if(details.open)expandedRepeatId=details.dataset.repeatGuide
+    else if(expandedRepeatId===details.dataset.repeatGuide)expandedRepeatId=undefined
+  }
   const detail=event.target
   if(detail instanceof HTMLDetailsElement && detail.classList.contains('journey-details')) journeyDetailsOpen=detail.open
   if(detail instanceof HTMLDetailsElement && detail.classList.contains('discovery-roadmap')) journalDetailsOpen=detail.open
@@ -2780,6 +3176,7 @@ dialog.addEventListener('click', (event) => {
 })
 dialog.addEventListener('close', () => {
   if (!dialog.open) {
+    transplantSelection.reset()
     playBaySound('page.fold',.72,0)
     island.setViewMode('world')
     app.dataset.scene=''
@@ -2799,6 +3196,17 @@ dialog.addEventListener('close', () => {
 app.addEventListener('change',event=>{
   const input=event.target
   if(input instanceof HTMLInputElement&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
+})
+app.addEventListener('input', event => {
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
+    saleQuantity = event.target.value; updateSaleQuote()
+  }
+})
+app.addEventListener('keydown', event => {
+  if (!event.defaultPrevented && event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
+    event.preventDefault()
+    if (!event.repeat) dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')?.click()
+  }
 })
 app.addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target instanceof HTMLInputElement&&event.target.dataset.recipeName){event.preventDefault();event.target.blur()}})
 

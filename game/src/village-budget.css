@@ -1,0 +1,7 @@
+.village-budget{margin:12px 0}
+.village-budget ul{list-style:none;margin:0;padding:0}
+.village-budget .ingredient{display:grid;grid-template-columns:36px minmax(0,1fr);gap:8px;align-items:center;justify-items:start;text-align:left;width:100%;padding:10px;font-size:14px}
+.village-budget .ingredient span{display:grid;gap:4px}
+.village-budget .ingredient small{font-size:12px;line-height:1.4}
+.village-budget .ingredient strong{grid-column:2;font-size:13px}
+.village-budget p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.45}

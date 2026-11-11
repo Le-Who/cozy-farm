@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Проверка ручной кухни</title>
+<style>
+body{font:16px system-ui;background:#faf7f0;margin:20px}button{padding:12px;margin:4px}iframe{display:block;width:844px;height:390px;border:0}pre{white-space:pre-wrap;max-width:844px;font-size:12px}#diag{position:fixed;right:8px;top:12px;width:270px;height:calc(100vh - 24px);overflow:auto;background:#fff8e9;border:1px solid #ac9876;padding:8px;font:11px monospace;box-sizing:border-box}#diag[hidden]{display:none}h2,p{max-width:844px}
+</style>
+<h2>Ручная кухня: отдельный программный стенд</h2>
+<p>Только localhost:4181. Эта страница не создаёт и не перезаписывает ферму.</p>
+<button id="open">Открыть существующую тестовую ферму</button>
+<button id="check">Проверить сохранение</button>
+<button id="diagnose">Показать ввод</button>
+<pre id="state">Сохранение не изменено.</pre>
+<div id="host"></div>
+<aside id="diag" hidden aria-label="Наблюдение ввода"><strong>Только чтение событий и DOM</strong><pre id="probe"></pre><pre id="events"></pre></aside>
+<script type="module">
+import { restoreFarm } from '/src/farm.ts';
+const validOrigin=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4181';
+let watched=null, timer=null, cleanup=()=>{}, inspectionBaseline=null;
+const stop=()=>{cleanup();cleanup=()=>{};clearInterval(timer);timer=null;watched=null};
+document.querySelector('#open').onclick=()=>{
+ if(!validOrigin)return;
+ stop();document.querySelector('#diag').hidden=true;
+ document.querySelector('#host').innerHTML='<iframe src="/" title="Настоящая игра"></iframe>';
+};
+document.querySelector('#check').onclick=()=>{
+ if(!validOrigin)return;
+ const raw=localStorage.getItem('cozy-farm-island-v3');
+ const farm=restoreFarm(JSON.parse(raw??'null'));
+ document.querySelector('#state').textContent=JSON.stringify(farm?{
+  valid:true,sameBytes:inspectionBaseline===null?null:raw===inspectionBaseline,day:farm.day,island:farm.island,coins:farm.coins,work:farm.workToday,
+  apples:farm.fruit.apple,wheat:farm.produce.wheat,eggs:farm.eggs,
+  recipes:farm.culinary.recipes.map(r=>({id:r.id,batches:r.batches,result:r.result})),stock:farm.culinary.stock
+ }:{valid:false});
+};
+document.querySelector('#diagnose').onclick=()=>{
+ if(!validOrigin)return;
+ const frame=document.querySelector('iframe');
+ if(!frame?.contentDocument||!frame.contentWindow)return;
+ stop();watched=frame.contentWindow;
+ inspectionBaseline=localStorage.getItem('cozy-farm-island-v3');
+ const doc=frame.contentDocument, events=[], counts={};
+ const describe=target=>target?.tagName?`${target.tagName}.${String(target.className??'').slice(0,60)}`:'window';
+ const refresh=()=>{
+  const root=doc.querySelector('.cookery-game'),view=doc.querySelector('.cookery-view'),bounds=view?.getBoundingClientRect();
+  document.querySelector('#probe').textContent=JSON.stringify({
+   stage:root?.dataset.stage??null,probe:root?.dataset.audioProbe?JSON.parse(root.dataset.audioProbe):null,
+   focus:describe(doc.activeElement),rect:bounds?{x:bounds.x,y:bounds.y,w:bounds.width,h:bounds.height}:null,counts
+  },null,1);
+  document.querySelector('#events').textContent=events.slice(-24).join('\n');
+ };
+ const log=event=>{
+  counts[event.type]=(counts[event.type]??0)+1;
+  const value=event.type.startsWith('key')?`${event.key} code=${event.code} repeat=${event.repeat} alt=${event.altKey} ctrl=${event.ctrlKey} shift=${event.shiftKey} meta=${event.metaKey}`:event.type.startsWith('pointer')||event.type==='lostpointercapture'||event.type==='gotpointercapture'?`id=${event.pointerId} xy=${Math.round(event.clientX)},${Math.round(event.clientY)} buttons=${event.buttons}`:'';
+  events.push(`${Math.round(event.timeStamp)} ${event.type} ${value} ${describe(event.target)} trusted=${event.isTrusted}`);
+  if(events.length>50)events.shift();refresh();
+ };
+ const types=['pointerdown','pointerup','pointercancel','gotpointercapture','lostpointercapture','keydown','keyup','click','focus','blur'];
+ for(const type of types)doc.addEventListener(type,log,true);
+ watched.addEventListener('blur',log);watched.addEventListener('focus',log);
+ const win=watched;
+ cleanup=()=>{for(const type of types)doc.removeEventListener(type,log,true);win.removeEventListener('blur',log);win.removeEventListener('focus',log)};
+ document.querySelector('#diag').hidden=false;refresh();timer=setInterval(refresh,500);
+};
+window.addEventListener('pagehide',stop);
+</script>

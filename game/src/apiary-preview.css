@@ -1,0 +1,7 @@
+.apiary-preview .dialog-intro{font-size:13px;line-height:1.4;margin:4px 0 9px}
+.apiary-preview .dialog-list{gap:5px;margin-bottom:7px}
+.apiary-preview .dialog-row{min-height:40px;padding:4px 8px;gap:7px}
+.apiary-preview .dialog-icon .icon{width:28px;height:28px}
+.apiary-preview .dialog-row-copy{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
+.apiary-preview .dialog-row-copy small{margin:0;white-space:nowrap;font-size:14px}
+.apiary-preview .dialog-nav .dialog-button{white-space:normal;min-height:44px}

@@ -1,0 +1,5 @@
+.fair-return{margin:14px 0 5px;border-top:1px solid var(--rule);padding-top:12px}
+.fair-return h2{font-size:17px;line-height:1.3;margin:0 0 8px;color:var(--plum)}
+.fair-return p{font-size:13px;line-height:1.4;margin:7px 0}
+.fair-return .ingredients{margin:8px 0}.fair-return-note{color:var(--muted)}
+@media(max-height:460px){.fair-return{margin-top:10px;padding-top:8px}.fair-return h2{font-size:15px}.fair-return p{font-size:12px}}

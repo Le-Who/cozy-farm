@@ -6,7 +6,12 @@ export type SignatureFruitId=typeof signatureFruitIds[number]
 export const signatureFruitNames:Record<SignatureFruitId,string>={apple:'Яблоко',pear:'Груша',peach:'Персик',strawberry:'Клубника',blueberry:'Черника',raspberry:'Малина'}
 export const signatureProcessingIds=['bright','silky','chunky'] as const
 export type SignatureProcessing=typeof signatureProcessingIds[number]
-export const signatureProcessingDefinitions={bright:{name:'Свежее',use:'На следующей рыбалке крючок вместит ещё одну находку.'},silky:{name:'Нежное',use:'Следующая готовка даст ещё одну порцию.'},chunky:{name:'С кусочками',use:'Следующий сбор урожая даст ещё одну единицу.'}} as const
+export const signatureProcessingDefinitions={
+ bright:{name:'Свежее',use:'Следующий обычный заброс: крючок вместит на одну находку больше.',timing:'Используется при начале рыбалки, даже если уйти без улова. Тренировка не расходует эффект.'},
+ silky:{name:'Нежное',use:'Следующая готовка блюда на кухне или своего рецепта: +1 порция к партии.',timing:'Используется после готовки. Ручная выпечка в мастерской этот эффект не расходует.'},
+ chunky:{name:'С кусочками',use:'Следующий сбор с грядки: +1 к урожаю.',timing:'Используется при сборе. Фрукты с деревьев и яйца этот эффект не расходуют.'},
+} as const
+export const picnicExpiryText='Эффект действует только сегодня и исчезнет после сна.'
 export type CookeryResult={
  family:'preserves'|'decorate'|'honeyPear'|'honeyBiscuits'|'windParfait'|'honeyCake'|'grilledFish'
  processing?:SignatureProcessing
