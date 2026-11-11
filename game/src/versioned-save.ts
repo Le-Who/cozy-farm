@@ -1,9 +1,11 @@
 import { ProtectedSave, type SaveIssue, type SaveStorage } from './protected-save.ts'
 
+type LegacyFallback = { key: string; journal: string; fallback?: LegacyFallback }
+
 export type SaveKeys = {
   primary: string; legacy: string; journal: string
   /** Older-than-legacy data is eligible only if no legacy migration ever started. */
-  legacyFallback?: { key: string; journal: string }
+  legacyFallback?: LegacyFallback
 }
 export type ExclusiveSave = <R>(operation: () => R) => Promise<R>
 export type RecoveryOrigin = 'primary' | 'legacy' | 'snapshot' | 'journal'
@@ -33,11 +35,12 @@ export class VersionedSave<T> {
   private storage: () => SaveStorage
   private keys: SaveKeys
   private restore: (value: unknown) => T | undefined
+  private restoreLegacy: (value: unknown) => T | undefined
   private create: () => T
   private exclusive?: ExclusiveSave
 
-  constructor(storage: () => SaveStorage, keys: SaveKeys, restore: (value: unknown) => T | undefined, create: () => T, exclusive?: ExclusiveSave) {
-    this.storage = storage; this.keys = keys; this.restore = restore; this.create = create; this.exclusive = exclusive
+  constructor(storage: () => SaveStorage, keys: SaveKeys, restore: (value: unknown) => T | undefined, create: () => T, exclusive?: ExclusiveSave, restoreLegacy = restore) {
+    this.storage = storage; this.keys = keys; this.restore = restore; this.create = create; this.exclusive = exclusive; this.restoreLegacy = restoreLegacy
   }
 
   get blocked() { return this.locked || (this.guard?.blocked ?? true) }
@@ -54,13 +57,18 @@ export class VersionedSave<T> {
     catch { return undefined }
   }
 
+  private decodeLegacy(raw: string): T | undefined {
+    try { return this.restoreLegacy(JSON.parse(raw)) }
+    catch { return undefined }
+  }
+
   private journal(raw: string): MigrationJournal | undefined {
     try {
       const value = JSON.parse(raw)
       if (!value || value.version !== 1 || !['pending', 'complete'].includes(value.phase)
         || !(value.legacyRaw === null || typeof value.legacyRaw === 'string')
         || typeof value.initialRaw !== 'string' || this.decode(value.initialRaw) === undefined
-        || value.legacyRaw !== null && this.decode(value.legacyRaw) === undefined) return
+        || value.legacyRaw !== null && this.decodeLegacy(value.legacyRaw) === undefined) return
       return value
     } catch { return undefined }
   }
@@ -68,17 +76,22 @@ export class VersionedSave<T> {
   private readLegacy(storage: SaveStorage): { raw: string | null } | undefined {
     const raw = storage.getItem(this.keys.legacy)
     if (raw !== null || !this.keys.legacyFallback) return { raw }
-    const fallback = this.keys.legacyFallback
-    const journal = storage.getItem(fallback.journal)
-    if (journal !== null) {
-      // A missing previous-generation primary is not a fresh install. Never
-      // resurrect older progress while silently discarding its migration record.
-      this.original = journal
-      this.origin = 'journal'
-      this.problem = 'missing-primary'
-      return
+    let fallback: LegacyFallback | undefined = this.keys.legacyFallback
+    while (fallback) {
+      const journal = storage.getItem(fallback.journal)
+      if (journal !== null) {
+        // A migration record without its primary is damage, never permission
+        // to skip a generation and silently resurrect an older farm.
+        this.original = journal
+        this.origin = 'journal'
+        this.problem = 'missing-primary'
+        return
+      }
+      const older = storage.getItem(fallback.key)
+      if (older !== null) return { raw: older }
+      fallback = fallback.fallback
     }
-    return { raw: storage.getItem(fallback.key) }
+    return { raw: null }
   }
 
   private async loadOnce(): Promise<T | undefined> {
@@ -111,7 +124,7 @@ export class VersionedSave<T> {
       this.original = legacy.raw
       this.origin = 'legacy'
       if (this.original === null) return
-      const value = this.decode(this.original)
+      const value = this.decodeLegacy(this.original)
       if (value === undefined) this.problem = 'invalid'
       return value
     } catch { this.problem = 'read-failed'; return }
@@ -153,7 +166,7 @@ export class VersionedSave<T> {
       catch { this.problem = 'read-failed'; return }
       this.original = legacy
       this.origin = 'legacy'
-      const value = legacy === null ? this.create() : this.decode(legacy)
+      const value = legacy === null ? this.create() : this.decodeLegacy(legacy)
       if (value === undefined) { this.problem = 'invalid'; return }
       try {
         const initialRaw = JSON.stringify(value)

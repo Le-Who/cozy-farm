@@ -1,3 +1,5 @@
+import { renderShopCommissions } from './shop-commissions-ui'
+import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommission } from './shop-commissions'
 import { getFestivalShoreRoute } from './festival-shore-route.ts'
 import { rememberRecipeDraft, resumeRecipeDraft, resetRecipeDraft } from './recipe-draft'
 import { canReturnToDailyIntent, renderIntentDeadline, renderSelectedIntentRest, selectedDailyIntent } from './intent-deadline'
@@ -193,6 +195,7 @@ import {
   projectIds,
   refillWater,
   restoreFarm,
+  restoreCurrentFarm,
   sail,
   seedPackSize,
   selectSeed,
@@ -232,7 +235,7 @@ import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
 
-const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreFarm, createFarm, browserSaveLock(farmSaveKeys.lock))
+const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreFarm)
 const farm = await saveStore.load() ?? createFarm()
 let saveAvailable = !saveStore.blocked
 let saveRecovery: ReturnType<typeof mountSaveRecovery> | undefined
@@ -279,7 +282,7 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
@@ -607,7 +610,7 @@ const panelTitles: Record<Panel, string> = {
   'warehouse-supply': 'Местный склад',
   transplant: 'Пересадка культур',
   sale: 'Продажа товара',
-  'music-supplies':'Материалы музыки', festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
+  'shop-commissions':'Заказы лавки', 'music-supplies':'Материалы музыки', festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
   market: 'Рынок',
   inventory: 'Запасы',
   archive: 'Коллекции',
@@ -640,7 +643,7 @@ const panelEmblems: Record<Panel, string> = {
   'warehouse-supply': 'ui-bag',
   transplant: 'tool-seeds',
   sale: 'ui-market',
-  'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
+  'shop-commissions':'ui-signature-bright', 'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
   market: 'ui-market', inventory: 'ui-bag', archive: 'orchard', settings: 'gear', journal: 'star', coop: 'tool-hen',
   rest: 'moon', guide: 'island', seeds: 'ui-bag', fishing: 'tool-rod', boat: 'tool-boat',
   orchard: 'orchard', tree: 'orchard', upgrades: 'hammer', kitchen: 'ui-kitchen',
@@ -1371,6 +1374,7 @@ function openShopScene(host:HTMLElement) {
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
     onOpenFreight:()=>openPanel('bay-freight'),
+    onOpenCommissions:()=>openPanel('shop-commissions'),
     onOpenMusic:()=>openPanel('bay-music'),
     onGoRest:()=>{void visitPanelAt('home','rest')},
     performanceBonus:()=>Number(farm.concertDay === farm.day),
@@ -1492,6 +1496,9 @@ function drawPanel() {
       if(panel==='bay-shop')openShopScene(host);else openMusicScene(host)
       break
     }
+    case 'shop-commissions':
+      dialogContent.innerHTML = renderShopCommissions(farm, id => { const recipe = farm.culinary.recipes.find(recipe => recipe.id === id); return recipe ? signatureResultPicture(recipe,{icon}) : '' })
+      break
     case 'warehouse-supply': {
       const request = selectedWarehouseRequest, supply = request && getLocalWarehouseSupply(farm, request)
       dialogContent.innerHTML = request ? `<section class="music-supply"><h2>${itemIcon(stockLabel(request).image)} ${escapeHtml(stockLabel(request).name)}</h2><p>${escapeHtml(warehouseSupplyCopy(farm, request))}</p><p>Перенос только в припасы. Ничего не готовится и не вносится в проект.</p>${supply ? button(`Забрать в припасы ×${supply.quantity}`, 'warehouse-supply-withdraw', true, {value:warehouseConfirmationValue(supply)}) : ''}</section>${nav(button('Назад', 'back', panelHistory.length > 0, {secondary:true}))}` : '<p>Выберите нужный запас через подсказку ингредиента.</p>'
@@ -1718,7 +1725,7 @@ function drawPanel() {
         if (hasShoal(farm)) places.push(tile('Лунная отмель','ui-moon-pearl','shoal'))
       }
       if (village || home && isProjectComplete(farm,'fair')) places.push(tile('Кондитерская','ui-handmade-round','workshop'))
-      if (village) places.push(tile('Праздники гавани','festivals/lights','festival'))
+      if (village) places.push(tile('Заказы лавки','ui-signature-bright','shop-commissions'),tile('Праздники гавани','festivals/lights','festival'))
       if (farm.boatOwned) places.push(tile('Грузовой паром','bay/ferry','bay-freight'))
       const away = [
         ...(!home ? [tile('Рынок дома','ui-market','market','travel-panel')] : []),
@@ -1926,8 +1933,8 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
 function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold') {
   if (island.isCrossing()) return
   if (next === 'shoal' && (farm.island !== 'grove' || !hasShoal(farm))) return
-  if ((next==='bay-shop'||next==='bay-music'||next==='festival') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
-  if ((next==='bay-shop'||next==='bay-music'||next==='festival') && farm.island!=='village') {
+  if ((next==='bay-shop'||next==='bay-music'||next==='festival'||next==='shop-commissions') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
+  if ((next==='bay-shop'||next==='bay-music'||next==='festival'||next==='shop-commissions') && farm.island!=='village') {
     void visitPanelAt('village',next)
     return
   }
@@ -2484,6 +2491,29 @@ app.addEventListener('click', async (event) => {
       break
     case 'transplant-reset':
       if (panel === 'transplant') { transplantSelection.reset(); drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true}) }
+      break
+    case 'commission-accept':
+      if(panel==='shop-commissions'&&dialog.open)perform(()=>acceptShopCommission(farm,value),false,true)
+      break
+    case 'commission-deliver':
+      if(panel==='shop-commissions'&&dialog.open&&perform(()=>deliverShopCommission(farm,value),false,true))playBaySound('harbour.crate',.65)
+      break
+    case 'commission-cancel':
+      if(panel==='shop-commissions'&&dialog.open)perform(()=>cancelShopCommission(farm,value),false,true)
+      break
+    case 'commission-finish':
+      if(panel==='shop-commissions'&&dialog.open&&perform(()=>finishShopCommission(farm,value),false,true))playBaySound('trade.receive')
+      break
+    case 'commission-recipe': {
+      const order=getShopCommission(farm)
+      if(panel==='shop-commissions'&&order&&value===String(order.serial)){
+        expandedRepeatId=order.recipeId;openPanel('recipes')
+        highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(order.recipeId)}"]`))
+      }
+      break
+    }
+    case 'commission-rest':
+      if(panel==='shop-commissions'&&dialog.open)await visitPanelAt('home','rest')
       break
     case 'festival-begin': {
       const tradition=festivalTraditions.find(id=>id===value)

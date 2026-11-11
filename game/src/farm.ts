@@ -1,3 +1,4 @@
+import { createShopCommissions, restoreShopCommissions, type ShopCommissions } from './shop-commissions.ts';
 import { restoreRecipeDraft, completeRecipeDraft, type RecipeDraftBookmark } from './recipe-draft.ts';
 import { createDiscoveryPreferences, restoreDiscoveryPreferences, type DiscoveryPreferences } from './discovery-preferences.ts';
 import { createBayShop, restoreBayShop, advanceBayShopDay, syncBayShopProducts, bayShopDailyLimit, type BayShopState } from './bay-shop-model.ts';
@@ -538,6 +539,7 @@ export type FarmState = {
   bayShop: BayShopState;
   musicGarden: BayMusicState;
   concertDay: number;
+  shopCommissions: ShopCommissions;
   festivals: BayFestivalState;
   culinary:CulinaryState;
   intentOrders:IntentOrderState;
@@ -658,7 +660,7 @@ export function createFarm(): FarmState {
     workshopPatterns: [],
     village: { built: false, supplies: {}, residents: [null, null], meals: 0, mealOn: 0,
       serviceOn: { bea: 0, finn: 0 }, scouting: false },
-    freight: createFreight(), bayShop: createBayShop(), musicGarden: createBayMusicState(), concertDay: 0, festivals:createBayFestival(),
+    shopCommissions: createShopCommissions(), freight: createFreight(), bayShop: createBayShop(), musicGarden: createBayMusicState(), concertDay: 0, festivals:createBayFestival(),
     culinary:createCulinary(),shoreline:createShoreline(),intentOrders:createIntentOrders(),neighbors:createNeighborState(),
     fishingTripSerial: 0,
     pendingFishingTrip: null,
@@ -1676,6 +1678,7 @@ export function favoriteSignature(farm:FarmState,id:string,favorite?:boolean):Ac
   const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id);if(!recipe||favorite!==undefined&&typeof favorite!=='boolean')return failure('Выберите сохранённый рецепт.');recipe.favorite=favorite??!recipe.favorite;return {ok:true,message:recipe.favorite?'Рецепт добавлен в избранное.':'Рецепт удалён из избранного.'};
 }
 export function forgetSignature(farm:FarmState,id:string):ActionResult{
+  if(farm.shopCommissions.active?.recipeId===id)return failure('Сначала завершите или отмените заказ на этот рецепт в лавке.');
   const product = 'signature:' + id;
   if (Object.values(farm.freight.warehouses).some(stock => stock[product] > 0)
     || farm.freight.ship.cargo.some(lot => lot.id === product)
@@ -2407,6 +2410,12 @@ function restoreLivingBay(value: Record<string, unknown>, day: number, fairCompl
     village: restoredVillage, fishingTripSerial, pendingFishingTrip };
 }
 
+/** Current saves must contain the escrow ledger; only legacy migration may add it. */
+export function restoreCurrentFarm(value: unknown): FarmState | undefined {
+  if (!isRecord(value) || !Object.hasOwn(value, 'shopCommissions') || value.shopCommissions === undefined) return undefined;
+  return restoreFarm(value);
+}
+
 export function restoreFarm(value: unknown): FarmState | undefined {
   if (!isRecord(value) || value.version !== 1) return undefined;
   // Only the absence of both fields is a legacy save. Partial loss must not erase stored trees.
@@ -2478,6 +2487,8 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   const projects = restoreProjectLedger(savedProjects);
   const livingBay = projects && restoreLivingBay(value, day, isProjectComplete({ projects }, 'fair'), restored);
   if (!livingBay) return undefined;
+  const shopCommissions=restoreShopCommissions(value.shopCommissions,day,culinary,bayShop,livingBay.village.built);
+  if(!shopCommissions)return undefined;
   const festivals=restoreBayFestival(value.festivals,day,livingBay.village.built&&livingBay.village.meals>=1);
   if(!festivals)return undefined;
   const intentOrders=restoreIntentOrders(value.intentOrders,day),neighbors=restoreNeighborState(value.neighbors,day,livingBay.village.residents);
@@ -2663,7 +2674,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     harborSupplies,
     variants,
     discoveries,
-    culinary,shoreline,intentOrders,neighbors,freight,bayShop,musicGarden,concertDay,festivals,
+    culinary,shoreline,intentOrders,neighbors,freight,bayShop,musicGarden,concertDay,festivals,shopCommissions,
   };
   syncFestivalRewards(result);
   syncFarmShopPrices(result);

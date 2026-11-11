@@ -1,3 +1,4 @@
+import { getShopCommission, getShopCommissionOffers } from './shop-commissions.ts';
 import { getOrdinaryHoneyWait } from './ordinary-honey-guidance.ts';
 import { seaSaltRestNotice } from './salt-guidance.ts';
 import { getWindHoneySource } from './wind-honey-guidance.ts';
@@ -229,6 +230,10 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
       return task('festival-preparation',label,festival.editionName,`festivals/${festival.tradition}`,
         {label:'К программе праздника',target:'open-panel',value:'festival'},festival.stage,3);
     }
+    const commission=getShopCommission(farm);
+    if(commission)return arrive(task('shop-commission',commission.remaining ? `Заказ: ${commission.customerName}` : 'Покупатель ждёт вашу партию',
+      `«${commission.recipeName}»: отложено ${commission.delivered} из ${commission.quantity}. Срока нет.`, 'ui-signature-bright',
+      {label:'К заказу лавки',target:'open-panel',value:'shop-commissions'},commission.delivered,commission.quantity));
     if (!farm.village.residents.some(Boolean)) return arrive(task('first-neighbour', 'Встретьте первого соседа', 'Пригласите соседа в домик у гавани.', 'ui-bea', { label: 'К первому домику', target: 'visit-cottage', value: '0' }));
     if (farm.village.meals < 2) {
       const shape = workshopShapes.find(shape => farm.handmade[shape] > 0) ?? farm.workshopPatterns[0] ?? 'round';
@@ -254,6 +259,7 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
     if(farm.culinary.recipes.length===0)return arrive(task('own-recipe','Создайте своё угощение','Выберите фрукты, приготовьте угощение вручную и предложите соседям.','ui-signature-bright',{label:'Мои рецепты',target:'open-panel',value:'recipes'}));
     const untasted=farm.village.residents.find(id=>id&&farm.culinary.tastings[id].visits===0);
     if(untasted&&Object.values(farm.culinary.stock).some(count=>count>0))return arrive(task('first-tasting','Угостите соседей по своему рецепту','Соседи запоминают любимые фрукты и способы приготовления.','ui-'+untasted,{label:'Угостить',target:'open-panel',value:'recipes'}));
+    if(getShopCommissionOffers(farm).length)return arrive(task('first-commission','Ваш рецепт хотят заказать','Выберите небольшую партию для покупателя, которому уже понравилось ваше блюдо.','ui-signature-bright',{label:'Заказы лавки',target:'open-panel',value:'shop-commissions'}));
     if (!Object.values(farm.festivals.completed).some(Boolean)) return task('first-festival','Выберите праздник гавани','Выберите, что построить вместе с соседями.', 'festivals/lights', {label:'К традициям',target:'open-panel',value:'festival'});
     const service=farm.village.residents.findIndex(id=>id&&getResidentService(farm,id).available);
     if(service>=0){const id=farm.village.residents[service]!;return arrive(task('neighbour-service',id==='bea'?'Испеките вместе с Беа':'Попросите Финна разведать маршрут',id==='bea'?'Принесите продукты, и Беа испечёт целую партию.':'Финн подготовит более вместительную и крепкую снасть к следующей рыбалке.','ui-'+id,{label:'В гости: '+(id==='bea'?'Беа':'Финн'),target:'visit-cottage',value:String(service)}));}

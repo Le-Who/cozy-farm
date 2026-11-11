@@ -20,6 +20,7 @@ export type BayShopOptions = {
   onChange(): void;
   onClose(): void;
   onOpenFreight?(): void;
+  onOpenCommissions?(): void;
   onOpenMusic?(): void;
   onGoRest?(): void;
   renderProduct?(product: BayShopProduct, className: string): string;
@@ -104,7 +105,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
           <span class="bay-shop-shelf-product">${slot && slot.quantity > 0 ? art(slot.product) : `<span class="bay-shop-shelf-empty">${slot ? 'Продано' : '+'}</span>`}</span>${slot ? `<span class="bay-shop-shelf-label">${money(slot.price)} <span aria-hidden="true">●</span><small>×${slot.quantity}</small></span>` : ''}</button>`).join('')}</div>
         <div class="bay-shop-visitor" aria-hidden="true"><span class="bay-shop-contact-shadow"></span><span class="bay-shop-person"></span><span class="bay-shop-purchase"></span></div>
       </div><div class="bay-shop-speech" data-user-text role="status" aria-live="polite"></div></div>
-      <div class="bay-shop-desk"><nav class="bay-shop-tabs" aria-label="Управление лавкой"><button type="button" data-tab="stock" aria-pressed="${tab === 'stock'}">Прилавок</button><button type="button" data-tab="journal" aria-pressed="${tab === 'journal'}">Покупатели</button>${options.performanceBonus?.() ? '<span title="Сегодня ещё два гостя из сада">+2 гостя ♫</span>' : ''}</nav>
+      <div class="bay-shop-desk"><nav class="bay-shop-tabs" aria-label="Управление лавкой"><button type="button" data-tab="stock" aria-pressed="${tab === 'stock'}">Прилавок</button><button type="button" data-tab="journal" aria-pressed="${tab === 'journal'}">Покупатели</button>${options.onOpenCommissions ? '<button type="button" data-commissions>Заказы</button>' : ''}${options.performanceBonus?.() ? '<span title="Сегодня ещё два гостя из сада">+2 гостя ♫</span>' : ''}</nav>
       <section class="bay-shop-day" aria-label="Гости сегодня" ${pending ? 'hidden' : ''}><div><p class="bay-shop-day-count"></p><p class="bay-shop-day-detail" role="status" aria-live="polite"></p></div><button type="button" data-shop-next hidden></button></section>
       <p class="bay-shop-notice" role="status">${escape(notice)}</p><div class="bay-shop-desk-content">${tab === 'stock' ? stockControls() : journal()}</div></div>
       </section>`;
@@ -183,6 +184,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       if (next === 'music') options.onOpenMusic?.(); else if (next === 'rest') options.onGoRest?.();
       return;
     }
+    if (button.hasAttribute('data-commissions')) { options.onOpenCommissions?.(); return; }
     if (button.hasAttribute('data-close')) { options.onClose(); return; }
     if (button.hasAttribute('data-freight')) { options.onOpenFreight?.(); return; }
     if (button.hasAttribute('data-open')) {

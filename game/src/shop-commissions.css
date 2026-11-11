@@ -1,0 +1,18 @@
+.shop-commissions { display:grid; gap:12px; line-height:1.45; }
+.shop-commissions p,.shop-commissions h2,.shop-commissions h3 { margin:0; }
+.shop-commissions header { display:grid; gap:5px; }
+.shop-commissions h2,.shop-commissions h3 { overflow-wrap:anywhere; }
+.commission-recipe { display:flex; align-items:center; gap:16px; min-width:0; }
+.commission-recipe > :first-child { flex:0 0 80px; width:80px; max-height:95px; object-fit:contain; }
+.commission-recipe .signature-tart { height:80px; }
+.commission-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.commission-actions > button { flex:1 1 180px; }
+.commission-timing,.commission-receipt,.commission-empty { padding:12px; background:#f4ebdc; border-radius:12px; }
+.commission-customers { display:grid; gap:12px; }
+.commission-customers > details { border:1px solid #d5bda0; border-radius:12px; padding:12px; }
+.commission-customers summary,.commission-cancel summary { cursor:pointer; padding:8px 0; font-weight:700; }
+.commission-offer { display:grid; gap:10px; padding:14px 0; }
+.commission-offer + .commission-offer { border-top:1px solid #d5bda0; }
+.commission-cancel { border-top:1px solid #d5bda0; padding-top:8px; }
+.commission-cancel button { margin-top:8px; }
+@media(max-width:420px) { .commission-recipe { gap:10px; } .commission-recipe > :first-child { flex-basis:64px; width:64px; } }
