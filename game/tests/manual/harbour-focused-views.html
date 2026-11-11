@@ -1,0 +1,40 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Близкие виды гавани</title>
+<style>body{font:15px/1.4 system-ui;background:#faf7f0;color:#352447;margin:10px}button{padding:8px;margin:3px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #999}</style>
+<header><p>Визуальная проверка гавани: localhost:4244. Состояния получены публичными действиями с чистой фермы. F9 в игре меняет ориентацию, сохраняя клавиатурный фокус.</p>
+<button data-stage="0">Перед первым ужином</button><button data-stage="1">Перед вторым ужином</button><button data-stage="2">Второй дом готов</button><button data-stage="3">Два соседа</button><button id="input-check">Проверить ввод</button><button id="ui">Проверить UI</button><button id="quiet">Тихий / с подсказками</button><button id="inspect">Проверить запись</button><button id="reload">Перезагрузить</button><button data-size="470,480">470×480</button><button data-size="320,568">320×568</button><button data-size="360,640">360×640</button><button data-size="390,844">390×844</button><button data-size="844,390">844×390</button><button data-size="960,600">960×600</button><button id="only-game">Только игра</button><details><summary>Состояние</summary><pre id="result"></pre></details></header><button id="show-controls" style="position:fixed;right:10px;top:10px" hidden>Проверки</button><iframe title="Игра для проверки" width="390" height="844"></iframe>
+<script type="module">
+import {harbourScreenPoint} from '/src/harbour-view.ts';
+import {commissionPlayer} from '/tests/fixtures/commission-player.ts';import actions from '/tests/fixtures/home-progress-actions.json';import {farmSaveKeys} from '/src/farm-save-keys.ts';import {restoreCurrentFarm,getVillageHomeCount} from '/src/farm.ts';
+const frame=document.querySelector('iframe'),result=document.querySelector('#result'),allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4244';const meals=actions.flatMap((a,i)=>a.name==='serveVillageMeal'?[i]:[]);
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,day:f?.day,homes:f&&getVillageHomeCount(f),village:f?.village},null,2)}
+for(const button of document.querySelectorAll('[data-stage]'))button.onclick=()=>{if(!allowed)return;try{const stage=Number(button.dataset.stage),end=stage===0?meals[0]:stage===1?meals[1]:stage===2?meals[1]+1:actions.length,p=commissionPlayer(actions.slice(0,end));p.state.discoveryPreferences.quiet=false;localStorage.removeItem(farmSaveKeys.journal);localStorage.setItem(farmSaveKeys.primary,JSON.stringify(p.state));frame.src='/';inspect()}catch(e){result.textContent=String(e)}};
+if(allowed)frame.src='/';
+frame.addEventListener('load',()=>frame.contentWindow.addEventListener('keydown',event=>{if(event.key!=='F9')return;event.preventDefault();event.stopImmediatePropagation();const portrait=Number(frame.width)<Number(frame.height);frame.width=portrait?'844':'390';frame.height=portrait?'390':'844'},true));
+document.querySelector('#input-check').onclick=async()=>{
+  if(!allowed)return;
+  const w=frame.contentWindow,d=frame.contentDocument,c=d.querySelector('canvas'),passed=[];
+  const assert=(value,label)=>{if(!value)throw Error(label);passed.push(label)};
+  const settle=()=>new Promise(resolve=>w.requestAnimationFrame(()=>w.requestAnimationFrame(resolve)));
+  const choose=id=>d.querySelector(`[data-harbour-view="${id}"]`).click();
+  const before=localStorage.getItem(farmSaveKeys.primary),originalWidth=frame.width,originalHeight=frame.height;
+  try{
+    frame.width='390';frame.height='844';await settle();choose('east');await settle();
+    const r=c.getBoundingClientRect(),context=d.querySelector('.island-context'),bottom=d.querySelector('.hud-bottom'),resume=d.querySelector('.community-resume');
+    const top=context.getBoundingClientRect().bottom-r.top+12,bottomY=Math.min(bottom.getBoundingClientRect().top,resume.hidden?Infinity:resume.getBoundingClientRect().top);
+    const p=harbourScreenPoint({width:r.width,height:r.height,top,bottom:r.bottom-bottomY+12},'east',{x:125.25+1195*.75,y:37+(513-155*.44)*.75});
+    const pointer=type=>c.dispatchEvent(new w.PointerEvent(type,{pointerId:901,pointerType:'touch',isPrimary:true,button:0,buttons:type==='pointerdown'?1:0,bubbles:true,clientX:r.left+p.x,clientY:r.top+p.y}));
+    pointer('pointerdown');pointer('pointercancel');pointer('pointerup');assert(!d.querySelector('dialog').open,'pointercancel не открывает цель');
+    pointer('pointerdown');frame.width='360';await settle();pointer('pointerup');assert(!d.querySelector('dialog').open,'resize отменяет начатое нажатие');
+    frame.width='390';await settle();choose('east');await settle();pointer('pointerdown');pointer('pointerup');assert(d.querySelector('dialog').open && d.querySelector('.dialog-title').textContent.includes('лавка'),'touch PointerEvent открывает лавку');
+    d.querySelector('.dialog-close').click();
+    w.dispatchEvent(new w.PageTransitionEvent('pagehide',{persisted:true}));w.dispatchEvent(new w.PageTransitionEvent('pageshow',{persisted:true}));choose('west');assert(d.querySelector('[data-harbour-view="west"]').getAttribute('aria-pressed')==='true','persisted page lifecycle сохраняет управление');
+    assert(localStorage.getItem(farmSaveKeys.primary)===before,'камера и отменённый ввод не меняют v4');
+    result.textContent=JSON.stringify({kind:'synthetic DOM regression, not native touch hardware',passed},null,2);
+  }catch(error){result.textContent=JSON.stringify({passed,error:String(error)},null,2)}
+  finally{frame.width=originalWidth;frame.height=originalHeight;document.querySelector('details').open=true}
+};
+document.querySelector('#inspect').onclick=inspect;
+document.querySelector('#quiet').onclick=()=>{if(!allowed)return;const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));if(!f)return;f.discoveryPreferences.quiet=!f.discoveryPreferences.quiet;localStorage.removeItem(farmSaveKeys.journal);localStorage.setItem(farmSaveKeys.primary,JSON.stringify(f));frame.src='/'};
+document.querySelector('#ui').onclick=()=>{const d=frame.contentDocument,selectors=['.island-canvas','.hud-top','.task-card','.island-location','.harbour-views','.hud-bottom','.island-hint'];result.textContent=JSON.stringify({size:[frame.width,frame.height],selected:d.querySelector('.harbour-views [aria-pressed=true]')?.textContent,controls:selectors.map(selector=>{const e=d.querySelector(selector),r=e.getBoundingClientRect();return{selector,hidden:e.hidden,rect:{x:r.x,y:r.y,w:r.width,h:r.height},text:e.textContent?.slice(0,180)}})},null,2);document.querySelector('details').open=true};document.querySelector('#reload').onclick=()=>frame.src='/';document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h});if(!allowed)document.querySelectorAll('button').forEach(b=>b.disabled=true);
+document.querySelector('#only-game').onclick=()=>{document.querySelector('header').hidden=true;document.querySelector('#show-controls').hidden=false};document.querySelector('#show-controls').onclick=()=>{document.querySelector('header').hidden=false;document.querySelector('#show-controls').hidden=true};
+</script></html>

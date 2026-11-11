@@ -234,6 +234,8 @@ const createWorkshop = lazyScene(() => import('./workshop').then(m => m.createWo
 const createCookery = lazyScene(() => import('./cookery').then(m => m.createCookery))
 const createArrangement = lazyScene(() => import('./arrangement').then(m => m.createArrangement))
 import { createIsland, type IslandTarget } from './island'
+import { harbourViews, isHarbourView } from './harbour-view'
+import { createHarbourControls } from './harbour-controls'
 import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
@@ -401,6 +403,7 @@ app.innerHTML = `
         <button class="hud-button" type="button" data-panel="guide" aria-label="Открыть бухту" title="Открыть бухту">${icon('island')}</button>
       </nav>
     </header>
+    <div class="island-context">
     <button class="task-card" type="button" data-panel="journal" aria-label="Текущее задание, открыть дневник" aria-describedby="task-name task-count task-reward" aria-keyshortcuts="J" title="Открыть дневник (J)">
       <span class="task-medallion">${icon('carrot')}</span>
       <span class="task-content">
@@ -411,6 +414,8 @@ app.innerHTML = `
       </span>
     </button>
     <button class="island-location" type="button" data-panel="boat" aria-label="Острова и путешествия" hidden>${icon('island')}<span>Солёная роща</span></button>
+    <nav class="harbour-views" aria-label="Виды гавани" hidden>${harbourViews.map(view => `<button type="button" data-action="harbour-view" data-harbour-view="${view.id}" data-value="${view.id}" aria-pressed="${view.id === 'overview'}">${view.label}</button>`).join('')}<span class="sr-only" aria-live="polite"></span></nav>
+    </div>
     <button class="view-toggle" type="button" data-action="field-view" aria-pressed="false">${icon('field')}<span>Грядки</span></button>
     <button class="community-resume" type="button" data-action="resume-community" hidden>${icon('ui-signature-bright')}<span>К просьбе</span></button>
     <div class="hud-bottom">
@@ -447,6 +452,7 @@ app.innerHTML = `
 `
 
 const canvas = app.querySelector<HTMLCanvasElement>('.island-canvas')!
+let harbourControls: ReturnType<typeof createHarbourControls> | undefined
 const dialog = app.querySelector<HTMLDialogElement>('.farm-dialog')!
 const dialogTitle = app.querySelector<HTMLElement>('.dialog-title')!
 const dialogEmblem = app.querySelector<HTMLImageElement>('.dialog-emblem')!
@@ -610,6 +616,7 @@ function status() {
     badge.textContent = count === undefined ? '' : String(count)
   }
   updateFieldContext(contextBed)
+  harbourControls?.sync(farm.island)
 }
 
 const panelTitles: Record<Panel, string> = {
@@ -2091,6 +2098,7 @@ function updateFieldContext(index: number | undefined) {
 }
 
 const island = createIsland(canvas, {
+  harbourViewChanged: (view, traveling) => harbourControls?.select(view, traveling),
   moveHen(index, point) {
     perform(() => moveFarmHen(farm, index, point), false, true)
   },
@@ -2149,6 +2157,12 @@ const island = createIsland(canvas, {
   },
   activate: activateTarget,
 })
+
+harbourControls = createHarbourControls(canvas, app.querySelector('.island-context')!,
+  app.querySelector('.harbour-views')!, app.querySelector('.hud-bottom')!, communityResume,
+  viewport => island.setHarbourViewport(viewport))
+window.addEventListener('pagehide', event => { if (!event.persisted) harbourControls?.destroy() })
+window.addEventListener('pageshow', event => { if (event.persisted) harbourControls?.sync(farm.island) })
 
 function toggleFieldView() {
   const fieldView = island.toggleFieldView()
@@ -2933,6 +2947,7 @@ app.addEventListener('click', async (event) => {
     case 'travel-panel': if(value==='market') await visitPanelAt('home','market'); break
     case 'back': goBack(); break
     case 'open-panel': if(value&&value in panelTitles)openPanel(value as Panel);break
+    case 'harbour-view': if (value && isHarbourView(value)) island.setHarbourView(value); break
     case 'field-view': toggleFieldView(); break
     case 'work-context': if (contextBed !== undefined) activateTarget({ kind: 'bed', index: contextBed }); break
     case 'context-seeds':

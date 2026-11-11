@@ -17,6 +17,7 @@ import { getCoveEcology } from './shoreline';
 import { createCoveMotion, stepCoveMotion, coveChannelPoint, coveSceneAnchors } from './shoreline-view';
 import { getNeighborPlans } from './farm';
 import { getNeighborSceneState, neighborWorkFrame, neighborPropSettle, neighborFoodArt, stepNeighborWalker, type NeighborScenePlan } from './neighbor-scene';
+import { harbourCamera, harbourPointVisible, harbourViewForPoint, harbourRouteNeedsOverview, harbourFocus, type HarbourView, type HarbourViewport } from './harbour-view';
 import { createVillageHomePlates, villageHomeArtKey, villageHomeStages } from './village-home-art';
 
 export type IslandTarget =
@@ -334,7 +335,7 @@ function roundTurns(points: Point[]): Point[] {
 
 export function createIsland(
   canvas: HTMLCanvasElement,
-  { inspect, activate, moveHen }: { inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
+  { inspect, activate, moveHen, harbourViewChanged }: { harbourViewChanged?: (view: HarbourView, traveling: boolean) => void; inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
 ) {
   const hint = document.createElement('div');
   hint.className = 'island-hint';
@@ -369,6 +370,10 @@ export function createIsland(
   let hovered: Area | undefined;
   let showFocus = false;
   let fieldView = false;
+  let harbourView: HarbourView = 'overview';
+  let harbourJourney = false;
+  let harbourInsets = { top: 210, bottom: 100 };
+  const harbourViewport = (): HarbourViewport => ({ ...viewport, ...harbourInsets });
   let coveFocus = false;
   let coveBlend = 0;
   let pointerStart: { id: number; x: number; y: number } | undefined;
@@ -972,7 +977,8 @@ export function createIsland(
     const x = offset.x + area.center.x * scale;
     const y = offset.y + (area.center.y - Math.min(area.h * 0.54, 57) - 10) * scale;
     hint.style.left = `${clamp(x, hint.offsetWidth / 2 + 10, viewport.width - hint.offsetWidth / 2 - 10)}px`;
-    hint.style.top = `${Math.max(hint.offsetHeight + 8, y)}px`;
+    const framed = state?.island === 'village' && harbourCamera(harbourViewport(), harbourJourney ? 'overview' : harbourView).close;
+    hint.style.top = `${framed ? clamp(y, harbourInsets.top + hint.offsetHeight + 8, viewport.height - harbourInsets.bottom - 8) : Math.max(hint.offsetHeight + 8, y)}px`;
   }
 
   function paintWaypoint(x: number, y: number, time: number, color: string): void {
@@ -1007,6 +1013,13 @@ export function createIsland(
     depart = performance.now();
     previousStep = -1;
     duration = motion.matches || !pathDistance ? 0 : Math.min(1550, 160 + pathDistance * 1.65);
+    if (state?.island === 'village' && harbourView !== 'overview') {
+      harbourView = harbourViewForPoint(harbourViewport(), harbourView, stop);
+      harbourJourney = duration > 0 && harbourRouteNeedsOverview(harbourViewport(), harbourView, points);
+      pointerStart = undefined; hovered = undefined;
+      updateCameraView();
+      harbourViewChanged?.(harbourView, harbourJourney);
+    }
   }
 
   function advanceWork(now: number, moving: boolean): void {
@@ -1196,6 +1209,13 @@ export function createIsland(
     const dock = docks[island];
     const now = Date.now();
     const moment = performance.now();
+    if (harbourJourney && moment >= depart + duration) {
+      harbourJourney = false;
+      harbourView = harbourViewForPoint(harbourViewport(), harbourView, destination);
+      pointerStart = undefined; hovered = undefined;
+      updateCameraView();
+      harbourViewChanged?.(harbourView, false);
+    }
     const dt = motion.matches ? 0 : clamp((moment - (lastPhysics || moment - 16)) / 1000, 0.001, 0.05);
     lastPhysics = moment;
     const coveTarget = coveFocus && atGrove ? 1 : 0;
@@ -1619,7 +1639,18 @@ export function createIsland(
     if (motion.matches && canAnimate()) paint(0);
   }
 
+  function frameHarbourTarget(point: Point, explicit = false): void {
+    if (state?.island !== 'village' || harbourView === 'overview') return;
+    const next = harbourFocus(harbourViewport(), harbourView, point, harbourJourney, explicit);
+    if (next.view === harbourView && next.traveling === harbourJourney) return;
+    harbourView = next.view; harbourJourney = next.traveling;
+    pointerStart = undefined; hovered = undefined;
+    updateCameraView();
+    harbourViewChanged?.(harbourView, false);
+  }
+
   function cameraView(): { scale: number; center: Point } {
+    if (state?.island === 'village') return harbourCamera(harbourViewport(), harbourJourney ? 'overview' : harbourView);
     const wide = Math.min(viewport.width / WORLD.w, viewport.height / WORLD.h);
     const closeUp = fieldView && state?.island === 'home';
     const shortLandscape = viewport.width > viewport.height && viewport.height < 480;
@@ -1644,9 +1675,11 @@ export function createIsland(
   }
 
   function resize(): void {
+    if (state?.island === 'village') pointerStart = undefined;
     pixelDensity = window.devicePixelRatio || 1;
     const bounds = canvas.getBoundingClientRect();
     viewport = { width: Math.max(1, bounds.width), height: Math.max(1, bounds.height) };
+    if (showFocus && focused) frameHarbourTarget(focused.center);
     const { scale: nextScale, center } = cameraView(); scale = nextScale;
     offset = { x: viewport.width / 2 - center.x * scale, y: viewport.height / 2 - center.y * scale };
     world.resize(viewport.width, viewport.height, window.devicePixelRatio || 1, scale, center);
@@ -1789,6 +1822,7 @@ export function createIsland(
   canvas.addEventListener('focus', () => {
     showFocus = canvas.matches(':focus-visible');
     focused ??= state?.island === 'home' ? areas[4] : currentSites()[0];
+    if (showFocus && focused) frameHarbourTarget(focused.center);
     describeFocus();
     requestPaint();
   }, listeners);
@@ -1823,8 +1857,10 @@ export function createIsland(
         }
       }
     } else if (!event.repeat) {
+      frameHarbourTarget(focused.center, true);
       activate(focused.target);
     }
+    if (direction) frameHarbourTarget(focused.center, true);
     describeFocus();
     requestPaint();
   }, listeners);
@@ -1965,6 +2001,7 @@ export function createIsland(
       showFocus = true;
       canvas.focus({ preventScroll: true });
       showFocus = true;
+      frameHarbourTarget(site.center, true);
       describeFocus();
       requestPaint();
     },
@@ -2063,6 +2100,8 @@ export function createIsland(
         bayAudio.stopEffects(farmSoundEvents);
         if (next.island !== 'grove') { coveFocus = false; coveBlend = 0; }
         heldHen=undefined;pointerStart=undefined;
+        harbourView = 'overview'; harbourJourney = false;
+        harbourViewChanged?.(harbourView, false);
         residentClock = 0;
         villageMealCelebration = 0;
         if (next.island === 'village' && !motion.matches) villageWelcome = performance.now();
@@ -2157,6 +2196,23 @@ export function createIsland(
     },
     showProject(id: ProjectId): void {
       celebrate(projectStages[id].mask);
+    },
+    setHarbourViewport(next: HarbourViewport): void {
+      if (next.top === harbourInsets.top && next.bottom === harbourInsets.bottom) return;
+      harbourInsets = { top: next.top, bottom: next.bottom };
+      if (state?.island !== 'village') return;
+      pointerStart = undefined; hovered = undefined;
+      if (showFocus && focused) frameHarbourTarget(focused.center);
+      updateCameraView(); requestPaint();
+    },
+    setHarbourView(next: HarbourView): void {
+      if (state?.island !== 'village' || crossing) return;
+      harbourView = next; harbourJourney = false;
+      pointerStart = undefined; hovered = undefined; guidance = undefined; showFocus = false;
+      focused = currentSites().find(site => harbourPointVisible(harbourViewport(), next, site.center));
+      updateCameraView();
+      harbourViewChanged?.(harbourView, false);
+      describeFocus(); requestPaint();
     },
     toggleFieldView(): boolean {
       fieldView = !fieldView;
