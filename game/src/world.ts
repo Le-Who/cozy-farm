@@ -305,8 +305,10 @@ export function createWorld(canvas: HTMLCanvasElement, onAvailability: (availabl
       bobber.visible = false;
       line.visible = false;
     },
-    plate(image: HTMLImageElement, bounds: Box, patch = false, opacity = 1, edgeFade?: SpriteOptions['edgeFade']) {
-      sprite(image, { x: 0, y: 0, w: image.naturalWidth, h: image.naturalHeight },
+    plate(image: Raster, bounds: Box, patch = false, opacity = 1, edgeFade?: SpriteOptions['edgeFade']) {
+      const w = image instanceof HTMLImageElement ? image.naturalWidth : image.width;
+      const h = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
+      sprite(image, { x: 0, y: 0, w, h },
         bounds.x + bounds.w / 2, bounds.y, bounds.w, bounds.h, { baseline: 0, layer: background + Number(patch), opacity, edgeFade });
     },
     occluder(image: HTMLImageElement, bounds: Box & { footY: number }) {

@@ -1,4 +1,5 @@
 import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from './berry-nursery'
+import { villageHomeProgress } from './village-home-art'
 import './berry-nursery.css'
 import { renderShopCommissions } from './shop-commissions-ui'
 import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommission } from './shop-commissions'
@@ -1260,7 +1261,7 @@ function neighboursCard() {
   const resident = farm.village.residents[villageSlot]
   const houseTabs = `<nav class="house-selector" aria-label="Домики соседей">${[0, 1].map(slot => {
     const occupant = farm.village.residents[slot]
-    return `<button type="button" data-action="village-slot" data-value="${slot}" aria-pressed="${villageSlot === slot}">${icon(occupant ? `ui-${occupant}` : 'upgrade-farmhouse-card')}<span>Домик ${slot + 1}</span><small>${slot >= homes ? 'После двух ужинов' : occupant ? residentDefinitions[occupant].name : 'Свободен'}</small></button>`
+    return `<button type="button" data-action="village-slot" data-value="${slot}" aria-pressed="${villageSlot === slot}">${icon(occupant ? `ui-${occupant}` : 'upgrade-farmhouse-card')}<span>Домик ${slot + 1}</span><small>${slot >= homes ? villageHomeProgress(farm) : occupant ? residentDefinitions[occupant].name : 'Свободен'}</small></button>`
   }).join('')}</nav>`
   const dinner = `<div class="harbour-next">${icon('ui-grilled-fish')}<div><strong>${homes < 2 ? `Общие ужины · ${Math.min(2, farm.village.meals)}/2` : 'Общий ужин'}</strong>${homes < 2 ? '<small>Второй домик после двух ужинов</small>' : ''}</div>${button('Накрыть стол', 'village-meal')}</div>`
   return `${houseTabs}${villageSlot >= homes ? dinner : `
@@ -2109,7 +2110,7 @@ const island = createIsland(canvas, {
     }
     if (target.kind === 'village-home') {
       const resident = farm.village.residents[target.index]
-      return `Домик ${target.index + 1} · ${target.index >= getVillageHomeCount(farm) ? 'Откроется после двух ужинов' : resident ? residentDefinitions[resident].name : 'Пригласить соседа'}`
+      return `Домик ${target.index + 1} · ${target.index >= getVillageHomeCount(farm) ? villageHomeProgress(farm) : resident ? residentDefinitions[resident].name : 'Пригласить соседа'}`
     }
     if (target.kind === 'flower') {
       const bloom = getCapeBloom(farm, target.index)

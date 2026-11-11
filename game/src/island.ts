@@ -17,6 +17,7 @@ import { getCoveEcology } from './shoreline';
 import { createCoveMotion, stepCoveMotion, coveChannelPoint, coveSceneAnchors } from './shoreline-view';
 import { getNeighborPlans } from './farm';
 import { getNeighborSceneState, neighborWorkFrame, neighborPropSettle, neighborFoodArt, stepNeighborWalker, type NeighborScenePlan } from './neighbor-scene';
+import { createVillageHomePlates, villageHomeArtKey, villageHomeStages } from './village-home-art';
 
 export type IslandTarget =
   | { kind: 'bed' | 'tree' | 'hen' | 'flower' | 'village-home'; index: number }
@@ -386,6 +387,7 @@ export function createIsland(
   let villageMealCelebration = 0;
   let residentClock = 0;
   let villageTableCutout: HTMLCanvasElement | undefined;
+  const villageHomePlate = createVillageHomePlates();
   let guestServed = false;
   let guestDeparture = 0;
   let honeyReward = 0;
@@ -1214,7 +1216,12 @@ export function createIsland(
     if (plate) {
       const original = atGrove && expanded && reveal < 1 ? art.image('grove-plate') : undefined;
       if (original) world.plate(original, landscape.grove.bounds);
-      world.plate(plate, bounds, Boolean(original), expanded ? reveal * reveal * (3 - 2 * reveal) : 1);
+      const houseKey = island === 'village' && state ? villageHomeArtKey(state) : 'village-plate';
+      const housePatch = houseKey !== 'village-plate' ? art.image(houseKey) : undefined;
+      // A missing optional patch degrades to the accepted base, never an empty
+      // ocean with floating actors. Loading completion requests a fresh paint.
+      world.plate(houseKey !== 'village-plate' ? villageHomePlate(plate, housePatch) : plate, bounds,
+        Boolean(original), expanded ? reveal * reveal * (3 - 2 * reveal) : 1);
     }
     const coveTerrain = atGrove && art.image('cove-terrain');
     if (coveTerrain) world.plate(coveTerrain, { ...scenePoint(1110, 590), w: 430 * sceneScale, h: 430 * 975 / 1613 * sceneScale }, true, 1, { top: .1, left: .08 });
@@ -1917,6 +1924,10 @@ export function createIsland(
       if (next.capeLevel >= 2) load('cape-apiary', 1);
       if (next.capeLevel >= 3) load('cape-honey-kitchen', 1);
     } else {
+      // Warm both small patches so the first supper changes the scene at once.
+      if (villageHomeArtKey(next) !== 'village-plate') {
+        for (const stage of villageHomeStages) art.load(stage.key, stage.path);
+      }
       art.load('bay-pavilion','lavender/bay/pavilion',[1,1])
       art.load('bay-pergola','lavender/bay/pergola',[1,1])
       for (const tradition of ['harvest', 'lights', 'stage'] as const) {
@@ -1987,6 +1998,7 @@ export function createIsland(
         if (state) {
           const island = state.island;
           const keys = [`${island}-plate`, ...landscape[island].occluders.map((_, index) => `${island}-occluder-${index}`)];
+          if (island === 'village') keys.push(villageHomeArtKey(state));
           let timeout: ReturnType<typeof setTimeout> | undefined;
           try {
             await Promise.race([art.ready(keys), new Promise(resolve => { timeout = setTimeout(resolve, 6000); })]);
