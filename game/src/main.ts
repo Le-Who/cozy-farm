@@ -1,3 +1,5 @@
+import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from './berry-nursery'
+import './berry-nursery.css'
 import { renderShopCommissions } from './shop-commissions-ui'
 import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommission } from './shop-commissions'
 import { getFestivalShoreRoute } from './festival-shore-route.ts'
@@ -282,11 +284,12 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
 const transplantSelection = new BedTransplantSelection()
+const berryNurserySelection = new BerryNurserySelection()
 let activeTool: Tool = 'seeds'
 let panel: Panel | undefined
 let celebratedFestival: FestivalTradition | undefined
@@ -361,7 +364,9 @@ function requirementLink(content: string, requirement: Requirement, className: s
   if (ready) return `<li class="${className}" data-ready="true">${content}</li>`
   const key = String(requirementLinks.size)
   requirementLinks.set(key, requirement)
-  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}" aria-label="Где найти: ${name}">${content}</button></li>`
+  const nursery = requirement.kind === 'stock' && getBerryNurserySource(farm, requirement.item) !== undefined
+    ? `<button class="nursery-preserve" type="button" data-action="berry-nursery-ingredient" data-value="${key}" aria-label="Сохранить разновидность: ${name}">Сохранить разновидность</button>` : ''
+  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}" aria-label="Где найти: ${name}">${content}</button>${nursery}</li>`
 }
 const islandNames = { home: 'Родной остров', grove: 'Солёная роща', cape: 'Цветочный мыс', village: 'Лавандовая гавань' }
 
@@ -610,7 +615,7 @@ const panelTitles: Record<Panel, string> = {
   'warehouse-supply': 'Местный склад',
   transplant: 'Пересадка культур',
   sale: 'Продажа товара',
-  'shop-commissions':'Заказы лавки', 'music-supplies':'Материалы музыки', festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
+  'berry-nursery':'Ягодный питомник', 'shop-commissions':'Заказы лавки', 'music-supplies':'Материалы музыки', festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
   market: 'Рынок',
   inventory: 'Запасы',
   archive: 'Коллекции',
@@ -643,7 +648,7 @@ const panelEmblems: Record<Panel, string> = {
   'warehouse-supply': 'ui-bag',
   transplant: 'tool-seeds',
   sale: 'ui-market',
-  'shop-commissions':'ui-signature-bright', 'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
+  'berry-nursery':'ui-seed-blueberry', 'shop-commissions':'ui-signature-bright', 'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
   market: 'ui-market', inventory: 'ui-bag', archive: 'orchard', settings: 'gear', journal: 'star', coop: 'tool-hen',
   rest: 'moon', guide: 'island', seeds: 'ui-bag', fishing: 'tool-rod', boat: 'tool-boat',
   orchard: 'orchard', tree: 'orchard', upgrades: 'hammer', kitchen: 'ui-kitchen',
@@ -1565,6 +1570,9 @@ function drawPanel() {
     case 'market':
       dialogContent.innerHTML = marketCards() + (farm.village.built ? nav(button('Своя лавка','open-panel',true,{value:'bay-shop'})) : '')
       break
+    case 'berry-nursery':
+      dialogContent.innerHTML = renderBerryNursery(farm, berryNurserySelection, icon)
+      break
     case 'transplant':
       dialogContent.innerHTML = renderBedTransplant(farm, transplantSelection)
       break
@@ -1579,7 +1587,7 @@ function drawPanel() {
           ${goods().filter(({count,group})=>count>0&&group===inventoryGroup).map(inventoryStockRow).join('')}
           ${inventoryGroup==='harvest'?treeIds.filter(tree=>farm.saplings[tree]>0).map((tree) => row('ui-tree-'+tree, treeDefinitions[tree].saplingName, `×${farm.saplings[tree]}`)).join(''):''}
           ${inventoryGroup==='shore'&&!goods().some(({count,group})=>count>0&&group==='shore')?'<li class="dialog-status">Пока пусто</li>':''}
-        </ul>` : seedCards() + (farm.island === 'home' ? nav(button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true})) : '')}`
+        </ul>` : seedCards() + (farm.island === 'home' ? nav(button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Ягодный питомник','open-panel',true,{value:'berry-nursery',secondary:true})) : '')}`
       break
     }
     case 'archive':
@@ -1712,7 +1720,7 @@ function drawPanel() {
         `<button class="explore-tile" type="button" data-action="${action}" data-value="${value}">${icon(image)}<strong>${name}</strong></button>`
       if (home || farm.island === 'grove') places.push(tile('Сад','ui-tree-apple','orchard'),tile('Рыбалка','tool-rod','fishing'))
       if (home) {
-        places.push(tile('Пересадка культур','tool-seeds','transplant'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
+        places.push(tile('Пересадка культур','tool-seeds','transplant'),tile('Ягодный питомник','ui-seed-blueberry','berry-nursery'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
         if (isProjectComplete(farm,'fair')) places.push(tile('Гость ярмарки','ui-market','guest'),tile('Просьбы соседей','ui-bea','intents'))
       }
       if (village) places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'),tile('Общий ужин','ui-grilled-fish','village-meal'))
@@ -1932,6 +1940,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
 
 function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold') {
   if (island.isCrossing()) return
+  if (next === 'berry-nursery' && farm.island !== 'home') { void visitPanelAt('home',next); return }
   if (next === 'shoal' && (farm.island !== 'grove' || !hasShoal(farm))) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival'||next==='shop-commissions') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival'||next==='shop-commissions') && farm.island!=='village') {
@@ -1945,7 +1954,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if(next==='cove'&&farm.island!=='grove')return
   if (next === 'transplant' && farm.island !== 'home') return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
-  if (next !== panel) transplantSelection.reset()
+  if (next !== panel) { transplantSelection.reset(); berryNurserySelection.reset() }
   if (next !== 'seeds') seedPickerBed = undefined
   if (remember && next==='bay-freight' && next!==panel) {
     freightPlanOpen=false
@@ -1985,6 +1994,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
 
 function closeDialog() {
   transplantSelection.reset()
+  berryNurserySelection.reset()
   celebratedFestival=undefined
   island.setViewMode('world')
   app.dataset.scene=''
@@ -2480,6 +2490,26 @@ app.addEventListener('click', async (event) => {
       break
     case 'discovery-forget':
       forgetDiscoveryIdea(farm.discoveryPreferences); saveFarm(); refresh()
+      break
+    case 'berry-nursery-ingredient': {
+      const requirement = value === undefined ? undefined : requirementLinks.get(value)
+      if (requirement?.kind !== 'stock' || getBerryNurserySource(farm, requirement.item) === undefined) break
+      await visitPanelAt('home', 'berry-nursery')
+      const source = getBerryNurserySource(farm, requirement.item)
+      if (panel === 'berry-nursery' && dialog.open && source !== undefined && berryNurserySelection.choose(farm, source)) { drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true}) }
+      break
+    }
+    case 'berry-nursery-source':
+      if(panel==='berry-nursery' && berryNurserySelection.choose(farm,Number(value))){drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true})}
+      break
+    case 'berry-nursery-destination':
+      if(panel==='berry-nursery' && berryNurserySelection.destination(farm,Number(value))){drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true})}
+      break
+    case 'berry-nursery-confirm':
+      if(panel==='berry-nursery'&&dialog.open&&perform(()=>berryNurserySelection.divide(farm),false,true))playBaySound('orchard.sapling')
+      break
+    case 'berry-nursery-reset':
+      if(panel==='berry-nursery'){berryNurserySelection.reset();drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true})}
       break
     case 'transplant-source':
       if (panel === 'transplant' && transplantSelection.choose(farm, Number(value))) {
@@ -3240,6 +3270,7 @@ dialog.addEventListener('click', (event) => {
 dialog.addEventListener('close', () => {
   if (!dialog.open) {
     transplantSelection.reset()
+  berryNurserySelection.reset()
     playBaySound('page.fold',.72,0)
     island.setViewMode('world')
     app.dataset.scene=''

@@ -25,7 +25,7 @@ class MemoryStorage {
 const exclusive = async operation => operation();
 const storage = new MemoryStorage();
 const oldOpen = () => new OldSave(() => storage, oldKeys, oldFarm.restoreFarm, oldFarm.createFarm, exclusive);
-const newOpen = () => new CurrentSave(() => storage, currentKeys, currentFarm.restoreFarm, currentFarm.createFarm, exclusive);
+const newOpen = () => new CurrentSave(() => storage, currentKeys, currentFarm.restoreCurrentFarm, currentFarm.createFarm, exclusive, currentFarm.restoreFarm);
 const oldSession = oldOpen();
 const initial = await oldSession.load();
 assert.ok(initial); initial.coins = 500;

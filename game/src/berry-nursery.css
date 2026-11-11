@@ -1,0 +1,9 @@
+.berry-nursery p { line-height:1.4; margin:.65em 0; }
+.nursery-plant { display:flex; gap:12px; align-items:center; }
+.nursery-plant img { width:48px; height:48px; object-fit:contain; }
+.berry-nursery .dialog-actions > button { flex:1 1 180px; }
+
+.nursery-preserve { min-height:44px; padding:6px; border:1px solid #c39bc286; border-radius:9px; background:#f5f0e8; color:var(--ink); font:inherit; font-size:12px; cursor:pointer; }
+.nursery-preserve:focus-visible { outline:3px solid #a985b4; outline-offset:2px; }
+
+.berry-nursery .dialog-actions { padding-block:6px; }

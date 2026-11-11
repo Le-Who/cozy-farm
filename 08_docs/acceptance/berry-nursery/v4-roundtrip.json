@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "previousCommit": "819f2a01bd7af803645de0da04da3e9095a82279",
+  "key": "cozy-farm-island-v4",
+  "actualOldReaderWriterRetainsSeedlings": true,
+  "partialOrderRetained": true,
+  "staleWriterBlocked": true,
+  "ordinaryGrowthAndRareHarvest": true
+}

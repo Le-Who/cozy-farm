@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "priorCommit": "b684e78f8792c79a45f1a43bbd21c037d92bd10e",
+  "priorKey": "cozy-farm-island-v3",
+  "currentKey": "cozy-farm-island-v4",
+  "actualOldWriterIsolated": true,
+  "paidRawPreserved": true,
+  "newVersionResumesAndClaimsExactlyOnce": true,
+  "note": "This checks v3/v4 storage isolation and the active combined manifest; it does not merge progress from two generations."
+}

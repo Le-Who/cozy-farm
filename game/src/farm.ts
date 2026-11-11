@@ -817,6 +817,34 @@ export function transplantCrop(farm: FarmState, source: number, destination: num
   return { ok: true, message: `${cropDefinitions[bed.crop].name}: грядка ${source + 1} → ${destination + 1}. Возраст, полив и особенность сохранены.` };
 }
 
+/** Divide a mature berry planting instead of harvesting it. No new save fields. */
+export function getBerryPropagation(farm: FarmState, source: number, destination: number) {
+  const bed = farm.beds[source];
+  const mother = Number.isInteger(source) && bed?.kind === 'crop'
+    && berryCropIds.some(id => id === bed.crop) && getBedStage(bed) === 'ripe' ? bed : undefined;
+  const available = farm.island === 'home' && !!mother && Number.isInteger(destination)
+    && source !== destination && farm.beds[destination]?.kind === 'tilled';
+  const label = farm.island !== 'home' ? 'Размножайте ягодные посадки на Родном острове.'
+    : !mother ? 'Выберите зрелую посадку клубники, черники или малины.'
+    : !available ? 'Нужна другая свободная вспаханная грядка.' : 'Разделить на две молодые посадки';
+  return { available, label, mother, nights: mother ? cropDefinitions[mother.crop].days : 0,
+    harvest: mother ? getBedHarvestPreview(farm, source) : undefined };
+}
+
+export function propagateBerry(farm: FarmState, source: number, destination: number, expected?: CropBed): ActionResult {
+  const preview = getBerryPropagation(farm, source, destination), mother = preview.mother;
+  if (!preview.available || !mother) return failure(preview.label);
+  if (expected && (mother.crop !== expected.crop || mother.growth !== expected.growth || mother.watered !== expected.watered
+    || mother.wateredAt !== expected.wateredAt || mother.trait !== expected.trait))
+    return failure('Посадка изменилась. Выберите зрелый куст заново.');
+  if (!Number.isSafeInteger(farm.workToday + 1)) return failure('Журнал работ заполнен.');
+  const seedling: CropBed = { kind: 'crop', crop: mother.crop, growth: 0, watered: getClimate(farm.day).weather === 'rain',
+    ...(mother.trait ? { trait: mother.trait } : {}) };
+  farm.beds[source] = { ...seedling }; farm.beds[destination] = { ...seedling };
+  farm.workToday++;
+  return { ok: true, message: `${cropDefinitions[mother.crop].name}: две молодые посадки на грядках ${source + 1} и ${destination + 1}. Урожай не собран. ${mother.trait ? 'Особенность сохранена у обеих.' : 'Обе посадки пока обычные.'}` };
+}
+
 export function selectSeed(farm: FarmState, crop: CropId): ActionResult {
   if (!isCropId(crop)) return failure('Выберите семена.');
   const name = cropDefinitions[crop].name;
