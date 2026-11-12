@@ -15,6 +15,7 @@ export class ActionClickGuard {
 }
 
 const guardedActions = new Set([
+  'hen-friendship-open', 'hen-treat', 'pet',
   'chicken-feed-open', 'mix-chicken-feed',
   'harbour-fish-trade', 'harbour-fish-catch',
   'berry-nursery-ingredient', 'berry-nursery-source', 'berry-nursery-destination', 'berry-nursery-confirm', 'berry-nursery-reset',

@@ -1,9 +1,12 @@
+import { restoreLegacyFarm } from './farm-save-migration'
 import { getHarbourFishRoute, renderHarbourFishChoice } from './harbour-fish-route'
 import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from './berry-nursery'
 import { villageHomeProgress } from './village-home-art'
 import './berry-nursery.css'
 import { renderShopCommissions } from './shop-commissions-ui'
-import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommission } from './shop-commissions'
+import { ShopAssortmentChoice } from './shop-assortment-choice'
+import './shop-commissions.css'
+import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommissionLine } from './shop-commissions'
 import { getFestivalShoreRoute } from './festival-shore-route.ts'
 import { rememberRecipeDraft, resumeRecipeDraft, resetRecipeDraft } from './recipe-draft'
 import { canReturnToDailyIntent, renderIntentDeadline, renderSelectedIntentRest, selectedDailyIntent } from './intent-deadline'
@@ -31,6 +34,8 @@ import './apiary-preview.css'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopMorning, renderCoopCapacityWarning } from './coop-preview'
 import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
+import { henFriends, renderHenFriendship, treatHen } from './hen-friendship'
+import './hen-friendship.css'
 import './coop-preview.css'
 import { canConfirmRest } from './rest-preview'
 import { renderRestPreview } from './rest-preview-ui'
@@ -199,7 +204,6 @@ import {
   plantCapeFlower,
   projectIds,
   refillWater,
-  restoreFarm,
   restoreCurrentFarm,
   sail,
   seedPackSize,
@@ -242,7 +246,7 @@ import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
 
-const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreFarm)
+const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreLegacyFarm)
 const farm = await saveStore.load() ?? createFarm()
 let saveAvailable = !saveStore.blocked
 let saveRecovery: ReturnType<typeof mountSaveRecovery> | undefined
@@ -289,7 +293,7 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
@@ -633,6 +637,7 @@ const panelTitles: Record<Panel, string> = {
   journal: 'Дневник',
   coop: 'Курятник',
   'chicken-feed': 'Корм со своей фермы',
+  'hen-friendship': 'Дружба со стаей',
   rest: 'Дом',
   guide: 'Карта бухты',
   seeds: 'Семена',
@@ -657,6 +662,7 @@ const panelTitles: Record<Panel, string> = {
 
 const panelEmblems: Record<Panel, string> = {
   'chicken-feed': 'tool-feed',
+  'hen-friendship': 'tool-hen',
   'warehouse-supply': 'ui-bag',
   transplant: 'tool-seeds',
   sale: 'ui-market',
@@ -1352,6 +1358,7 @@ function goBack() {
 let harbourScene: {destroy():void} | undefined
 let selectedWarehouse = farm.island
 let selectedExpeditionPort: ExpeditionPort = 'mill'
+const shopAssortmentChoice = new ShopAssortmentChoice()
 let selectedExpeditionOffer = 'mill-grain'
 let freightPlanOpen = false
 let musicView: BayMusicViewState | undefined
@@ -1515,7 +1522,7 @@ function drawPanel() {
       break
     }
     case 'shop-commissions':
-      dialogContent.innerHTML = renderShopCommissions(farm, id => { const recipe = farm.culinary.recipes.find(recipe => recipe.id === id); return recipe ? signatureResultPicture(recipe,{icon}) : '' })
+      dialogContent.innerHTML = renderShopCommissions(farm, id => { const recipe = farm.culinary.recipes.find(recipe => recipe.id === id); return recipe ? signatureResultPicture(recipe,{icon}) : '' }, shopAssortmentChoice)
       break
     case 'warehouse-supply': {
       const request = selectedWarehouseRequest, supply = request && getLocalWarehouseSupply(farm, request)
@@ -1672,6 +1679,9 @@ function drawPanel() {
           ${nav(button('Угостить', 'serve-guest', ready))}`) + renderFairReturn(farm,stockTile)
       break
     }
+    case 'hen-friendship':
+      dialogContent.innerHTML = renderHenFriendship(farm)
+      break
     case 'chicken-feed':
       dialogContent.innerHTML = renderChickenFeedMixes(farm)
       break
@@ -1681,6 +1691,7 @@ function drawPanel() {
         ${button('Улучшения', 'upgrades', true, { secondary: true })}</div>
         <ul class="dialog-list">
           ${flockFeedRow()}
+          ${row('tool-hen', 'Дружба со стаей', 'Имена, угощения и любимые привычки', button('Познакомиться', 'hen-friendship-open', true, {secondary:true}))}
           ${farm.buildingLevels.coop >= 2 ? row('tool-feed', 'Домашние кормовые смеси', 'Пшеница с морковью или яблоком', button('Выбрать смесь', 'chicken-feed-open', true, {secondary:true})) : row('tool-feed', 'Домашние кормовые смеси', 'Откроются после улучшения курятника')}
           ${row('egg', 'Яйца', `×${farm.eggsReady}`, button('Собрать', 'collect', farm.eggsReady > 0, {context:'яйца'}))}
           ${farm.coopSpecialization === 'hatchery' && farm.flockSize < maxFlockSize
@@ -1692,7 +1703,7 @@ function drawPanel() {
             button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket, { context: 'корзина яиц' })+button(`Распаковать · +${eggsPerBasket}`, 'unpack-egg-basket', getEggUnpackAction(farm,'basket').available, {secondary:true})) : ''}
         </ul><div class="hen-grid" role="group" aria-label="Курочки">${Array.from({ length: farm.flockSize }, (_, index) => {
             const petted = farm.pettedChickens.includes(index)
-            return `<button type="button" class="hen-card" data-action="pet" data-value="${index}" aria-label="Курочка ${index+1}, ${petted?'сегодня поглажена, погладить снова':'погладить'}">${icon('tool-hen')}<span>${index+1}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
+            return `<button type="button" class="hen-card" data-action="pet" data-value="${index}" aria-label="${henFriends[index].name}, ${petted?'сегодня поглажена, погладить снова':'погладить'}">${icon('tool-hen')}<span>${henFriends[index].name}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
           }).join('')}
         </div>`
       break
@@ -2560,10 +2571,10 @@ app.addEventListener('click', async (event) => {
       if(panel==='shop-commissions'&&dialog.open&&perform(()=>finishShopCommission(farm,value),false,true))playBaySound('trade.receive')
       break
     case 'commission-recipe': {
-      const order=getShopCommission(farm)
-      if(panel==='shop-commissions'&&order&&value===String(order.serial)){
-        expandedRepeatId=order.recipeId;openPanel('recipes')
-        highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(order.recipeId)}"]`))
+      const line=getShopCommissionLine(farm,value)
+      if(panel==='shop-commissions'&&dialog.open&&line){
+        expandedRepeatId=line.recipeId;openPanel('recipes')
+        highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(line.recipeId)}"]`))
       }
       break
     }
@@ -3036,6 +3047,15 @@ app.addEventListener('click', async (event) => {
     case 'buy-seeds':
       if (crop && perform(() => buySeeds(farm,crop))){playBaySound('trade.pay');if(panel==='seeds')chooseSeed(crop)}
       break
+    case 'hen-friendship-open':
+      if (panel === 'coop' && dialog.open && farm.island === 'home') openPanel('hen-friendship')
+      break
+    case 'hen-treat': {
+      if (panel !== 'hen-friendship' || !dialog.open) break
+      const choice = /^(0|1|2|3|4):(carrot|leafyGreens|apple)$/.exec(value ?? '')
+      if (choice) perform(() => treatHen(farm, Number(choice[1]), choice[2]), false, true)
+      break
+    }
     case 'chicken-feed-open':
       if (panel === 'coop' && dialog.open && farm.island === 'home' && farm.buildingLevels.coop >= 2) openPanel('chicken-feed')
       break
@@ -3334,6 +3354,14 @@ dialog.addEventListener('close', () => {
 
 app.addEventListener('change',event=>{
   const input=event.target
+  if (input instanceof HTMLSelectElement && input.dataset.commissionPair && panel === 'shop-commissions' && dialog.open) {
+    const part = input.dataset.commissionPair, customer = input.dataset.customer
+    if (shopAssortmentChoice.choose(farm, customer, part, input.value)) {
+      const scroll = dialogContent.scrollTop
+      drawPanel(); dialogContent.scrollTop = scroll
+      dialogContent.querySelector<HTMLSelectElement>(`[data-commission-pair="${part}"][data-customer="${CSS.escape(customer!)}"]`)?.focus({preventScroll:true})
+    }
+  }
   if(input instanceof HTMLInputElement&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
 })
 app.addEventListener('input', event => {

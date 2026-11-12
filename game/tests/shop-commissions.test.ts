@@ -70,7 +70,7 @@ test('partial escrow takes local warehouse first, persists, cancels exactly once
   p.act('transferBayGoods', 'deposit', 'village', `signature:${id}`, 1)
   const serial = accept(p), coins = p.state.coins
   p.act('deliverShopCommission', serial)
-  assert.equal(C.getShopCommission(p.state)!.warehouse, 0); assert.equal(p.state.culinary.stock[id], 1)
+  assert.equal(C.getShopCommission(p.state)!.lines[0].warehouse, 0); assert.equal(p.state.culinary.stock[id], 1)
   for (let i = 0; i < 8; i++) p.night()
   p.visit('village'); assert.equal(C.getShopCommission(p.state)!.delivered, 1)
   unchanged(p.state, () => F.forgetSignature(p.state, id))

@@ -1,0 +1,29 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Дружба со стаей</title>
+<style>body{font:15px/1.4 system-ui;color:#352447;background:#faf7f0;padding:8px}button{padding:8px;margin:3px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<h1>Знакомство с курочками</h1><p>Только localhost:4246. Точки получены публичными игровыми командами. Кнопки меняют только тестовое сохранение этого адреса.</p>
+<button data-fixture="ready">День знакомства</button><button data-fixture="friends">Близкие друзья</button><button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button>
+<button data-size="390,844">390 × 844</button><button data-size="568,320">568 × 320</button><button data-size="1280,900">1280 × 900</button>
+<details open><summary>Состояние тестового сохранения</summary><pre id="result"></pre></details><iframe title="Проверяемая игра" width="390" height="844"></iframe>
+<script type="module">
+import {createFarm,restoreCurrentFarm,workBed,pickFruit,petChicken,endDay} from '/src/farm.ts'
+import {treatHen} from '/src/hen-friendship.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4246'
+const frame=document.querySelector('iframe'),result=document.querySelector('#result')
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,day:f?.day,carrot:f?.produce.carrot,apple:f?.fruit.apple,fed:f?.chickensFed,points:f?.henFriendship.hens.map(b=>b.points),tasted:f?.henFriendship.hens.map(b=>b.tasted)},null,2)}
+function seed(kind){
+ if(!allowed)return
+ let farm=createFarm()
+ for(const action of [()=>workBed(farm,9),()=>pickFruit(farm,0)]){if(!action().ok)throw Error('Harvest failed')}
+ if(kind==='friends')for(let i=0;i<3;i++){
+  for(const action of [()=>petChicken(farm,0),()=>treatHen(farm,0,'carrot'),()=>endDay(farm)]){if(!action().ok)throw Error('Friendship failed')}
+ }
+ farm=restoreCurrentFarm(JSON.parse(JSON.stringify(farm)));if(!farm)throw Error('Save invalid')
+ localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm));inspect();frame.src='/'
+}
+if(!allowed){result.textContent='Запись запрещена вне localhost:4246';document.querySelectorAll('button').forEach(b=>b.disabled=true)}
+document.querySelectorAll('[data-fixture]').forEach(b=>b.onclick=()=>seed(b.dataset.fixture))
+document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=()=>frame.src='/'
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h})
+inspect()
+</script></html>

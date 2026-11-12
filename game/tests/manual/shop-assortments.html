@@ -1,0 +1,22 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Наборы для постоянных покупателей</title>
+<style>body{font:16px/1.4 system-ui;background:#faf7f0;color:#352447;margin:12px}button{padding:9px;margin:3px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<p>Только localhost:4245. Реальные заработанные рецепты, покупки и два заказа Беа. Без выдачи монет или продуктов.</p>
+<button data-seed="offer">Выбрать набор</button><button data-seed="partial">Две части начаты</button><button data-seed="full">Готовый набор</button><button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button>
+<button data-size="360,640">360×640</button><button data-size="568,320">568×320</button><button data-size="960,720">960×720</button>
+<details><summary>Запись</summary><pre id="result"></pre></details><iframe title="Игра наборов" width="960" height="720"></iframe>
+<script type="module">
+import actions from '/tests/fixtures/home-progress-actions.json'
+import {assortmentPlayer} from '/tests/fixtures/assortment-player.ts'
+import {getShopAssortment,getShopCommission} from '/src/shop-commissions.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+import {restoreCurrentFarm} from '/src/farm.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4245', frame=document.querySelector('iframe'), result=document.querySelector('#result')
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,day:f?.day,coins:f?.coins,island:f?.island,stock:f?.culinary.stock,warehouse:f?.freight.warehouses.village,orders:f?.shopCommissions},null,2)}
+function seed(kind){if(!allowed)return;try{const a=assortmentPlayer(actions),p=a.p
+ for(const [id,base] of [[a.jam,'preserves'],[a.tart,'tart']])for(let n=0;n<2;n++)a.cook(base,id)
+ p.act('transferBayGoods','deposit','village',`signature:${a.tart}`,1)
+ if(kind!=='offer'){p.act('acceptShopCommission',getShopAssortment(p.state,'bea',a.jam,a.tart).key);for(const line of getShopCommission(p.state).lines)for(let n=0;n<(kind==='full'?2:1);n++)p.act('deliverShopCommission',line.actionValue)}
+ localStorage.setItem(farmSaveKeys.primary,JSON.stringify(p.state));inspect();frame.src='/'
+ }catch(error){result.textContent=String(error);document.querySelector('details').open=true}}
+document.querySelectorAll('[data-seed]').forEach(b=>b.onclick=()=>seed(b.dataset.seed));document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h});document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=()=>frame.src='/';if(!allowed)document.querySelectorAll('button').forEach(b=>b.disabled=true)
+</script></html>

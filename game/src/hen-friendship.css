@@ -1,0 +1,11 @@
+.hen-friendship>p{font-size:13px;line-height:1.5}
+.hen-friend-card{margin:14px 0;padding:14px;border:1px solid var(--rule);border-radius:15px;background:var(--paper-light)}
+.hen-friend-card h2{margin:0;color:var(--plum);font-size:18px;line-height:1.35}
+.hen-friend-card h2 span{display:block;font-size:12px;font-weight:normal;color:var(--muted);margin-top:3px}
+.hen-friend-card p,.hen-memories{font-size:13px;line-height:1.5}
+.hen-friend-card progress{width:100%;height:9px;accent-color:var(--plum)}
+.hen-friend-card .hen-bond-count{margin:3px 0 10px;color:var(--muted);font-size:12px}
+.hen-memories{padding-left:22px;margin:10px 0}.hen-memories li+li{margin-top:6px}.hen-memory-locked{color:var(--muted)}
+.hen-treats{display:grid;gap:7px;grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr))}
+.hen-friend-card .dialog-button{min-height:44px;max-width:100%;white-space:normal;font-size:12px}
+.hen-treats .dialog-button{display:block}.hen-treats small{display:block;font-size:11px;font-weight:normal;margin-top:3px}
