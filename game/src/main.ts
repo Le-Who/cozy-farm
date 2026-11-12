@@ -1,4 +1,5 @@
 import { recipePlanningIngredient } from './recipe-planning'
+import {seedSavingQuote,saveCropSeeds,renderSeedSaving} from './seed-saving'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
 import './recipe-surplus.css'
 import { BerryRenewalSelection, renderBerryRenewal } from './berry-renewal-ui'
@@ -842,7 +843,7 @@ function seedCards() {
       ${icon(`ui-seed-${crop}`)}<strong>${cropDefinitions[crop].name}</strong><span>×${farm.seeds[crop]}</span>
     </button>`).join('')}</div>
     <section class="seed-detail">${icon(previewSeed)}<div><h2>Семена: ${seed.name.toLowerCase()}</h2><p>${quantity(seed.days, 'ночь')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p>
-      ${farm.seeds[previewSeed]===0?button('Купить семена','buy-seeds',farm.coins>=seed.seedPrice,{crop:previewSeed,cost:{icon:'coin',amount:seed.seedPrice}}):''}</div></section>`
+      ${farm.seeds[previewSeed]===0?button('Купить семена','buy-seeds',farm.coins>=seed.seedPrice,{crop:previewSeed,cost:{icon:'coin',amount:seed.seedPrice}}):''}${renderSeedSaving(farm,previewSeed)}</div></section>`
 }
 
 function stockLabel(item: StockItem): { name: string; image: string } {
@@ -3154,6 +3155,10 @@ app.addEventListener('click', async (event) => {
         drawPanel()
         dialogContent.scrollTop = 0
       }
+      break
+    case 'save-crop-seeds':
+      if(dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&seedSavingQuote(farm,previewSeed)?.token===value)
+        perform(()=>saveCropSeeds(farm,value),false,true)
       break
     case 'preview-seed':
       if (value && cropIds.includes(value as CropId)) chooseSeed(value as CropId)
