@@ -77,3 +77,18 @@ test('recipe recovery guards reject wrong or already available food, and gesture
   const made=structuredClone(farm);assert.equal(repeatRequestedSignature(farm,'delicate',`signature:${recipeId}`).ok,false);assert.deepEqual(farm,made)
   for(const action of ['neighbor-repeat-food','request-repeat-exact','choose-neighbor-food'])assert.ok(isGuardedAction(action))
 })
+
+test('a prepared local recipe is found for the saved meeting without cooking or taking it', async () => {
+  const {repeatSignature}=await import('../src/farm.ts')
+  const {transferBayGoods}=await import('../src/harbour-economy.ts')
+  const {farm,planId,recipeId}=neighborFoodFixture()
+  assert.ok(repeatSignature(farm,recipeId,undefined,3).ok)
+  assert.ok(transferBayGoods(farm,'deposit','village',`signature:${recipeId}`,3).ok)
+  const before=structuredClone(farm),recovery=getNeighborFoodRecovery(farm,planId)!
+  assert.deepEqual(recovery.warehouse,{kind:'signature',port:'village',recipeId,stored:3})
+  assert.equal(recovery.state,'spent','warehouse stock is not carried food')
+  assert.match(recovery.message,/на местном складе: 3/)
+  assert.doesNotMatch(recovery.message,/Приготовьте ещё/)
+  assert.deepEqual(farm,before)
+  assert.deepEqual(getNeighborFoodRecovery(load(farm),planId)?.warehouse,recovery.warehouse)
+})
