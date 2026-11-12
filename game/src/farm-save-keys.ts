@@ -26,11 +26,21 @@ export const commissionFarmSaveKeys = {
 } as const
 
 /** Individual friendships must survive writes from already-open v4 tabs. */
-export const farmSaveKeys = {
+export const friendshipFarmSaveKeys = {
   primary: 'cozy-farm-island-v5',
   legacy: commissionFarmSaveKeys.primary,
   journal: 'cozy-farm-island-v5-migration',
   lock: 'cozy-farm-island-v5-write',
   legacyFallback: { key: recoveredFarmSaveKeys.primary, journal: commissionFarmSaveKeys.journal,
     fallback: commissionFarmSaveKeys.legacyFallback },
+} as const
+
+/** Home visits are durable memories, protected from already-open v5 writers. */
+export const farmSaveKeys = {
+  primary: 'cozy-farm-island-v6',
+  legacy: friendshipFarmSaveKeys.primary,
+  journal: 'cozy-farm-island-v6-migration',
+  lock: 'cozy-farm-island-v6-write',
+  legacyFallback: { key: commissionFarmSaveKeys.primary, journal: friendshipFarmSaveKeys.journal,
+    fallback: friendshipFarmSaveKeys.legacyFallback },
 } as const
