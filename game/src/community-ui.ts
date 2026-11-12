@@ -88,12 +88,13 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
       const offer = getIntentOffers(farm, plan.intentId).find(offer => offer.id === plan.food?.id);
       const recovery = getNeighborFoodRecovery(farm, plan.id)!;
       const ready = recovery.state === 'ready';
-      const repair = recovery.shelved && offer ? control('В лавку за угощением', 'neighbor-shelf-food', plan.id, `data-food="${escape(offer.id)}"`)
+      const repair = recovery.warehouse && offer ? control('К готовой порции на складе', 'neighbor-stored-food', plan.id, `data-food="${escape(offer.id)}"`)
+        : recovery.shelved && offer ? control('В лавку за угощением', 'neighbor-shelf-food', plan.id, `data-food="${escape(offer.id)}"`)
         : recovery.state === 'spent' && offer ? offer.source === 'signature' && offer.canCook
         ? control('Повторить точно ×1', 'neighbor-repeat-food', plan.id)
         : control(offer.canCook ? 'Приготовить ещё' : 'К рецепту', 'cook-intent-offer', offer.id, `data-plan="${escape(plan.id)}"`) : '';
       content = `<div class="community-selected"><span class="community-selected-picture">${offer ? art.offerIcon(offer) : prop(plan.arrangement)}</span><strong>${escape(plan.food!.name)}</strong>${ready ? control(plan.arrangement === 'table' ? 'Накрыть стол' : 'Собрать корзинку', 'arrange-neighbor', plan.id) : `<p class="community-note" role="status">${recovery.message}</p>${repair}`}</div>
-        <details class="community-alternatives" ${!ready ? 'open' : ''}><summary>Выбрать другое угощение</summary>${offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id })}</details>`;
+        <details class="community-alternatives" ${!ready && !recovery.warehouse && !recovery.shelved ? 'open' : ''}><summary>Выбрать другое угощение</summary>${offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id })}</details>`;
       break;
     }
     case 'celebrating':

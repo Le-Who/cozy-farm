@@ -1,6 +1,7 @@
 import { getIntentOffers, getNeighborPlans, repeatSignature, type FarmState, type FoodOfferId } from './farm.ts'
 import type { IntentId } from './intent-orders.ts'
 import { getStoredSignature } from './stored-signature.ts'
+import { getLocalWarehouseSupply, warehouseRequest } from './warehouse-guidance.ts'
 
 /** Derive recovery from current stock, never rewrite the saved meeting. */
 export function getNeighborFoodRecovery(farm: FarmState, planId: string) {
@@ -10,7 +11,9 @@ export function getNeighborFoodRecovery(farm: FarmState, planId: string) {
   const state = !offer ? 'deleted' : !offer.eligible ? 'changed' : offer.available ? 'ready' : 'spent'
   const shelved = state === 'spent' ? farm.bayShop.slots.reduce((total,slot)=>total+(slot?.product.id===offer!.id?slot.quantity:0),0) : 0
   const stored = state === 'spent' && offer?.source === 'signature' ? getStoredSignature(farm,offer.id.slice('signature:'.length)) : undefined
-  const warehouse = stored ? {kind:'signature' as const,...stored} : undefined
+  const request = state === 'spent' && offer?.source !== 'signature' ? warehouseRequest(`${offer!.id}|1`) : undefined
+  const local = request && getLocalWarehouseSupply(farm,request)
+  const warehouse = stored ? {kind:'signature' as const,...stored} : local ? {kind:'stock' as const,request:request!,...local} : undefined
   const message = state === 'deleted' ? 'Выбранный рецепт удалён. Выберите другое угощение: встреча и её прогресс сохранены.'
     : state === 'changed' ? 'Это блюдо больше не подходит. Выберите другое угощение: встреча и её прогресс сохранены.'
     : warehouse ? `Выбранное угощение уже на местном складе: ${warehouse.stored}. Готовить заново не нужно. Заберите одну порцию отдельно и вернитесь к встрече. Встреча и её прогресс сохранены.`
@@ -30,5 +33,6 @@ export function repeatRequestedSignature(farm: FarmState, intent: IntentId, food
 export function repeatNeighborFood(farm: FarmState, planId: string) {
   const recovery = getNeighborFoodRecovery(farm, planId)
   if (!recovery || recovery.state !== 'spent' || !recovery.plan.food) return { ok: false, message: 'Выберите встречу с недостающим угощением.' }
+  if (recovery.warehouse) return { ok: false, message: 'Угощение уже на местном складе. Заберите готовую порцию и вернитесь к встрече.' }
   return repeatRequestedSignature(farm, recovery.plan.intentId, recovery.plan.food.id)
 }

@@ -2866,6 +2866,23 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
+    case 'neighbor-stored-food': {
+      if(!dialog.open||panel!=='neighbor')break
+      const recovery=value?getNeighborFoodRecovery(farm,value):undefined
+      if(!recovery||recovery.plan.resident!==communityResident)break
+      if(!recovery.warehouse||!recovery.offer||recovery.offer.id!==control.dataset.food){drawPanel();break}
+      communityRequest={kind:'neighbor',resident:recovery.plan.resident,planId:recovery.plan.id}
+      requestedFood=undefined
+      const supply=recovery.warehouse
+      if(supply.kind==='signature'){
+        openPanel('recipes')
+        highlightControl(dialogContent.querySelector(`[data-recipe="${CSS.escape(supply.recipeId)}"] [data-action="recipe-warehouse-withdraw"]`))
+      }else{
+        selectedWarehouseRequest=supply.request
+        openPanel('warehouse-supply')
+      }
+      break
+    }
     case 'neighbor-shelf-food': {
       if(!dialog.open||panel!=='neighbor')break
       const recovery=value?getNeighborFoodRecovery(farm,value):undefined
