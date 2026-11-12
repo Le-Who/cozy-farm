@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createFarm, petChicken, endDay, restoreCurrentFarm } from '../src/farm.ts'
 import { canWalkWithHen, createHenCompanion, henWalkPath, isHenWalkSegment, returnHenCompanion, stepHenCompanion } from '../src/hen-companion.ts'
+import { renderHenFriendship } from '../src/hen-friendship.ts'
+import { isGuardedAction } from '../src/action-click-guard.ts'
 import { defaultHenPositions, isHenGround, projectHenToGround } from '../src/hen-roaming.ts'
 const basic = { farmhouse: 1, well: 1, coop: 1 }, upgraded = { farmhouse: 3, well: 3, coop: 3 }
 
@@ -42,4 +44,16 @@ test('a moving farmer, interruption and reduced motion never write persistent fa
   assert.deepEqual(farm,before);assert.deepEqual(restoreCurrentFarm(JSON.parse(JSON.stringify(farm))),farm)
   const reduced=createHenCompanion(2,home);stepHenCompanion(reduced,{x:1200,y:500},home,basic,0,1,true);assert.ok(isHenGround(reduced.point))
   returnHenCompanion(reduced);assert.equal(stepHenCompanion(reduced,{x:1200,y:500},home,basic,0,2,true),true);assert.deepEqual(reduced.point,home)
+})
+
+
+test('walk choices disclose the free relationship threshold, one companion and scene availability', () => {
+  const f=createFarm();f.henFriendship.hens[0].points=3
+  const before=structuredClone(f),ready=renderHenFriendship(f)
+  assert.match(ready,/data-action="hen-walk-start" data-value="0">Погулять вместе/)
+  assert.match(ready,/data-action="hen-walk-start" data-value="1" disabled/)
+  assert.match(ready,/Прогулка бесплатна/);assert.match(renderHenFriendship(f,null,false),/когда отобразится остров/)
+  assert.match(renderHenFriendship(f,{id:0,returning:false}),/data-action="hen-walk-return" data-value="0">Закончить прогулку/)
+  assert.match(renderHenFriendship(f,{id:0,returning:true}),/data-action="hen-walk-return" data-value="0" disabled/)
+  assert.deepEqual(f,before);for(const action of ['hen-walk-start','hen-walk-return'])assert.ok(isGuardedAction(action))
 })

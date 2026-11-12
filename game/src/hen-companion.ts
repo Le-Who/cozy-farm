@@ -5,7 +5,8 @@ export type HenCompanionStatus = { id: number; returning: boolean }
 export type HenCompanion = HenCompanionStatus & { point: HenNativePoint; path: HenNativePoint[]; target?: HenNativePoint; planAfter: number }
 const distance = (a: HenNativePoint, b: HenNativePoint) => Math.hypot(a.x - b.x, a.y - b.y)
 const stepSize = 16, columns = 101, rows = 63
-const grids = new Map<string, Map<number, HenNativePoint>>()
+type HenGrid = { points: Map<number, HenNativePoint>; edges: Map<number, number[]> }
+const grids = new Map<string, HenGrid>()
 
 export function canWalkWithHen(farm: FarmState, id: unknown): id is number {
   return farm.island === 'home' && typeof id === 'number' && Number.isInteger(id) && id >= 0 && id < farm.flockSize
@@ -26,23 +27,44 @@ export function isHenWalkSegment(from: HenNativePoint, to: HenNativePoint, level
 
 function grid(levels: HenBuildingLevels) {
   const key = [levels.farmhouse, levels.coop, levels.well].map(level => Number(level >= 2)).join('')
-  let points = grids.get(key)
-  if (points) return points
-  points = new Map()
+  const cached = grids.get(key)
+  if (cached) return cached
+  const points = new Map<number, HenNativePoint>()
   for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
     const point = { x: x * stepSize, y: y * stepSize }
     if (isHenGround(point, levels)) points.set(y * columns + x, point)
   }
-  grids.set(key, points)
-  return points
+  const result = { points, edges: new Map<number, number[]>() }
+  grids.set(key, result)
+  return result
 }
 
 /** Bounded A* on the same shore/building/fence mask as dragging. No route means wait, never cross an obstacle. */
 export function henWalkPath(start: HenNativePoint, finish: HenNativePoint, levels: HenBuildingLevels): HenNativePoint[] {
   const from = projectHenToGround(start, levels), to = projectHenToGround(finish, levels)
   if (isHenWalkSegment(from, to, levels)) return [to]
-  const points = grid(levels)
-  const neighbours = (point: HenNativePoint) => [...points.entries()].filter(([, next]) => distance(point, next) <= 64 && isHenWalkSegment(point, next, levels))
+  const { points, edges } = grid(levels)
+  const neighbours = (point: HenNativePoint): [number, HenNativePoint][] => {
+    const result: [number, HenNativePoint][] = []
+    for (let y = Math.max(0, Math.floor((point.y - 64) / stepSize)); y <= Math.min(rows - 1, Math.ceil((point.y + 64) / stepSize)); y++)
+      for (let x = Math.max(0, Math.floor((point.x - 64) / stepSize)); x <= Math.min(columns - 1, Math.ceil((point.x + 64) / stepSize)); x++) {
+        const id = y * columns + x, next = points.get(id)
+        if (next && distance(point, next) <= 64 && isHenWalkSegment(point, next, levels)) result.push([id, next])
+      }
+    return result
+  }
+  const adjacent = (current: number) => {
+    const known = edges.get(current)
+    if (known) return known
+    const result: number[] = [], point = points.get(current)!, x = current % columns, y = Math.floor(current / columns)
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if ((!dx && !dy) || x + dx < 0 || x + dx >= columns || y + dy < 0 || y + dy >= rows) continue
+      const id = current + dy * columns + dx, next = points.get(id)
+      if (next && isHenWalkSegment(point, next, levels)) result.push(id)
+    }
+    edges.set(current, result)
+    return result
+  }
   const endings = new Map(neighbours(to).map(([id, point]) => [id, distance(point, to)]))
   const costs = new Map<number, number>(), previous = new Map<number, number>(), open = new Set<number>()
   for (const [id, point] of neighbours(from)) { costs.set(id, distance(from, point)); open.add(id) }
@@ -55,11 +77,9 @@ export function henWalkPath(start: HenNativePoint, finish: HenNativePoint, level
     }
     open.delete(current)
     if (endings.has(current)) { reached = current; break }
-    const point = points.get(current)!, x = current % columns, y = Math.floor(current / columns)
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      if ((!dx && !dy) || x + dx < 0 || x + dx >= columns || y + dy < 0 || y + dy >= rows) continue
-      const id = current + dy * columns + dx, next = points.get(id)
-      if (!next || !isHenWalkSegment(point, next, levels)) continue
+    const point = points.get(current)!
+    for (const id of adjacent(current)) {
+      const next = points.get(id)!
       const cost = costs.get(current)! + distance(point, next)
       if (cost >= (costs.get(id) ?? Infinity)) continue
       costs.set(id, cost); previous.set(id, current); open.add(id)

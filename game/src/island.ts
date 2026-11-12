@@ -1,3 +1,4 @@
+import { canWalkWithHen, createHenCompanion, returnHenCompanion, stepHenCompanion, type HenCompanion, type HenCompanionStatus } from './hen-companion';
 import { playBaySound } from './game-sound'
 import { bayAudio } from './bay-audio'
 import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
@@ -335,7 +336,7 @@ function roundTurns(points: Point[]): Point[] {
 
 export function createIsland(
   canvas: HTMLCanvasElement,
-  { inspect, activate, moveHen, harbourViewChanged }: { harbourViewChanged?: (view: HarbourView, traveling: boolean) => void; inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
+  { inspect, activate, moveHen, harbourViewChanged, henWalkChanged }: { henWalkChanged?: () => void; harbourViewChanged?: (view: HarbourView, traveling: boolean) => void; inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
 ) {
   const hint = document.createElement('div');
   hint.className = 'island-hint';
@@ -412,6 +413,15 @@ export function createIsland(
   const boatRoll = spring(0);
   let lastPhysics = 0;
   let henSites: Area[] = [];
+  let companion: HenCompanion | undefined;
+  let companionDay = 0;
+  function clearHenCompanion(resetPosition: boolean): void {
+    if (!companion) return;
+    const hen = hens[companion.id];
+    if (resetPosition) { hen.px.value = hen.x; hen.py.value = hen.y; hen.px.speed = hen.py.speed = 0; }
+    companion = undefined;
+    henWalkChanged?.();
+  }
   let fishing = false;
   let biteSince = 0;
   let arrival = 0;
@@ -1541,8 +1551,20 @@ export function createIsland(
       const held = heldHen?.index === index && heldHen.dragging ? heldHen : undefined;
       const previous = { x: hen.px.value, y: hen.py.value };
       const idle=henIdlePoint(nativeHenPoint(hen),time,index,state?.buildingLevels),target=held?.point??scenePoint(idle.x,idle.y);
-      let x = driveSpring(hen.px, target.x, dt, held ? 23 : 14, 0.82);
-      let y = driveSpring(hen.py, target.y, dt, held ? 23 : 14, 0.82);
+      let walkingPoint: Point | undefined;
+      if (companion?.id === index && !held && state) {
+        const walk = companion;
+        const finished = viewMode === 'world' && stepHenCompanion(walk, nativeHenPoint(farmer), nativeHenPoint(hen), state.buildingLevels, dt, moment / 1000, motion.matches);
+        walkingPoint = scenePoint(walk.point.x, walk.point.y);
+        if (finished) clearHenCompanion(false);
+      }
+      let x = walkingPoint?.x ?? driveSpring(hen.px, target.x, dt, held ? 23 : 14, 0.82);
+      let y = walkingPoint?.y ?? driveSpring(hen.py, target.y, dt, held ? 23 : 14, 0.82);
+      if (walkingPoint) {
+        hen.px.speed = dt > 0 && !motion.matches ? (x - previous.x) / dt : 0;
+        hen.py.speed = dt > 0 && !motion.matches ? (y - previous.y) / dt : 0;
+        hen.px.value = x; hen.py.value = y;
+      }
       if(!held&&hen.lift.value<2){
         const ground=projectHenToGround(nativeHenPoint({x,y}),state?.buildingLevels),safe=scenePoint(ground.x,ground.y);
         if(Math.abs(safe.x-x)>.001){hen.px.value=x=safe.x;hen.px.speed=0}
@@ -1803,6 +1825,7 @@ export function createIsland(
     if (held) {
       const hen = hens[held.index];
       if (held.dragging) {
+        if (companion?.id === held.index) clearHenCompanion(false);
         const ground=projectHenToGround(nativeHenPoint(held.point),state?.buildingLevels);
         Object.assign(hen,scenePoint(ground.x,ground.y));moveHen?.(held.index,ground);
       }
@@ -2005,6 +2028,21 @@ export function createIsland(
       describeFocus();
       requestPaint();
     },
+    henWalkAvailable(): boolean { return world.available && !crossing && state?.island === 'home'; },
+    henWalkStatus(): HenCompanionStatus | null { return companion ? { id: companion.id, returning: companion.returning } : null; },
+    startHenWalk(id: number): boolean {
+      if (!state || !world.available || crossing || heldHen || companion || !canWalkWithHen(state, id)) return false;
+      companion = createHenCompanion(id, nativeHenPoint({ x: hens[id].px.value, y: hens[id].py.value }));
+      companionDay = state.day;
+      henWalkChanged?.(); requestPaint();
+      return true;
+    },
+    endHenWalk(id: number): boolean {
+      if (!companion || companion.id !== id || companion.returning) return false;
+      returnHenCompanion(companion);
+      henWalkChanged?.(); requestPaint();
+      return true;
+    },
     isCrossing(): boolean { return crossing; },
     workCape(target: CapeWork['target'], commit: CapeWork['commit'], reward?: string): void {
       if (state?.island !== 'cape' || crossing || !world.available || capeWork && sameTarget(capeWork.target, target)) return;
@@ -2059,12 +2097,14 @@ export function createIsland(
       }
     },
     render(next: FarmState): void {
+      if (companion && (next.island !== 'home' || next.day !== companionDay || !canWalkWithHen(next, companion.id))) clearHenCompanion(true);
       loadIslandAssets(next);
       const moment = performance.now();
       hens.forEach((hen,index)=>{
         const saved=next.henPositions?.[index]??null;
         const changed=hen.saved===undefined||saved?.x!==hen.saved?.x||saved?.y!==hen.saved?.y;
         if(changed){
+          if (hen.saved !== undefined && companion?.id === index) clearHenCompanion(false);
           const point=projectHenToGround(saved??defaultHenPositions[index],next.buildingLevels),anchor=scenePoint(point.x,point.y);
           Object.assign(hen,anchor);
           if(hen.saved===undefined){hen.px.value=anchor.x;hen.py.value=anchor.y;hen.px.speed=hen.py.speed=0}

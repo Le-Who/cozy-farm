@@ -9,3 +9,6 @@
 .hen-treats{display:grid;gap:7px;grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr))}
 .hen-friend-card .dialog-button{min-height:44px;max-width:100%;white-space:normal;font-size:12px}
 .hen-treats .dialog-button{display:block}.hen-treats small{display:block;font-size:11px;font-weight:normal;margin-top:3px}
+
+.hen-walk-choice{margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)}
+.hen-walk-choice small{display:block;color:var(--muted);font-size:12px;line-height:1.45;margin-top:6px}

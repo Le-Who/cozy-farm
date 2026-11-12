@@ -34,7 +34,7 @@ import './apiary-preview.css'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopMorning, renderCoopCapacityWarning } from './coop-preview'
 import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
-import { henFriends, renderHenFriendship, treatHen } from './hen-friendship'
+import { henFriends, henFriendshipStage, renderHenFriendship, treatHen } from './hen-friendship'
 import './hen-friendship.css'
 import './coop-preview.css'
 import { canConfirmRest } from './rest-preview'
@@ -1680,7 +1680,7 @@ function drawPanel() {
       break
     }
     case 'hen-friendship':
-      dialogContent.innerHTML = renderHenFriendship(farm)
+      dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable())
       break
     case 'chicken-feed':
       dialogContent.innerHTML = renderChickenFeedMixes(farm)
@@ -2119,13 +2119,14 @@ function updateFieldContext(index: number | undefined) {
 }
 
 const island = createIsland(canvas, {
+  henWalkChanged: () => { if (dialog.open && panel === 'hen-friendship') drawPanel() },
   harbourViewChanged: (view, traveling) => harbourControls?.select(view, traveling),
   moveHen(index, point) {
     perform(() => moveFarmHen(farm, index, point), false, true)
   },
   inspect(target) {
     updateFieldContext(target.kind === 'bed' ? target.index : undefined)
-    if (target.kind === 'hen') return `Курочка ${target.index + 1} · ${farm.pettedChickens.includes(target.index) ? 'Сегодня поглажена' : 'Погладить курочку'}`
+    if (target.kind === 'hen') return `${henFriends[target.index].name} · ${henFriendshipStage(farm.henFriendship.hens[target.index].points)} · ${farm.pettedChickens.includes(target.index) ? 'Сегодня поглажена' : 'Погладить'}`
     if (target.kind === 'shell' || target.kind === 'shoal-find') {
       const item = getShoreItem(farm, target)
       return item ? `${item.name} · Подобрать` : ''
@@ -2304,7 +2305,7 @@ function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 
     case 'hen':
       if (farm.pettedChickens.includes(target.index)) {
         playBaySound(henGesture === 'settle' ? 'flock.settle' : 'flock.stroke', 1, 0)
-        notify('Курочка снова радостно кудахчет.')
+        notify(`${henFriends[target.index].name} снова радостно кудахчет.`)
       } else {
         perform(() => petChicken(farm, target.index), false, true) && playBaySound(henGesture === 'settle' ? 'flock.settle' : 'flock.stroke', 1, 0)
       }
@@ -3047,6 +3048,21 @@ app.addEventListener('click', async (event) => {
     case 'buy-seeds':
       if (crop && perform(() => buySeeds(farm,crop))){playBaySound('trade.pay');if(panel==='seeds')chooseSeed(crop)}
       break
+    case 'hen-walk-start': {
+      if (panel !== 'hen-friendship' || !dialog.open || !/^[0-4]$/.test(value ?? '')) break
+      const id = Number(value)
+      if (island.startHenWalk(id)) {
+        dialog.close()
+        if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
+        notify(`${henFriends[id].name} идёт с вами. Закончить прогулку можно в дневнике стаи.`)
+      }
+      break
+    }
+    case 'hen-walk-return': {
+      if (panel !== 'hen-friendship' || !dialog.open || !/^[0-4]$/.test(value ?? '')) break
+      if (island.endHenWalk(Number(value))) { dialog.close(); notify(`${henFriends[Number(value)].name} возвращается на своё место.`) }
+      break
+    }
     case 'hen-friendship-open':
       if (panel === 'coop' && dialog.open && farm.island === 'home') openPanel('hen-friendship')
       break

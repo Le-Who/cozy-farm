@@ -1,0 +1,18 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Прогулка с курочкой</title>
+<style>body{font:15px/1.4 system-ui;color:#352447;background:#faf7f0;padding:8px}button{padding:8px;margin:3px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<h1>Прогулка по настоящей ферме</h1><p>Только localhost:4247. Знакомство заработано тремя игровыми поглаживаниями. Прогулка не создаёт запасов, наград или записей в сохранении.</p>
+<button id="seed">Начать после знакомства</button><button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button>
+<button data-size="390,844">390 × 844</button><button data-size="568,320">568 × 320</button><button data-size="1280,900">1280 × 900</button>
+<details><summary>Сохранённое состояние</summary><pre id="result"></pre></details><iframe title="Проверяемая игра" width="1280" height="900"></iframe>
+<script type="module">
+import {createFarm,restoreCurrentFarm,petChicken,endDay} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4247'
+const frame=document.querySelector('iframe'),result=document.querySelector('#result')
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,day:f?.day,coins:f?.coins,feed:f?.feed,eggs:f?.eggs,positions:f?.henPositions,points:f?.henFriendship.hens.map(b=>b.points),commissions:f?.shopCommissions},null,2)}
+function seed(){if(!allowed)return;let farm=createFarm();for(let i=0;i<3;i++){petChicken(farm,0);endDay(farm)}farm=restoreCurrentFarm(JSON.parse(JSON.stringify(farm)));if(!farm)throw Error('Save invalid');localStorage.setItem(farmSaveKeys.primary,JSON.stringify(farm));inspect();frame.src='/'}
+if(!allowed){result.textContent='Запись запрещена вне localhost:4247';document.querySelectorAll('button').forEach(b=>b.disabled=true)}
+document.querySelector('#seed').onclick=seed;document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=()=>frame.src='/'
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h})
+inspect()
+</script></html>
