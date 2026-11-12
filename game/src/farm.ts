@@ -2047,7 +2047,7 @@ export function unitPrice(item: StockItem, farm: FarmState): number {
   }
 }
 
-function marketKey(item: StockItem): string {
+export function marketKey(item: StockItem): string {
   if (item.kind === 'variants') return `variants:${item.item}:${item.trait}`;
   return 'item' in item ? `${item.kind}:${item.item}` : item.kind;
 }
@@ -2172,6 +2172,41 @@ export function getMarketStock(farm: FarmState) {
     return (item.kind === 'variants' || item.kind === 'shells' || item.kind === 'shoalFinds') && count === 0 ? []
       : [{ item, key: marketKey(item), count, price: unitPrice(item, farm) }];
   });
+}
+
+export type MarketBasketRequest = { key: string; quantity: number };
+
+/** Exact, detached sale review. Duplicate lines and unsafe totals never form a basket. */
+export function getMarketBasket(farm: FarmState, requests: readonly MarketBasketRequest[]) {
+  if (farm.island !== 'home' || !Array.isArray(requests) || !requests.length || requests.length > marketStock.length) return undefined;
+  const lines: { key: string; item: StockItem; quantity: number; stock: number; price: number }[] = [];
+  const seen = new Set<string>();
+  let items = 0, total = 0;
+  for (const request of requests) {
+    if (!request || typeof request.key !== 'string' || seen.has(request.key) || !isQuantity(request.quantity) || request.quantity === 0) return undefined;
+    const item = marketStock.find(entry => marketKey(entry) === request.key);
+    if (!item) return undefined;
+    const stock = ingredientCount(farm, item), price = unitPrice(item, farm);
+    if (!isQuantity(stock) || stock < request.quantity || !isQuantity(price)) return undefined;
+    seen.add(request.key);
+    lines.push({ key: request.key, item: { ...item, quantity: request.quantity }, quantity: request.quantity, stock, price });
+    items += request.quantity; total += request.quantity * price;
+    if (!Number.isSafeInteger(items) || !Number.isSafeInteger(total)) return undefined;
+  }
+  const next = farm.progress.sell + 1, bonus = goals.find(goal => goal.id === 'sell' && goal.target === next)?.reward ?? 0;
+  if (!Number.isSafeInteger(next) || !Number.isSafeInteger(farm.workToday + 1) || !Number.isSafeInteger(farm.coins + total + bonus)) return undefined;
+  const token = JSON.stringify(['mb1', farm.day, farm.workToday, farm.progress.sell, farm.coins,
+    lines.map(line => [line.key, line.quantity, line.stock, line.price])]);
+  return { lines, items, total, token };
+}
+
+/** Apply all reviewed lines together, with one ordinary sale journal entry and reward. */
+export function sellMarketBasket(farm: FarmState, requests: readonly MarketBasketRequest[], expectedToken: unknown): ActionResult {
+  const quote = getMarketBasket(farm, requests);
+  if (!quote || quote.token !== expectedToken) return failure('Состав продажи изменился или недоступен. Проверьте его заново.');
+  for (const line of quote.lines) removeStock(farm, line.item);
+  farm.coins += quote.total;
+  return record(farm, 'sell', `Продано: ${ruCount(quote.items, 'предмет', 'предмета', 'предметов')}. Выручка: ${ruCount(quote.total, 'монета', 'монеты', 'монет')}.`);
 }
 
 export function sellMarketItem(farm: FarmState, key: string, quantity = 1): ActionResult {
