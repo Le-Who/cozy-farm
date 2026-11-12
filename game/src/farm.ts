@@ -1,3 +1,4 @@
+import { createGardenPlans, restoreGardenPlans, seedForBed, type GardenPlans } from './garden-plans.ts';
 import { createNeighborVisits, restoreNeighborVisits, noteNeighborVisit, visitActivities, type NeighborVisits } from './neighbor-visits.ts';
 import { createHenFriendship, restoreHenFriendship, befriendPettedHen, henFriends, type HenFriendship } from './hen-friendship.ts';
 import { createShopCommissions, restoreShopCommissions, shopCommissionUsesRecipe, type ShopCommissions } from './shop-commissions.ts';
@@ -548,6 +549,7 @@ export type FarmState = {
   intentOrders:IntentOrderState;
   neighbors:NeighborState;
   neighborVisits:NeighborVisits;
+  gardenPlans: GardenPlans;
   shoreline:ShorelineState;
   fishingTripSerial: number;
   pendingFishingTrip: FishingTrip | null;
@@ -666,7 +668,7 @@ export function createFarm(): FarmState {
     village: { built: false, supplies: {}, residents: [null, null], meals: 0, mealOn: 0,
       serviceOn: { bea: 0, finn: 0 }, scouting: false },
     shopCommissions: createShopCommissions(), freight: createFreight(), bayShop: createBayShop(), musicGarden: createBayMusicState(), concertDay: 0, festivals:createBayFestival(),
-    culinary:createCulinary(),shoreline:createShoreline(),intentOrders:createIntentOrders(),neighbors:createNeighborState(),neighborVisits:createNeighborVisits(),
+    culinary:createCulinary(),shoreline:createShoreline(),intentOrders:createIntentOrders(),neighbors:createNeighborState(),neighborVisits:createNeighborVisits(),gardenPlans:createGardenPlans(),
     fishingTripSerial: 0,
     pendingFishingTrip: null,
     seaSalt: 0,
@@ -742,7 +744,7 @@ export function getWaterCapacity(farm: Pick<FarmState, 'canUpgraded'> & Partial<
 
 export function needsSeedChoice(farm: FarmState, index: number): boolean {
   const bed = farm.beds[index];
-  return farm.island === 'home' && !!bed && bed.kind !== 'crop' && farm.seeds[farm.selectedSeed] === 0;
+  return farm.island === 'home' && !!bed && bed.kind !== 'crop' && farm.seeds[seedForBed(farm, index)] === 0;
 }
 
 export function getBedAction(farm: FarmState, index: number): BedAction {
@@ -750,8 +752,9 @@ export function getBedAction(farm: FarmState, index: number): BedAction {
   if (!bed || farm.island !== 'home') return { kind: 'wait', label: 'Выберите грядку на ферме.', available: false };
   if (bed.kind === 'empty') return { kind: 'till', label: 'Вскопать землю', available: true };
   if (bed.kind === 'tilled') {
-    const name = cropDefinitions[farm.selectedSeed].name.toLowerCase();
-    const available = farm.seeds[farm.selectedSeed] > 0;
+    const crop = seedForBed(farm, index);
+    const name = cropDefinitions[crop].name.toLowerCase();
+    const available = farm.seeds[crop] > 0;
     return { kind: 'plant', label: available ? `Посеять: ${name}` : `Семена закончились: ${name}. Выберите другие.`, available };
   }
 
@@ -773,7 +776,7 @@ export function workBed(farm: FarmState, index: number, now = Date.now()): Actio
     return record(farm, 'till', 'Грядка готова к посеву.');
   }
   if (action.kind === 'plant') {
-    const crop = farm.selectedSeed;
+    const crop = seedForBed(farm, index);
     farm.seeds[crop] -= 1;
     const { weather } = getClimate(farm.day);
     const trait = exposedTrait(farm.day, weather, index + 1);
@@ -856,6 +859,7 @@ export function selectSeed(farm: FarmState, crop: CropId): ActionResult {
   const name = cropDefinitions[crop].name;
   if (farm.seeds[crop] === 0) return failure(`Купите семена на рынке: ${name.toLowerCase()}.`);
   farm.selectedSeed = crop;
+  if (farm.gardenPlans.active !== null) { farm.gardenPlans.active = null; farm.gardenPlans.revision = Math.min(1_000_000, farm.gardenPlans.revision + 1) }
   return { ok: true, message: `Выбраны семена: ${name.toLowerCase()}.` };
 }
 
@@ -2461,7 +2465,8 @@ function restoreLivingBay(value: Record<string, unknown>, day: number, fairCompl
 export function restoreCurrentFarm(value: unknown): FarmState | undefined {
   if (!isRecord(value) || !Object.hasOwn(value, 'shopCommissions') || value.shopCommissions === undefined
     || !Object.hasOwn(value, 'henFriendship') || value.henFriendship === undefined
-    || !Object.hasOwn(value, 'neighborVisits') || value.neighborVisits === undefined) return undefined;
+    || !Object.hasOwn(value, 'neighborVisits') || value.neighborVisits === undefined
+    || !Object.hasOwn(value, 'gardenPlans') || value.gardenPlans === undefined) return undefined;
   return restoreFarm(value);
 }
 
@@ -2658,6 +2663,8 @@ export function restoreFarm(value: unknown): FarmState | undefined {
       if (count > 0) bayDiscoveries.push(id);
     }
   }
+  const gardenPlans = restoreGardenPlans(value.gardenPlans);
+  if (!gardenPlans) return undefined;
   const neighborVisits = restoreNeighborVisits(value.neighborVisits, day, island);
   if (!neighborVisits || (neighborVisits.active || neighborVisits.memories.length) && !livingBay.village.built
     || neighborVisits.memories.some(m => neighbors[visitActivities[m.activity].resident].completed === 0)
@@ -2731,7 +2738,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     harborSupplies,
     variants,
     discoveries,
-    culinary,shoreline,intentOrders,neighbors,neighborVisits,freight,bayShop,musicGarden,concertDay,festivals,shopCommissions,
+    culinary,shoreline,intentOrders,neighbors,neighborVisits,gardenPlans,freight,bayShop,musicGarden,concertDay,festivals,shopCommissions,
   };
   syncFestivalRewards(result);
   syncFarmShopPrices(result);

@@ -36,11 +36,21 @@ export const friendshipFarmSaveKeys = {
 } as const
 
 /** Home visits are durable memories, protected from already-open v5 writers. */
-export const farmSaveKeys = {
+export const visitFarmSaveKeys = {
   primary: 'cozy-farm-island-v6',
   legacy: friendshipFarmSaveKeys.primary,
   journal: 'cozy-farm-island-v6-migration',
   lock: 'cozy-farm-island-v6-write',
   legacyFallback: { key: commissionFarmSaveKeys.primary, journal: friendshipFarmSaveKeys.journal,
     fallback: friendshipFarmSaveKeys.legacyFallback },
+} as const
+
+/** Saved layouts and sowing intent must survive already-open v6 writers. */
+export const farmSaveKeys = {
+  primary: 'cozy-farm-island-v7',
+  legacy: visitFarmSaveKeys.primary,
+  journal: 'cozy-farm-island-v7-migration',
+  lock: 'cozy-farm-island-v7-write',
+  legacyFallback: { key: friendshipFarmSaveKeys.primary, journal: visitFarmSaveKeys.journal,
+    fallback: visitFarmSaveKeys.legacyFallback },
 } as const

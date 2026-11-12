@@ -59,7 +59,7 @@ test('pending v4 or unclassified old journals cannot conceal a missing escrow le
   }
 })
 
-test('a source-less v6 journal requires both ledgers of its immediate v5 source', async () => {
+test('a source-less v7 journal requires all ledgers of its immediate v6 source', async () => {
   const s = new Storage(); s.items.set(keys.journal, JSON.stringify({ version: 1, phase: 'pending', legacyRaw: JSON.stringify(createFarm()), initialRaw: JSON.stringify(createFarm()) }))
   const save = open(s); assert.ok(await save.load()); assert.equal(save.blocked, false)
 })
