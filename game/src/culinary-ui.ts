@@ -1,8 +1,9 @@
+import { recipePlanningChoices, recipePlanningGuide } from './recipe-planning'
 import { recipeDraftKey } from './recipe-draft'
 import { renderRecipeRepeatGuide } from './recipe-repeat-guidance'
 import './recipe-repeat-guidance.css'
 import {getCoveActions,getSignatureAction,getSignatureStock,ingredientCount,type FarmState,type StockItem} from './farm'
-import {signatureFruitIds,signatureFruitNames,signatureProcessingDefinitions,resolvedCookeryFruit,cookeryFinishTraits,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary'
+import {signatureFruitNames,signatureProcessingDefinitions,resolvedCookeryFruit,cookeryFinishTraits,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary'
 import {traitIds,type Trait} from './climate'
 import {type CoveChoices} from './shoreline'
 import './culinary-ui.css'
@@ -39,13 +40,16 @@ export function signatureResultPicture(recipe:SignatureRecipe,art:Pick<Icons,'ic
  return cookeryResultPicture(recipe.result,recipe.ingredients,art,recipe.processing)
 }
 
-function recipeDraftCard(farm: FarmState): string {
+function recipeDraftCard(farm: FarmState, art: Icons): string {
   const draft = farm.recipeDraft
   if (!draft) return ''
   const parts = draft.slots.map(part => part ? ingredientName(part) : 'ещё не выбрано').join(' + ')
   const key = recipeDraftKey(draft)
+  const guide = recipePlanningGuide(farm, draft)
   return `<section class="recipe-draft-card" aria-label="Сохранённая задумка"><strong>Задумка: ${draft.base === 'tart' ? 'тарт' : 'варенье'}</strong>
-    <p>${parts}</p><p>Сохраняется одна задумка: выбор другого состава заменит её. Продукты не отложены; наличие проверяется при возвращении.</p>
+    <p>${parts}</p>
+    ${guide ? `<h3>Для задуманного блюда</h3><ul class="ingredients recipe-draft-supplies">${guide.items.map(art.stock).join('')}</ul><p>${guide.missing ? 'Нажмите на недостающий продукт, чтобы узнать, где его взять. Задумка останется в книге.' : 'Все ингредиенты есть. Приготовление выбирается отдельно.'}</p>${!guide.available && !guide.missing ? `<p>${guide.label}</p>` : ''}` : '<p>Выберите ещё одну порцию, чтобы увидеть полный список ингредиентов.</p>'}
+    <p>Сохраняется одна задумка: другой состав заменит её. Продукты не отложены и не расходуются при выборе.</p>
     ${control('Продолжить задумку', 'resume-recipe-draft', key)}${control('Сбросить задумку', 'reset-recipe-draft', key)}
   </section>`
 }
@@ -53,7 +57,7 @@ function recipeDraftCard(farm: FarmState): string {
 export function signatureBook(farm:FarmState,art:Icons,expandedRepeatId?:string):string{
   const recipes=getSignatureStock(farm).sort((a,b)=>Number(b.recipe.favorite)-Number(a.recipe.favorite)||b.recipe.createdOn-a.recipe.createdOn||Number(b.recipe.id.slice(1))-Number(a.recipe.id.slice(1)))
   const capacity=signatureBookCapacity(farm.culinary)
-  return `<div class="signature-book">${recipeDraftCard(farm)}${renderPicnicStatus(farm)}${capacity.message?`<p class="signature-capacity" role="status">${capacity.message}</p>`:''}<div class="signature-book-tools">${control(`${art.icon('ui-apple-jam')}Новый рецепт`,'new-signature','preserves',capacity.canCreate)}${control(`${art.icon('ui-tart')}Фруктовый тарт`,'new-signature','tart',capacity.canCreate)}</div>
+  return `<div class="signature-book">${recipeDraftCard(farm,art)}${renderPicnicStatus(farm)}${capacity.message?`<p class="signature-capacity" role="status">${capacity.message}</p>`:''}<div class="signature-book-tools">${control(`${art.icon('ui-apple-jam')}Новый рецепт`,'new-signature','preserves',capacity.canCreate)}${control(`${art.icon('ui-tart')}Фруктовый тарт`,'new-signature','tart',capacity.canCreate)}</div>
     ${recipes.length?`<div class="signature-pages">${recipes.map(({recipe,count})=>{
       const action=getSignatureAction(farm,recipe),batch=action.available&&action.items.every(item=>ingredientCount(farm,item)>=item.quantity*3),stored=getStoredSignature(farm,recipe.id)
       return `<article class="signature-page" data-recipe="${recipe.id}"><header>${control(recipe.favorite?'★':'☆','favorite-signature',recipe.id,true,`aria-label="${recipe.favorite?'Убрать из избранного':'В избранное'} ${escapeRecipeText(recipe.name)}" aria-pressed="${recipe.favorite}"`)}<input aria-label="Название рецепта" data-recipe-name="${recipe.id}" value="${escapeRecipeText(recipe.name)}" maxlength="32"></header>
@@ -76,8 +80,7 @@ export function signatureStudio(farm:FarmState,base:SignatureDraft['base'],slots
   const draft:SignatureDraft={base,ingredients:slots.filter((p):p is SignatureIngredient=>p!==null)},action=getSignatureAction(farm,draft)
   const capacity=signatureBookCapacity(farm.culinary)
   const away=farm.island!=='home'&&farm.island!=='village',upgrade=base==='preserves'&&farm.buildingLevels.farmhouse<2
-  const variants=signatureFruitIds.flatMap(id=>traitIds.filter(trait=>(farm.variants[id]?.[trait]??0)>0).map(trait=>({id,quantity:1,trait} as SignatureIngredient)))
-  const choices:SignatureIngredient[]=[...signatureFruitIds.map(id=>({id,quantity:1})),...variants]
+  const choices = recipePlanningChoices(farm)
   const preview = intent && draft.ingredients.length === 2 ? evaluateFood({
     id:'signature:draft',name:'',identity:base,source:'signature',ingredients:draft.ingredients.map(p=>p.id),count:0,sellPrice:0
   }, intent) : undefined
@@ -86,8 +89,10 @@ export function signatureStudio(farm:FarmState,base:SignatureDraft['base'],slots
     : 'Для просьбы нужно: ' + preview.requiredQualities.filter(q=>!preview.qualities.includes(q)).map(q=>qualityNames[q]).join(', ') : ''
   return `<div class="recipe-studio">${capacity.message?`<p class="signature-capacity" role="status">${capacity.message}</p>${control('Мои рецепты','open-panel','recipes')}`:''}${fit ? `<p class="signature-request-fit" role="status">${fit}</p>` : ''}<div class="recipe-base-tabs">${(['preserves','tart'] as const).map(kind=>control(`${art.icon(kind==='tart'?'ui-tart':'ui-apple-jam')}${kind==='tart'?'Тарт':'Варенье'}`,'signature-base',kind,true,`aria-pressed="${base===kind}"`)).join('')}</div>
     <div class="recipe-portions">${slots.map((part,index)=>`<button type="button" class="recipe-portion" data-action="signature-slot" data-value="${index}" aria-pressed="${activeSlot===index}" aria-label="${index?'Вторая':'Первая'} порция фруктов">${part?`${finishedIcon(art.icon(ingredientArt(part.id)),part.trait?[part.trait]:[])}<span>${ingredientName(part)}</span>`:'<span class="portion-plus" aria-hidden="true">+</span>'}</button>`).join('<span class="portion-join" aria-hidden="true">+</span>')}</div>
-    <div class="recipe-fruit-palette">${choices.map(part=>{const count=signaturePortionStock(farm,part);return `<button type="button" data-action="signature-fruit" data-value="${part.id}" ${part.trait?`data-trait="${part.trait}"`:''} data-empty="${count===0}" aria-label="${ingredientName(part)}, в наличии: ${count}">${finishedIcon(art.icon(ingredientArt(part.id)),part.trait?[part.trait]:[])}<strong>${ingredientName(part)}</strong><span>×${count}</span></button>`}).join('')}</div>
-    ${slots.every(Boolean)?`<ul class="ingredients recipe-cost">${action.items.map(art.stock).join('')}</ul>`:''}
+    <p class="recipe-planning-help">Можно задумать блюдо заранее: выберите фрукты и ягоды, даже если их пока нет. Выбор запоминается в книге, продукты не расходуются.</p>
+    <div class="recipe-fruit-palette">${choices.map(part=>{const count=signaturePortionStock(farm,part);return `<button type="button" data-action="signature-fruit" data-value="${part.id}" ${part.trait?`data-trait="${part.trait}"`:''} data-empty="${count===0}" aria-label="Выбрать: ${ingredientName(part)}, в наличии: ${count}${count === 0 ? ", можно добавить в задумку" : ""}">${finishedIcon(art.icon(ingredientArt(part.id)),part.trait?[part.trait]:[])}<strong>${ingredientName(part)}</strong><span>×${count}</span></button>`}).join('')}</div>
+    ${slots.every(Boolean)?`<ul class="ingredients recipe-cost">${action.items.map(art.stock).join('')}</ul>${!action.available ? `<p class="recipe-planning-help">${action.label} Нажмите недостающий продукт, чтобы найти его, или вернитесь к задумке позже.</p>` : ''}`:''}
+    ${farm.recipeDraft && farm.recipeDraft.base === base && JSON.stringify(farm.recipeDraft.slots) === JSON.stringify(slots) ? control('К задумке в книге', 'open-panel', 'recipes') : ''}
     <footer>${away?control('Домой','signature-home','home'):upgrade?control('Улучшить дом','upgrades',''):control('Готовить','start-signature',base,action.available&&capacity.canCreate)}</footer></div>`
 }
 

@@ -1,10 +1,16 @@
+import { traitIds } from './climate.ts';
 import { normalizeSignatureDraft, signatureFruitIds, type SignatureIngredient } from './culinary.ts';
 import { getSignatureAction, ingredientCount, type FarmState } from './farm.ts';
 import { restoreRecipeDraft } from './recipe-draft.ts';
 
 /** A future choice is not a purchase, reservation, or promise of cooking availability. */
-export function recipePlanningChoices(_farm: FarmState): SignatureIngredient[] {
-  return signatureFruitIds.map(id => ({ id, quantity: 1 }));
+export function recipePlanningChoices(farm: FarmState): SignatureIngredient[] {
+  return [
+    ...signatureFruitIds.map(id => ({ id, quantity: 1 })),
+    ...signatureFruitIds.flatMap(id => traitIds
+      .filter(trait => farm.discoveries[id]?.[trait] === true || (farm.variants[id]?.[trait] ?? 0) > 0)
+      .map(trait => ({ id, quantity: 1, trait }))),
+  ];
 }
 
 /** Resolve untrusted palette attributes without accepting arbitrary fruit or trait identifiers. */

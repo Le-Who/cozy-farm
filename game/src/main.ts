@@ -1,3 +1,4 @@
+import { recipePlanningIngredient } from './recipe-planning'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
 import './recipe-surplus.css'
 import { BerryRenewalSelection, renderBerryRenewal } from './berry-renewal-ui'
@@ -107,7 +108,7 @@ import { getFruitSource, nurseryFruitDetail } from './orchard-guidance'
 import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
-import {signatureBook,signatureStudio,coveControls,signaturePortionStock,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
+import {signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
 import { communityBoard, communityIntent, neighborDetail, neighborHelpCard, type CommunityArt } from './community-ui'
 import { neighborHelpStatus } from './neighbor-help'
@@ -2962,16 +2963,17 @@ app.addEventListener('click', async (event) => {
     case 'new-signature':
       signatureBase=value==='tart'?'tart':'preserves';signatureSlots=[null,null];signatureSlot=0;signatureRepeatId=undefined;signatureFamily=undefined;openPanel('signature');break
     case 'signature-base':
-      if(value==='preserves'||value==='tart'){signatureBase=value;signatureRepeatId=undefined;rememberCurrentRecipeDraft();drawPanel()}break
-    case 'signature-slot':signatureSlot=value==='1'?1:0;rememberCurrentRecipeDraft();drawPanel();break
+      if(dialog.open && panel==='signature' && (value==='preserves'||value==='tart')){signatureBase=value;signatureRepeatId=undefined;rememberCurrentRecipeDraft();drawPanel()}break
+    case 'signature-slot':
+      if(dialog.open && panel==='signature' && (value==='0'||value==='1')){signatureSlot=value==='1'?1:0;rememberCurrentRecipeDraft();drawPanel()}break
     case 'signature-fruit':{
-      const id=signatureFruitIds.find(id=>id===value)
-      if(!id)break
-      const trait=control.dataset.trait as Trait|undefined,part:SignatureIngredient={id,quantity:1,...(trait?{trait}:{})}
-      if(signaturePortionStock(farm,part)===0){const item:StockItem=trait?{kind:'variants',item:id,trait,quantity:1}:id==='apple'||id==='pear'||id==='peach'?{kind:'fruit',item:id,quantity:1}:{kind:'produce',item:id,quantity:1};await showRequirement({kind:'stock',item},control);break}
+      if(!dialog.open || panel!=='signature')break
+      const part=recipePlanningIngredient(farm,value,control.dataset.trait)
+      if(!part)break
       signatureSlots[signatureSlot]=part;signatureSlot=signatureSlot===0?1:0;signatureRepeatId=undefined;rememberCurrentRecipeDraft();drawPanel();break
     }
-    case 'start-signature':cookingMode='signature';openPanel('cookery');break
+    case 'start-signature':
+      if(dialog.open && panel==='signature'){cookingMode='signature';openPanel('cookery')}break
     case 'signature-home':
       if(canSailTo(farm,'home')){closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true));openPanel('recipes',false);openPanel('signature')}
       break

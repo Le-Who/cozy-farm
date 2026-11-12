@@ -15,6 +15,7 @@ export class ActionClickGuard {
 }
 
 const guardedActions = new Set([
+  'signature-base', 'signature-slot', 'signature-fruit', 'start-signature',
   'recipe-surplus-choose', 'recipe-surplus-quantity', 'recipe-surplus-refresh', 'recipe-surplus-reset', 'recipe-surplus-confirm', 'recipe-surplus-recipe',
   'berry-renewal-source', 'berry-renewal-reset', 'berry-renewal-bed', 'berry-renewal-confirm',
   'garden-shop', 'garden-shop-scope', 'garden-shop-back', 'garden-buy-seeds',
