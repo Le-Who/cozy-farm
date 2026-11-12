@@ -31,6 +31,8 @@ import './apiary-preview.css'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopMorning, renderCoopCapacityWarning } from './coop-preview'
 import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
+import { henFriends, renderHenFriendship, treatHen } from './hen-friendship'
+import './hen-friendship.css'
 import './coop-preview.css'
 import { canConfirmRest } from './rest-preview'
 import { renderRestPreview } from './rest-preview-ui'
@@ -289,7 +291,7 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
@@ -633,6 +635,7 @@ const panelTitles: Record<Panel, string> = {
   journal: 'Дневник',
   coop: 'Курятник',
   'chicken-feed': 'Корм со своей фермы',
+  'hen-friendship': 'Дружба со стаей',
   rest: 'Дом',
   guide: 'Карта бухты',
   seeds: 'Семена',
@@ -657,6 +660,7 @@ const panelTitles: Record<Panel, string> = {
 
 const panelEmblems: Record<Panel, string> = {
   'chicken-feed': 'tool-feed',
+  'hen-friendship': 'tool-hen',
   'warehouse-supply': 'ui-bag',
   transplant: 'tool-seeds',
   sale: 'ui-market',
@@ -1672,6 +1676,9 @@ function drawPanel() {
           ${nav(button('Угостить', 'serve-guest', ready))}`) + renderFairReturn(farm,stockTile)
       break
     }
+    case 'hen-friendship':
+      dialogContent.innerHTML = renderHenFriendship(farm)
+      break
     case 'chicken-feed':
       dialogContent.innerHTML = renderChickenFeedMixes(farm)
       break
@@ -1681,6 +1688,7 @@ function drawPanel() {
         ${button('Улучшения', 'upgrades', true, { secondary: true })}</div>
         <ul class="dialog-list">
           ${flockFeedRow()}
+          ${row('tool-hen', 'Дружба со стаей', 'Имена, угощения и любимые привычки', button('Познакомиться', 'hen-friendship-open', true, {secondary:true}))}
           ${farm.buildingLevels.coop >= 2 ? row('tool-feed', 'Домашние кормовые смеси', 'Пшеница с морковью или яблоком', button('Выбрать смесь', 'chicken-feed-open', true, {secondary:true})) : row('tool-feed', 'Домашние кормовые смеси', 'Откроются после улучшения курятника')}
           ${row('egg', 'Яйца', `×${farm.eggsReady}`, button('Собрать', 'collect', farm.eggsReady > 0, {context:'яйца'}))}
           ${farm.coopSpecialization === 'hatchery' && farm.flockSize < maxFlockSize
@@ -1692,7 +1700,7 @@ function drawPanel() {
             button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket, { context: 'корзина яиц' })+button(`Распаковать · +${eggsPerBasket}`, 'unpack-egg-basket', getEggUnpackAction(farm,'basket').available, {secondary:true})) : ''}
         </ul><div class="hen-grid" role="group" aria-label="Курочки">${Array.from({ length: farm.flockSize }, (_, index) => {
             const petted = farm.pettedChickens.includes(index)
-            return `<button type="button" class="hen-card" data-action="pet" data-value="${index}" aria-label="Курочка ${index+1}, ${petted?'сегодня поглажена, погладить снова':'погладить'}">${icon('tool-hen')}<span>${index+1}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
+            return `<button type="button" class="hen-card" data-action="pet" data-value="${index}" aria-label="${henFriends[index].name}, ${petted?'сегодня поглажена, погладить снова':'погладить'}">${icon('tool-hen')}<span>${henFriends[index].name}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
           }).join('')}
         </div>`
       break
@@ -3036,6 +3044,15 @@ app.addEventListener('click', async (event) => {
     case 'buy-seeds':
       if (crop && perform(() => buySeeds(farm,crop))){playBaySound('trade.pay');if(panel==='seeds')chooseSeed(crop)}
       break
+    case 'hen-friendship-open':
+      if (panel === 'coop' && dialog.open && farm.island === 'home') openPanel('hen-friendship')
+      break
+    case 'hen-treat': {
+      if (panel !== 'hen-friendship' || !dialog.open) break
+      const choice = /^(0|1|2|3|4):(carrot|leafyGreens|apple)$/.exec(value ?? '')
+      if (choice) perform(() => treatHen(farm, Number(choice[1]), choice[2]), false, true)
+      break
+    }
     case 'chicken-feed-open':
       if (panel === 'coop' && dialog.open && farm.island === 'home' && farm.buildingLevels.coop >= 2) openPanel('chicken-feed')
       break

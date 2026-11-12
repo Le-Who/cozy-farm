@@ -1,3 +1,4 @@
+import { createHenFriendship, restoreHenFriendship, befriendPettedHen, type HenFriendship } from './hen-friendship.ts';
 import { createShopCommissions, restoreShopCommissions, type ShopCommissions } from './shop-commissions.ts';
 import { restoreRecipeDraft, completeRecipeDraft, type RecipeDraftBookmark } from './recipe-draft.ts';
 import { createDiscoveryPreferences, restoreDiscoveryPreferences, type DiscoveryPreferences } from './discovery-preferences.ts';
@@ -514,6 +515,7 @@ export type FarmState = {
   eggsReady: number;
   eggTrait: Trait | null;
   chickensFed: boolean;
+  henFriendship: HenFriendship;
   island: IslandId;
   boatOwned: boolean;
   trees: Record<OrchardIslandId, (TreeSlot | null)[]>;
@@ -635,6 +637,7 @@ export function createFarm(): FarmState {
     eggsReady: 1,
     eggTrait: null,
     chickensFed: false,
+    henFriendship: createHenFriendship(),
     island: 'home',
     boatOwned: false,
     trees: {
@@ -1957,7 +1960,7 @@ export function petChicken(farm: FarmState, id: number): ActionResult {
   if (farm.pettedChickens.includes(id)) return failure('Сегодня эту курицу уже погладили.');
   farm.pettedChickens.push(id);
   farm.chickenHappiness = Math.min(maxChickenHappiness, farm.chickenHappiness + 1);
-  return { ok: true, message: 'Курица довольно кудахчет.' };
+  return { ok: true, message: befriendPettedHen(farm, id) };
 }
 
 export function getSale(farm: FarmState): { items: number; coins: number } {
@@ -2441,9 +2444,10 @@ function restoreLivingBay(value: Record<string, unknown>, day: number, fairCompl
     village: restoredVillage, fishingTripSerial, pendingFishingTrip };
 }
 
-/** Current saves must contain the escrow ledger; only legacy migration may add it. */
+/** Current saves require both ledgers; only legacy migration may initialize them. */
 export function restoreCurrentFarm(value: unknown): FarmState | undefined {
-  if (!isRecord(value) || !Object.hasOwn(value, 'shopCommissions') || value.shopCommissions === undefined) return undefined;
+  if (!isRecord(value) || !Object.hasOwn(value, 'shopCommissions') || value.shopCommissions === undefined
+    || !Object.hasOwn(value, 'henFriendship') || value.henFriendship === undefined) return undefined;
   return restoreFarm(value);
 }
 
@@ -2611,6 +2615,8 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     || !Array.from(henPositions).every((point, index) => point === null || (index < flockSize && isRecord(point)
       && typeof point.x === 'number' && Number.isFinite(point.x)
       && typeof point.y === 'number' && Number.isFinite(point.y)))) return undefined;
+  const henFriendship = restoreHenFriendship(value.henFriendship, day, flockSize);
+  if (!henFriendship) return undefined;
   const safeHenPositions = henPositions.map(point => point === null ? null : projectHenToGround(point, buildingLevels));
   for (const { id } of goals) {
     const count = progress[id];
@@ -2657,6 +2663,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     eggsReady,
     eggTrait,
     chickensFed,
+    henFriendship,
     island,
     boatOwned,
     trees: {
