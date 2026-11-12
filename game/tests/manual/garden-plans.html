@@ -1,0 +1,16 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Свои планы огорода · проверка</title>
+<style>body{font:14px/1.4 system-ui;color:#352447;background:#faf7f0;margin:8px}button,a{margin:3px;padding:8px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<button id="seed">Открыть ферму из v6</button><button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button><button data-size="390,700">390 × 700</button><button data-size="568,320">568 × 320</button><button data-size="1120,620">1120 × 620</button>
+<p id="error" role="alert"></p><details><summary>Результат: план и обычные ресурсы</summary><pre id="result"></pre></details><iframe title="Проверяемая игра" width="1120" height="620"></iframe>
+<script type="module">
+import {createFarm,restoreCurrentFarm} from '/src/farm.ts'
+import {farmSaveKeys,visitFarmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4267',frame=document.querySelector('iframe'),result=document.querySelector('#result')
+function openGame(){frame.srcdoc=`<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><div id="app"></div><script>addEventListener('error',e=>parent.document.querySelector('#error').textContent=e.message);addEventListener('unhandledrejection',e=>parent.document.querySelector('#error').textContent=String(e.reason));<\/script><script type="module" src="/src/main.ts"><\/script></html>`}
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,coins:f?.coins,seeds:f?.seeds,beds:f?.beds.map((bed,index)=>({index:index+1,...bed})).filter(b=>[1,2,14].includes(b.index)),plans:f?.gardenPlans,v6Retained:!!localStorage.getItem(visitFarmSaveKeys.primary)},null,2)}
+function seed(){if(!allowed)return;if(localStorage.getItem(farmSaveKeys.primary)||localStorage.getItem(farmSaveKeys.journal)){result.textContent='Этот тестовый профиль уже содержит прогресс. Продолжите его без перезаписи.';document.querySelector('details').open=true;openGame();return}const f=createFarm();f.beds[0]={kind:'tilled'};f.discoveryPreferences.quiet=true;delete f.gardenPlans;localStorage.setItem(visitFarmSaveKeys.primary,JSON.stringify(f));openGame()}
+if(!allowed)document.querySelectorAll('button').forEach(b=>b.disabled=true)
+document.querySelector('#seed').onclick=seed;document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=()=>openGame()
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h})
+inspect();if(localStorage.getItem(farmSaveKeys.primary))openGame()
+</script></html>

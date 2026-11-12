@@ -81,3 +81,52 @@ test('v6 imports all existing state unchanged and protects plans from old and st
     }
   }
 })
+
+test('four detached UI drafts copy only crops, cancel safely and reject stale saves', async () => {
+  const {GardenPlanEditor,renderGardenPlans,gardenPlanToken}=await import('../src/garden-plans-ui.ts')
+  const f=createFarm(), before=ordinary(f), e=new GardenPlanEditor()
+  for(let i=0;i<4;i++) {
+    assert.ok(e.choose(i));assert.ok(e.begin(f,true));assert.deepEqual(e.draft!.crops,snapshotGarden(f))
+    e.draft!.name=` Мой план ${i+1} `;e.brush='wheat';assert.ok(e.paint(0));assert.equal(e.choose((i+1)%4),false)
+    assert.ok(e.save(f).ok);assert.equal(f.gardenPlans.pages[i]!.name,`Мой план ${i+1}`)
+  }
+  assert.equal(e.choose(4),false);assert.deepEqual(ordinary(f),before);roundtrip(f)
+  e.begin(f);e.draft!.name='Другой';e.paint(0);e.reset();assert.equal(f.gardenPlans.pages[3]!.name,'Мой план 4')
+  e.begin(f);followGardenPlan(f,0,f.gardenPlans.revision);const current=copy(f)
+  assert.equal(e.save(f).ok,false);assert.deepEqual(f,current);assert.match(renderGardenPlans(f,e,()=>''),/Запись уже изменилась/)
+  for(const value of ['','01:0','1:4','1:undefined','-1:0','1:0:0'])assert.equal(gardenPlanToken(value),undefined)
+  assert.deepEqual(gardenPlanToken('4:none'),{revision:4,slot:null})
+})
+
+test('plan renderer is read-only, escapes names, keeps delete confirmation separate and guards every action',async()=>{
+  const {GardenPlanEditor,renderGardenPlans}=await import('../src/garden-plans-ui.ts')
+  const {isGuardedAction}=await import('../src/action-click-guard.ts')
+  const f=createFarm(),e=new GardenPlanEditor();saveGardenPlan(f,0,page(),0);followGardenPlan(f,0,1)
+  f.gardenPlans.pages[0]!.name='A & "B"';const before=copy(f),html=renderGardenPlans(f,e,()=>'<i></i>')
+  assert.match(html,/A &amp; &quot;B&quot;/);assert.equal((html.match(/class="garden-bed"/g)||[]).length,16)
+  assert.match(html,/Занято: морковь/);assert.match(html,/Покупок и резервирования нет/);assert.doesNotMatch(html,/data-action="garden-remove"/)
+  e.deleting='2:0';assert.match(renderGardenPlans(f,e,()=>''),/data-action="garden-remove" data-value="2:0"/);assert.deepEqual(f,before)
+  for(const action of ['slot','edit','copy','cancel','brush','paint','save','follow','delete','remove','bed'])assert.ok(isGuardedAction('garden-'+action))
+})
+
+test('manual beds stay manual, repeat harvest uses ordinary yield, and plan counts live occupancy',()=>{
+  const f=createFarm(),p=page();p.crops[0]=null;f.beds[0]={kind:'tilled'};f.beds[13]={kind:'tilled'}
+  saveGardenPlan(f,0,p,0);followGardenPlan(f,0,1);assert.equal(seedForBed(f,0),'carrot');assert.equal(seedForBed(f,13),'wheat')
+  assert.ok(workBed(f,0,0).ok);assert.equal((f.beds[0] as any).crop,'carrot');assert.ok(workBed(f,13,1).ok)
+  assert.ok(workBed(f,13,2).ok);endDay(f);assert.ok(workBed(f,13,3).ok);endDay(f)
+  const before=f.produce.wheat;assert.ok(workBed(f,13,4).ok);assert.equal(f.produce.wheat-before,3)
+  assert.equal(f.gardenPlans.active,0);assert.equal(getBedAction(f,13).kind,'plant');assert.ok(workBed(f,13,5).ok);assert.equal(f.seeds.wheat,0)
+  const preview=gardenPlanPreview(f,p);assert.equal(preview.beds[13].status,'matching');roundtrip(f)
+})
+
+test('v7 corruption, blocked storage and missing v6 primary cannot replay older data',async()=>{
+  const {friendshipFarmSaveKeys}=await import('../src/farm-save-keys.ts')
+  for(const mode of ['corrupt-current','missing-current','missing-v6'] as const){
+    const s=new Storage(),old=copy(createFarm()) as any;delete old.gardenPlans
+    s.items.set(friendshipFarmSaveKeys.primary,JSON.stringify(old))
+    if(mode==='corrupt-current')s.items.set(farmSaveKeys.primary,'{bad')
+    if(mode==='missing-current')s.items.set(farmSaveKeys.journal,JSON.stringify({version:1,phase:'complete'}))
+    if(mode==='missing-v6')s.items.set(visitFarmSaveKeys.journal,'{prior-migration}')
+    const before=[...s.items],store=open(s);assert.equal(await store.load(),undefined);assert.ok(store.blocked);assert.equal(await store.save(createFarm()),false);assert.deepEqual([...s.items],before);assert.equal(s.writes,0)
+  }
+})
