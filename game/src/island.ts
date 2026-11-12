@@ -1,3 +1,4 @@
+import { syncHomeVisitor, stepHomeVisitor, type HomeVisitor } from './neighbor-visit-scene';
 import { canWalkWithHen, createHenCompanion, returnHenCompanion, stepHenCompanion, type HenCompanion, type HenCompanionStatus } from './hen-companion';
 import { playBaySound } from './game-sound'
 import { bayAudio } from './bay-audio'
@@ -413,6 +414,7 @@ export function createIsland(
   const boatRoll = spring(0);
   let lastPhysics = 0;
   let henSites: Area[] = [];
+  let homeVisitor: HomeVisitor | undefined;
   let companion: HenCompanion | undefined;
   let companionDay = 0;
   function clearHenCompanion(resetPosition: boolean): void {
@@ -614,7 +616,8 @@ export function createIsland(
       if (hasBayDisplay(farm)) sites.push(displaySite);
       return getHarborOrder(farm) ? [harborSite, ...sites] : sites;
     }
-    const sites = [...(state?mooredFerry(state):[]),...(state&&!state.chickensFed?[feedStationSite]:[]),...henSites, ...homeSites];
+    const visiting:Area[] = homeVisitor&&!homeVisitor.leaving&&state?.neighborVisits.active ? [{target:{kind:'neighbor',resident:homeVisitor.resident},center:{x:scenePoint(homeVisitor.point.x,homeVisitor.point.y).x,y:scenePoint(homeVisitor.point.x,homeVisitor.point.y).y-43},stop:scenePoint(homeVisitor.point.x+40,homeVisitor.point.y+12),w:48,h:88}] : [];
+    const sites = [...visiting,...(state?mooredFerry(state):[]),...(state&&!state.chickensFed?[feedStationSite]:[]),...henSites, ...homeSites];
     if (state && state.buildingLevels.farmhouse >= 2) sites.push(kitchenSite);
     if (state && getFairGuest(state)?.served === false) sites.unshift(guestSite);
     if (state && isProjectComplete(state, 'fair')) sites.push(homeWorkshopSite, villageProjectSite);
@@ -1545,6 +1548,16 @@ export function createIsland(
       world.shape('shade',feedStation.x,feedStation.y,9,3.5,'#725531',.24);
       art.draw(world,'feed-station',feedStation.x,feedStation.y-bob,size,size,{fullCell:true,baseline:140/144,footY:feedStation.y});
     }
+    if(atHome&&homeVisitor){
+      const visitor=homeVisitor;
+      const finished=stepHomeVisitor(visitor,viewMode==='world'?dt:0,motion.matches);
+      const point=scenePoint(visitor.point.x,visitor.point.y),walking=visitor.route.length>0&&!motion.matches;
+      const options={frame:walking?1+Math.floor(visitor.stride*4)%4:state?.neighborVisits.active?.observation?5:0,fullCell:true,baseline:236/256,flip:!visitor.facingRight,footY:point.y};
+      world.shape('shade',point.x,point.y,12,4,'#62543b',.18);
+      art.draw(world,`village-${visitor.resident}`,point.x,point.y,110,110,{...options,shadow:true});
+      art.draw(world,`village-${visitor.resident}`,point.x,point.y,110,110,options);
+      if(finished)homeVisitor=undefined;
+    }
     henSites = [];
     if (atHome) hens.forEach((hen, index) => {
       if (index >= (state?.flockSize ?? chickenCount)) return;
@@ -1945,6 +1958,7 @@ export function createIsland(
       if (isProjectComplete(next, project)) loadStage(projectStages[project]);
     }
     if (island === 'home') {
+      if(next.neighborVisits.active||homeVisitor){load('village-bea',6);load('village-finn',6)}
       art.load('windmill-sails', 'lavender/home-mill-sails');
       load('hen-poses', 8);
       load('hen-walk-smooth', 8);
@@ -2097,6 +2111,7 @@ export function createIsland(
       }
     },
     render(next: FarmState): void {
+      homeVisitor=syncHomeVisitor(homeVisitor,next);
       if (companion && (next.island !== 'home' || next.day !== companionDay || !canWalkWithHen(next, companion.id))) clearHenCompanion(true);
       loadIslandAssets(next);
       const moment = performance.now();

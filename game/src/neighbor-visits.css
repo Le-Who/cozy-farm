@@ -1,0 +1,7 @@
+.home-visits{font-size:13px;line-height:1.5}.home-visits h2{font-size:18px;color:var(--plum)}.home-visits h3{font-size:15px;margin:0;color:var(--plum)}
+.home-visits header{display:flex;align-items:center;gap:10px}.home-visits header .icon{width:52px;height:52px}.home-visits header h2{margin:0}.home-visits small,.home-visit-note{color:var(--muted);font-size:12px}
+.home-visit-active,.home-visit-invitations>article,.home-visit-memories>article{border:1px solid var(--rule);border-radius:16px;background:var(--paper-light);padding:14px;margin:14px 0}
+.home-visit-active{border-width:2px}.home-visit-goal,.home-visit-memory{padding:10px;border-radius:10px;background:var(--paper)}
+.home-visit-choice{border-top:1px solid var(--rule);padding-top:12px;margin-top:12px}.home-visit-choice p{margin:5px 0}.home-visit-choice small{display:block;margin:5px 0 10px}
+.home-visits .dialog-button{white-space:normal;min-height:44px;max-width:100%;font-size:12px}.home-visit-hens{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr));gap:7px}.home-visit-replies p{margin:4px 0 14px}
+@media(min-width:800px){.home-visit-invitations,.home-visit-memories{display:grid;grid-template-columns:1fr 1fr;gap:12px}.home-visit-invitations>article,.home-visit-memories>article{margin:0}.home-visits .home-visit-active{margin-bottom:20px}}

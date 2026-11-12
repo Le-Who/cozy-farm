@@ -68,3 +68,27 @@ test('v5 imports friendships and held orders intact; corrupt v5 never resets pro
     if(absent!=='neighborVisits')assert.equal(s.getItem(v5.primary),bytes)
   }
 })
+
+test('guest book is read-only, escapes saved subjects and exposes no extra reward or daily obligation',async()=>{
+  const {renderNeighborVisits}=await import('../src/neighbor-visits-ui.ts');const {isGuardedAction}=await import('../src/action-click-guard.ts')
+  const f=ready(),before=structuredClone(f);const html=renderNeighborVisits(f,()=>'<i></i>')
+  assert.match(html,/Пригласить/);assert.match(html,/Повторные визиты не дают монет/);assert.deepEqual(f,before)
+  inviteNeighborVisit(f,'beaFlock');introduceHenToVisitor(f,0);f.neighborVisits.active!.observation!.subject='<unsafe>'
+  assert.match(renderNeighborVisits(f,()=>''),/&lt;unsafe&gt;/);assert.doesNotMatch(renderNeighborVisits(f,()=>''),/<unsafe>/)
+  for(const id of ['visit-invite','visit-finish','visit-reply','visit-introduce-hen','visit-do','visit-book-home'])assert.ok(isGuardedAction(id))
+})
+
+test('every guest arrives and leaves by safe routes; rest, travel and reduced motion release runtime actors',async()=>{
+  const {syncHomeVisitor,stepHomeVisitor,visitorLanding}=await import('../src/neighbor-visit-scene.ts')
+  const {isHenWalkSegment}=await import('../src/hen-companion.ts')
+  for(const id of visitActivityIds){const f=ready();inviteNeighborVisit(f,id);const before=structuredClone(f);let actor=syncHomeVisitor(undefined,f)!
+    let p=actor.point;assert.ok(actor.route.length);for(const next of actor.route){assert.ok(isHenWalkSegment(p,next,f.buildingLevels));p=next}
+    for(let i=0;i<1500&&actor.route.length;i++)stepHomeVisitor(actor,1/30,false)
+    assert.ok(Math.hypot(actor.point.x-visitActivities[id].point.x,actor.point.y-visitActivities[id].point.y)<2);assert.deepEqual(f,before)
+    finishNeighborVisit(f,f.neighborVisits.serial);actor=syncHomeVisitor(actor,f)!;assert.ok(actor.leaving)
+    for(let i=0;i<1500&&actor.route.length;i++)stepHomeVisitor(actor,1/30,false)
+    assert.ok(stepHomeVisitor(actor,0,false));assert.deepEqual(actor.point,visitorLanding)
+    inviteNeighborVisit(f,id);actor=syncHomeVisitor(actor,f)!;stepHomeVisitor(actor,0,true);assert.deepEqual(actor.point,visitActivities[id].point)
+    endDay(f);assert.equal(syncHomeVisitor(actor,f),undefined);f.island='grove';assert.equal(syncHomeVisitor(actor,f),undefined)
+  }
+})

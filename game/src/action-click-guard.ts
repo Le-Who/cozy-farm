@@ -15,6 +15,7 @@ export class ActionClickGuard {
 }
 
 const guardedActions = new Set([
+  'visit-invite', 'visit-finish', 'visit-reply', 'visit-introduce-hen', 'visit-do', 'visit-book-home',
   'hen-walk-start', 'hen-walk-return',
   'hen-friendship-open', 'hen-treat', 'pet',
   'chicken-feed-open', 'mix-chicken-feed',

@@ -1,0 +1,31 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Гости на ферме</title>
+<style>body{font:15px/1.4 system-ui;color:#352447;background:#faf7f0;padding:8px}button,a{margin:4px;padding:8px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<h1>Гости на домашней ферме</h1><p>Изолированная проверка localhost:4249. Первые встречи завершаются обычными командами игры. Приглашение не создаёт наград.</p>
+<button id="seed">Подготовить знакомых соседей</button><button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button><a href="/">Открыть игру целиком</a>
+<button data-size="390,844">390 × 844</button><button data-size="568,320">568 × 320</button><button data-size="1120,600">1120 × 600</button>
+<details><summary>Сохранённые визиты</summary><pre id="result"></pre></details><iframe title="Проверяемая игра" width="1120" height="600"></iframe>
+<script type="module">
+import {createFarm,restoreCurrentFarm,getNeighborPlans,joinNeighborPlan,serveNeighborPlan,finishNeighborPlan,sail} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const assert={ok(value){if(!value)throw Error('Invalid test fixture')}}
+function ready(){
+  const f=createFarm();f.day=5;f.boatOwned=true;f.buildingLevels.farmhouse=2
+  f.projects.fair={'dishes:appleJam':1,eggBaskets:1,'produce:carrot':4,'produce:wheat':3}
+  f.fairGuestsServed=1;f.guestServedOn=1
+  f.village={built:true,supplies:{'handmade:round':2,'fish:seaBass':2,honey:2},residents:['bea','finn'],meals:2,mealOn:2,serviceOn:{bea:0,finn:0},scouting:false}
+  f.dishes.windParfait=1;f.dishes.grilledFish=1;f.island='village'
+  for(const p of getNeighborPlans(f)){
+    assert.ok(joinNeighborPlan(f,p.id).ok)
+    assert.ok(serveNeighborPlan(f,p.id,p.resident==='bea'?'dish:windParfait':'dish:grilledFish').ok)
+    assert.ok(finishNeighborPlan(f,p.id,{kind:p.arrangement,settled:true,placements:[{slot:'food',x:0,y:0},{slot:'cup',x:-.6,y:.3},{slot:'flowers',x:.6,y:.3}]}).ok)
+  }
+  assert.ok(sail(f,'home').ok);assert.ok(restoreCurrentFarm(JSON.parse(JSON.stringify(f))));return f
+}
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4249',frame=document.querySelector('iframe'),result=document.querySelector('#result')
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,day:f?.day,coins:f?.coins,produce:f?.produce,friendship:f?.henFriendship,visits:f?.neighborVisits,commissions:f?.shopCommissions},null,2)}
+function seed(){if(!allowed)return;const f=ready();f.produce.wheat=8;f.eggs=4;localStorage.setItem(farmSaveKeys.primary,JSON.stringify(f));inspect();frame.src='/'}
+if(!allowed)document.querySelectorAll('button').forEach(b=>b.disabled=true)
+document.querySelector('#seed').onclick=seed;document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=()=>frame.src='/'
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h})
+inspect()
+</script></html>

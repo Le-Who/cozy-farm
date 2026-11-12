@@ -46,6 +46,7 @@ export function getDiscoveryJournal(farm: FarmState): DiscoveryJournal {
   const activities: DiscoveryJournal['activities'] = [];
   if (farm.boatOwned) activities.push({ label: 'Паром «Ласточка»', detail: 'Торговые рейсы и открытие новых портов.', icon: 'bay/ferry', panel: 'bay-freight' });
   if (harbour) {
+    activities.push({ label: 'Гостевая книга', detail: 'Приглашайте знакомых соседей на свою ферму.', icon: 'ui-bea', panel: 'neighbor-visits' });
     activities.push({ label: 'Своя лавка', detail: 'Товары, цены и вкусы постоянных гостей.', icon: 'bay/pavilion', panel: 'bay-shop' });
     activities.push({ label: 'Музыкальный сад', detail: 'Своя мелодия и концерт для бухты.', icon: 'bay/music-harp', panel: 'bay-music' });
     activities.push({ label: 'Праздники гавани', detail: traditions.length ? 'Новые праздники и следующие встречи.' : festivalDefinitions.lights.name, icon: 'festivals/lights', panel: 'festival' });

@@ -1,3 +1,7 @@
+import { inviteNeighborVisit, finishNeighborVisit, visitActivities } from './neighbor-visits'
+import { renderNeighborVisits, renderVisitRest } from './neighbor-visits-ui'
+import { introduceHenToVisitor } from './farm'
+import './neighbor-visits.css'
 import { restoreLegacyFarm } from './farm-save-migration'
 import { getHarbourFishRoute, renderHarbourFishChoice } from './harbour-fish-route'
 import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from './berry-nursery'
@@ -293,7 +297,7 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'neighbor-visits' | 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
@@ -637,6 +641,7 @@ const panelTitles: Record<Panel, string> = {
   journal: 'Дневник',
   coop: 'Курятник',
   'chicken-feed': 'Корм со своей фермы',
+  'neighbor-visits': 'Гостевая книга',
   'hen-friendship': 'Дружба со стаей',
   rest: 'Дом',
   guide: 'Карта бухты',
@@ -662,6 +667,7 @@ const panelTitles: Record<Panel, string> = {
 
 const panelEmblems: Record<Panel, string> = {
   'chicken-feed': 'tool-feed',
+  'neighbor-visits': 'ui-bea',
   'hen-friendship': 'tool-hen',
   'warehouse-supply': 'ui-bag',
   transplant: 'tool-seeds',
@@ -1553,7 +1559,7 @@ function drawPanel() {
     }
     case 'intents': dialogContent.innerHTML = communityBoard(farm, communityArt); break
     case 'intent': dialogContent.innerHTML = communityIntent(farm, communityOrderId, communityArt); break
-    case 'neighbor': dialogContent.innerHTML = neighborDetail(farm, communityResident, communityArt); break
+    case 'neighbor': dialogContent.innerHTML = neighborDetail(farm, communityResident, communityArt) + (farm.neighbors[communityResident].completed>0?nav(button('Пригласить к себе на ферму','visit-book-home',true,{secondary:true})): ''); break
     case 'request-food': dialogContent.innerHTML = requestedRecipeCard(); break
     case 'arrangement': {
       const request = arrangementRequest
@@ -1679,6 +1685,9 @@ function drawPanel() {
           ${nav(button('Угостить', 'serve-guest', ready))}`) + renderFairReturn(farm,stockTile)
       break
     }
+    case 'neighbor-visits':
+      dialogContent.innerHTML = renderNeighborVisits(farm, icon)
+      break
     case 'hen-friendship':
       dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable())
       break
@@ -1708,7 +1717,7 @@ function drawPanel() {
         </div>`
       break
     case 'rest':
-      dialogContent.innerHTML = `${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderFerryReturn(farm,harbourGoods())}${renderRestPreview(farm)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
+      dialogContent.innerHTML = `${renderVisitRest(farm)}${farm.village.built?nav(button(farm.neighborVisits.active?'Поговорить с гостем':'Гостевая книга', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderFerryReturn(farm,harbourGoods())}${renderRestPreview(farm)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
         ${renderShopRest(farm)}<ul class="dialog-list">${row('moon', `День ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}`, '', button('До утра', 'sleep', true, {value:farm.day}))}</ul>
         ${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}`
       break
@@ -2146,7 +2155,7 @@ const island = createIsland(canvas, {
       const bloom = getCapeBloom(farm, target.index)
       return `Клумба ${target.index + 1} · ${bloom === 'empty' ? 'Посадить цветы' : bloom === 'growing' ? 'Расцветут завтра' : 'Цветут'}`
     }
-    if (target.kind === 'neighbor') return `${residentDefinitions[target.resident].name} · Замысел соседа`
+    if (target.kind === 'neighbor') return `${residentDefinitions[target.resident].name} · ${farm.island==='home'?'В гостях на ферме':'Замысел соседа'}`
     if (target.kind !== 'bed') {
       const kind = target.kind
       if (kind === 'kitchen' && farm.farmhouseSpecialization) {
@@ -2274,7 +2283,7 @@ function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 
     case 'honey-kitchen': openPanel('honey-kitchen'); break
     case 'guest': openPanel('guest'); break
     case 'workshop': workshopRecipe = 'pastry'; openPanel('workshop'); break
-    case 'neighbor': communityResident = target.resident; requestedFood = undefined; communityRequest = { kind: 'neighbor', resident: target.resident, planId: getNeighborPlans(farm).find(plan => plan.resident === target.resident)?.id ?? '' }; openPanel('neighbor'); break
+    case 'neighbor': if(farm.island==='home'){openPanel('neighbor-visits');break} communityResident = target.resident; requestedFood = undefined; communityRequest = { kind: 'neighbor', resident: target.resident, planId: getNeighborPlans(farm).find(plan => plan.resident === target.resident)?.id ?? '' }; openPanel('neighbor'); break
     case 'village': openPanel(farm.island === 'home' ? 'village-project' : 'village'); break
     case 'village-meal': openPanel('village-meal'); break
     case 'village-home': villageSlot = target.index; openPanel('village'); break
@@ -3048,6 +3057,36 @@ app.addEventListener('click', async (event) => {
     case 'buy-seeds':
       if (crop && perform(() => buySeeds(farm,crop))){playBaySound('trade.pay');if(panel==='seeds')chooseSeed(crop)}
       break
+    case 'visit-book-home': void visitPanelAt('home','neighbor-visits'); break
+    case 'visit-invite':
+      if(panel==='neighbor-visits'&&dialog.open&&perform(()=>inviteNeighborVisit(farm,value),false,true)){
+        closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
+      }
+      break
+    case 'visit-finish': case 'visit-reply': {
+      if(panel!=='neighbor-visits'||!dialog.open)break
+      const parts=/^([1-9]\d{0,6})(?::(quiet|curious))?$/.exec(value??'')
+      if(!parts||action==='visit-reply'&&!parts[2]||action==='visit-finish'&&parts[2])break
+      if(perform(()=>finishNeighborVisit(farm,Number(parts[1]),parts[2]),false,true))closeDialog()
+      break
+    }
+    case 'visit-introduce-hen': {
+      if(panel!=='neighbor-visits'||!dialog.open)break
+      const parts=/^([1-9]\d{0,6}):([0-4])$/.exec(value??'')
+      if(!parts||farm.neighborVisits.active?.serial!==Number(parts[1]))break
+      perform(()=>introduceHenToVisitor(farm,Number(parts[2])),false,true)
+      break
+    }
+    case 'visit-do': {
+      if(panel!=='neighbor-visits'||!dialog.open||!farm.neighborVisits.active||String(farm.neighborVisits.active.serial)!==value)break
+      const kind=visitActivities[farm.neighborVisits.active.activity].kind
+      if(kind==='pastry'){workshopRecipe='pastry';openPanel('workshop');break}
+      const index=kind==='crop'?farm.beds.findIndex(b=>b.kind==='crop'&&getBedStage(b)==='ripe'):farm.trees.home.findIndex(t=>t&&t.fruitReady>0)
+      closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
+      if(index>=0)island.focusTarget({kind:kind==='crop'?'bed':'tree',index})
+      else notify(kind==='crop'?'Пока нет зрелого урожая. Можно пригласить гостя после созревания.':'Пока нет спелых плодов. Можно пригласить гостя позднее.')
+      break
+    }
     case 'hen-walk-start': {
       if (panel !== 'hen-friendship' || !dialog.open || !/^[0-4]$/.test(value ?? '')) break
       const id = Number(value)
