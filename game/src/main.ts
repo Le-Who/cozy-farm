@@ -1,3 +1,4 @@
+import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
 import { activeGardenPlan, plannedCropAt, seedForBed, followGardenPlan, removeGardenPlan } from './garden-plans'
 import { GardenPlanEditor, renderGardenPlans, renderGardenMode, gardenPlanToken } from './garden-plans-ui'
 import './garden-plans.css'
@@ -3082,10 +3083,21 @@ app.addEventListener('click', async (event) => {
         }
       }
       break
-    case 'garden-slot': case 'garden-edit': case 'garden-copy': case 'garden-cancel': case 'garden-brush': case 'garden-paint': case 'garden-save': case 'garden-follow': case 'garden-delete': case 'garden-remove': case 'garden-bed': {
+    case 'garden-shop': case 'garden-shop-scope': case 'garden-shop-back': case 'garden-buy-seeds': case 'garden-slot': case 'garden-edit': case 'garden-copy': case 'garden-cancel': case 'garden-brush': case 'garden-paint': case 'garden-save': case 'garden-follow': case 'garden-delete': case 'garden-remove': case 'garden-bed': {
       if (panel !== 'garden-plans' || !dialog.open || farm.island !== 'home') break
       const token = gardenPlanToken(value)
-      if (action === 'garden-slot') gardenEditor.choose(Number(value))
+      if (action === 'garden-buy-seeds') {
+        if (!gardenEditor.draft && gardenEditor.shopping) {
+          const quote = gardenSeedQuote(farm, gardenEditor.slot, gardenEditor.shopping)
+          if (perform(() => quote?.token === value ? buyGardenSeeds(farm, value) : { ok: false, message: 'Список семян изменился. Проверьте обновлённый состав и цену.' })) playBaySound('trade.pay')
+          else drawPanel()
+        }
+        break
+      }
+      if (action === 'garden-shop' && !gardenEditor.draft && farm.gardenPlans.pages[gardenEditor.slot]) { gardenEditor.shopping = 'open'; gardenEditor.deleting = undefined }
+      else if (action === 'garden-shop-scope' && gardenEditor.shopping && (value === 'open' || value === 'all')) gardenEditor.shopping = value
+      else if (action === 'garden-shop-back') gardenEditor.shopping = undefined
+      else if (action === 'garden-slot') gardenEditor.choose(Number(value))
       else if (action === 'garden-edit' || action === 'garden-copy') gardenEditor.begin(farm, action === 'garden-copy')
       else if (action === 'garden-cancel') gardenEditor.reset()
       else if (action === 'garden-brush' && gardenEditor.draft) {

@@ -1,0 +1,18 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Закупка семян по плану · проверка</title>
+<style>body{font:14px/1.4 system-ui;color:#352447;background:#faf7f0;margin:8px}button{margin:3px;padding:8px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<button id="seed">Открыть изолированную ферму</button><button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button><button data-size="360,640">360 × 640</button><button data-size="568,320">568 × 320</button><button data-size="1120,620">1120 × 620</button>
+<p>Из семян откройте «Свои планы огорода» → «Семена для свободных грядок» → «Собрать список семян». Для свободных мест: 8 монет, для полного посева: 12 монет. Проверить отмену, покупку, повторный ввод, возврат, обычный посев и перезагрузку. Ферма создаётся только на порту 4268, существующие записи не перезаписываются.</p>
+<p id="error" role="alert"></p><details><summary>Результат: семена, монеты, грядки, планы</summary><pre id="result"></pre></details><iframe title="Проверяемая игра" width="1120" height="620"></iframe>
+<script type="module">
+import {createFarm,restoreCurrentFarm} from '/src/farm.ts'
+import {saveGardenPlan,followGardenPlan} from '/src/garden-plans.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4268',frame=document.querySelector('iframe'),result=document.querySelector('#result')
+function openGame(){frame.srcdoc=`<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><div id="app"></div><script>addEventListener('error',e=>parent.document.querySelector('#error').textContent=e.message);addEventListener('unhandledrejection',e=>parent.document.querySelector('#error').textContent=String(e.reason));<\/script><script type="module" src="/src/main.ts"><\/script></html>`}
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,coins:f?.coins,seeds:f?.seeds,beds:f?.beds,plans:f?.gardenPlans},null,2)}
+function seed(){if(!allowed)return;if(Object.keys(localStorage).some(k=>k.startsWith('cozy-farm-island-'))){result.textContent='Тестовый профиль уже содержит прогресс. Продолжите без перезаписи.';document.querySelector('details').open=true;openGame();return}const f=createFarm(),current=structuredClone(f.beds[1]);f.coins=100;f.beds=Array.from({length:16},()=>({kind:'tilled'}));f.beds[0]=current;f.beds[5]=structuredClone(current);f.seeds.wheat=1;f.seeds.carrot=0;f.discoveryPreferences.quiet=true;const crops=Array(16).fill(null);crops.fill('wheat',0,5);crops.fill('carrot',5,7);saveGardenPlan(f,0,{name:'На пироги и суп',crops},0);followGardenPlan(f,0,1);localStorage.setItem(farmSaveKeys.primary,JSON.stringify(f));openGame()}
+if(!allowed)document.querySelectorAll('button').forEach(b=>b.disabled=true)
+document.querySelector('#seed').onclick=seed;document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=openGame
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h})
+inspect();if(allowed&&localStorage.getItem(farmSaveKeys.primary))openGame()
+</script></html>

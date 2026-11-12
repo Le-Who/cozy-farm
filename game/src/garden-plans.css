@@ -13,3 +13,6 @@
 @media(max-width:650px) and (orientation:portrait){.garden-mode{top:calc(var(--top) + 98px);max-width:55vw}}
 @media(max-height:430px) and (orientation:landscape){.garden-mode{top:calc(var(--top) + 54px);left:var(--left);max-width:42vw}.garden-mode:not([hidden])~.island-context>.task-card{display:none}}
 .garden-plans button:focus-visible,.garden-mode:focus-visible{outline:3px solid var(--deep);outline-offset:2px}
+
+.garden-shopping-list{list-style:none;padding:0;display:grid;gap:8px}.garden-shopping-list li{padding:10px;border:1px solid var(--rule);border-radius:12px;background:var(--paper-light);overflow-wrap:anywhere}.garden-shopping-list strong,.garden-shopping-list span{display:block}.garden-shopping .garden-brushes button{padding:10px;font-size:13px;flex:1 1 150px;white-space:normal}
+.garden-shopping .garden-mode-note>span{display:block}

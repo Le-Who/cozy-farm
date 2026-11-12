@@ -1,4 +1,4 @@
-import { cropDefinitions, seedPackSize, type ActionResult, type FarmState } from './farm.ts'
+import { seedPackSize, type ActionResult, type FarmState } from './farm.ts'
 import { gardenPlanPreview } from './garden-plans.ts'
 import { ruCount } from './ru.ts'
 
