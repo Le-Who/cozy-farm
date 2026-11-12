@@ -172,6 +172,7 @@ export function getRequirementHint(farm: FarmState, requirement: Requirement): R
   if (id === 'village-coins') return farm.coins >= getVillageProject(farm).coins ? atHome(farm,route('village-project')) : safe(getCoinGuidance(farm,getVillageProject(farm).coins,'Лавандовая гавань'));
   if (id.startsWith('supply-')) {
     const supply = getVillageProject(farm).items.find(({item}) => `supply-${item.kind}` === id);
+    if (supply?.item.kind === 'fish' && ingredientCount(farm,supply.item) < supply.item.quantity-supply.delivered) return atHome(farm, {...route('village-project'), notice:'Для гавани можно поймать рыбу или привезти местный улов паромом. Выберите удобный путь.'});
     if (supply) return ingredientCount(farm,supply.item) >= supply.item.quantity-supply.delivered
       ? atHome(farm,route('village-project')) : stock(farm,{...supply.item,quantity:supply.item.quantity-supply.delivered});
   }

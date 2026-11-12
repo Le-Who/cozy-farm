@@ -1,0 +1,34 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Путь в гавань без рыбалки</title>
+<style>body{font:16px/1.45 system-ui;color:#352447;background:#faf7f0;padding:14px}button{padding:9px;margin:4px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<h1>Заработанная ферма: торговый путь в гавань</h1><p>Только localhost:4243. Каждая стартовая точка получена командами игры, без выдачи припасов и монет. Кнопки меняют только тестовый save этого адреса.</p>
+<button data-fixture="ready">Перед первым рейсом</button><button data-fixture="salt">Маяк открыт</button><button data-fixture="paid">Улов оплачен и в пути</button><button data-fixture="arrived">Улов ждёт получения</button><button data-fixture="built">Гавань построена</button>
+<button data-fixture="meal">Первый ужин с покупной рыбой</button><button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button>
+<button data-size="390,844">390 × 844</button><button data-size="360,640">360 × 640</button><button data-size="568,320">568 × 320</button><button data-size="844,390">844 × 390</button><button data-size="1280,900">1280 × 900</button>
+<details><summary>Состояние тестового сохранения</summary><pre id="result"></pre></details><iframe title="Проверяемая игра" width="390" height="844"></iframe>
+<script type="module">
+import {harbourTradePlayer} from '../fixtures/harbour-trade-player.ts'
+import {restoreCurrentFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4243'
+const frame=document.querySelector('iframe'),result=document.querySelector('#result'),opening=await(await fetch('../fixtures/home-progress-actions.json')).json()
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,day:f?.day,coins:f?.coins,wheat:f?.produce.wheat,fish:f?.fish,fishTrips:f?.fishingTripSerial,built:f?.village.built,supplies:f?.village.supplies,expedition:f?.freight.expeditions.active,discovered:f?.freight.expeditions.discovered},null,2)}
+function seed(kind){
+ if(!allowed)return
+ const p=harbourTradePlayer(opening)
+ if(kind==='meal'){
+  p.build();p.visit('village');p.act('inviteResident','bea',0);p.wheat(2);p.voyage('salt-fish');p.act('bakeWorkshop','round');p.visit('village')
+ }else{
+  p.prepare()
+  if(kind!=='ready'){p.voyage('mill-sale');p.voyage('explore-salt')}
+  if(['paid','arrived','built'].includes(kind))p.act('sendFerryExpedition','salt-fish')
+  if(['arrived','built'].includes(kind))p.night()
+  if(kind==='built'){p.act('receiveFerryExpedition');p.act('contributeVillage');p.visit('village');p.act('inviteResident','bea',0)}
+ }
+ localStorage.setItem(farmSaveKeys.primary,JSON.stringify(p.state));inspect();frame.src='/'
+}
+if(!allowed){result.textContent='Запись запрещена вне localhost:4243';document.querySelectorAll('button').forEach(b=>b.disabled=true)}
+document.querySelectorAll('[data-fixture]').forEach(b=>b.onclick=()=>seed(b.dataset.fixture))
+document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=()=>frame.src='/'
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h})
+inspect()
+</script></html>

@@ -1,3 +1,4 @@
+import { getHarbourFishRoute, renderHarbourFishChoice } from './harbour-fish-route'
 import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from './berry-nursery'
 import { villageHomeProgress } from './village-home-art'
 import './berry-nursery.css'
@@ -1259,6 +1260,7 @@ function villageProjectCard() {
   return `<div class="harbour-preview"><img src="${iconUrl('village-plate')}" alt="Домики, мастерская и стол для ужина в Лавандовой гавани"></div>
     ${unlocked ? '' : `<ul class="dialog-list">${row('ui-market', 'Гости ярмарки', `${Math.min(villageGuestTarget, farm.fairGuestsServed)}/${villageGuestTarget}`)}${isProjectComplete(farm, 'fair') ? '' : row('ui-market', 'Ярмарка', '', button('К стройке', 'fair-project'))}</ul>`}
     <ul class="ingredients">${deliveryItems(project.items)}</ul>
+    ${renderHarbourFishChoice(farm)}
     ${renderVillageBudget(farm,icon('coin'),(content,ready)=>requirementLink(content,{kind:'journey',island:'village',id:'village-coins'},'ingredient','Монеты для постройки Живой бухты',ready))}
     ${nav(button(buildAction ? 'Построить' : 'Внести припасы', 'build-village', project.status === 'ready', buildAction ? { cost: { icon: 'coin', amount: project.coins } } : {}), button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair'), { secondary: true }))}`
 }
@@ -1810,6 +1812,7 @@ function drawPanel() {
       dialogContent.innerHTML = meal.served ? `<p class="dialog-status">Сегодня общий ужин уже состоялся. Следующий ужин завтра.</p>${button('Домой','sail',true,{value:'home'})}`
         : `<p class="shared-supper-intro">Выберите одно угощение: ручную выпечку или готовое авторское блюдо. Ужин расходует 1 порцию выбранного угощения и 1 рыбу.</p>
           <ul class="ingredients">${meal.items.filter(item=>item.kind==='fish').map(stockTile).join('')}</ul>
+          ${farm.fish.perch + farm.fish.seaBass === 0 ? renderHarbourFishChoice(farm,'supper') : '<p>Подойдёт обычный окунь или морской окунь. Выше показано, какая рыба пойдёт к столу.</p>'}
           ${renderSignatureSuppers(farm,recipe=>signatureResultPicture(recipe,{icon}))}
           <details class="shared-supper-pastry" ${!signatures.length || meal.available ? 'open' : ''}><summary>Ручная выпечка</summary>${pastryChoices()}<ul class="ingredients">${meal.items.filter(item=>item.kind==='handmade').map(stockTile).join('')}</ul>${nav(button('Подать выпечку · 1 порция','share-meal',meal.available))}</details>`
       break
@@ -2635,6 +2638,21 @@ app.addEventListener('click', async (event) => {
     case 'expedition-rest': {
       const voyage = farm.freight.expeditions.active
       if (panel === 'bay-freight' && voyage?.phase === 'sailing' && String(voyage.serial) === value) await visitPanelAt('home','rest')
+      break
+    }
+    case 'harbour-fish-catch': {
+      if (panel !== 'village-project' && panel !== 'village-meal') break
+      const fish = panel === 'village-project' ? 'seaBass' : getVillageMeal(farm).fish
+      await showRequirement({kind:'stock',item:{kind:'fish',item:fish,quantity:panel==='village-project'?2:1}},control)
+      break
+    }
+    case 'harbour-fish-trade': {
+      if (panel !== 'village-project' && panel !== 'village-meal') break
+      if (!farm.boatOwned) { openPanel('boat'); break }
+      const route = getHarbourFishRoute(farm)
+      selectedExpeditionPort = route.port
+      selectedExpeditionOffer = route.offer
+      openPanel('bay-freight')
       break
     }
     case 'expedition-discovery': {

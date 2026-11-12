@@ -5,7 +5,7 @@ export function sharedSupperFixture(mode: 'ready'|'missing-fish'|'finn'|'spent'|
   const {farm, recipeId}=neighborFoodFixture()
   farm.village.meals=1; farm.village.mealOn=1; farm.village.residents=['bea',null]
   farm.culinary.stock[recipeId]=2; farm.fish.perch=2; farm.fish.seaBass=2
-  if(mode==='missing-fish')farm.fish.perch=0
+  if(mode==='missing-fish'){farm.fish.perch=0;farm.fish.seaBass=0}
   if(mode==='finn')farm.village.residents=['finn',null]
   if(mode==='spent')farm.culinary.stock[recipeId]=0
   if(mode==='home')farm.island='home'

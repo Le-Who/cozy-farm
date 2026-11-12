@@ -42,6 +42,7 @@ export function receiveFerryExpedition(farm: FarmState) {
     const entry = stockItems.get(item.id)
     if (entry?.kind === 'produce' || entry?.kind === 'fruit') (farm.discoveries[entry.item] ??= {}).regular = true
     if (entry?.kind === 'fruit' && !farm.bayDiscoveries.includes(entry.item)) farm.bayDiscoveries.push(entry.item)
+    if (entry?.kind === 'fish' && !farm.bayDiscoveries.includes(entry.item)) farm.bayDiscoveries.push(entry.item)
     if (entry?.kind === 'dishes' && !farm.bayDiscoveries.includes(entry.item)) farm.bayDiscoveries.push(entry.item)
   }
   if (manifest.kind === 'trade') noteFestivalDelivery(farm.festivals, manifest.incoming.reduce((sum,item)=>sum+item.quantity,0))

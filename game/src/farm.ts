@@ -1431,7 +1431,10 @@ export function inviteResident(farm: FarmState, id: ResidentId | null, slot: num
 }
 
 export function getVillageMeal(farm: FarmState, shape: WorkshopShape = farm.workshopPatterns[0] ?? 'round') {
-  const fish: FishId = farm.village.residents.includes('finn') ? 'seaBass' : 'perch';
+  const preferred = farm.village.residents.includes('finn') ? 'seaBass' : 'perch';
+  const other = preferred === 'perch' ? 'seaBass' : 'perch';
+  // Show and consume the same ordinary fish. Rare catches are never an automatic substitute.
+  const fish: FishId = farm.fish[preferred] > 0 || farm.fish[other] === 0 ? preferred : other;
   const items: readonly StockItem[] = [{ kind: 'handmade', item: shape, quantity: 1 }, { kind: 'fish', item: fish, quantity: 1 }];
   const served = farm.village.mealOn === farm.day;
   const available = farm.island === 'village' && farm.village.built && !served && isId(workshopShapes, shape)
@@ -1733,7 +1736,7 @@ export function tasteSignature(farm:FarmState,id:string,resident:ResidentId):Act
   return {ok:true,message:`${taste.name} запомнит блюдо «${recipe.name}».${liked?resident==='bea'?' В следующий раз Беа испечёт ещё одно изделие.':' К следующей рыбалке Финн подготовит особенно прочный крючок.':' В другой день попробуйте любимый фрукт или текстуру этого соседа.'}`};
 }
 export function deliverSignature(farm:FarmState,id:string):ActionResult{
-  const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id),fish=farm.village.residents.includes('finn')?'seaBass':'perch';
+  const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id),fish=getVillageMeal(farm).fish;
   if(!recipe||farm.island!=='village'||!farm.village.built||farm.village.mealOn===farm.day||(farm.culinary.stock[id]??0)<1||farm.fish[fish]<1)return failure('Принесите к общему столу гавани одно авторское блюдо и одну рыбу.');
   if(!Number.isSafeInteger(farm.workToday+1)||!Number.isSafeInteger(farm.village.meals+1))return failure('Журнал ужинов заполнен.');
   farm.culinary.stock[id]--;farm.fish[fish]--;farm.village.meals++;farm.village.mealOn=farm.day;farm.workToday++;return {ok:true,message:`Блюдо «${recipe.name}» подано к общему ужину. ${farm.village.meals===2?'Второй домик готов!':''}`};

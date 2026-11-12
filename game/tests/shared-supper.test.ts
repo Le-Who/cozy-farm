@@ -63,15 +63,17 @@ test('handmade and signature dishes share the same day limit, which survives rel
   assert.ok(restoreFarm(JSON.parse(JSON.stringify(restored))))
 })
 
-test('missing correct fish disables service and directs preparation to fish rather than another pastry', () => {
+test('missing ordinary fish disables service and directs preparation to fish rather than another pastry', () => {
   const farm = sharedSupperFixture(), id = farm.culinary.recipes[0].id
-  farm.fish.perch=0
+  farm.fish.perch=0;farm.fish.seaBass=0
   const before=structuredClone(farm)
   assert.equal(getReadySignatureSuppers(farm)[0].available,false)
   assert.notEqual(getDiscoveryTask(farm,seen)?.action.target,'workshop')
   assert.equal(deliverSignature(farm,id).ok,false)
   assert.deepEqual(farm,before)
   assert.match(renderSignatureSuppers(farm,picture), /disabled.*1 рыба — окунь/)
+  farm.fish.seaBass=2
+  assert.equal(getReadySignatureSuppers(farm)[0].fish,'seaBass','Bea accepts the bought ordinary catch too')
   farm.village.residents=['finn',null]
   assert.equal(getReadySignatureSuppers(farm)[0].fish,'seaBass')
   assert.equal(getReadySignatureSuppers(farm)[0].available,true)

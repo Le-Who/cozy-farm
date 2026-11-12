@@ -87,6 +87,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const sourceAction = !restock && hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : `${id}|${missing.id}`, 'class="expedition-source"') : '';
   const production = world.markets[port].production;
   const effect = exploring ? 'Новый торговый порт будет открыт наверняка. Разведка не зависит от удачи.'
+    : orderIds.includes('salt-fish') && !manifest.outgoing.length ? 'Местный улов подходит для гавани и общих ужинов. Покупка не считается личным уловом.'
     : port === 'mill' ? 'Зерно и яйца идут в следующую выпечку.' : port === 'salt' ? 'Морковь и улов помогут открыть кухню у маяка.' : 'Яблоки идут на варенье, булочки ждут сборщики.';
   const displayPort = exploring && phase !== 'ready' ? 'Неизвестный берег' : expeditionPortNames[port];
   const nextExploration = nextFerryExploration(world, { bag:ctx.carried, coins:ctx.coins ?? 0, boatOwned:ctx.boatOwned ?? true });

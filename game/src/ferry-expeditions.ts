@@ -45,7 +45,7 @@ export const expeditionPortNames: Record<ExpeditionPort, string> = {
 };
 export const expeditionPortDescriptions: Record<ExpeditionPort, string> = {
   mill: 'Пекарь превращает ваше зерно в булочки. Выпечку можно продать, подать к столу или отвезти садовникам.',
-  salt: 'У солеваров есть соль для кухни. Морковь и улов помогут открыть рыбную кухню у маяка.',
+  salt: 'У маяка можно купить соль и местный улов. Морковь и ваш улов помогают открыть рыбную кухню.',
   orchard: 'Здесь можно найти недостающие фрукты. Яблоки идут на варенье, а булочки ждут сборщики урожая.',
 };
 export const portProjects = {
@@ -61,6 +61,7 @@ const trades: readonly Trade[] = [
   { id: 'mill-buy', port: 'mill', name: 'Купить булочку', outgoing: [], incoming: [lot('handmade:round', 1)] },
   { id: 'salt-carrots', port: 'salt', name: 'Овощи для маяка', outgoing: [lot('carrot', 3)], incoming: [lot('seaSalt', 2)] },
   { id: 'salt-catch', port: 'salt', name: 'Улов для рыбной кухни', outgoing: [lot('seaBass', 2)], incoming: [lot('seaSalt', 2)] },
+  { id: 'salt-fish', port: 'salt', name: 'Местный улов для гавани', outgoing: [], incoming: [lot('seaBass', 2)] },
   { id: 'salt-buy', port: 'salt', name: 'Соль для своей кухни', outgoing: [], incoming: [lot('seaSalt', 2)] },
   { id: 'salt-grill', port: 'salt', name: 'Обед у маяка', outgoing: [], incoming: [lot('dish:grilledFish', 1)], project: true },
   { id: 'orchard-apples', port: 'orchard', name: 'Яблоки для варенья', outgoing: [lot('apple', 3)], incoming: [lot('dish:appleJam', 1)] },
@@ -98,7 +99,7 @@ const bids: Record<ExpeditionPort, Record<string, number>> = {
   mill: { wheat: 5, eggs: 5 }, salt: { carrot: 4, seaBass: 12 }, orchard: { apple: 5, 'handmade:round': 24 },
 };
 const asks: Record<ExpeditionPort, Record<string, number>> = {
-  mill: { 'handmade:round': 15 }, salt: { seaSalt: 5, 'dish:grilledFish': 32 },
+  mill: { 'handmade:round': 15 }, salt: { seaBass: 14, seaSalt: 5, 'dish:grilledFish': 32 },
   orchard: { apple: 6, pear: 7, peach: 8, 'dish:appleJam': 12 },
 };
 const knownItems = new Set(['wheat', 'eggs', 'carrot', 'seaBass', 'seaSalt', 'apple', 'pear', 'peach', 'handmade:round', 'dish:appleJam', 'dish:grilledFish']);

@@ -22,6 +22,19 @@ export function getFerryRestockPlan(state: FerryExpeditions, id: string, day: nu
   const stock = request.incoming.map(item => ({id:item.id,needed:item.quantity,now:expeditionStock(state,request.port,item.id),nextMorning:expeditionStock(waiting,request.port,item.id)}))
   if (stock.every(item => item.nextMorning >= item.needed)) return {kind:'rest',port:request.port,day:tomorrow,stock}
 
+  // The optional bought catch must not send a non-fishing player to catch fish
+  // just because one morning grows only half a crate. A working kitchen may use
+  // the next fish until its four-dish buffer fills, so simulate the real rules.
+  if (expeditionOfferIds(id).includes('salt-fish')) {
+    const future = structuredClone(waiting)
+    for (let offset = 1; offset <= 5; offset++) {
+      advanceExpeditions(future, tomorrow + offset)
+      if (request.incoming.every(item => expeditionStock(future,request.port,item.id) >= item.quantity)) {
+        return {kind:'rest',port:request.port,day:tomorrow+offset,stock:stock.map(item=>({...item,nextMorning:expeditionStock(future,request.port,item.id)}))}
+      }
+    }
+  }
+
   const plans: Extract<FerryRestockPlan,{kind:'supply'}>[] = []
   for (const trade of expeditionTrades(state,request.port)) {
     if (trade.id === id || !trade.outgoing.length) continue
