@@ -1,3 +1,4 @@
+import { restoreLegacyFarm } from '../src/farm-save-migration.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFileSync } from 'node:fs'
@@ -12,7 +13,7 @@ class Storage {
   setItem(key: string, raw: string) { if (key === this.fail) throw Error('full'); this.writes.push(key); this.items.set(key, raw) }
 }
 const exclusive: ExclusiveSave = async action => action()
-const open = (s: Storage, lock: ExclusiveSave | undefined = exclusive) => new VersionedSave(() => s, keys, restoreCurrentFarm, createFarm, lock, restoreFarm)
+const open = (s: Storage, lock: ExclusiveSave | undefined = exclusive) => new VersionedSave(() => s, keys, restoreCurrentFarm, createFarm, lock, restoreLegacyFarm)
 function old() { const f = structuredClone(createFarm()) as any; delete f.shopCommissions; f.coins = 432; return '\n'+JSON.stringify(f)+'\n' }
 
 test('v4 imports absent-ledger v3, v2 and v1 exactly once, preserving original bytes', async () => {
@@ -80,7 +81,7 @@ test('current pending snapshot must have a valid ledger and cannot silently impo
 
 test('no-lock migration is read-only even with an eligible legacy save', async () => {
   const s = new Storage(); s.items.set(v3.primary, old())
-  const save = new VersionedSave(() => s, keys, restoreCurrentFarm, createFarm, undefined, restoreFarm)
+  const save = new VersionedSave(() => s, keys, restoreCurrentFarm, createFarm, undefined, restoreLegacyFarm)
   assert.equal((await save.load())!.coins, 432); assert.equal(save.issue, 'locking-unavailable')
   assert.equal(await save.save(createFarm()), false); assert.deepEqual(s.writes, [])
 })

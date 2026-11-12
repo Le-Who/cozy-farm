@@ -9,7 +9,7 @@ export type SaveKeys = {
 }
 export type ExclusiveSave = <R>(operation: () => R) => Promise<R>
 export type RecoveryOrigin = 'primary' | 'legacy' | 'snapshot' | 'journal'
-type MigrationJournal = { version: 1; phase: 'pending' | 'complete'; legacyRaw: string | null; initialRaw: string }
+type MigrationJournal = { version: 1; phase: 'pending' | 'complete'; legacyRaw: string | null; legacyKey?: string; initialRaw: string }
 
 /** Serialize every current-version writer, with no unsafe unlocked fallback. */
 export function browserSaveLock(name: string): ExclusiveSave | undefined {
@@ -35,11 +35,11 @@ export class VersionedSave<T> {
   private storage: () => SaveStorage
   private keys: SaveKeys
   private restore: (value: unknown) => T | undefined
-  private restoreLegacy: (value: unknown) => T | undefined
+  private restoreLegacy: (value: unknown, sourceKey: string) => T | undefined
   private create: () => T
   private exclusive?: ExclusiveSave
 
-  constructor(storage: () => SaveStorage, keys: SaveKeys, restore: (value: unknown) => T | undefined, create: () => T, exclusive?: ExclusiveSave, restoreLegacy = restore) {
+  constructor(storage: () => SaveStorage, keys: SaveKeys, restore: (value: unknown) => T | undefined, create: () => T, exclusive?: ExclusiveSave, restoreLegacy: (value: unknown, sourceKey: string) => T | undefined = restore) {
     this.storage = storage; this.keys = keys; this.restore = restore; this.create = create; this.exclusive = exclusive; this.restoreLegacy = restoreLegacy
   }
 
@@ -57,9 +57,20 @@ export class VersionedSave<T> {
     catch { return undefined }
   }
 
-  private decodeLegacy(raw: string): T | undefined {
-    try { return this.restoreLegacy(JSON.parse(raw)) }
+  /** Old journals without a source use the immediate legacy generation, never a weaker fallback. */
+  private decodeLegacy(raw: string, sourceKey = this.keys.legacy): T | undefined {
+    try { return this.restoreLegacy(JSON.parse(raw), sourceKey) }
     catch { return undefined }
+  }
+
+  private isLegacyKey(key: unknown): key is string {
+    if (key === this.keys.legacy) return true
+    let fallback = this.keys.legacyFallback
+    while (fallback) {
+      if (key === fallback.key) return true
+      fallback = fallback.fallback
+    }
+    return false
   }
 
   private journal(raw: string): MigrationJournal | undefined {
@@ -67,15 +78,16 @@ export class VersionedSave<T> {
       const value = JSON.parse(raw)
       if (!value || value.version !== 1 || !['pending', 'complete'].includes(value.phase)
         || !(value.legacyRaw === null || typeof value.legacyRaw === 'string')
+        || value.legacyKey !== undefined && (value.legacyRaw === null || !this.isLegacyKey(value.legacyKey))
         || typeof value.initialRaw !== 'string' || this.decode(value.initialRaw) === undefined
-        || value.legacyRaw !== null && this.decodeLegacy(value.legacyRaw) === undefined) return
+        || value.legacyRaw !== null && this.decodeLegacy(value.legacyRaw, value.legacyKey) === undefined) return
       return value
     } catch { return undefined }
   }
 
-  private readLegacy(storage: SaveStorage): { raw: string | null } | undefined {
+  private readLegacy(storage: SaveStorage): { raw: string | null; key: string } | undefined {
     const raw = storage.getItem(this.keys.legacy)
-    if (raw !== null || !this.keys.legacyFallback) return { raw }
+    if (raw !== null || !this.keys.legacyFallback) return { raw, key: this.keys.legacy }
     let fallback: LegacyFallback | undefined = this.keys.legacyFallback
     while (fallback) {
       const journal = storage.getItem(fallback.journal)
@@ -88,10 +100,10 @@ export class VersionedSave<T> {
         return
       }
       const older = storage.getItem(fallback.key)
-      if (older !== null) return { raw: older }
+      if (older !== null) return { raw: older, key: fallback.key }
       fallback = fallback.fallback
     }
-    return { raw: null }
+    return { raw: null, key: this.keys.legacy }
   }
 
   private async loadOnce(): Promise<T | undefined> {
@@ -124,7 +136,7 @@ export class VersionedSave<T> {
       this.original = legacy.raw
       this.origin = 'legacy'
       if (this.original === null) return
-      const value = this.decodeLegacy(this.original)
+      const value = this.decodeLegacy(this.original, legacy.key)
       if (value === undefined) this.problem = 'invalid'
       return value
     } catch { this.problem = 'read-failed'; return }
@@ -157,21 +169,22 @@ export class VersionedSave<T> {
       return
     }
     if (primary === null && !journal) {
-      let legacy: string | null
+      let legacy: string | null, legacyKey: string
       try {
         const source = this.readLegacy(storage)
         if (!source) return
         legacy = source.raw
+        legacyKey = source.key
       }
       catch { this.problem = 'read-failed'; return }
       this.original = legacy
       this.origin = 'legacy'
-      const value = legacy === null ? this.create() : this.decodeLegacy(legacy)
+      const value = legacy === null ? this.create() : this.decodeLegacy(legacy, legacyKey)
       if (value === undefined) { this.problem = 'invalid'; return }
       try {
         const initialRaw = JSON.stringify(value)
         if (initialRaw === undefined) throw new Error('Missing initial farm')
-        journal = { version: 1, phase: 'pending', legacyRaw: legacy, initialRaw }
+        journal = { version: 1, phase: 'pending', legacyRaw: legacy, ...(legacy === null ? {} : { legacyKey }), initialRaw }
         // Preserve the exact legacy bytes before publishing a current save.
         rawJournal = JSON.stringify(journal)
         storage.setItem(this.keys.journal, rawJournal)

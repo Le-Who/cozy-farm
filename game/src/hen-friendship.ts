@@ -77,13 +77,13 @@ export function renderHenFriendship(farm: FarmState) {
     ${henFriends.slice(0, farm.flockSize).map((hen, id) => {
       const bond = farm.henFriendship.hens[id], petted = farm.pettedChickens.includes(id), known = bond.tasted.includes(hen.favorite)
       return `<article class="hen-friend-card" aria-label="${hen.name}"><h2>${hen.name} <span>${henFriendshipStage(bond.points)}</span></h2><p>${hen.character}</p>
-        <progress value="${bond.points}" max="${maxHenFriendship}" aria-label="Дружба с ${hen.name}"></progress><p class="hen-bond-count">Дружба · ${bond.points}/${maxHenFriendship}</p>
-        <ol class="hen-memories">${hen.memories.map((memory, index) => `<li${bond.points < (index + 1) * 3 ? ' class="hen-memory-locked"' : ''}>${bond.points >= (index + 1) * 3 ? memory : `Новая заметка при ${(index + 1) * 3} шагах дружбы`}</li>`).join('')}</ol>
+        <progress value="${bond.points}" max="${maxHenFriendship}" aria-label="Дружба · ${hen.name}"></progress><p class="hen-bond-count">Дружба · ${bond.points}/${maxHenFriendship}</p>
+        <ol class="hen-memories">${hen.memories.slice(0, Math.floor(bond.points / 3)).map(memory => `<li>${memory}</li>`).join('')}${bond.points < maxHenFriendship ? `<li class="hen-memory-locked">Новая заметка при ${(Math.floor(bond.points / 3) + 1) * 3} шагах дружбы</li>` : ''}</ol>
         <button type="button" class="dialog-button secondary" data-action="pet" data-value="${id}"${petted ? ' disabled' : ''}>${petted ? 'Сегодня поглажена' : 'Погладить'}</button>
         <p>${known ? `Любимое угощение: ${henTreatNames[hen.favorite].toLowerCase()}.` : hen.hint}</p>
         ${bond.points === maxHenFriendship && known ? '<p class="coop-morning-detail">Вы хорошо знаете друг друга. Угощения больше не нужны, а погладить можно каждый день.</p>' : `<div class="hen-treats">${henTreatIds.map(treat => {
           const option = getHenTreat(farm, id, treat)
           return `<button type="button" class="dialog-button secondary" data-action="hen-treat" data-value="${id}:${treat}"${option.available ? '' : ' disabled'}>${henTreatNames[treat]} ×1${option.known ? treat === hen.favorite ? ' · любимое' : ' · пробовала' : ''}<small>В запасе ${option.stock}</small></button>`
-        }).join('')}</div><p class="coop-morning-detail">${bond.treatedOn === farm.day ? 'Угощение на сегодня уже было. Новое можно предложить после отдыха.' : 'Одно угощение этой курочке за день. Покупка или смешивание корма не расходуют эти продукты автоматически.'}</p>`}</article>`
-    }).join('')}${farm.flockSize < henFriends.length ? '<p class="coop-morning-detail">В инкубаторе можно вырастить ещё одну курочку. У неё тоже будут своё имя и привычки.</p>' : ''}</section>`
+        }).join('')}</div><p class="coop-morning-detail">${bond.treatedOn === farm.day ? 'Угощение на сегодня уже было. Новое можно предложить после отдыха.' : 'Одно угощение этой курочке за день. Выберите продукт, который готовы отдать.'}</p>`}</article>`
+    }).join('')}${farm.flockSize < henFriends.length && farm.coopSpecialization !== 'packing' ? '<p class="coop-morning-detail">В инкубаторе можно вырастить ещё одну курочку. У неё тоже будут своё имя и привычки.</p>' : ''}</section>`
 }

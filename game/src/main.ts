@@ -1,3 +1,4 @@
+import { restoreLegacyFarm } from './farm-save-migration'
 import { getHarbourFishRoute, renderHarbourFishChoice } from './harbour-fish-route'
 import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from './berry-nursery'
 import { villageHomeProgress } from './village-home-art'
@@ -201,7 +202,6 @@ import {
   plantCapeFlower,
   projectIds,
   refillWater,
-  restoreFarm,
   restoreCurrentFarm,
   sail,
   seedPackSize,
@@ -244,7 +244,7 @@ import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
 
-const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreFarm)
+const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreLegacyFarm)
 const farm = await saveStore.load() ?? createFarm()
 let saveAvailable = !saveStore.blocked
 let saveRecovery: ReturnType<typeof mountSaveRecovery> | undefined

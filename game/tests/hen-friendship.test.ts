@@ -1,3 +1,4 @@
+import { restoreLegacyFarm } from '../src/farm-save-migration.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createFarm, endDay, petChicken, feedChickens, getCoopMorning, restoreFarm, restoreCurrentFarm, incubateEgg, sail } from '../src/farm.ts'
@@ -65,12 +66,13 @@ test('friendship survives travel and reload, and fifth hen starts empty only aft
 
 test('preview is read-only, and keyboard or double-click entry and spend actions are guarded', () => {
   const f = ready(); unchanged(f, () => { const html = renderHenFriendship(f); assert.match(html, /Пропуски не отнимают/); assert.match(html, /Угощения необязательны/); assert.match(html, /В запасе 5/); assert.match(html, /Морковь ×1/); assert.doesNotMatch(html, /<h2>Пуговка/) })
+  f.coopSpecialization = 'packing'; f.buildingLevels.coop = 3; assert.doesNotMatch(renderHenFriendship(f), /В инкубаторе можно вырастить/)
   for (const action of ['hen-friendship-open', 'hen-treat', 'pet']) assert.equal(isGuardedAction(action), true)
 })
 
 class Storage { items = new Map<string, string>(); writes: string[] = []; fail?: string; getItem(key: string) { return this.items.get(key) ?? null }; setItem(key: string, value: string) { if (key === this.fail) throw Error('full'); this.items.set(key, value); this.writes.push(key) } }
 const lock: ExclusiveSave = async operation => operation()
-const open = (s: Storage) => new VersionedSave(() => s, keys, restoreCurrentFarm, createFarm, lock, restoreFarm)
+const open = (s: Storage) => new VersionedSave(() => s, keys, restoreCurrentFarm, createFarm, lock, restoreLegacyFarm)
 function oldRaw() { const old = structuredClone(ready()) as any; delete old.henFriendship; old.coins = 432; return '\n' + JSON.stringify(old) + '\n' }
 
 test('v5 migrates each prior generation without editing source bytes and keeps old v4 writers separate', async () => {
