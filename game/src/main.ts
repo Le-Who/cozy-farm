@@ -1,3 +1,5 @@
+import { BerryRenewalSelection, renderBerryRenewal } from './berry-renewal-ui'
+import { getBerryRenewalPreview, harvestBerryAndKeep } from './farm'
 import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
 import { activeGardenPlan, plannedCropAt, seedForBed, followGardenPlan, removeGardenPlan } from './garden-plans'
 import { GardenPlanEditor, renderGardenPlans, renderGardenMode, gardenPlanToken } from './garden-plans-ui'
@@ -301,12 +303,13 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'garden-plans' | 'neighbor-visits' | 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'berry-renewal' | 'garden-plans' | 'neighbor-visits' | 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
 const transplantSelection = new BedTransplantSelection()
 const berryNurserySelection = new BerryNurserySelection()
+const berryRenewalSelection = new BerryRenewalSelection()
 let activeTool: Tool = 'seeds'
 let panel: Panel | undefined
 let celebratedFestival: FestivalTradition | undefined
@@ -644,7 +647,7 @@ const panelTitles: Record<Panel, string> = {
   'warehouse-supply': 'Местный склад',
   transplant: 'Пересадка культур',
   sale: 'Продажа товара',
-  'berry-nursery':'Ягодный питомник', 'shop-commissions':'Заказы лавки', 'music-supplies':'Материалы музыки', festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
+  'berry-renewal':'Свой ягодник', 'berry-nursery':'Ягодный питомник', 'shop-commissions':'Заказы лавки', 'music-supplies':'Материалы музыки', festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
   market: 'Рынок',
   inventory: 'Запасы',
   archive: 'Коллекции',
@@ -685,7 +688,7 @@ const panelEmblems: Record<Panel, string> = {
   'warehouse-supply': 'ui-bag',
   transplant: 'tool-seeds',
   sale: 'ui-market',
-  'berry-nursery':'ui-seed-blueberry', 'shop-commissions':'ui-signature-bright', 'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
+  'berry-renewal':'ui-seed-strawberry', 'berry-nursery':'ui-seed-blueberry', 'shop-commissions':'ui-signature-bright', 'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
   market: 'ui-market', inventory: 'ui-bag', archive: 'orchard', settings: 'gear', journal: 'star', coop: 'tool-hen',
   rest: 'moon', guide: 'island', seeds: 'ui-bag', fishing: 'tool-rod', boat: 'tool-boat',
   orchard: 'orchard', tree: 'orchard', upgrades: 'hammer', kitchen: 'ui-kitchen',
@@ -1609,6 +1612,9 @@ function drawPanel() {
     case 'market':
       dialogContent.innerHTML = marketCards() + (farm.village.built ? nav(button('Своя лавка','open-panel',true,{value:'bay-shop'})) : '')
       break
+    case 'berry-renewal':
+      dialogContent.innerHTML = renderBerryRenewal(farm, berryRenewalSelection, icon)
+      break
     case 'berry-nursery':
       dialogContent.innerHTML = renderBerryNursery(farm, berryNurserySelection, icon)
       break
@@ -1629,7 +1635,7 @@ function drawPanel() {
           ${goods().filter(({count,group})=>count>0&&group===inventoryGroup).map(inventoryStockRow).join('')}
           ${inventoryGroup==='harvest'?treeIds.filter(tree=>farm.saplings[tree]>0).map((tree) => row('ui-tree-'+tree, treeDefinitions[tree].saplingName, `×${farm.saplings[tree]}`)).join(''):''}
           ${inventoryGroup==='shore'&&!goods().some(({count,group})=>count>0&&group==='shore')?'<li class="dialog-status">Пока пусто</li>':''}
-        </ul>` : seedCards() + (farm.island === 'home' ? nav(button('Свои планы огорода', 'open-panel', true, {value:'garden-plans', secondary:true}),button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Ягодный питомник','open-panel',true,{value:'berry-nursery',secondary:true})) : '')}`
+        </ul>` : seedCards() + (farm.island === 'home' ? nav(button('Свои планы огорода', 'open-panel', true, {value:'garden-plans', secondary:true}),button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Ягодный питомник','open-panel',true,{value:'berry-nursery',secondary:true}),button('Свой ягодник','open-panel',true,{value:'berry-renewal',secondary:true})) : '')}`
       break
     }
     case 'archive':
@@ -1773,7 +1779,7 @@ function drawPanel() {
         `<button class="explore-tile" type="button" data-action="${action}" data-value="${value}">${icon(image)}<strong>${name}</strong></button>`
       if (home || farm.island === 'grove') places.push(tile('Сад','ui-tree-apple','orchard'),tile('Рыбалка','tool-rod','fishing'))
       if (home) {
-        places.push(tile('Свои планы огорода','field','garden-plans'),tile('Пересадка культур','tool-seeds','transplant'),tile('Ягодный питомник','ui-seed-blueberry','berry-nursery'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
+        places.push(tile('Свои планы огорода','field','garden-plans'),tile('Пересадка культур','tool-seeds','transplant'),tile('Ягодный питомник','ui-seed-blueberry','berry-nursery'),tile('Свой ягодник','ui-seed-strawberry','berry-renewal'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
         if (isProjectComplete(farm,'fair')) places.push(tile('Гость ярмарки','ui-market','guest'),tile('Просьбы соседей','ui-bea','intents'))
       }
       if (village) places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'),tile('Общий ужин','ui-grilled-fish','village-meal'))
@@ -1994,7 +2000,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
 
 function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold') {
   if (island.isCrossing()) return
-  if (next === 'berry-nursery' && farm.island !== 'home') { void visitPanelAt('home',next); return }
+  if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
   if (next === 'shoal' && (farm.island !== 'grove' || !hasShoal(farm))) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival'||next==='shop-commissions') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival'||next==='shop-commissions') && farm.island!=='village') {
@@ -2008,7 +2014,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if(next==='cove'&&farm.island!=='grove')return
   if ((next === 'transplant' || next === 'garden-plans') && farm.island !== 'home') return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
-  if (next !== panel) { transplantSelection.reset(); berryNurserySelection.reset(); gardenEditor.reset() }
+  if (next !== panel) { transplantSelection.reset(); berryNurserySelection.reset(); berryRenewalSelection.reset(); gardenEditor.reset() }
   if (next !== 'seeds') seedPickerBed = undefined
   if (remember && next==='bay-freight' && next!==panel) {
     freightPlanOpen=false
@@ -2049,7 +2055,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
 function closeDialog() {
   gardenEditor.reset()
   transplantSelection.reset()
-  berryNurserySelection.reset()
+  berryNurserySelection.reset(); berryRenewalSelection.reset()
   celebratedFestival=undefined
   island.setViewMode('world')
   app.dataset.scene=''
@@ -2556,6 +2562,35 @@ app.addEventListener('click', async (event) => {
     case 'discovery-forget':
       forgetDiscoveryIdea(farm.discoveryPreferences); saveFarm(); refresh()
       break
+    case 'berry-renewal-source':
+      if (panel === 'berry-renewal' && dialog.open && berryRenewalSelection.choose(farm, Number(value))) {
+        drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({ preventScroll: true })
+      }
+      break
+    case 'berry-renewal-reset':
+      if (panel === 'berry-renewal') { berryRenewalSelection.reset(); drawPanel(); dialogContent.scrollTop = 0 }
+      break
+    case 'berry-renewal-bed': {
+      const selected = berryRenewalSelection.selected
+      if (panel === 'berry-renewal' && dialog.open && selected && String(selected.index) === value) {
+        const index = selected.index; closeDialog(); island.focusTarget({ kind: 'bed', index })
+      }
+      break
+    }
+    case 'berry-renewal-confirm': {
+      const selected = berryRenewalSelection.selected
+      if (panel !== 'berry-renewal' || !dialog.open || !selected || value !== selected.token) break
+      const { index, token } = selected
+      if (getBerryRenewalPreview(farm, index)?.token !== token) { drawPanel(); break }
+      const sound = bedWorkSound(farm.beds[index], 'harvest')
+      if (sound) void bayAudio.primeEvents([sound])
+      closeDialog()
+      island.workBed(index, () => getBerryRenewalPreview(farm, index)?.token === token ? 'harvest' : 'wait', () => {
+        activeTool = bedTools.harvest
+        if (perform(() => harvestBerryAndKeep(farm, token)) && sound) playBaySound(sound, 1, 0)
+      })
+      break
+    }
     case 'berry-nursery-ingredient': {
       const requirement = value === undefined ? undefined : requirementLinks.get(value)
       if (requirement?.kind !== 'stock' || getBerryNurserySource(farm, requirement.item) === undefined) break
@@ -2574,7 +2609,7 @@ app.addEventListener('click', async (event) => {
       if(panel==='berry-nursery'&&dialog.open&&perform(()=>berryNurserySelection.divide(farm),false,true))playBaySound('orchard.sapling')
       break
     case 'berry-nursery-reset':
-      if(panel==='berry-nursery'){berryNurserySelection.reset();drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true})}
+      if(panel==='berry-nursery'){berryNurserySelection.reset(); berryRenewalSelection.reset();drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true})}
       break
     case 'transplant-source':
       if (panel === 'transplant' && transplantSelection.choose(farm, Number(value))) {
@@ -3449,7 +3484,7 @@ dialog.addEventListener('click', (event) => {
 dialog.addEventListener('close', () => {
   if (!dialog.open) {
     transplantSelection.reset()
-  berryNurserySelection.reset()
+  berryNurserySelection.reset(); berryRenewalSelection.reset()
     playBaySound('page.fold',.72,0)
     island.setViewMode('world')
     app.dataset.scene=''

@@ -731,6 +731,42 @@ export function getBedHarvestPreview(farm: FarmState, index: number): BedHarvest
   return { crop: bed.crop, ...resourceYield(cropDefinitions[bed.crop].yield + picnicBonus, bed.trait), picnicBonus };
 }
 
+/** Pick a smaller harvest instead of clearing the berry planting. Reading reserves nothing. */
+export function getBerryRenewalPreview(farm: FarmState, index: number) {
+  const harvest = getBedHarvestPreview(farm, index);
+  if (!harvest || !berryCropIds.some(crop => crop === harvest.crop)) return undefined;
+  const bed = farm.beds[index] as CropBed, crop = cropDefinitions[bed.crop];
+  const token = `br1;${farm.day};${index};${JSON.stringify([
+    bed.kind, bed.crop, bed.growth, bed.watered, bed.wateredAt ?? null, bed.trait ?? null,
+    farm.culinary.picnic?.day ?? null, farm.culinary.picnic?.processing ?? null,
+  ])}`;
+  return { index, crop: bed.crop, token, ...resourceYield(1 + harvest.picnicBonus, bed.trait),
+    picnicBonus: harvest.picnicBonus, nights: crop.days, retainsWater: crop.retainsWater === true };
+}
+
+/** A reviewed harvest is atomic and leaves a new ordinary growth cycle on the same bed. */
+export function harvestBerryAndKeep(farm: FarmState, token: unknown): ActionResult {
+  const stale = () => failure('Посадка или урожай изменились. Выберите зрелую ягодную грядку заново.');
+  if (typeof token !== 'string' || token.length > 1000) return stale();
+  const match = /^br1;[1-9]\d{0,15};([0-9]|1[0-5]);/.exec(token);
+  if (!match) return stale();
+  const preview = getBerryRenewalPreview(farm, Number(match[1]));
+  if (!preview || preview.token !== token) return stale();
+  const bed = farm.beds[preview.index] as CropBed;
+  const next = farm.progress.harvest + 1, reward = goals.find(goal => goal.id === 'harvest' && goal.target === next)?.reward ?? 0;
+  if (!Number.isSafeInteger(farm.produce[bed.crop] + preview.ordinary)
+    || bed.trait && !Number.isSafeInteger((farm.variants[bed.crop]?.[bed.trait] ?? 0) + preview.special)
+    || !Number.isSafeInteger(next) || !Number.isSafeInteger(farm.workToday + 1) || !Number.isSafeInteger(farm.coins + reward))
+    return failure('Для этого сбора больше нет места в запасах или журнале работ.');
+  const found = collectResources(farm, bed.crop, preview.total, bed.trait);
+  if (preview.picnicBonus) farm.culinary.picnic = null;
+  farm.beds[preview.index] = { kind: 'crop', crop: bed.crop, growth: 0, watered: getClimate(farm.day).weather === 'rain',
+    ...(bed.trait ? { trait: bed.trait } : {}) };
+  const crop = cropDefinitions[bed.crop];
+  const visitNote = noteNeighborVisit(farm, 'crop', crop.name, bed.trait ? variantLabel(bed.crop, bed.trait).name : 'Обычный урожай с домашней грядки.');
+  return record(farm, 'harvest', `Бережный сбор: ${crop.name.toLowerCase()} × ${preview.total}. Посадка сохранена и начинает новый цикл роста.${found}${visitNote}`);
+}
+
 export function getDayPhase(farm: FarmState): 'Morning' | 'Afternoon' | 'Evening' {
   if (farm.workToday < 5) return 'Morning';
   return farm.workToday < 10 ? 'Afternoon' : 'Evening';

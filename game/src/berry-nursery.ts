@@ -58,7 +58,7 @@ export function renderBerryNursery(farm: FarmState, selection: BerryNurserySelec
   return `<section class="bed-transplant berry-nursery"><h2 class="transplant-step" tabindex="-1">${selected ? '2. Выберите вторую грядку' : '1. Выберите зрелую ягодную посадку'}</h2>
     <p>${selected ? `Грядка ${selected.source + 1}: ${transplantBedDescription(selected.crop)}.` : 'Размножайте клубнику, чернику и малину. Вместо готового урожая получите две молодые посадки. Известная особенность сохранится у обеих. Одни посадки собирайте, другие оставляйте для размножения.'}</p>
     ${!hasMother ? '<p>Сначала вырастите хотя бы одну ягодную посадку до зрелости.</p>' : ''}${!hasDestination ? '<p>Нужна ещё одна свободная вспаханная грядка. Подготовьте место в огороде.</p>' : ''}
-    <div class="dialog-actions">${selected ? reset() : button('К семенам', 'open-panel', 'seeds')}${close()}</div>
+    <div class="dialog-actions">${selected ? reset() : button('К семенам', 'open-panel', 'seeds') + button('Собрать ягоды и сохранить посадку', 'open-panel', 'berry-renewal')}${close()}</div>
     <div class="transplant-beds" role="group" aria-label="Грядки ягодного питомника">${farm.beds.map((bed, index) => {
       const mother = bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop) && getBedStage(bed) === 'ripe'
       const enabled = selected ? getBerryPropagation(farm, selected.source, index).available : hasDestination && mother

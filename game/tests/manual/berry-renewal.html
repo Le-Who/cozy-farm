@@ -1,0 +1,17 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Свой ягодник · проверка</title>
+<style>body{font:14px/1.4 system-ui;color:#352447;background:#faf7f0;margin:8px}button{margin:3px;padding:8px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<button id="seed">Открыть изолированную ферму</button><button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button><button data-size="360,640">360 × 640</button><button data-size="568,320">568 × 320</button><button data-size="1120,620">1120 × 620</button>
+<p>Семена → «Свой ягодник». Грядки 1–3: зрелая клубника, росистая черника и малина. Перед сбором сравнить состав, отменить, затем выполнить бережный сбор. Проверить, что посадка осталась, рост 0, старый полив исчез, семена не списались. Полить и пройти обычные ночи до нового урожая; проверить обычный сбор, перезагрузку и двойное нажатие. На порту 4291 существующий тестовый прогресс не перезаписывается.</p>
+<p id="error" role="alert"></p><details><summary>Посадки, ягоды, семена, день</summary><pre id="result"></pre></details><iframe title="Проверяемая игра" width="1120" height="620"></iframe>
+<script type="module">
+import {createFarm,restoreCurrentFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4291',frame=document.querySelector('iframe'),result=document.querySelector('#result')
+function openGame(){frame.srcdoc=`<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><div id="app"></div><script>addEventListener('error',e=>parent.document.querySelector('#error').textContent=e.message);addEventListener('unhandledrejection',e=>parent.document.querySelector('#error').textContent=String(e.reason));<\/script><script type="module" src="/src/main.ts"><\/script></html>`}
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,day:f?.day,seeds:f?.seeds,produce:f?.produce,variants:f?.variants,beds:f?.beds.slice(0,3),work:f?.workToday},null,2)}
+function seed(){if(!allowed)return;if(Object.keys(localStorage).some(k=>k.startsWith('cozy-farm-island-'))){result.textContent='Тестовый профиль уже содержит прогресс. Продолжите без перезаписи.';document.querySelector('details').open=true;openGame();return}const f=createFarm();f.beds[0]={kind:'crop',crop:'strawberry',growth:2,watered:true,wateredAt:1};f.beds[1]={kind:'crop',crop:'blueberry',growth:3,watered:false,trait:'dew'};f.beds[2]={kind:'crop',crop:'raspberry',growth:2,watered:false};f.discoveryPreferences.quiet=true;localStorage.setItem(farmSaveKeys.primary,JSON.stringify(f));openGame()}
+if(!allowed)document.querySelectorAll('button').forEach(b=>b.disabled=true)
+document.querySelector('#seed').onclick=seed;document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=openGame
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h})
+inspect();if(allowed&&localStorage.getItem(farmSaveKeys.primary))openGame()
+</script></html>
