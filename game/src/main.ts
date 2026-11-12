@@ -1,5 +1,7 @@
 import { recipePlanningIngredient } from './recipe-planning'
 import {seedSavingQuote,saveCropSeeds,renderSeedSaving} from './seed-saving'
+import {seedChoice,chooseSeedForBed} from './seed-choice'
+import {planBedWork,isCurrentBedWork,bedWorkKind} from './bed-work-intent'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
 import './recipe-surplus.css'
 import { BerryRenewalSelection, renderBerryRenewal } from './berry-renewal-ui'
@@ -221,7 +223,6 @@ import {
   restoreCurrentFarm,
   sail,
   seedPackSize,
-  selectSeed,
   sellProduce,
   sellMarketItem,
   serveFairGuest,
@@ -838,12 +839,13 @@ function flockFeedRow() {
 
 function seedCards() {
   const seed = cropDefinitions[previewSeed]
+  const choice = seedChoice(farm, previewSeed, seedPickerBed)
   return renderGardenMode(farm) + `<div class="seed-grid">${cropIds.map((crop) =>
-    `<button class="seed-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${farm.selectedSeed === crop}" aria-label="Семена: ${cropDefinitions[crop].name.toLowerCase()}, в наличии: ${farm.seeds[crop]}">
+    `<button class="seed-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${previewSeed === crop}" aria-label="Посмотреть семена: ${cropDefinitions[crop].name.toLowerCase()}, в наличии: ${farm.seeds[crop]}">
       ${icon(`ui-seed-${crop}`)}<strong>${cropDefinitions[crop].name}</strong><span>×${farm.seeds[crop]}</span>
     </button>`).join('')}</div>
     <section class="seed-detail">${icon(previewSeed)}<div><h2>Семена: ${seed.name.toLowerCase()}</h2><p>${quantity(seed.days, 'ночь')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p>
-      ${farm.seeds[previewSeed]===0?button('Купить семена','buy-seeds',farm.coins>=seed.seedPrice,{crop:previewSeed,cost:{icon:'coin',amount:seed.seedPrice}}):''}${renderSeedSaving(farm,previewSeed)}</div></section>`
+      ${choice.available?button(choice.label,'choose-seed',true,{value:choice.token})+`<p>${choice.detail}</p>`:button('Купить семена','buy-seeds',farm.coins>=seed.seedPrice,{crop:previewSeed,cost:{icon:'coin',amount:seed.seedPrice}})}${renderSeedSaving(farm,previewSeed)}</div></section>`
 }
 
 function stockLabel(item: StockItem): { name: string; image: string } {
@@ -2250,12 +2252,12 @@ function requestSeedChoice(index: number) {
   openPanel('seeds')
 }
 
-function chooseSeed(crop: CropId) {
+function chooseSeed(crop: CropId, token: string) {
   previewSeed = crop
   if (farm.seeds[crop] === 0) { drawPanel(); return }
   const bed = seedPickerBed
   activeTool = 'seeds'
-  if (perform(() => selectSeed(farm,crop),false,true) && bed !== undefined) {
+  if (perform(() => chooseSeedForBed(farm,crop,bed,token),false,true) && bed !== undefined) {
     closeDialog()
     island.focusTarget({kind:'bed',index:bed})
   }
@@ -2281,14 +2283,13 @@ function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 
   }
   if (target.kind === 'bed') {
     const index = target.index
+    const intent = planBedWork(farm, index)
+    if (!intent) return
     const upcomingSound = bedWorkSound(farm.beds[index], getBedAction(farm, index).kind)
     if (upcomingSound) void bayAudio.primeEvents([upcomingSound])
     if (needsSeedChoice(farm,index)) { requestSeedChoice(index); return }
-    island.workBed(index, () => {
-      const action = getBedAction(farm, index)
-      return farm.island === 'home' && action.available ? action.kind : 'wait'
-    }, () => {
-      if (farm.island !== 'home') return
+    island.workBed(index, () => bedWorkKind(farm, intent), () => {
+      if (!isCurrentBedWork(farm, intent)) return
       if (needsSeedChoice(farm,index)) { requestSeedChoice(index); return }
       const action = getBedAction(farm, index)
       if (action.kind !== 'wait' && action.available) activeTool = bedTools[action.kind]
@@ -3161,7 +3162,12 @@ app.addEventListener('click', async (event) => {
         perform(()=>saveCropSeeds(farm,value),false,true)
       break
     case 'preview-seed':
-      if (value && cropIds.includes(value as CropId)) chooseSeed(value as CropId)
+      if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value&&cropIds.includes(value as CropId)) {
+        previewSeed=value as CropId;drawPanel()
+      }
+      break
+    case 'choose-seed':
+      if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value===seedChoice(farm,previewSeed,seedPickerBed).token) chooseSeed(previewSeed,value)
       break
     case 'sell': if(perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('trade.receive'); break
     case 'sell-item': if(value)beginExactSale({kind:'market',key:value}); break
@@ -3172,11 +3178,6 @@ app.addEventListener('click', async (event) => {
     case 'buy-seeds':
       if (crop && perform(() => buySeeds(farm,crop))){
         playBaySound('trade.pay')
-        if(panel==='seeds') {
-          const bed = seedPickerBed
-          if (bed !== undefined && plannedCropAt(farm, bed) === crop) { closeDialog(); island.focusTarget({kind:'bed',index:bed}) }
-          else if (!activeGardenPlan(farm)) chooseSeed(crop)
-        }
       }
       break
     case 'garden-shop': case 'garden-shop-scope': case 'garden-shop-back': case 'garden-buy-seeds': case 'garden-slot': case 'garden-edit': case 'garden-copy': case 'garden-cancel': case 'garden-brush': case 'garden-paint': case 'garden-save': case 'garden-follow': case 'garden-delete': case 'garden-remove': case 'garden-bed': {

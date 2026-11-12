@@ -1,6 +1,7 @@
 import { syncHomeVisitor, stepHomeVisitor, type HomeVisitor } from './neighbor-visit-scene';
 import { canWalkWithHen, createHenCompanion, returnHenCompanion, stepHenCompanion, type HenCompanion, type HenCompanionStatus } from './hen-companion';
 import { playBaySound } from './game-sound'
+import {BedPointerGuard} from './bed-work-intent'
 import { bayAudio } from './bay-audio'
 import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
 import { cookeryFinishTraits, type SignatureRecipe } from './culinary';
@@ -1039,6 +1040,7 @@ export function createIsland(
     if (gesture) {
       const age = now - gesture.started;
       if (!gesture.hit && age >= WORK_MS[gesture.kind] * 0.55) {
+        if (gesture.order.next() !== gesture.kind) { gesture = undefined; return; }
         const { index, commit } = gesture.order;
         const bed = state?.beds[index];
         const { center } = areas[index + 4];
@@ -1780,6 +1782,7 @@ export function createIsland(
   }
 
   const listeners = { signal: abort.signal };
+  const bedPointerGuard = new BedPointerGuard();
   function cancelHenGrip():void{
     const id=pointerStart?.id;
     if(id===undefined&&!heldHen)return;
@@ -1850,6 +1853,7 @@ export function createIsland(
     if (Math.hypot(start.x - event.clientX, start.y - event.clientY) > 12) return;
     const target = hit(event);
     if (target) {
+      if (!bedPointerGuard.accepts(target.target.kind === 'bed' ? target.target.index : undefined, event)) return;
       focused = target;
       showFocus = false;
       activate(target.target);
