@@ -568,7 +568,7 @@ function status() {
   const taskSource = iconUrl(goal && 'icon' in goal ? goal.icon : farm.island === 'cape' ? 'ui-honey' : farm.island === 'village' ? 'ui-bea' : 'carrot')
   if (taskArt.getAttribute('src') !== taskSource) taskArt.src = taskSource
   const counts: Partial<Record<Tool, number>> = {
-    seeds: farm.seeds[farm.selectedSeed],
+    seeds: atHome && sowingPlan ? undefined : farm.seeds[farm.selectedSeed],
     feed: farm.feed,
     basket: getSale(farm).items,
     coop: farm.eggsReady,
@@ -630,7 +630,7 @@ function status() {
     button.disabled = farm.island === 'cape' && toolId === 'rod'
     const count = counts[toolId]
     const badge = button.querySelector<HTMLElement>('.slot-count')!
-    if (toolId === 'seeds') button.title = `Семена · ${cropDefinitions[farm.selectedSeed].name} (3)`
+    if (toolId === 'seeds') button.title = atHome && sowingPlan ? `Посев по плану: ${sowingPlan.name} (3)` : `Семена · ${cropDefinitions[farm.selectedSeed].name} (3)`
     button.setAttribute('aria-pressed', String(toolId === activeTool))
     badge.hidden = atVillage || count === undefined
     badge.textContent = count === undefined ? '' : String(count)
