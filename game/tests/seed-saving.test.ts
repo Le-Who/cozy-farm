@@ -23,6 +23,7 @@ test('the existing seed detail can show an honest tradeoff, including pumpkins t
   assert.match(html,/В припасах: 2 → 1/);assert.match(html,/Семян: 1 → 4/)
   assert.match(html,/Продажа продукта: 9 монет/);assert.match(html,/пакет на рынке: 8 монет/)
   assert.match(html,/data-action="save-crop-seeds"/)
+  assert.match(renderSeedSaving(farm,'carrot'),/Продажа продукта: 2 монеты; такой же пакет на рынке: 4 монеты/)
   assert.deepEqual(farm,before)
 })
 

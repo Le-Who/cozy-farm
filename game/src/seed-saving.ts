@@ -1,4 +1,5 @@
 import {berryCropIds,cropIds,cropDefinitions,seedPackSize,unitPrice,type FarmState,type ActionResult} from './farm.ts'
+import {ruCount} from './ru.ts'
 
 export const seedSavingCrops=cropIds.filter(crop=>!berryCropIds.some(berry=>berry===crop))
 const count=(value:number)=>Number.isSafeInteger(value)&&value>=0
@@ -21,9 +22,9 @@ export function renderSeedSaving(farm:FarmState,crop:unknown):string{
   if(!quote)return ''
   return `<div class="seed-saving"><p><strong>Семена со своего урожая</strong></p>
     <p>${quote.name}: 1 обычный продукт → ${quote.pack} семени. В припасах: ${quote.produce} → ${quote.remaining}. Семян: ${quote.seeds} → ${quote.total}.</p>
-    <p>Продажа продукта: ${quote.saleValue} монет; такой же пакет на рынке: ${quote.marketPrice} монет.</p>
+    <p>Продажа продукта: ${ruCount(quote.saleValue,'монета','монеты','монет')}; такой же пакет на рынке: ${ruCount(quote.marketPrice,'монета','монеты','монет')}.</p>
     <button type="button" class="dialog-button secondary" data-action="save-crop-seeds" data-value="${quote.token}"${quote.available?'':' disabled'}>Оставить 1 на семена · +${quote.pack}</button>
-    <p>${!quote.room?'В запасах пока нет места для нового пакета.':!quote.available?'Сначала соберите обычный урожай. ':''}Необычные продукты останутся у вас. Посев выбирается отдельно.</p></div>`
+    <p>${!quote.room?'В запасах пока нет места для нового пакета. ':!quote.available?'Сначала соберите обычный урожай. ':''}Необычные продукты останутся у вас. Посев выбирается отдельно.</p></div>`
 }
 
 export function saveCropSeeds(farm:FarmState,token:unknown):ActionResult{
