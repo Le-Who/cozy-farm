@@ -68,15 +68,22 @@
 .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) { width:min(680px,calc(100vw - 20px)); }
 .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-emblem { display:none; }
 .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-header { align-items:center; }
-.explore-section + .explore-section { margin-top:15px; }
-.explore-section h2 { margin:0 0 7px; color:var(--plum); font:700 17px/1.25 Georgia,serif; }
-.explore-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+/* Group destinations by the place they belong to, not by the order features were added. */
+.explore-location { margin:0 0 12px; color:var(--plum); font:700 17px/1.25 Georgia,serif; }
+.explore-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:15px 20px; }
+.explore-section { min-width:0; }
+.explore-section h3 { margin:0 0 5px; padding-bottom:5px; border-bottom:1px solid #dfc79f; color:var(--muted); font-size:13px; line-height:1.25; font-weight:700; }
+.explore-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px; }
 .explore-tile {
-  display:flex; align-items:center; justify-content:flex-start; gap:7px; min-height:52px; padding:5px 8px;
-  border-radius:12px; text-align:start; font-size:14px; line-height:1.18;
+  display:flex; align-items:center; justify-content:flex-start; gap:6px; min-height:52px; padding:5px 3px;
+  border:0; border-radius:9px; box-shadow:none; background:transparent; text-align:start; font-size:14px; line-height:1.2;
 }
-.explore-tile .icon { flex:0 0 37px; width:37px; height:37px; object-fit:contain; }
-.explore-tile:focus-visible,.explore-personal button:focus-visible { outline:3px solid #80559a; outline-offset:-2px; }
+.explore-tile .icon { flex:0 0 34px; width:34px; height:37px; object-fit:contain; }
+.explore-tile strong { min-width:0; overflow-wrap:anywhere; }
+.explore-tile:hover { background:#fff8e7; }
+.explore-tile:focus-visible,.explore-personal button:focus-visible { outline:3px solid #80559a; outline-offset:-2px; background:#fff8e7; }
+.explore-away { margin-top:15px; }
+.explore-away .explore-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .explore-personal { display:flex; flex-wrap:wrap; gap:5px 12px; margin-top:14px; padding-top:7px; border-top:1px solid #dfc79f; }
 .explore-personal button {
   flex:0 1 auto; min-height:44px; min-width:0; border:0; border-radius:8px; box-shadow:none; background:transparent;
@@ -99,7 +106,8 @@
 .island-places { gap:5px; }
 .island-places .dialog-button { min-width:0; white-space:normal; min-height:44px; padding-inline:8px; }
 @media (max-width:510px) {
-  .explore-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .explore-groups { grid-template-columns:minmax(0,1fr); gap:12px; }
+  .explore-away .explore-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .island-selector button { flex-direction:column; flex-wrap:nowrap; }
   .island-selector .icon { width:32px; height:29px; }
   .island-selector span { font-size:11px; }
@@ -119,8 +127,9 @@
   .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) :is(.dialog-close,.dialog-back) { top:0; bottom:auto; }
   .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-destinations { align-items:flex-start; padding:0; margin-inline:50px; z-index:1; }
   .farm-dialog:is([data-panel="guide"],[data-panel="boat"]) .dialog-destinations button { flex:0 1 auto; }
-  .explore-section h2 { font-size:15px; margin-bottom:4px; }
-  .explore-section + .explore-section { margin-top:8px; }
+  .explore-location { font-size:15px; margin-bottom:7px; }
+  .explore-groups { gap:8px 14px; }
+  .explore-away { margin-top:8px; }
   .explore-tile { min-height:44px; }
   .explore-grid { gap:4px; }
   .explore-personal { margin-top:7px; }

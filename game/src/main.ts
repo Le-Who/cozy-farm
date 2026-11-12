@@ -1786,34 +1786,53 @@ function drawPanel() {
       break
     case 'guide': {
       const home = farm.island === 'home', village = farm.island === 'village'
-      const places: string[] = []
       const tile = (name: string, image: string, value: Panel, action = 'open-panel') =>
         `<button class="explore-tile" type="button" data-action="${action}" data-value="${value}">${icon(image)}<strong>${name}</strong></button>`
-      if (home || farm.island === 'grove') places.push(tile('Сад','ui-tree-apple','orchard'),tile('Рыбалка','tool-rod','fishing'))
+      const groups: { title: string; places: string[] }[] = []
+      const water = []
+      if (home || farm.island === 'grove') water.push(tile('Рыбалка','tool-rod','fishing'))
+      if (farm.boatOwned) water.push(tile('Грузовой паром','bay/ferry','bay-freight'))
       if (home) {
-        places.push(tile('Свои планы огорода','field','garden-plans'),tile('Пересадка культур','tool-seeds','transplant'),tile('Ягодный питомник','ui-seed-blueberry','berry-nursery'),tile('Свой ягодник','ui-seed-strawberry','berry-renewal'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
-        if (isProjectComplete(farm,'fair')) places.push(tile('Гость ярмарки','ui-market','guest'),tile('Просьбы соседей','ui-bea','intents'))
+        groups.push({ title: 'Дом и двор', places: [
+          tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),
+          tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'),
+        ] }, { title: 'Огород и сад', places: [
+          tile('Сад','ui-tree-apple','orchard'),tile('Планы огорода','field','garden-plans'),
+          tile('Пересадка','tool-seeds','transplant'),tile('Ягодный питомник','ui-seed-blueberry','berry-nursery'),
+          tile('Свой ягодник','ui-seed-strawberry','berry-renewal'),
+        ] })
       }
-      if (village) places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'),tile('Общий ужин','ui-grilled-fish','village-meal'))
+      if (village) groups.push({ title: 'Бухта', places: [
+        tile('Своя лавка','bay/pavilion','bay-shop'),tile('Заказы лавки','ui-signature-bright','shop-commissions'),
+        tile('Соседи','ui-bea','village'),tile('Общий ужин','ui-grilled-fish','village-meal'),
+      ] }, { title: 'Творчество и праздники', places: [
+        tile('Кондитерская','ui-handmade-round','workshop'),tile('Музыкальный сад','bay/music-harp','bay-music'),
+        tile('Праздники гавани','festivals/lights','festival'),
+      ] })
       if (farm.island === 'cape') {
-        places.push(tile('Пасека','ui-honey','hive'))
+        const places = [tile('Пасека','ui-honey','hive')]
         if (farm.capeLevel >= 3) places.push(tile('Медовая кухня','ui-honey-biscuits','honey-kitchen'))
+        groups.push({ title: 'Пасека и кухня', places })
       }
       if (farm.island === 'grove') {
-        places.push(tile('Живая заводь','ui-shell','cove'))
-        if (hasShoal(farm)) places.push(tile('Лунная отмель','ui-moon-pearl','shoal'))
+        groups.push({ title: 'Сад', places: [tile('Деревья','ui-tree-apple','orchard')] })
+        water.push(tile('Живая заводь','ui-shell','cove'))
+        if (hasShoal(farm)) water.push(tile('Лунная отмель','ui-moon-pearl','shoal'))
       }
-      if (village || home && isProjectComplete(farm,'fair')) places.push(tile('Кондитерская','ui-handmade-round','workshop'))
-      if (village) places.push(tile('Заказы лавки','ui-signature-bright','shop-commissions'),tile('Праздники гавани','festivals/lights','festival'))
-      if (farm.boatOwned) places.push(tile('Грузовой паром','bay/ferry','bay-freight'))
+      if (water.length) groups.push({ title: 'У воды', places: water })
+      if (home && isProjectComplete(farm,'fair')) groups.push({ title: 'Ярмарка', places: [
+        tile('Гость ярмарки','ui-market','guest'),tile('Просьбы соседей','ui-bea','intents'),
+        tile('Кондитерская','ui-handmade-round','workshop'),
+      ] })
       const away = [
         ...(!home ? [tile('Рынок дома','ui-market','market','travel-panel')] : []),
         ...(!village && farm.festivals.active ? [tile('Праздники гавани','festivals/lights','festival')] : []),
         ...(!village && farm.village.built ? [tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music')] : []),
       ]
-      dialogContent.innerHTML = `<section class="explore-section"><h2>${islandNames[farm.island]}</h2><div class="explore-grid">${places.join('')}</div></section>
-        ${away.length ? `<section class="explore-section"><h2>На других островах</h2><div class="explore-grid">${away.join('')}</div></section>` : ''}
-        <div class="explore-personal">${tile('Дневник','star','journal')}${tile('Запасы','ui-bag','inventory')}${home || village ? tile('Мои рецепты','ui-signature-bright','recipes') : ''}${button('Настройки','open-panel',true,{value:'settings',secondary:true})}</div>`
+      dialogContent.innerHTML = `<h2 class="explore-location">${islandNames[farm.island]}</h2>
+        <div class="explore-groups">${groups.map(({title,places}) => `<section class="explore-section"><h3>${title}</h3><div class="explore-grid">${places.join('')}</div></section>`).join('')}</div>
+        ${away.length ? `<section class="explore-section explore-away"><h3>На других островах</h3><div class="explore-grid">${away.join('')}</div></section>` : ''}
+        <nav class="explore-personal" aria-label="Личное">${tile('Дневник','star','journal')}${tile('Запасы','ui-bag','inventory')}${home || village ? tile('Мои рецепты','ui-signature-bright','recipes') : ''}${button('Настройки','open-panel',true,{value:'settings',secondary:true})}</nav>`
       break
     }
     case 'workshop': {
