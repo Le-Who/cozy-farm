@@ -1,0 +1,8 @@
+<!doctype html><html lang="ru"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Наклон кувшина и мёд на тарелке</title>
+<style>html,body{margin:0;height:100%;background:#f1dfc2}#host{height:100%;display:grid;place-items:center}#blocked{padding:24px}</style><div id="host"></div><p id="blocked" hidden>Проверочная сцена доступна только локально на порту 5231.</p>
+<script type="module">
+import{createCookery}from'/src/cookery.ts';
+if(['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='5231'){
+createCookery(document.querySelector('#host'),{recipe:{id:'honey-pour-check',name:'Груши с мёдом',kind:'honeyPear'},onComplete:()=>true,onCancel:()=>location.reload()});
+}else document.querySelector('#blocked').hidden=false;
+</script></html>

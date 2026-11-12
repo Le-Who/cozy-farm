@@ -3,7 +3,7 @@ export type KnifeTrace = {
   angle: number | null; axis: KnifePoint | null; origin: KnifePoint | null;
   bins: Set<number>; progress: number;
   previous: KnifePoint | null; wasContact: boolean; entry: KnifePoint | null;
-  samples: KnifePoint[]; travel: number;
+  samples: KnifePoint[]; travel: number; retry: KnifeTrace | null;
 }
 type Extent = { min: number; max: number }
 type KnifeSample = { point: KnifePoint; contact: boolean; extent: (axis: KnifePoint, origin: KnifePoint) => Extent }
@@ -13,7 +13,7 @@ const finite = (p: KnifePoint) => Number.isFinite(p.x) && Number.isFinite(p.y)
 const dot = (a: KnifePoint, b: KnifePoint) => a.x * b.x + a.y * b.y
 
 export function createKnifeTrace(): KnifeTrace {
-  return { angle: null, axis: null, origin: null, bins: new Set(), progress: 0, previous: null, wasContact: false, entry: null, samples: [], travel: 0 }
+  return { angle: null, axis: null, origin: null, bins: new Set(), progress: 0, previous: null, wasContact: false, entry: null, samples: [], travel: 0, retry: null }
 }
 
 function cover(trace: KnifeTrace, from: KnifePoint, to: KnifePoint, extent: Extent): void {
@@ -35,6 +35,30 @@ function cover(trace: KnifeTrace, from: KnifePoint, to: KnifePoint, extent: Exte
 export function traceKnife(trace: KnifeTrace, sample: KnifeSample): KnifeTrace {
   const point = sample.point
   if (!finite(point)) return trace
+  // Keep a partial kerf when the player resumes it, but do not trap all later
+  // gestures on the first accidental nick. A new plane needs the same stable
+  // contact travel as the first cut; a tap or jitter never erases prior work.
+  if (trace.retry) {
+    const retry = trace.retry
+    const buffered = [...(retry.entry ? [retry.entry] : []), ...retry.samples, point]
+    traceKnife(retry, sample)
+    if (retry.axis && retry.origin) {
+      const extent = sample.extent(retry.axis, retry.origin), span = extent.max - extent.min
+      const alignment = Math.abs(dot(trace.axis!, retry.axis))
+      const separation = Math.abs((retry.origin.x - trace.origin!.x) * -trace.axis!.y + (retry.origin.y - trace.origin!.y) * trace.axis!.x)
+      if (alignment < Math.cos(Math.PI / 12) || separation > clamp(span * .075, 2.5, 16)) {
+        Object.assign(trace, retry)
+        return trace
+      }
+      trace.retry = null
+      const originalExtent = sample.extent(trace.axis!, trace.origin!)
+      for (let i = 1; i < buffered.length; i++) cover(trace, buffered[i - 1], buffered[i], originalExtent)
+      trace.previous = { ...point }; trace.wasContact = sample.contact
+    }
+    // An undecided retry must not finish the old plane before its own direction
+    // is known. Replaying after confirmation preserves a genuine continuation.
+    return trace
+  }
   const previous = trace.previous, wasContact = trace.wasContact
   trace.previous = { ...point }; trace.wasContact = sample.contact
   if (trace.axis) {
@@ -76,7 +100,8 @@ export function traceKnife(trace: KnifeTrace, sample: KnifeSample): KnifeTrace {
   return trace
 }
 
-/** Releasing keeps the visible partial cut and its plane, but not an outside approach. */
+/** Releasing keeps the partial cut; a deliberate new stroke may choose another plane. */
 export function releaseKnifeTrace(trace: KnifeTrace): void {
   trace.previous = null; trace.wasContact = false; trace.entry = null; trace.samples.length = 0; trace.travel = 0
+  trace.retry = trace.axis && trace.progress < .875 ? createKnifeTrace() : null
 }
