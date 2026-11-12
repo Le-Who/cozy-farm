@@ -30,6 +30,7 @@ import { getApiaryCopy } from './apiary-preview'
 import './apiary-preview.css'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopMorning, renderCoopCapacityWarning } from './coop-preview'
+import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
 import './coop-preview.css'
 import { canConfirmRest } from './rest-preview'
 import { renderRestPreview } from './rest-preview-ui'
@@ -288,7 +289,7 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
@@ -631,6 +632,7 @@ const panelTitles: Record<Panel, string> = {
   settings: 'Настройки',
   journal: 'Дневник',
   coop: 'Курятник',
+  'chicken-feed': 'Корм со своей фермы',
   rest: 'Дом',
   guide: 'Карта бухты',
   seeds: 'Семена',
@@ -654,6 +656,7 @@ const panelTitles: Record<Panel, string> = {
 }
 
 const panelEmblems: Record<Panel, string> = {
+  'chicken-feed': 'tool-feed',
   'warehouse-supply': 'ui-bag',
   transplant: 'tool-seeds',
   sale: 'ui-market',
@@ -1669,12 +1672,16 @@ function drawPanel() {
           ${nav(button('Угостить', 'serve-guest', ready))}`) + renderFairReturn(farm,stockTile)
       break
     }
+    case 'chicken-feed':
+      dialogContent.innerHTML = renderChickenFeedMixes(farm)
+      break
     case 'coop':
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
       dialogContent.innerHTML = `${renderCoopMorning(farm)}<div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>
         ${button('Улучшения', 'upgrades', true, { secondary: true })}</div>
         <ul class="dialog-list">
           ${flockFeedRow()}
+          ${farm.buildingLevels.coop >= 2 ? row('tool-feed', 'Домашние кормовые смеси', 'Пшеница с морковью или яблоком', button('Выбрать смесь', 'chicken-feed-open', true, {secondary:true})) : row('tool-feed', 'Домашние кормовые смеси', 'Откроются после улучшения курятника')}
           ${row('egg', 'Яйца', `×${farm.eggsReady}`, button('Собрать', 'collect', farm.eggsReady > 0, {context:'яйца'}))}
           ${farm.coopSpecialization === 'hatchery' && farm.flockSize < maxFlockSize
             ? row('egg', 'Инкубатор', farm.hatchDay === null ? `Нужно 1 · в запасе ${farm.eggs}` : quantity(farm.hatchDay - farm.day, 'ночь'),
@@ -3029,6 +3036,10 @@ app.addEventListener('click', async (event) => {
     case 'buy-seeds':
       if (crop && perform(() => buySeeds(farm,crop))){playBaySound('trade.pay');if(panel==='seeds')chooseSeed(crop)}
       break
+    case 'chicken-feed-open':
+      if (panel === 'coop' && dialog.open && farm.island === 'home' && farm.buildingLevels.coop >= 2) openPanel('chicken-feed')
+      break
+    case 'mix-chicken-feed': if(panel === 'chicken-feed' && dialog.open)perform(() => mixChickenFeed(farm, value), false, true); break
     case 'feed': if(perform(() => feedChickens(farm), false, farm.progress.feed > 0))playBaySound('flock.feed', 1, 0); break
     case 'collect': if(perform(() => collectEggs(farm)))playBaySound('flock.eggs', 1, 0); break
     case 'unpack-egg-basket':perform(()=>unpackEggBasket(farm),false,true);break

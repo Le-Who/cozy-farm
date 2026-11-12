@@ -6,3 +6,8 @@
 .coop-morning .coop-capacity-note{padding:8px 0 0;border-left:0;border-top:1px solid var(--rule);border-radius:0;margin-bottom:0}
 .coop-capacity-note strong{font-size:14px;line-height:1.35;color:var(--plum)}
 .coop-capacity-note .dialog-button{min-height:44px;white-space:normal;max-width:100%}
+
+.chicken-feed-recipes{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))}
+.chicken-feed-recipe{min-width:0;padding:10px;border:1px solid var(--rule);border-radius:10px}
+.chicken-feed-recipe h3{margin:0;font-size:15px;color:var(--plum)}
+.chicken-feed-recipe .dialog-button{min-height:44px;max-width:100%;white-space:normal}

@@ -161,7 +161,7 @@ export type BuildingId = typeof buildingIds[number];
 type BuildingLevel = 1 | 2 | 3;
 export const buildingDefinitions: Record<BuildingId, { name: string; upgradePrice: number; benefit: string }> = {
   farmhouse: { name: 'Фермерский дом', upgradePrice: 24, benefit: 'Варенье, рыба на гриле и кухонные заказы' },
-  coop: { name: 'Курятник', upgradePrice: 22, benefit: 'Корзины яиц и заказы курятника' },
+  coop: { name: 'Курятник', upgradePrice: 22, benefit: 'Корзины яиц, кормовые смеси и заказы курятника' },
   well: { name: 'Колодец', upgradePrice: 18, benefit: 'Полив рядов и заказы урожая' },
 };
 

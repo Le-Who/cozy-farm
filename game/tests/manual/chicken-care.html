@@ -1,0 +1,27 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Корм со своей фермы</title>
+<style>body{font:16px/1.4 system-ui;color:#352447;background:#faf7f0;padding:12px}button{padding:9px;margin:4px}pre{white-space:pre-wrap}iframe{display:block;border:1px solid #aaa}</style>
+<h1>Заработанный цикл ухода за курами</h1><p>Только localhost:4244. Каждая точка получена публичными командами, без выдачи монет и припасов. Кнопки меняют только тестовый save этого адреса.</p>
+<button data-fixture="new">Исходная ферма</button><button data-fixture="ready">Перед смешиванием</button><button data-fixture="mixed">Корм смешан, куры не накормлены</button><button data-fixture="full">Гнёзда полны</button>
+<button id="inspect">Проверить сохранение</button><button id="reload">Перезагрузить игру</button>
+<button data-size="360,640">360 × 640</button><button data-size="390,844">390 × 844</button><button data-size="568,320">568 × 320</button><button data-size="844,390">844 × 390</button><button data-size="1280,900">1280 × 900</button>
+<details><summary>Состояние тестового сохранения</summary><pre id="result"></pre></details><iframe title="Проверяемая игра" width="390" height="844"></iframe>
+<script type="module">
+import {chickenCarePlayer} from '../fixtures/chicken-care-player.ts'
+import {createFarm,restoreCurrentFarm} from '/src/farm.ts'
+import {farmSaveKeys} from '/src/farm-save-keys.ts'
+const allowed=['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4244'
+const frame=document.querySelector('iframe'),result=document.querySelector('#result')
+function inspect(){const raw=localStorage.getItem(farmSaveKeys.primary),f=raw&&restoreCurrentFarm(JSON.parse(raw));result.textContent=JSON.stringify({valid:!!f,day:f?.day,coins:f?.coins,feed:f?.feed,fed:f?.chickensFed,wheat:f?.produce.wheat,carrot:f?.produce.carrot,apple:f?.fruit.apple,ready:f?.eggsReady,eggs:f?.eggs,care:f?.chickenHappiness,petted:f?.pettedChickens,level:f?.buildingLevels.coop},null,2)}
+function seed(kind){
+ if(!allowed)return
+ const p=chickenCarePlayer('garden');p.day();p.act('endDay');p.day();p.act('endDay');p.act('workBed',4);p.act('workBed',9);p.act('pickFruit',0)
+ if(kind==='mixed'||kind==='full')p.act('mixChickenFeed','orchard')
+ if(kind==='full'){p.act('feedChickens');p.act('endDay')}
+ localStorage.setItem(farmSaveKeys.primary,JSON.stringify(kind==='new'?createFarm():p.state));inspect();frame.src='/'
+}
+if(!allowed){result.textContent='Запись запрещена вне localhost:4244';document.querySelectorAll('button').forEach(b=>b.disabled=true)}
+document.querySelectorAll('[data-fixture]').forEach(b=>b.onclick=()=>seed(b.dataset.fixture))
+document.querySelector('#inspect').onclick=inspect;document.querySelector('#reload').onclick=()=>frame.src='/'
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{const[w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h})
+inspect()
+</script></html>
