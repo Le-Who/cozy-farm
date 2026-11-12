@@ -3,7 +3,9 @@ import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from
 import { villageHomeProgress } from './village-home-art'
 import './berry-nursery.css'
 import { renderShopCommissions } from './shop-commissions-ui'
-import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommission } from './shop-commissions'
+import { ShopAssortmentChoice } from './shop-assortment-choice'
+import './shop-commissions.css'
+import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommissionLine } from './shop-commissions'
 import { getFestivalShoreRoute } from './festival-shore-route.ts'
 import { rememberRecipeDraft, resumeRecipeDraft, resetRecipeDraft } from './recipe-draft'
 import { canReturnToDailyIntent, renderIntentDeadline, renderSelectedIntentRest, selectedDailyIntent } from './intent-deadline'
@@ -1352,6 +1354,7 @@ function goBack() {
 let harbourScene: {destroy():void} | undefined
 let selectedWarehouse = farm.island
 let selectedExpeditionPort: ExpeditionPort = 'mill'
+const shopAssortmentChoice = new ShopAssortmentChoice()
 let selectedExpeditionOffer = 'mill-grain'
 let freightPlanOpen = false
 let musicView: BayMusicViewState | undefined
@@ -1515,7 +1518,7 @@ function drawPanel() {
       break
     }
     case 'shop-commissions':
-      dialogContent.innerHTML = renderShopCommissions(farm, id => { const recipe = farm.culinary.recipes.find(recipe => recipe.id === id); return recipe ? signatureResultPicture(recipe,{icon}) : '' })
+      dialogContent.innerHTML = renderShopCommissions(farm, id => { const recipe = farm.culinary.recipes.find(recipe => recipe.id === id); return recipe ? signatureResultPicture(recipe,{icon}) : '' }, shopAssortmentChoice)
       break
     case 'warehouse-supply': {
       const request = selectedWarehouseRequest, supply = request && getLocalWarehouseSupply(farm, request)
@@ -2560,10 +2563,10 @@ app.addEventListener('click', async (event) => {
       if(panel==='shop-commissions'&&dialog.open&&perform(()=>finishShopCommission(farm,value),false,true))playBaySound('trade.receive')
       break
     case 'commission-recipe': {
-      const order=getShopCommission(farm)
-      if(panel==='shop-commissions'&&order&&value===String(order.serial)){
-        expandedRepeatId=order.recipeId;openPanel('recipes')
-        highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(order.recipeId)}"]`))
+      const line=getShopCommissionLine(farm,value)
+      if(panel==='shop-commissions'&&dialog.open&&line){
+        expandedRepeatId=line.recipeId;openPanel('recipes')
+        highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(line.recipeId)}"]`))
       }
       break
     }
@@ -3334,6 +3337,14 @@ dialog.addEventListener('close', () => {
 
 app.addEventListener('change',event=>{
   const input=event.target
+  if (input instanceof HTMLSelectElement && input.dataset.commissionPair && panel === 'shop-commissions' && dialog.open) {
+    const part = input.dataset.commissionPair, customer = input.dataset.customer
+    if (shopAssortmentChoice.choose(farm, customer, part, input.value)) {
+      const scroll = dialogContent.scrollTop
+      drawPanel(); dialogContent.scrollTop = scroll
+      dialogContent.querySelector<HTMLSelectElement>(`[data-commission-pair="${part}"][data-customer="${CSS.escape(customer!)}"]`)?.focus({preventScroll:true})
+    }
+  }
   if(input instanceof HTMLInputElement&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
 })
 app.addEventListener('input', event => {

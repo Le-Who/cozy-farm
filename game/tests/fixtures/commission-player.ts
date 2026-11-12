@@ -6,13 +6,14 @@ import { foodDescriptors } from '../../src/farm.ts'
 import { describeFood } from '../../src/intent-orders.ts'
 
 /** Public actions only. A cooking receipt checks the model, not a manual gesture. */
-export function commissionPlayer(opening: { name: string; args: unknown[] }[]) {
+export function commissionPlayer(opening: { name: string; args: unknown[] }[], onSnapshot?: (farm: F.FarmState) => void) {
   let state = F.createFarm(), actions = 0
   const commands = { ...F, ...H, ...C } as Record<string, Function>
   function reload() {
     const next = F.restoreCurrentFarm(JSON.parse(JSON.stringify(state)))
     if (!next) throw Error(`Invalid save after action ${actions}`)
     state = next
+    onSnapshot?.(state)
   }
   function act(name: string, ...args: unknown[]) {
     const result = commands[name](state, ...args)

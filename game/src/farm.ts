@@ -1,4 +1,4 @@
-import { createShopCommissions, restoreShopCommissions, type ShopCommissions } from './shop-commissions.ts';
+import { createShopCommissions, restoreShopCommissions, shopCommissionUsesRecipe, type ShopCommissions } from './shop-commissions.ts';
 import { restoreRecipeDraft, completeRecipeDraft, type RecipeDraftBookmark } from './recipe-draft.ts';
 import { createDiscoveryPreferences, restoreDiscoveryPreferences, type DiscoveryPreferences } from './discovery-preferences.ts';
 import { createBayShop, restoreBayShop, advanceBayShopDay, syncBayShopProducts, bayShopDailyLimit, type BayShopState } from './bay-shop-model.ts';
@@ -1709,7 +1709,7 @@ export function favoriteSignature(farm:FarmState,id:string,favorite?:boolean):Ac
   const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id);if(!recipe||favorite!==undefined&&typeof favorite!=='boolean')return failure('Выберите сохранённый рецепт.');recipe.favorite=favorite??!recipe.favorite;return {ok:true,message:recipe.favorite?'Рецепт добавлен в избранное.':'Рецепт удалён из избранного.'};
 }
 export function forgetSignature(farm:FarmState,id:string):ActionResult{
-  if(farm.shopCommissions.active?.recipeId===id)return failure('Сначала завершите или отмените заказ на этот рецепт в лавке.');
+  if(shopCommissionUsesRecipe(farm.shopCommissions,id))return failure('Сначала завершите или отмените заказ на этот рецепт в лавке.');
   const product = 'signature:' + id;
   if (Object.values(farm.freight.warehouses).some(stock => stock[product] > 0)
     || farm.freight.ship.cargo.some(lot => lot.id === product)

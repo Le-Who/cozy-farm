@@ -16,3 +16,6 @@
 .commission-cancel { border-top:1px solid #d5bda0; padding-top:8px; }
 .commission-cancel button { margin-top:8px; }
 @media(max-width:420px) { .commission-recipe { gap:10px; } .commission-recipe > :first-child { flex-basis:64px; width:64px; } }
+.commission-assortment { display:grid; gap:12px; padding:12px; border-radius:12px; background:#f4ebdc; min-width:0; }
+.commission-assortment label { display:grid; gap:6px; min-width:0; }
+.commission-assortment select { width:100%; min-width:0; min-height:44px; padding:8px; font:inherit; color:inherit; background:#fffaf0; border:1px solid #b89b79; border-radius:8px; }
