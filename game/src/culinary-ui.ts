@@ -61,6 +61,7 @@ export function signatureBook(farm:FarmState,art:Icons,expandedRepeatId?:string)
       ${stored?`<div class="signature-warehouse"><p>Готовых порций на местном складе: ${stored.stored}. Готовить заново не нужно.</p>${control('Забрать со склада · 1 порция','recipe-warehouse-withdraw',storedSignatureValue(stored))}</div>`:''}
       ${renderPicnicOffer(farm,recipe.processing)}<div class="signature-actions">${control('Повторить ×1','make-signature',recipe.id,action.available)}${control('Партия ×3','batch-signature',recipe.id,batch)}${control('Готовить вручную','manual-signature',recipe.id,capacity.canCreate)}${control('Продать…','sell-signature',recipe.id,count>0&&farm.island==='home')}${control('Устроить пикник · 1 порция','use-signature',recipe.id,count>0&&farm.culinary.picnic===null,`title="${signatureProcessingDefinitions[recipe.processing].use}"`)}</div>
       ${renderRecipeRepeatGuide(farm,recipe.id,art.stock,expandedRepeatId===recipe.id)}
+      ${farm.island==='home'?control('Продать лишние ингредиенты','recipe-surplus-choose',recipe.id):''}
       ${farm.island==='village'&&farm.village.built?`<div class="signature-neighbours">${farm.village.residents.some(Boolean)?`<div class="signature-tastings" aria-label="Угощения соседям"><p>Каждый сосед пробует одно угощение за игровой день.</p>${(['bea','finn'] as const).map(id=>{
         const tasting=signatureTastingGuide(farm,recipe.id,id)
         if(!tasting)return ''

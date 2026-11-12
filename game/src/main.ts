@@ -1,3 +1,5 @@
+import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
+import './recipe-surplus.css'
 import { BerryRenewalSelection, renderBerryRenewal } from './berry-renewal-ui'
 import { getBerryRenewalPreview, harvestBerryAndKeep } from './farm'
 import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
@@ -303,13 +305,14 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'berry-renewal' | 'garden-plans' | 'neighbor-visits' | 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'recipe-surplus' | 'berry-renewal' | 'garden-plans' | 'neighbor-visits' | 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
 const transplantSelection = new BedTransplantSelection()
 const berryNurserySelection = new BerryNurserySelection()
 const berryRenewalSelection = new BerryRenewalSelection()
+const recipeSurplusSelection = new RecipeSurplusSelection()
 let activeTool: Tool = 'seeds'
 let panel: Panel | undefined
 let celebratedFestival: FestivalTradition | undefined
@@ -647,6 +650,7 @@ const panelTitles: Record<Panel, string> = {
   'warehouse-supply': 'Местный склад',
   transplant: 'Пересадка культур',
   sale: 'Продажа товара',
+  'recipe-surplus': 'Припасы для рецепта',
   'berry-renewal':'Свой ягодник', 'berry-nursery':'Ягодный питомник', 'shop-commissions':'Заказы лавки', 'music-supplies':'Материалы музыки', festival:'Праздники гавани', 'bay-shop':'Своя лавка', 'bay-freight':'Паром «Ласточка»', 'bay-music':'Музыкальный сад',
   market: 'Рынок',
   inventory: 'Запасы',
@@ -688,6 +692,7 @@ const panelEmblems: Record<Panel, string> = {
   'warehouse-supply': 'ui-bag',
   transplant: 'tool-seeds',
   sale: 'ui-market',
+  'recipe-surplus': 'ui-bag',
   'berry-renewal':'ui-seed-strawberry', 'berry-nursery':'ui-seed-blueberry', 'shop-commissions':'ui-signature-bright', 'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
   market: 'ui-market', inventory: 'ui-bag', archive: 'orchard', settings: 'gear', journal: 'star', coop: 'tool-hen',
   rest: 'moon', guide: 'island', seeds: 'ui-bag', fishing: 'tool-rod', boat: 'tool-boat',
@@ -1037,7 +1042,7 @@ function marketCards() {
         row(image, name, `×${count} · ${price} за 1`, button('Выбрать количество', 'sell-item', true, { value: key, context: name }), trait)).join('')}</ul>
       ${!listings.length&&marketSellGroup!=='all'?`<div class="market-empty">${icon('tool-crate')}<span>Пусто</span></div>`:''}
       ${marketSellGroup==='all'?`<section class="market-total">${icon('tool-crate')}<div><strong>${sale.items ? `${quantity(sale.items, 'предмет')} · ${quantity(sale.coins, 'монета')}` : 'Корзина пуста'}</strong>${button('Продать всё', 'sell', sale.items > 0)}</div></section>`:''}
-      ${farm.culinary.recipes.length?nav(button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}`
+      ${farm.culinary.recipes.length?nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}`
   }
   const categories=`<nav class="market-category-icons" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}</button>`).join('')}</nav>`
   if(marketCategory==='seeds')return controls+categories+`<div class="market-seed-grid">${cropIds.map(crop=>{const definition=cropDefinitions[crop];return `<section>${icon('ui-seed-'+crop)}<strong>${definition.name}</strong><span>×${seedPackSize}</span>${button('Купить','buy-seeds',farm.coins>=definition.seedPrice,{crop,cost:{icon:'coin',amount:definition.seedPrice}})}</section>`}).join('')}</div>`
@@ -1524,6 +1529,9 @@ function drawPanel() {
     : undefined
 
   switch (panel) {
+    case 'recipe-surplus':
+      dialogContent.innerHTML = renderRecipeSurplus(farm, recipeSurplusSelection, item => stockLabel(item).name)
+      break
     case 'sale': {
       const stock = selectedSale && saleStock(farm, selectedSale)
       if (!selectedSale || !stock) { dialogContent.innerHTML = '<p class="dialog-intro">Товар недоступен.</p>'; break }
@@ -2012,9 +2020,10 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if ((next === 'cape-upgrade' || next === 'honey-kitchen') && farm.island !== 'cape') return
   if (next === 'honey-kitchen' && farm.capeLevel < 3) return
   if(next==='cove'&&farm.island!=='grove')return
-  if ((next === 'transplant' || next === 'garden-plans') && farm.island !== 'home') return
+  if ((next === 'transplant' || next === 'garden-plans' || next === 'recipe-surplus') && farm.island !== 'home') return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
   if (next !== panel) { transplantSelection.reset(); berryNurserySelection.reset(); berryRenewalSelection.reset(); gardenEditor.reset() }
+  if (next !== panel && next !== 'recipe-surplus') recipeSurplusSelection.reset()
   if (next !== 'seeds') seedPickerBed = undefined
   if (remember && next==='bay-freight' && next!==panel) {
     freightPlanOpen=false
@@ -2055,7 +2064,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
 function closeDialog() {
   gardenEditor.reset()
   transplantSelection.reset()
-  berryNurserySelection.reset(); berryRenewalSelection.reset()
+  berryNurserySelection.reset(); berryRenewalSelection.reset(); recipeSurplusSelection.reset()
   celebratedFestival=undefined
   island.setViewMode('world')
   app.dataset.scene=''
@@ -2987,6 +2996,34 @@ app.addEventListener('click', async (event) => {
     case 'batch-signature':if(value)perform(()=>repeatSignature(farm,value!,undefined,3),false,true);break
     case 'favorite-signature':if(value)perform(()=>favoriteSignature(farm,value!),false,true);break
     case 'forget-signature':if(value)perform(()=>forgetSignature(farm,value!),false,true);break
+    case 'recipe-surplus-choose':
+      if (dialog.open && (panel === 'recipes' || panel === 'recipe-surplus') && value && recipeSurplusSelection.choose(farm, value, 1)) {
+        if (panel === 'recipe-surplus') { drawPanel(); dialogContent.scrollTop = 0 }
+        else openPanel('recipe-surplus')
+      }
+      break
+    case 'recipe-surplus-quantity':
+    case 'recipe-surplus-refresh': {
+      const quote = recipeSurplusSelection.quote
+      const quantity = action === 'recipe-surplus-refresh' ? quote?.quantity : value === '1' ? 1 : value === '3' ? 3 : undefined
+      if (dialog.open && panel === 'recipe-surplus' && quote && quantity && recipeSurplusSelection.choose(farm, quote.recipeId, quantity)) drawPanel()
+      break
+    }
+    case 'recipe-surplus-reset':
+      if (dialog.open && panel === 'recipe-surplus') { recipeSurplusSelection.reset(); drawPanel(); dialogContent.scrollTop = 0 }
+      break
+    case 'recipe-surplus-confirm':
+      if (dialog.open && panel === 'recipe-surplus') {
+        if (perform(() => recipeSurplusSelection.confirm(farm, value), false, true)) playBaySound('trade.receive')
+        else drawPanel()
+      }
+      break
+    case 'recipe-surplus-recipe':
+      if (dialog.open && panel === 'recipe-surplus' && value && farm.culinary.recipes.some(recipe => recipe.id === value)) {
+        expandedRepeatId = value; openPanel('recipes')
+        highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(value)}"]`))
+      }
+      break
     case 'sell-signature':if(value)beginExactSale({kind:'signature',key:value});break
     case 'use-signature':if(value)perform(()=>useSignature(farm,value!),false);break
     case 'taste-signature':{const id=residentIds.find(id=>id===control.dataset.resident);if(value&&id)perform(()=>tasteSignature(farm,value!,id),false);break}
@@ -3484,7 +3521,7 @@ dialog.addEventListener('click', (event) => {
 dialog.addEventListener('close', () => {
   if (!dialog.open) {
     transplantSelection.reset()
-  berryNurserySelection.reset(); berryRenewalSelection.reset()
+  berryNurserySelection.reset(); berryRenewalSelection.reset(); recipeSurplusSelection.reset()
     playBaySound('page.fold',.72,0)
     island.setViewMode('world')
     app.dataset.scene=''

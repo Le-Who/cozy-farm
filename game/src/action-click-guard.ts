@@ -15,6 +15,7 @@ export class ActionClickGuard {
 }
 
 const guardedActions = new Set([
+  'recipe-surplus-choose', 'recipe-surplus-quantity', 'recipe-surplus-refresh', 'recipe-surplus-reset', 'recipe-surplus-confirm', 'recipe-surplus-recipe',
   'berry-renewal-source', 'berry-renewal-reset', 'berry-renewal-bed', 'berry-renewal-confirm',
   'garden-shop', 'garden-shop-scope', 'garden-shop-back', 'garden-buy-seeds',
   'garden-slot', 'garden-edit', 'garden-copy', 'garden-cancel', 'garden-brush', 'garden-paint', 'garden-save', 'garden-follow', 'garden-delete', 'garden-remove', 'garden-bed',
