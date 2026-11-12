@@ -1,3 +1,6 @@
+import { activeGardenPlan, plannedCropAt, seedForBed, followGardenPlan, removeGardenPlan } from './garden-plans'
+import { GardenPlanEditor, renderGardenPlans, renderGardenMode, gardenPlanToken } from './garden-plans-ui'
+import './garden-plans.css'
 import { inviteNeighborVisit, finishNeighborVisit, visitActivities } from './neighbor-visits'
 import { renderNeighborVisits, renderVisitRest } from './neighbor-visits-ui'
 import { introduceHenToVisitor } from './farm'
@@ -297,7 +300,7 @@ const tools = [
 ] as const
 
 type Tool = (typeof tools)[number]['id']
-type Panel = 'neighbor-visits' | 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
+type Panel = 'garden-plans' | 'neighbor-visits' | 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
   | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
 
@@ -322,6 +325,7 @@ let bagTab: 'seeds' | 'harvest' = 'harvest'
 let archiveGroup: ArchiveGroup = 'crops'
 let previewSeed: CropId = farm.selectedSeed
 let seedPickerBed: number | undefined
+const gardenEditor = new GardenPlanEditor()
 let contextBed: number | undefined
 let villageSlot = 0
 let pastryShape: WorkshopShape = farm.workshopPatterns[0] ?? 'round'
@@ -413,6 +417,7 @@ app.innerHTML = `
         <button class="hud-button" type="button" data-panel="guide" aria-label="Открыть бухту" title="Открыть бухту">${icon('island')}</button>
       </nav>
     </header>
+    <button class="garden-mode" type="button" data-panel="garden-plans" hidden></button>
     <div class="island-context">
     <button class="task-card" type="button" data-panel="journal" aria-label="Текущее задание, открыть дневник" aria-describedby="task-name task-count task-reward" aria-keyshortcuts="J" title="Открыть дневник (J)">
       <span class="task-medallion">${icon('carrot')}</span>
@@ -554,6 +559,11 @@ function status() {
   const bookmarkOnly = !!goal && 'bookmarkOnly' in goal && goal.bookmarkOnly
   taskCard.hidden = farm.discoveryPreferences.quiet
   const atHome = farm.island === 'home'
+  const sowingPlan = activeGardenPlan(farm)
+  const modeBadge = app.querySelector<HTMLButtonElement>('.garden-mode')!
+  modeBadge.hidden = !atHome || !sowingPlan
+  modeBadge.textContent = sowingPlan ? `План: ${sowingPlan.name}` : ''
+  modeBadge.title = sowingPlan ? `Посев по плану «${sowingPlan.name}». Открыть планы огорода` : ''
   const taskArt = taskCard.querySelector<HTMLImageElement>('.task-medallion .icon')!
   const taskSource = iconUrl(goal && 'icon' in goal ? goal.icon : farm.island === 'cape' ? 'ui-honey' : farm.island === 'village' ? 'ui-bea' : 'carrot')
   if (taskArt.getAttribute('src') !== taskSource) taskArt.src = taskSource
@@ -577,7 +587,7 @@ function status() {
   statusIcon('day', weather === 'rain' ? 'drop' : weather === 'stars' ? 'star' : phase === 'Evening' ? 'moon' : 'sun')
   textAt('status-coins', numberFormat.format(farm.coins))
   textAt('status-water', `${farm.water}/${getWaterCapacity(farm)}`)
-  textAt('status-seed', `Семена: ${cropDefinitions[farm.selectedSeed].name.toLowerCase()}`)
+  textAt('status-seed', sowingPlan && atHome ? `Посев по плану: ${sowingPlan.name}` : `Семена: ${cropDefinitions[farm.selectedSeed].name.toLowerCase()}`)
   textAt('status-tool', tool.label)
 
   textAt('task-name', goal?.label ?? 'Заказы рынка')
@@ -641,6 +651,7 @@ const panelTitles: Record<Panel, string> = {
   journal: 'Дневник',
   coop: 'Курятник',
   'chicken-feed': 'Корм со своей фермы',
+  'garden-plans': 'Свои планы огорода',
   'neighbor-visits': 'Гостевая книга',
   'hen-friendship': 'Дружба со стаей',
   rest: 'Дом',
@@ -667,6 +678,7 @@ const panelTitles: Record<Panel, string> = {
 
 const panelEmblems: Record<Panel, string> = {
   'chicken-feed': 'tool-feed',
+  'garden-plans': 'field',
   'neighbor-visits': 'ui-bea',
   'hen-friendship': 'tool-hen',
   'warehouse-supply': 'ui-bag',
@@ -815,7 +827,7 @@ function flockFeedRow() {
 
 function seedCards() {
   const seed = cropDefinitions[previewSeed]
-  return `<div class="seed-grid">${cropIds.map((crop) =>
+  return renderGardenMode(farm) + `<div class="seed-grid">${cropIds.map((crop) =>
     `<button class="seed-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${farm.selectedSeed === crop}" aria-label="Семена: ${cropDefinitions[crop].name.toLowerCase()}, в наличии: ${farm.seeds[crop]}">
       ${icon(`ui-seed-${crop}`)}<strong>${cropDefinitions[crop].name}</strong><span>×${farm.seeds[crop]}</span>
     </button>`).join('')}</div>
@@ -1599,6 +1611,9 @@ function drawPanel() {
     case 'berry-nursery':
       dialogContent.innerHTML = renderBerryNursery(farm, berryNurserySelection, icon)
       break
+    case 'garden-plans':
+      dialogContent.innerHTML = renderGardenPlans(farm, gardenEditor, icon)
+      break
     case 'transplant':
       dialogContent.innerHTML = renderBedTransplant(farm, transplantSelection)
       break
@@ -1613,7 +1628,7 @@ function drawPanel() {
           ${goods().filter(({count,group})=>count>0&&group===inventoryGroup).map(inventoryStockRow).join('')}
           ${inventoryGroup==='harvest'?treeIds.filter(tree=>farm.saplings[tree]>0).map((tree) => row('ui-tree-'+tree, treeDefinitions[tree].saplingName, `×${farm.saplings[tree]}`)).join(''):''}
           ${inventoryGroup==='shore'&&!goods().some(({count,group})=>count>0&&group==='shore')?'<li class="dialog-status">Пока пусто</li>':''}
-        </ul>` : seedCards() + (farm.island === 'home' ? nav(button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Ягодный питомник','open-panel',true,{value:'berry-nursery',secondary:true})) : '')}`
+        </ul>` : seedCards() + (farm.island === 'home' ? nav(button('Свои планы огорода', 'open-panel', true, {value:'garden-plans', secondary:true}),button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Ягодный питомник','open-panel',true,{value:'berry-nursery',secondary:true})) : '')}`
       break
     }
     case 'archive':
@@ -1757,7 +1772,7 @@ function drawPanel() {
         `<button class="explore-tile" type="button" data-action="${action}" data-value="${value}">${icon(image)}<strong>${name}</strong></button>`
       if (home || farm.island === 'grove') places.push(tile('Сад','ui-tree-apple','orchard'),tile('Рыбалка','tool-rod','fishing'))
       if (home) {
-        places.push(tile('Пересадка культур','tool-seeds','transplant'),tile('Ягодный питомник','ui-seed-blueberry','berry-nursery'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
+        places.push(tile('Свои планы огорода','field','garden-plans'),tile('Пересадка культур','tool-seeds','transplant'),tile('Ягодный питомник','ui-seed-blueberry','berry-nursery'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
         if (isProjectComplete(farm,'fair')) places.push(tile('Гость ярмарки','ui-market','guest'),tile('Просьбы соседей','ui-bea','intents'))
       }
       if (village) places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'),tile('Общий ужин','ui-grilled-fish','village-meal'))
@@ -1990,16 +2005,16 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if ((next === 'cape-upgrade' || next === 'honey-kitchen') && farm.island !== 'cape') return
   if (next === 'honey-kitchen' && farm.capeLevel < 3) return
   if(next==='cove'&&farm.island!=='grove')return
-  if (next === 'transplant' && farm.island !== 'home') return
+  if ((next === 'transplant' || next === 'garden-plans') && farm.island !== 'home') return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
-  if (next !== panel) { transplantSelection.reset(); berryNurserySelection.reset() }
+  if (next !== panel) { transplantSelection.reset(); berryNurserySelection.reset(); gardenEditor.reset() }
   if (next !== 'seeds') seedPickerBed = undefined
   if (remember && next==='bay-freight' && next!==panel) {
     freightPlanOpen=false
     if (panel!=='bay-music') selectedWarehouse=farm.island
   }
   if (next !== panel) { stopHarbour(); stopFishing(); stopWorkshop(); stopCookery(); stopArrangement() }
-  if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = farm.selectedSeed
+  if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = seedPickerBed === undefined ? farm.selectedSeed : seedForBed(farm, seedPickerBed)
   if (remember && next !== panel && next === 'irrigation') irrigationMode = farm.wellSpecialization === 'pipes' ? 'pair' : 'row'
   if (remember && next !== panel && next === 'boat') { boatIsland = destinationIsland; journeyDetailsOpen=false }
   if (next === 'archive' || next === 'boat') {
@@ -2031,6 +2046,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
 }
 
 function closeDialog() {
+  gardenEditor.reset()
   transplantSelection.reset()
   berryNurserySelection.reset()
   celebratedFestival=undefined
@@ -2119,7 +2135,9 @@ function updateFieldContext(index: number | undefined) {
   const cta = refill ? 'К колодцу' : chooseSeeds ? 'Выбрать семена'
     : preview ? preview.action : action.label
   const source = iconUrl(bed.kind === 'crop' ? bed.crop : bed.kind === 'tilled' ? 'tool-seeds' : 'tool-hoe')
-  updateFieldContextCopy(contextCard, title, preview?.detail, preview?.bonus)
+  const planned = plannedCropAt(farm, index)
+  const planDetail = planned ? `По плану: ${cropDefinitions[planned].name.toLowerCase()}${bed.kind === 'crop' && bed.crop !== planned ? '. Сначала сохраните или соберите эту посадку.' : ''}` : undefined
+  updateFieldContextCopy(contextCard, title, preview?.detail ?? planDetail, preview?.bonus)
   if (contextButton.textContent !== cta) contextButton.textContent = cta
   const command = refill ? 'refill' : chooseSeeds ? 'context-seeds' : 'work-context'
   if (contextButton.dataset.action !== command) contextButton.dataset.action = command
@@ -2176,7 +2194,7 @@ const island = createIsland(canvas, {
     const action = getBedAction(farm, target.index)
     if (bed.kind !== 'crop') {
       const soil = bed.kind === 'empty' ? 'Целина' : 'Вспаханная земля'
-      return `${soil} · ${action.label}`
+      return `${soil} · ${action.label}${plannedCropAt(farm, target.index) ? ' · По плану' : ''}`
     }
     const name = cropDefinitions[bed.crop].name
     const stage = getBedStage(bed)
@@ -3055,8 +3073,37 @@ app.addEventListener('click', async (event) => {
     case 'buy-feed': if(perform(() => buyFeed(farm)))playBaySound('trade.pay'); break
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
     case 'buy-seeds':
-      if (crop && perform(() => buySeeds(farm,crop))){playBaySound('trade.pay');if(panel==='seeds')chooseSeed(crop)}
+      if (crop && perform(() => buySeeds(farm,crop))){
+        playBaySound('trade.pay')
+        if(panel==='seeds') {
+          const bed = seedPickerBed
+          if (bed !== undefined && plannedCropAt(farm, bed) === crop) { closeDialog(); island.focusTarget({kind:'bed',index:bed}) }
+          else if (!activeGardenPlan(farm)) chooseSeed(crop)
+        }
+      }
       break
+    case 'garden-slot': case 'garden-edit': case 'garden-copy': case 'garden-cancel': case 'garden-brush': case 'garden-paint': case 'garden-save': case 'garden-follow': case 'garden-delete': case 'garden-remove': case 'garden-bed': {
+      if (panel !== 'garden-plans' || !dialog.open || farm.island !== 'home') break
+      const token = gardenPlanToken(value)
+      if (action === 'garden-slot') gardenEditor.choose(Number(value))
+      else if (action === 'garden-edit' || action === 'garden-copy') gardenEditor.begin(farm, action === 'garden-copy')
+      else if (action === 'garden-cancel') gardenEditor.reset()
+      else if (action === 'garden-brush' && gardenEditor.draft) {
+        if (value === 'none') gardenEditor.brush = null
+        else if (cropIds.includes(value as CropId)) gardenEditor.brush = value as CropId
+      } else if (action === 'garden-paint') gardenEditor.paint(Number(value))
+      else if (action === 'garden-save') { perform(() => gardenEditor.save(farm)); break }
+      else if (action === 'garden-follow' && token) {
+        perform(() => followGardenPlan(farm, token.slot, token.revision)); break
+      } else if (action === 'garden-delete' && token && token.slot === gardenEditor.slot && token.revision === farm.gardenPlans.revision) gardenEditor.deleting = value
+      else if (action === 'garden-remove' && token && token.slot !== null && gardenEditor.deleting === value) {
+        if (perform(() => removeGardenPlan(farm, token.slot!, token.revision))) gardenEditor.reset()
+      } else if (action === 'garden-bed' && !gardenEditor.draft && /^([0-9]|1[0-5])$/.test(value ?? '')) {
+        closeDialog(); island.focusTarget({kind:'bed', index:Number(value)}); break
+      }
+      drawPanel()
+      break
+    }
     case 'visit-book-home': void visitPanelAt('home','neighbor-visits'); break
     case 'visit-invite':
       if(panel==='neighbor-visits'&&dialog.open&&perform(()=>inviteNeighborVisit(farm,value),false,true)){
@@ -3420,6 +3467,7 @@ app.addEventListener('change',event=>{
   if(input instanceof HTMLInputElement&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
 })
 app.addEventListener('input', event => {
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-garden-name]') && panel === 'garden-plans' && gardenEditor.draft) gardenEditor.draft.name = event.target.value
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
     saleQuantity = event.target.value; updateSaleQuote()
   }
