@@ -83,7 +83,7 @@ test('book and studio visibly explain capacity, separate exact and manual repeat
     const { signatureBook, signatureStudio } = await server.ssrLoadModule('/src/culinary-ui.ts')
     const farm = fullBook(), id = farm.culinary.recipes[0].id
     const art = { icon: () => '<img alt="">', stock: () => '<li>Продукты</li>' }
-    const html = signatureBook(farm, art)
+    const html = signatureBook(farm, art, {selectedId:id,mode:"detail"})
     assert.match(html, /role="status">Книга рецептов заполнена: 24 из 24/)
     assert.match(html, new RegExp(`data-action="make-signature" data-value="${id}"[^>]*>Повторить ×1`))
     assert.doesNotMatch(html, new RegExp(`data-action="make-signature" data-value="${id}"[^>]*disabled`))
@@ -92,12 +92,12 @@ test('book and studio visibly explain capacity, separate exact and manual repeat
     assert.match(html, /data-action="new-signature"[^>]*disabled/)
     assert.doesNotMatch(html, /data-action="forget-signature"/)
     sellSignature(farm, id)
-    assert.match(signatureBook(farm, art), new RegExp(`data-action="forget-signature" data-value="${id}"`))
+    assert.match(signatureBook(farm, art, {selectedId:id,mode:"detail"}), new RegExp(`data-action="forget-signature" data-value="${id}"`))
     favoriteSignature(farm, id)
-    assert.doesNotMatch(signatureBook(farm, art), new RegExp(`data-action="forget-signature" data-value="${id}"`))
+    assert.doesNotMatch(signatureBook(farm, art, {selectedId:id,mode:"detail"}), new RegExp(`data-action="forget-signature" data-value="${id}"`))
     const studio = signatureStudio(farm, draft.base, draft.ingredients, 0, art)
     assert.match(studio, /Книга рецептов заполнена/)
     assert.match(studio, /data-action="start-signature"[^>]*disabled/)
-    assert.match(studio, /data-action="open-panel" data-value="recipes"/)
+    assert.match(studio, /data-action="recipe-book-return"/)
   } finally { await server.close() }
 })

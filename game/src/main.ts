@@ -112,6 +112,7 @@ import { getFruitSource, nurseryFruitDetail } from './orchard-guidance'
 import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
+import { RecipeBookNavigation, recipeBookNarrow, type RecipeBookView } from './recipe-book-view'
 import {signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
 import { communityBoard, communityIntent, neighborDetail, neighborHelpCard, type CommunityArt } from './community-ui'
@@ -353,6 +354,7 @@ function rememberCurrentRecipeDraft() {
   if (!signatureRepeatId && rememberRecipeDraft(farm, {base:signatureBase, slots:signatureSlots, activeSlot:signatureSlot})) saveFarm()
 }
 
+const recipeBook = new RecipeBookNavigation()
 let expandedRepeatId:string|undefined
 let cookingMode:'dish'|'signature'='dish'
 type KitchenTart = 'orchardTart' | 'strawberryTart' | 'blueberryTart' | 'raspberryTart' | 'mixed'
@@ -1336,6 +1338,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  recipeBook: RecipeBookView;
   ferryView: FerryPanelView | undefined;
   marketNextOpen: string[];
   warehouseRequest: StockItem | undefined;
@@ -1359,12 +1362,13 @@ function focusKey(button: HTMLButtonElement) {
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
-  return {ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  return {recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
   const previous=panelHistory.pop()
   if(!previous)return
+  recipeBook.load(previous.recipeBook)
   journeyDetailsOpen=previous.journeyDetailsOpen
   journalDetailsOpen=previous.journalDetailsOpen
   selectedExpeditionPort=previous.expeditionPort; selectedExpeditionOffer=previous.expeditionOffer
@@ -1381,6 +1385,11 @@ function goBack() {
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;signatureFamily=previous.signatureFamily
   openPanel(previous.panel,false,farm.island,'page.fold')
   restoreFerryPanelView(dialogContent,previous.ferryView)
+  if(previous.panel==='festival') {
+    const source=[...dialogContent.querySelectorAll<HTMLButtonElement>('[data-action="festival-source"]')].find(button=>focusKey(button)===previous.focus)
+    const alternatives=source?.closest<HTMLDetailsElement>('details.festival-alternatives')
+    if(alternatives)alternatives.open=true
+  }
   dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next]').forEach(item=>item.open=previous.marketNextOpen.includes(item.dataset.marketNext!))
   const restoredVersion = panelRenderVersion
   requestAnimationFrame(()=>{
@@ -1388,7 +1397,8 @@ function goBack() {
     if (!dialog.open || panel !== previous.panel || panelRenderVersion !== restoredVersion) return
     dialogContent.scrollTop=previous.scroll
     const target=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')).find(button=>focusKey(button)===previous.focus&&button.getClientRects().length>0)
-    if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
+    if (previous.panel === 'recipes') recipeBook.restore(dialogContent,true)
+    else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
   })
 }
 let harbourScene: {destroy():void} | undefined
@@ -1513,13 +1523,17 @@ function confirmExactSale() {
 function drawPanel() {
   if (!panel || harbourScene) return
   if (panel === 'fishing' && fishingGame || panel === 'workshop' && workshopGame || panel === 'cookery' && cookeryGame || panel === 'arrangement' && arrangementGame) return
+  if (panel === 'recipes') { recipeBook.capture(dialogContent); recipeBook.reconcile(farm) }
   panelRenderVersion++
   requirementLinks.clear()
   const sceneBack=dialog.querySelector<HTMLButtonElement>('.scene-back')!
   sceneBack.hidden=panelHistory.length===0||panel!=='fishing'&&panel!=='workshop'&&panel!=='cookery'&&panel!=='arrangement'
   sceneBack.setAttribute('aria-label',panelHistory.length?`Назад: ${panelTitles[panelHistory.at(-1)!.panel]}`:'Назад')
-  backButton.hidden=panelHistory.length===0
-  backButton.setAttribute('aria-label',panelHistory.length?`Назад: ${panelTitles[panelHistory.at(-1)!.panel]}`:'Назад')
+  const recipeBack = panel === 'recipes' && recipeBook.view.mode === 'detail' && recipeBookNarrow() && (recipeBook.view.fromIndex || panelHistory.length===0)
+  backButton.hidden=!recipeBack&&panelHistory.length===0
+  backButton.textContent=recipeBack?'‹ К списку':'‹'
+  backButton.dataset.recipeIndex=String(recipeBack)
+  backButton.setAttribute('aria-label',recipeBack?'К списку рецептов':panelHistory.length?`Назад: ${panelTitles[panelHistory.at(-1)!.panel]}`:'Назад')
   for (const back of [backButton, sceneBack]) {
     back.title = `${back.getAttribute('aria-label')} (Esc / Alt + ←)`
     back.setAttribute('aria-keyshortcuts', 'Escape Alt+ArrowLeft')
@@ -1528,7 +1542,7 @@ function drawPanel() {
   dialog.querySelectorAll<HTMLButtonElement>('.dialog-destinations [data-panel]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.panel===panel)))
   const title = panel === 'specialize' ? `${buildingDefinitions[specializationBuilding].name} · ур. 3`
     : panel === 'workshop' && workshopRecipe === 'bread' ? 'Домашний хлеб' : panel === 'neighbor' ? residentDefinitions[communityResident].name : panelTitles[panel]
-  dialogTitle.textContent = panelBanners[panel] ?? title
+  dialogTitle.textContent = recipeBack?'Рецепт':panelBanners[panel] ?? title
   dialogTitle.setAttribute('aria-label', title)
   dialog.dataset.panel = panel
   dialog.dataset.marketTab = marketTab
@@ -1697,7 +1711,10 @@ function drawPanel() {
       dialogContent.innerHTML = recipeCards(capeDishIds)
       break
     }
-    case 'recipes': dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile},expandedRepeatId);break
+    case 'recipes':
+      recipeBook.view.expandedRepeatId=expandedRepeatId
+      dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile},recipeBook.view)
+      break
     case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile},currentCommunityRequest()?.intentId);break
     case 'cove': {
       const action=getCoveActions(farm)
@@ -1842,17 +1859,17 @@ function drawPanel() {
       const savedRecipe=signature&&repeatId?farm.culinary.recipes.find(recipe=>recipe.id===repeatId):undefined, familyName=signature?familyRecipeName(draft,signatureFamily):undefined
       const capacity=signatureBookCapacity(farm.culinary)
       if(signature&&!capacity.canCreate){
-        dialogContent.innerHTML=`<p class="signature-capacity" role="status">${capacity.message}</p>${nav(button('Мои рецепты','open-panel',true,{value:'recipes'}))}`
+        dialogContent.innerHTML=`<p class="signature-capacity" role="status">${capacity.message}</p>${nav(button('Мои рецепты','recipe-book-return',true,{value:repeatId??''}))}`
         break
       }
       const action=signature?getSignatureAction(farm,draft):getCookAction(farm,preparedDish,preparedFish)
       if (!action.available) {
-        dialogContent.innerHTML = `<ul class="ingredients">${(signature?getSignatureAction(farm,draft).items:ingredients).map(stockTile).join('')}</ul>${nav(button(signature?'Мои рецепты':'Кухня',signature?'open-panel':'kitchen',true,signature?{value:'recipes'}:{}))}`
+        dialogContent.innerHTML = `<ul class="ingredients">${(signature?getSignatureAction(farm,draft).items:ingredients).map(stockTile).join('')}</ul>${nav(button(signature?'Мои рецепты':'Кухня',signature?'recipe-book-return':'kitchen',true,signature?{value:repeatId??''}:{}))}`
         break
       }
       const selectedFruit=signature?draft.ingredients:recipe.ingredients.flatMap(part=>'item' in part&&signatureFruitIds.includes(part.item as typeof signatureFruitIds[number])?[{id:part.item,quantity:part.quantity}]:[])
       const kind=signature?draft.base==='tart'?'decorate':'preserves':(['honeyPear','honeyBiscuits','windParfait','honeyCake','grilledFish'] as const).find(id=>id===preparedDish)??(isTartDish(preparedDish)?'decorate':'preserves')
-      let made=false
+      let made=false, resultRecipeId=repeatId
       dialogContent.innerHTML = '<div class="cookery-host"></div>'
       cookeryGame = createCookery(dialogContent.querySelector<HTMLElement>('.cookery-host')!, {
         recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??familyName??'Мой рецепт':preparedDish==='grilledFish'?`${fishDefinitions[preparedFish].name} на гриле`:recipe.name, kind, signature,processing:savedRecipe?.processing,fishSpecies:preparedDish==='grilledFish'?preparedFish:undefined,
@@ -1862,10 +1879,11 @@ function drawPanel() {
         onComplete(result) {if(made)return true;if(panel!=='cookery')return false;made=perform(()=>{
           const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
           const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
+          if(receipt.ok&&'recipeId' in receipt&&typeof receipt.recipeId==='string')resultRecipeId=receipt.recipeId
           if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
           return receipt
         },false,true);return made},
-        onCancel(){if(communityRequest)void resumeCommunityRequest();else if(signature){panelHistory.length=0;openPanel('recipes',false)}else leaveScene()},
+        onCancel(){if(communityRequest)void resumeCommunityRequest();else if(signature){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
       })
       break
     }
@@ -1990,7 +2008,8 @@ function drawPanel() {
   }
 
   applyIngredientFinishes(dialogContent)
-  if (focused && panel !== 'bay-freight') {
+  if (panel === 'recipes') recipeBook.restore(dialogContent,true)
+  if (focused && panel !== 'bay-freight' && panel !== 'recipes') {
     const replacement = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
       .find(candidate => focusKey(candidate) === focusKey(focused))
     const nextFocus = replacement ?? closeButton
@@ -2014,7 +2033,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
   openPanel(next,false)
 }
 
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold') {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string) {
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
   if (next === 'shoal' && (farm.island !== 'grove' || !hasShoal(farm))) return
@@ -2030,6 +2049,10 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if(next==='cove'&&farm.island!=='grove')return
   if ((next === 'transplant' || next === 'garden-plans' || next === 'recipe-surplus') && farm.island !== 'home') return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
+  if (next === 'recipes') {
+    if (recipeTarget) recipeBook.select(farm,recipeTarget)
+    else if (remember && next !== panel) recipeBook.view.mode='index'
+  }
   if (next !== panel) { transplantSelection.reset(); berryNurserySelection.reset(); berryRenewalSelection.reset(); gardenEditor.reset() }
   if (next !== panel && next !== 'recipe-surplus') recipeSurplusSelection.reset()
   if (next !== 'seeds') seedPickerBed = undefined
@@ -2070,6 +2093,21 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     : next === 'fishing' ? dialogContent.querySelector<HTMLElement>('.fishing-controls .fishing-action')
     : next === 'cookery' ? dialogContent.querySelector<HTMLElement>('.cookery-view') : next === 'arrangement' ? dialogContent.querySelector<HTMLElement>('.arrangement-view') : null
   ;(sceneEntry ?? closeButton).focus({ preventScroll: true })
+}
+
+function openRecipeBook(id?: string, expanded=false, remember=true) {
+  if(expanded)expandedRepeatId=id
+  openPanel('recipes',remember,farm.island,'page.unfold',id)
+}
+function focusRecipeAction(withdraw=false) {
+  const target=withdraw?dialogContent.querySelector<HTMLElement>('[data-action="recipe-warehouse-withdraw"]:not(:disabled)'):dialogContent.querySelector<HTMLElement>('[data-action="make-signature"]:not(:disabled)')
+  const visible=target??dialogContent.querySelector<HTMLElement>('[data-recipe-focus="blocker"]')??dialogContent.querySelector<HTMLElement>('[data-recipe-focus="cooking"], .recipe-draft-card')
+  if(visible){if(!visible.matches('button:not(:disabled),[tabindex]'))visible.tabIndex=-1;visible.classList.add('guidance-target');visible.scrollIntoView({block:'nearest',behavior:'instant'});visible.focus({preventScroll:true})}
+}
+function returnToRecipeIndex() {
+  if(panel!=='recipes'||recipeBook.view.mode!=='detail'||!recipeBookNarrow()||!recipeBook.view.fromIndex&&panelHistory.length>0)return false
+  recipeBook.capture(dialogContent);recipeBook.index();drawPanel();recipeBook.restore(dialogContent,true)
+  return true
 }
 
 function closeDialog() {
@@ -2656,8 +2694,8 @@ app.addEventListener('click', async (event) => {
     case 'commission-recipe': {
       const line=getShopCommissionLine(farm,value)
       if(panel==='shop-commissions'&&dialog.open&&line){
-        expandedRepeatId=line.recipeId;openPanel('recipes')
-        highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(line.recipeId)}"]`))
+        openRecipeBook(line.recipeId,true)
+        focusRecipeAction()
       }
       break
     }
@@ -2697,7 +2735,7 @@ app.addEventListener('click', async (event) => {
       const [requirement,id]=(value??'').split('|')
       const source=getFestivalStatus(farm).active?.requirements.find(row=>row.id===requirement)?.alternatives.find(alt=>alt.id===id)
       if(source?.item) await showRequirement({kind:'stock',item:{...source.item,quantity:source.quantity}},control)
-      else if(source?.signature) { openPanel('recipes');highlightControl(dialogContent.querySelector(`[data-action="make-signature"][data-value="${CSS.escape(source.signature)}"]`)) }
+      else if(source?.signature) { openRecipeBook(source.signature,true);focusRecipeAction() }
       break
     }
     case 'festival-activity': {
@@ -2884,8 +2922,8 @@ app.addEventListener('click', async (event) => {
       requestedFood=undefined
       const supply=recovery.warehouse
       if(supply.kind==='signature'){
-        openPanel('recipes')
-        highlightControl(dialogContent.querySelector(`[data-recipe="${CSS.escape(supply.recipeId)}"] [data-action="recipe-warehouse-withdraw"]`))
+        openRecipeBook(supply.recipeId)
+        focusRecipeAction(true)
       }else{
         selectedWarehouseRequest=supply.request
         openPanel('warehouse-supply')
@@ -2972,6 +3010,12 @@ app.addEventListener('click', async (event) => {
       journeyDetailsOpen=false
       if(islandIds.some(id=>id===value)){boatIsland=value as typeof boatIsland;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="boat-island"][data-value="${value}"]`)?.focus({preventScroll:true})}break
     case 'market-sell-group':if(value==='all'||value==='harvest'||value==='kitchen'||value==='shore'){marketSellGroup=value;drawPanel();dialogContent.scrollTop=0}break
+    case 'select-recipe':
+      if(dialog.open&&panel==='recipes'){recipeBook.capture(dialogContent);if(recipeBook.select(farm,value,false,true)){expandedRepeatId=undefined;drawPanel();const heading=dialogContent.querySelector<HTMLElement>('.signature-page,.recipe-draft-card');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true})}}}
+      break
+    case 'recipe-book-return':
+      if(dialog.open&&(panel==='signature'||panel==='cookery'))openRecipeBook(value||recipeBook.view.selectedId,false)
+      break
     case 'resume-recipe-draft': {
       if (!dialog.open || panel !== 'recipes') break
       const draft = resumeRecipeDraft(farm, value)
@@ -3007,8 +3051,9 @@ app.addEventListener('click', async (event) => {
       const recipe=farm.culinary.recipes.find(recipe=>recipe.id===value)
       if(!recipe)break
       expandedRepeatId=recipe.id
+      recipeBook.select(farm,recipe.id,true)
       await visitPanelAt('home','recipes')
-      if(panel==='recipes'&&farm.island==='home')highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(recipe.id)}"]`))
+      if(panel==='recipes'&&farm.island==='home'){recipeBook.select(farm,recipe.id,true);drawPanel();focusRecipeAction()}
       break
     }
     case 'recipe-warehouse-withdraw':
@@ -3023,7 +3068,7 @@ app.addEventListener('click', async (event) => {
     }
     case 'batch-signature':if(value)perform(()=>repeatSignature(farm,value!,undefined,3),false,true);break
     case 'favorite-signature':if(value)perform(()=>favoriteSignature(farm,value!),false,true);break
-    case 'forget-signature':if(value)perform(()=>forgetSignature(farm,value!),false,true);break
+    case 'forget-signature':if(value&&perform(()=>forgetSignature(farm,value!),false,true)){const target=dialogContent.querySelector<HTMLElement>('[data-action="select-recipe"]');target?.focus({preventScroll:true})}break
     case 'recipe-surplus-choose':
       if (dialog.open && (panel === 'recipes' || panel === 'recipe-surplus') && value && recipeSurplusSelection.choose(farm, value, 1)) {
         if (panel === 'recipe-surplus') { drawPanel(); dialogContent.scrollTop = 0 }
@@ -3048,8 +3093,8 @@ app.addEventListener('click', async (event) => {
       break
     case 'recipe-surplus-recipe':
       if (dialog.open && panel === 'recipe-surplus' && value && farm.culinary.recipes.some(recipe => recipe.id === value)) {
-        expandedRepeatId = value; openPanel('recipes')
-        highlightControl(dialogContent.querySelector(`[data-repeat-guide="${CSS.escape(value)}"]`))
+        openRecipeBook(value,true)
+        focusRecipeAction()
       }
       break
     case 'sell-signature':if(value)beginExactSale({kind:'signature',key:value});break
@@ -3110,7 +3155,7 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'travel-panel': if(value==='market') await visitPanelAt('home','market'); break
-    case 'back': goBack(); break
+    case 'back': if(!returnToRecipeIndex())goBack(); break
     case 'open-panel': if(value&&value in panelTitles)openPanel(value as Panel);break
     case 'harbour-view': if (value && isHarbourView(value)) island.setHarbourView(value); break
     case 'field-view': toggleFieldView(); break
@@ -3508,6 +3553,7 @@ function closeCurrentPanel() {
 closeButton.addEventListener('click', closeCurrentPanel)
 function returnFromPanel(event: Event) {
   if (event.defaultPrevented) return
+  if(returnToRecipeIndex()){event.preventDefault();return}
   if (communityRequest && (panel === 'cookery' || panel === 'workshop' || panel === 'arrangement')) {
     event.preventDefault()
     void resumeCommunityRequest()
@@ -3524,7 +3570,7 @@ dialog.addEventListener('keydown', event => {
   if (event.repeat) event.preventDefault()
   else returnFromPanel(event)
 })
-dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&panelHistory.length){event.preventDefault();goBack()}})
+dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&(panelHistory.length||panel==='recipes'&&recipeBook.view.mode==='detail'&&recipeBookNarrow())){event.preventDefault();if(!returnToRecipeIndex())goBack()}})
 dialog.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !(event.target instanceof HTMLButtonElement)) return
   const selector = event.target.closest('.island-selector,.house-selector,.tree-selector,.panel-tabs,.market-category-icons,.recipe-family-choices,.recipe-fish-choices')
@@ -3541,6 +3587,7 @@ dialog.addEventListener('keydown', event => {
   choices[next].focus({ preventScroll: true })
   choices[next].click()
 })
+window.matchMedia('(max-width: 819px), (max-height: 559px)').addEventListener('change',()=>{if(dialog.open&&panel==='recipes')drawPanel()})
 dialogContent.addEventListener('toggle',event=>{
   const details=event.target
   if(details instanceof HTMLDetailsElement&&details.isConnected&&panel==='recipes'&&details.dataset.repeatGuide){
@@ -3586,7 +3633,7 @@ app.addEventListener('change',event=>{
       dialogContent.querySelector<HTMLSelectElement>(`[data-commission-pair="${part}"][data-customer="${CSS.escape(customer!)}"]`)?.focus({preventScroll:true})
     }
   }
-  if(input instanceof HTMLInputElement&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
+  if((input instanceof HTMLInputElement||input instanceof HTMLTextAreaElement)&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
 })
 app.addEventListener('input', event => {
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-garden-name]') && panel === 'garden-plans' && gardenEditor.draft) gardenEditor.draft.name = event.target.value
@@ -3600,7 +3647,7 @@ app.addEventListener('keydown', event => {
     if (!event.repeat) dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')?.click()
   }
 })
-app.addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target instanceof HTMLInputElement&&event.target.dataset.recipeName){event.preventDefault();event.target.blur()}})
+app.addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.target instanceof HTMLInputElement||event.target instanceof HTMLTextAreaElement)&&event.target.dataset.recipeName){event.preventDefault();event.target.blur()}})
 
 window.addEventListener('keydown', (event) => {
   if (island.isCrossing()) { event.preventDefault(); return }

@@ -107,9 +107,9 @@ test('the real book shows ready local stock and a separate one-portion action, n
     const {signatureBook}=await server.ssrLoadModule('/src/culinary-ui.ts')
     const {farm,recipeId}=storedRecipesFixture(),before=structuredClone(farm),art={icon:()=>'<img alt="">',stock:()=>'<li>Продукты</li>'}
     const html=signatureBook(farm,art)
-    assert.match(html,/Готовых порций на местном складе: 3/)
+    assert.match(html,/<dt>На местном складе<\/dt><dd>3<\/dd>/)
     assert.match(html,/data-action="recipe-warehouse-withdraw" data-value="home\|s1\|3"/)
-    assert.match(html,/Забрать со склада · 1 порция/);assert.match(html,/data-action="make-signature"[^>]*disabled/)
+    assert.match(html,/Забрать 1 порцию/);assert.match(html,/data-action="make-signature"[^>]*disabled/)
     assert.deepEqual(farm,before)
     farm.island='grove';assert.doesNotMatch(signatureBook(farm,art),/recipe-warehouse-withdraw/)
     farm.island='home'
