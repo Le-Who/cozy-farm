@@ -22,3 +22,11 @@
 .rest-before-morning>.rest-preview:first-child{margin-top:0}
 .rest-preview-note~.rest-preview-stats{margin-top:10px}
 @media(max-width:360px){.rest-preview-stats{grid-template-columns:1fr}}
+
+/* Preserve both morning decisions at phone landscape height without shrinking touch targets. */
+@media (max-height:360px) and (orientation:landscape) {
+  .farm-dialog[data-panel="rest"] .dialog-panel{padding-block:8px 10px}
+  .farm-dialog[data-panel="rest"] .rest-decision{padding:8px}
+  .farm-dialog[data-panel="rest"] .rest-decision .shop-rest{margin-top:6px;padding-top:6px}
+  .farm-dialog[data-panel="rest"] .rest-decision .shop-rest p{margin-block:5px}
+}
