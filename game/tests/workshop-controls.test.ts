@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
+import { containArtwork, containRaster, getWorkshopLayout, type ArtBox } from '../src/workshop-camera.ts'
 import { workshopToolGuide, workshopToolPalette, workshopTools } from '../src/workshop-controls.ts'
 
 test('every tool has a visible selected mode and a concrete gesture and result', () => {
@@ -45,9 +47,38 @@ for (const [label, view, hand, bake] of [
   if(p.compact) assert.ok(box.y+box.height<Math.min(hand.y,bake.y))
 })
 
-// A single row is important here: two rows would cover the persistent mode guide.
-test('the 520px intermediate viewport keeps the tools in one compact row', () => {
-  const p = workshopToolPalette({width:500,height:333},{x:10,y:252,width:44,height:44},{x:401,y:231,width:90,height:44})
-  assert.equal(p.columns,6)
-  assert.ok(p.top >= 110)
-})
+// Use the authored room and hand asset, not a guessed 500 × 333 content area.
+// The 520 × 480 window actually selects the 1846:852 landscape room.
+function authoredControls(windowWidth: number, windowHeight: number) {
+  const layout = getWorkshopLayout(windowWidth - 20, windowHeight - 20)
+  const view = containArtwork(layout, windowWidth - 20, windowHeight - 20)
+  const manifest = JSON.parse(readFileSync(new URL('../public/art/lavender/workshop-authored/manifest.json', import.meta.url), 'utf8'))
+  const box = layout.props.hand
+  const fitted = containRaster(manifest.items.handMedallion, box.width * layout.art.width, box.height * layout.art.height)
+  const handBox = { u: box.u + fitted.x / layout.art.width, v: box.v + fitted.y / layout.art.height,
+    width: fitted.width / layout.art.width, height: fitted.height / layout.art.height }
+  // Same minimum hit area and centered transparent padding as workshop.applyBox.
+  const rect = (box: ArtBox, minimumWidth = 44) => {
+    const width = Math.max(minimumWidth, box.width * view.width), height = Math.max(44, box.height * view.height)
+    return { x: Math.max(0, Math.min(box.u * view.width - (width - box.width * view.width) / 2, view.width - width)),
+      y: Math.max(0, Math.min(box.v * view.height - (height - box.height * view.height) / 2, view.height - height)), width, height }
+  }
+  return { view, hand: rect(handBox), bake: rect(layout.ui.bake, 90) }
+}
+
+for (const [width, height] of [[360,640],[390,844],[568,320],[844,390],[520,480],[1120,760]]) {
+  test(`authored ${width} × ${height}: tools fit the real room and stay clear of hand and bake`, () => {
+    const {view, hand, bake} = authoredControls(width, height)
+    const p = workshopToolPalette(view, hand, bake), box = {x:p.left,y:p.top,width:p.width,height:p.height}
+    assert.ok(p.buttonWidth >= hand.width && p.buttonHeight >= hand.height)
+    assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.width <= view.width + .001 && box.y + box.height <= view.height + .001)
+    assert.equal(intersects(box,hand),false)
+    assert.equal(intersects(box,bake),false)
+    if (width === 520) {
+      assert.ok(Math.abs(view.height - 230.76923076923077) < .001)
+      assert.equal(p.columns,6)
+      // This is geometry evidence only. Native text metrics must also pass the fixture audit.
+      assert.ok(Math.abs(p.top - 105.30769230769232) < .001)
+    }
+  })
+}

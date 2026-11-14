@@ -28,9 +28,12 @@
 [aria-pressed="true"]>.workshop-tool-selected { display:block; }
 .workshop-mode { position:absolute; z-index:9; top:calc(2% + 52px); left:50%; transform:translateX(-50%); display:grid; gap:3px; width:max-content; max-width:min(560px,94%); padding:7px 12px; border:1px solid #caa278; border-radius:12px; color:#57351f; background:#fff4e5f5; box-shadow:0 2px 7px #59372133; font:14px/1.3 ui-rounded,"Trebuchet MS",sans-serif; text-align:center; pointer-events:none; }
 .workshop-mode-title { color:#643573; font-size:15px; }
-.dough-workshop:not([data-ready="true"]) .workshop-mode { display:none; }
 .dough-workshop[data-layout="portrait"] .workshop-mode { top:calc(9% + 52px); font-size:13px; }
-.dough-workshop[data-layout="landscape"] .workshop-mode { top:calc(1.5% + 50px); max-width:80%; padding:5px 10px; font-size:13px; }
+/* Let the mode and gesture share lines in the shallow authored room. A grid
+   forces a third line at 520px and hides the instruction behind the tool row. */
+.dough-workshop[data-layout="landscape"] .workshop-mode { display:block; top:calc(1.5% + 50px); max-width:80%; padding:4px 10px; font-size:13px; }
+.dough-workshop[data-layout="landscape"] .workshop-mode-title { display:inline-block; margin-inline-end:.35em; }
+.dough-workshop:not([data-ready="true"]) .workshop-mode { display:none; }
 .workshop-render-status { position:absolute; inset:40% 20%; display:grid; place-items:center; z-index:20; padding:18px; border-radius:16px; background:#fff1dce8; color:#825a3f; text-align:center; font-family:ui-rounded,"Trebuchet MS",sans-serif; font-size:14px; box-shadow:0 5px 20px #54332140; }
 .workshop-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .workshop-shape-picker { position:absolute; top:2%; left:50%; transform:translateX(-50%); display:flex; gap:5px; width:min(300px,60%); z-index:12; }
