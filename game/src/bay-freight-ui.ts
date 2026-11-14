@@ -5,6 +5,8 @@ import { expeditionPorts, expeditionPortNames, expeditionPortDescriptions, exped
 import './bay-freight.css';
 import { nextFerryExploration } from './ferry-discovery.ts';
 import { getFerryRestockPlan } from './ferry-restock.ts';
+import { smallerFerryCargo } from './ferry-smaller-cargo.ts';
+import { ruCount } from './ru.ts';
 import { ferryProjectProgress } from './ferry-project-progress.ts';
 import { captureFerryPanelView, restoreFerryPanelView } from './ferry-panel-view.ts';
 
@@ -86,7 +88,11 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const missing = !active && manifest.outgoing.find(item => (ctx.carried[item.id] ?? 0) < item.quantity);
   const restock = getFerryRestockPlan(world,id,ctx.day,{bag:ctx.carried,harvestTier:ctx.harvestTier,coins:ctx.coins ?? 0,boatOwned:ctx.boatOwned ?? true});
   const hint = missing ? sourceHints[missing.id] : undefined;
-  const sourceAction = !restock && hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : `${id}|${missing.id}`, 'class="expedition-source"') : '';
+  const smaller = !restock ? smallerFerryCargo(world, id, { bag: ctx.carried, harvestTier: ctx.harvestTier, coins: ctx.coins ?? 0, boatOwned: ctx.boatOwned ?? true }) : undefined;
+  const cargoLabel = (items: ExpeditionManifest['outgoing']) => items.map(item => `${product(item.id, ctx).name} ×${item.quantity}`);
+  const smallerLabel = smaller ? `Посмотреть: ${cargoLabel(smaller.outgoing).join(' + ')} → ${[...cargoLabel(smaller.incoming), ...(smaller.earnCoins ? [ruCount(smaller.earnCoins, 'монета', 'монеты', 'монет')] : [])].join(' + ')}` : '';
+  const sourceAction = smaller ? button(esc(smallerLabel), 'expedition-offer', smaller.id, 'class="expedition-source"')
+    : !restock && hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : `${id}|${missing.id}`, 'class="expedition-source"') : '';
   const production = world.markets[port].production;
   const effect = exploring ? 'Новый торговый порт будет открыт наверняка. Разведка не зависит от удачи.'
     : orderIds.includes('salt-fish') && !manifest.outgoing.length ? 'Местный улов подходит для гавани и общих ужинов. Покупка не считается личным уловом.'
