@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { syncHoneyCoating,HONEY_PEAR_EACH_HALF,depositParfaitCustard,depositParfaitHoney } from '../src/honey-cookery-model.ts'
+import { honeyProgress,syncHoneyCoating,HONEY_PEAR_EACH_HALF,depositParfaitCustard,depositParfaitHoney } from '../src/honey-cookery-model.ts'
 import {createParfaitTransfer} from '../src/parfait-transfer.ts'
 import { advanceHoneyBake, beginHoneyStroke, cancelHoney, completeHoney, createHoneyModel, createHoneyFilm, depositHoneyPiece, measuredHoneyCoverage, reportHoneyCoating, endHoneyStroke, honeyBiscuitCenters, moveHoneyStroke, placeHoneyFruit, recordHoneyKnife, workHoneyPiece, settleHoney, startHoneyBake, type HoneyModel } from '../src/honey-cookery-model.ts'
 
@@ -201,4 +201,29 @@ test('an extreme retained dose respects the pressure maximum principle at variab
  const mass=film.height.reduce((a,b)=>a+b,0);let pressure=film.maxPressure()
  for(let i=0;i<360;i++){film.step([1/144,1/60,.05][i%3]);const next=film.maxPressure();assert.ok(next<=pressure*(1+1e-6),'bounded mobility must not create pressure ringing');assert.ok(film.height.every(h=>Number.isFinite(h)&&h>=0));pressure=next}
  assert.ok(Math.abs(film.height.reduce((a,b)=>a+b,0)-mass)<mass*.00001)
+})
+
+// Native portrait repro: three visibly coated halves filled the meter to 100%,
+// but the untouched fourth half still prevented Finish from becoming available.
+test('pear progress reserves completion credit for every half as well as enough total coating',()=>{
+ const model=createHoneyModel('honeyPear');model.stage='glaze';beginHoneyStroke(model,'honey',{x:0,y:0})
+ syncHoneyCoating(model,[.6,.6,0,0])
+ assert.equal(honeyProgress(model),.5,'overpouring two halves cannot fill the meter')
+ assert.equal(model.pending,null)
+ syncHoneyCoating(model,[.6,.6,.6,0])
+ assert.equal(honeyProgress(model),.75,'a visibly dry fourth half still needs its share')
+ syncHoneyCoating(model,[.6,.6,.6,.075])
+ assert.equal(honeyProgress(model),.875,'coating the missing half gives visible recovery progress')
+ syncHoneyCoating(model,[.26,.26,.26,.15])
+ assert.ok(Math.abs(honeyProgress(model)-.93)<1e-10,'touching all halves does not waive the total coating requirement')
+ assert.equal(model.pending,null)
+ syncHoneyCoating(model,[.6,.6,.6,.1499])
+ assert.ok(Math.round(honeyProgress(model)*100)<100,'rounding cannot advertise completion before the last half is ready')
+ assert.equal(model.pending,null)
+ syncHoneyCoating(model,[.6,.6,.6,HONEY_PEAR_EACH_HALF-Number.EPSILON*HONEY_PEAR_EACH_HALF])
+ assert.ok(Math.round(honeyProgress(model)*100)<100,'near-one ratio sums cannot bypass the per-half readiness invariant')
+ assert.equal(model.pending,null)
+ syncHoneyCoating(model,[.3,.3,.3,.15])
+ assert.equal(honeyProgress(model),1)
+ assert.equal(model.pending,'settling','a full meter now agrees with the release-and-settle condition')
 })

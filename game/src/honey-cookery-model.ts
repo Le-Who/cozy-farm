@@ -206,7 +206,14 @@ export function honeyProgress(model: HoneyModel): number {
   if (model.stage === 'cut') return model.cutTracks.reduce((sum,track)=>sum+track.progress,0) / 2
   if (model.stage === 'shape') return Math.min(1, model.pieces.reduce((sum, piece) => sum + piece.work, 0) / 1.5, model.pieces.filter(piece => piece.work >= .36).length / 2)
   if (model.stage === 'mix') return Math.min(1, model.mixed / HONEY_MIX_REQUIRED, model.sectors.size / 14)
-  if(model.stage==='glaze'&&model.family==='honeyPear')return Math.min(1,[...model.coated.values()].reduce((sum,p)=>sum+p,0)/(4*HONEY_PEAR_DRIZZLE))
+  if(model.stage==='glaze'&&model.family==='honeyPear'){
+    const portions=Array.from({length:4},(_,i)=>model.coated.get(i)??0)
+    const total=portions.reduce((sum,p)=>sum+p,0)/(4*HONEY_PEAR_DRIZZLE)
+    const distributed=portions.reduce((sum,p)=>sum+Math.min(1,p/HONEY_PEAR_EACH_HALF),0)/4
+    // Excess on one face cannot stand in for a dry half. Keep the rounded UI
+    // below 100% until both real completion requirements have been met.
+    return total>=1&&portions.every(p=>p>=HONEY_PEAR_EACH_HALF)?1:Math.min(.99,total,distributed)
+  }
   if(model.stage==='glaze'&&model.family==='honeyBiscuits')return Math.min(1,model.coverage.size/Math.ceil(36*.72))
   if (model.stage === 'custard' || model.stage === 'glaze') return Math.min(1, model.coverage.size / Math.ceil(honeyCoverageTargets(model.family, model.stage).length * .72))
   if (model.stage === 'fruit') return Math.min(1, model.fruit.length / 3)
