@@ -22,10 +22,10 @@ export function getFerryRestockPlan(state: FerryExpeditions, id: string, day: nu
   const stock = request.incoming.map(item => ({id:item.id,needed:item.quantity,now:expeditionStock(state,request.port,item.id),nextMorning:expeditionStock(waiting,request.port,item.id)}))
   if (stock.every(item => item.nextMorning >= item.needed)) return {kind:'rest',port:request.port,day:tomorrow,stock}
 
-  // The optional bought catch must not send a non-fishing player to catch fish
-  // just because one morning grows only half a crate. A working kitchen may use
-  // the next fish until its four-dish buffer fills, so simulate the real rules.
-  if (expeditionOfferIds(id).includes('salt-fish')) {
+  // Local fish and salt replenish without another delivery. The working kitchen
+  // also uses them, so find the first sufficient morning for the whole basket
+  // within the existing six-morning horizon, using the real production rules.
+  if (expeditionOfferIds(id).some(offer => offer === 'salt-fish' || offer === 'salt-buy')) {
     const future = structuredClone(waiting)
     for (let offset = 1; offset <= 5; offset++) {
       advanceExpeditions(future, tomorrow + offset)

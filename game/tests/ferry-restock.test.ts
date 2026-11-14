@@ -92,7 +92,10 @@ test('recovery follows existing salt production and distinguishes supply from na
   assert.equal(world.markets.salt.stock['dish:grilledFish'],1)
   assert.ok(receiveFerryExpedition(farm).ok)
   world.markets.salt.stock.seaSalt=0
-  assert.equal(getFerryRestockPlan(world,'salt-buy',farm.day,expeditionWallet(farm)),undefined,'the working kitchen consumes one of the two new salt units')
+  const slowerSalt=getFerryRestockPlan(world,'salt-buy',farm.day,expeditionWallet(farm))
+  assert.equal(slowerSalt?.kind,'rest')
+  assert.equal(slowerSalt?.day,farm.day+2,'the kitchen uses one salt per morning, so the purchase needs two mornings')
+  assert.deepEqual(slowerSalt?.stock,[{id:'seaSalt',needed:2,now:0,nextMorning:2}])
   world.markets.salt.stock.carrot=0
   const salt=getFerryRestockPlan(world,'salt-buy',farm.day,expeditionWallet(farm))
   assert.equal(salt?.kind,'rest')

@@ -96,9 +96,10 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const nextExploration = nextFerryExploration(world, { bag:ctx.carried, coins:ctx.coins ?? 0, boatOwned:ctx.boatOwned ?? true });
   const discovery = !restock && nextExploration && nextExploration.port !== port ? nextExploration : undefined;
   const stockLine = (item: {id:string;needed:number}, quantity: number) => `${esc(product(item.id,ctx).name)}: ${quantity} из нужных ${item.needed}`;
+  const laterRestock = restock?.kind === 'rest' && restock.day > ctx.day + 1;
   const recovery = !restock ? '' : `<section class="expedition-next-discovery" aria-label="Пополнение порта">
-    <h4>${restock.kind === 'rest' ? 'Новая партия к утру' : 'Нужна новая поставка'}</h4>
-    <p>Без новой поставки утром дня ${restock.day}: ${restock.stock.map(item=>stockLine(item,item.nextMorning)).join('; ')}.</p>
+    <h4>${laterRestock ? `Партия к утру дня ${restock.day}` : restock.kind === 'rest' ? 'Новая партия к утру' : 'Нужна новая поставка'}</h4>
+    <p>Без новой поставки${laterRestock ? '' : ` утром дня ${restock.day}`}: ${restock.stock.map(item=>stockLine(item,item.nextMorning)).join('; ')}.</p>
     ${restock.kind === 'supply' ? `<p>Рейс «${esc(restock.offer.name)}» доставит порту: ${restock.offer.outgoing.map(item=>`${esc(product(item.id,ctx).name)} ×${item.quantity}`).join(', ')}.</p><p>После его прибытия: ${restock.stock.map(item=>stockLine(item,item.afterDelivery)).join('; ')}.${restock.complete ? '' : ' Этого пока недостаточно для всего выбранного заказа.'}</p>` : ''}
     ${button(restock.kind === 'supply' ? 'Посмотреть поставку' : ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро','expedition-restock',id)}
     <small>${restock.kind === 'supply' ? 'Это только выбор рейса. Припасы и оплата будут показаны перед отдельной отправкой.' : 'Переход не начинает ночь. После отдыха отдельно выберите и отправьте заказ.'}</small>
