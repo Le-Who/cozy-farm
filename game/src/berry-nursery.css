@@ -7,3 +7,34 @@
 .nursery-preserve:focus-visible { outline:3px solid #a985b4; outline-offset:2px; }
 
 .berry-nursery .dialog-actions { padding-block:6px; }
+
+.garden-nursery-confirm { display:grid; gap:12px; }
+.nursery-name { color:var(--plum); font-size:15px; }
+.garden-summary .nursery-warning { padding:7px 9px; background:#ffe6ce; border:1px solid #d7aa84; border-radius:10px; color:#743e45; }
+.nursery-outcome { display:grid; justify-items:center; gap:3px; align-self:center; padding:10px; border:1px solid #d9bea1; border-radius:15px; background:#fff7e9; }
+.nursery-mother,.nursery-young>div { display:grid; justify-items:center; font-size:12px; font-weight:700; color:var(--plum); }
+.nursery-young { display:flex; justify-content:center; gap:18px; }
+.nursery-arrow { color:#9465ac; font-size:22px; line-height:1; }
+@media(min-width:660px), (min-width:500px) and (max-height:500px) {
+  .garden-nursery-confirm { grid-template-columns:194px minmax(0,1fr); gap:8px 12px; }
+  .garden-nursery-confirm .nursery-outcome { grid-column:1; grid-row:1 / 3; }
+  .garden-nursery-confirm .garden-actions { align-self:start; }
+  .garden-nursery-confirm .garden-actions > button { flex-basis:100%; }
+}
+@media(min-width:500px) and (max-height:500px) {
+  .garden-nursery-confirm { position:relative; }
+  .garden-nursery-confirm .garden-summary { padding-bottom:0; }
+  .garden-nursery-confirm .garden-summary .nursery-warning { margin:4px 0; padding:5px; }
+  .garden-nursery-confirm .garden-actions { gap:5px; }
+  .garden-nursery-confirm .garden-actions > button { flex-basis:100px; }
+  .garden-nursery-confirm .garden-care { grid-column:1 / -1; }
+}
+@media(max-width:499px) and (max-height:700px) {
+  .garden-nursery-confirm { gap:8px; }
+  .nursery-outcome { padding:6px; }
+  .nursery-outcome .garden-crop { width:40px; }
+}
+@media(min-width:500px) and (max-height:500px) {
+  .garden-nursery-confirm { gap:4px 12px; }
+  .garden-nursery-confirm .garden-summary p { margin:3px 0; line-height:1.2; }
+}

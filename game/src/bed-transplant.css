@@ -8,3 +8,80 @@
 .transplant-bed:not(:disabled):hover { background:var(--paper-deep); }
 .transplant-bed:focus-visible { outline:3px solid var(--deep); outline-offset:2px; }
 @media(max-width:650px) { .transplant-beds { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* The garden is spatial: these sixteen indices never reflow to a two-column list. */
+.farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) { width:min(760px,calc(100vw - 16px)); max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); }
+.farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-panel { padding:10px; max-height:calc(100dvh - 16px); border-radius:20px; box-shadow:inset 0 0 0 2px #fff3dc,0 8px 26px #49334338; }
+.farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-emblem { display:none; }
+.farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-header { min-height:44px; padding:0 49px; align-items:center; }
+.farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-title { min-width:0; padding:0; border:0; background:none; box-shadow:none; font:700 21px/1.1 Georgia,serif; color:var(--plum); }
+.farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) :is(.dialog-close,.dialog-back) { top:0; bottom:auto; border-radius:12px; }
+.farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-destinations { padding:5px 0 9px; }
+.farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-content { margin:0; padding:5px; }
+.garden-workspace { display:grid; gap:10px; }
+.garden-summary { min-width:0; }
+.garden-summary .transplant-step { color:var(--plum); font-size:16px; line-height:1.2; margin:0 0 8px; }
+.garden-summary p { font-size:13px; line-height:1.35; margin:5px 0; }
+.garden-rule { color:var(--muted); }
+.garden-selected { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #d7b899; border-radius:14px; background:#fff7e8; }
+.garden-selected strong { font-size:15px; color:var(--plum); }
+.garden-crop { display:block; flex:none; width:58px; max-width:100%; background-repeat:no-repeat; background-size:400% 100%; }
+.garden-selected .garden-crop { width:48px; }
+.transplant-beds.garden-map { grid-template-columns:repeat(4,minmax(44px,1fr)); gap:6px; width:100%; max-width:360px; justify-self:center; padding:3px; }
+.transplant-bed.garden-cell { position:relative; display:grid; align-items:center; justify-items:center; min-width:44px; min-height:44px; aspect-ratio:1; padding:2px; border:1px solid #b78b60; border-radius:11px; background:linear-gradient(160deg,#e8c99a,#cfa776); overflow:visible; opacity:1; }
+.garden-cell .garden-crop { width:86%; margin-bottom:4px; }
+.garden-bed-number { position:absolute; z-index:1; top:2px; left:3px; min-width:18px; padding:0 3px; border-radius:5px; background:#fff7e8; color:var(--plum); font-size:12px; font-weight:700; line-height:18px; }
+.garden-cell .garden-bed-state { position:absolute; bottom:1px; left:2px; right:2px; font-size:10px; font-weight:700; line-height:14px; text-align:center; background:#fff6e9e8; border-radius:4px; color:#624337; }
+.garden-cell[data-kind="empty"] { background:#e1d7b1; border-color:#c2b789; }
+.garden-soil { width:82%; height:55%; border-radius:50%; background:repeating-linear-gradient(-12deg,#96633f 0 6px,#b17b4d 7px 10px); }
+.garden-cell[data-kind="empty"] .garden-soil { background:linear-gradient(120deg,#9da56c,#c6ba89); }
+.garden-cell[aria-pressed="true"] { border:3px solid #9c6ab1; padding:0; background:#ead5ed; box-shadow:0 0 0 1px #fff5ef; }
+.garden-cell[data-kind="tilled"]:not(:disabled) { border:2px dashed #986aa9; background:#e5c394; padding:1px; }
+.garden-cell .garden-bed-marker { position:absolute; top:1px; right:2px; z-index:2; width:20px; height:20px; border-radius:50%; color:white; background:#9465ac; font-size:16px; line-height:20px; text-align:center; font-weight:800; }
+.garden-cell[data-kind="tilled"] .garden-bed-marker { top:50%; right:50%; transform:translate(50%,-50%); background:#fff3e4; color:#744d58; width:24px; height:24px; line-height:24px; font-size:23px; }
+.garden-cell:disabled:not([aria-pressed="true"]) { border-color:#c6ac8c; }
+.garden-cell:focus-visible { outline:3px solid #5a3b78; outline-offset:1px; z-index:3; }
+.bed-transplant .garden-actions { margin:0; padding:0; gap:6px; }
+.garden-actions > button { min-width:44px; min-height:44px; flex:1 1 140px; }
+.garden-care summary { min-height:44px; align-content:center; cursor:pointer; font-size:13px; color:var(--plum); }
+@media(min-width:660px), (min-width:500px) and (max-height:500px) {
+  .garden-workspace { grid-template-columns:minmax(194px,.95fr) minmax(0,1fr); grid-template-rows:auto 1fr; align-items:start; gap:10px 14px; }
+  .garden-summary { grid-column:2; grid-row:1; }
+  .garden-map { grid-column:1; grid-row:1 / 3; }
+  .garden-actions { grid-column:2; grid-row:2; align-self:end; }
+}
+@media(min-width:500px) and (max-height:500px) {
+  .farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-panel { padding:6px 8px; grid-template-rows:44px 0 0 minmax(0,1fr); }
+  .farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-header { padding-left:49px; padding-right:197px; }
+  .farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-title { font-size:18px; }
+  .farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-destinations { position:absolute; top:6px; right:59px; padding:0; gap:4px; }
+  .farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-destinations button { width:44px; height:44px; padding:5px; }
+  /* Keep accessible names and all three routes while compacting only their visible labels. */
+  .farm-dialog:is([data-panel="transplant"],[data-panel="berry-nursery"]) .dialog-destinations span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .garden-workspace { grid-template-columns:194px minmax(0,1fr); gap:6px 12px; }
+  .transplant-beds.garden-map { padding:0; gap:6px; }
+  .garden-summary .transplant-step { font-size:14px; margin-bottom:5px; }
+  .garden-summary p { font-size:12px; line-height:1.25; margin:4px 0; }
+  .garden-selected { padding:5px 7px; gap:5px; }
+  .garden-selected strong { font-size:14px; }
+  .garden-selected .garden-crop { width:35px; }
+  .garden-cell { border-radius:7px; }
+  .garden-cell .garden-bed-state { font-size:8px; line-height:10px; }
+  .garden-cell .garden-bed-number { min-width:14px; padding:0 2px; font-size:10px; line-height:14px; }
+  .garden-cell .garden-bed-marker { width:15px; height:15px; font-size:12px; line-height:15px; }
+  .garden-actions > button { font-size:12px; flex-basis:100px; }
+}
+@media(max-width:499px) and (max-height:700px) {
+  .transplant-beds.garden-map { max-width:260px; }
+  .garden-workspace { gap:7px; }
+  .garden-summary .transplant-step { font-size:15px; margin-bottom:5px; }
+  .garden-selected { padding:5px 7px; }
+  .garden-summary p { font-size:12px; }
+}
+/* At 44px, numbers and state symbols remain clear; prose lives in the selected
+   summary and each button's complete accessible name, never across the crop. */
+@media(min-width:500px) and (max-height:500px) {
+  .garden-cell .garden-bed-state { display:none; }
+  .garden-cell .garden-crop { margin-bottom:0; }
+  .garden-cell[data-kind="tilled"] .garden-bed-marker { top:70%; width:20px; height:20px; line-height:20px; font-size:20px; }
+}

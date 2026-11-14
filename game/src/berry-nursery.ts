@@ -1,5 +1,5 @@
 import { berryCropIds, cropDefinitions, getBedStage, getBerryPropagation, propagateBerry, variantLabel, type CropBed, type FarmState, type StockItem } from './farm.ts'
-import { transplantBedDescription } from './bed-transplant.ts'
+import { gardenCell, gardenCropArt, gardenSourceSummary } from './garden-spatial.ts'
 import { ruCount } from './ru.ts'
 
 /** Offer preservation beside the missing exact ingredient, without replacing immediate harvest. */
@@ -45,23 +45,28 @@ export function renderBerryNursery(farm: FarmState, selection: BerryNurserySelec
     const name = bed.trait ? variantLabel(bed.crop, bed.trait).name : cropDefinitions[bed.crop].name
     const forecast = bed.trait ? `Обычный урожай каждой посадки: одна ${variantLabel(bed.crop, bed.trait).name.toLowerCase()} и ${cropDefinitions[bed.crop].yield - 1} обычные ягоды.`
       : 'Обычные посадки смогут получить особенность от погоды, как при посеве.'
-    return `<section class="bed-transplant berry-nursery"><h2 class="transplant-step" tabindex="-1">3. Разделить вместо сбора?</h2>
-      <div class="nursery-plant">${icon(bed.crop)}<strong>${name}</strong></div>
-      <p>Грядка ${selected.source + 1} → две молодые посадки на грядках ${selected.source + 1} и ${selected.destination + 1}.</p>
-      <p><strong>Готовый урожай сейчас не получите.</strong> Возраст обеих посадок начнётся с нуля. Семена и монеты не нужны.</p>
+    return `<section class="bed-transplant berry-nursery garden-nursery-confirm"><div class="garden-summary"><h2 class="transplant-step" tabindex="-1">3. Разделить вместо сбора?</h2>
+      <strong class="nursery-name">${name}</strong><p class="nursery-warning"><strong>Готовый урожай сейчас не получите.</strong></p>
+      <p>Возраст обеих посадок начнётся с нуля. Семена и монеты не нужны.</p>
       <p>До нового урожая: ${ruCount(cropDefinitions[bed.crop].days, 'ночь', 'ночи', 'ночей')} обычного роста. ${cropDefinitions[bed.crop].retainsWater ? 'Чернике достаточно одного полива.' : 'Поливайте перед каждой ночью роста.'}</p>
-      <p>${forecast}</p>
-      <div class="dialog-actions">${button('Разделить на две посадки', 'berry-nursery-confirm', '', preview.available)}${reset()}</div></section>`
+      <details class="garden-care"><summary>Уход и особенность</summary><p>${forecast}</p></details></div>
+      <div class="nursery-outcome" role="group" aria-label="Грядка ${selected.source + 1} → две молодые посадки на грядках ${selected.source + 1} и ${selected.destination + 1}"><div class="nursery-mother">${gardenCropArt(bed)}<span>Грядка ${selected.source + 1}</span></div><span class="nursery-arrow" aria-hidden="true">↙　↘</span><div class="nursery-young">${[selected.source, selected.destination].map(index => `<div>${gardenCropArt({...bed, growth:0})}<span>Грядка ${index + 1}</span></div>`).join('')}</div></div>
+      <div class="dialog-actions garden-actions">${button('Разделить на две посадки', 'berry-nursery-confirm', '', preview.available)}${reset()}</div></section>`
   }
   const hasDestination = farm.beds.some(bed => bed.kind === 'tilled')
   const hasMother = farm.beds.some(bed => bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop) && getBedStage(bed) === 'ripe')
-  return `<section class="bed-transplant berry-nursery"><h2 class="transplant-step" tabindex="-1">${selected ? '2. Выберите вторую грядку' : '1. Выберите зрелую ягодную посадку'}</h2>
-    <p>${selected ? `Грядка ${selected.source + 1}: ${transplantBedDescription(selected.crop)}.` : 'Размножайте клубнику, чернику и малину. Вместо готового урожая получите две молодые посадки. Известная особенность сохранится у обеих. Одни посадки собирайте, другие оставляйте для размножения.'}</p>
-    ${!hasMother ? '<p>Сначала вырастите хотя бы одну ягодную посадку до зрелости.</p>' : ''}${!hasDestination ? '<p>Нужна ещё одна свободная вспаханная грядка. Подготовьте место в огороде.</p>' : ''}
-    <div class="dialog-actions">${selected ? reset() : button('К семенам', 'open-panel', 'seeds') + button('Собрать ягоды и сохранить посадку', 'open-panel', 'berry-renewal')}${close()}</div>
-    <div class="transplant-beds" role="group" aria-label="Грядки ягодного питомника">${farm.beds.map((bed, index) => {
+  return `<section class="bed-transplant berry-nursery garden-workspace"><div class="garden-summary"><h2 class="transplant-step" tabindex="-1">${selected ? '2. Выберите вторую грядку' : '1. Выберите зрелую ягодную посадку'}</h2>
+    ${selected ? gardenSourceSummary(selected.source, selected.crop) : '<p>Размножайте клубнику, чернику и малину.</p>'}
+    <p class="garden-rule">Вместо готового урожая получите две молодые посадки. Известная особенность сохранится у обеих.</p>
+    ${!hasMother ? '<p>Сначала вырастите хотя бы одну ягодную посадку до зрелости.</p>' : ''}${!hasDestination ? '<p>Нужна ещё одна свободная вспаханная грядка. Подготовьте место в огороде.</p>' : ''}</div>
+    <div class="transplant-beds garden-map" role="group" aria-label="Грядки ягодного питомника: четыре ряда по четыре">${farm.beds.map((bed, index) => {
       const mother = bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop) && getBedStage(bed) === 'ripe'
-      const enabled = selected ? getBerryPropagation(farm, selected.source, index).available : hasDestination && mother
-      return `<button class="transplant-bed" type="button" data-action="${selected ? 'berry-nursery-destination' : 'berry-nursery-source'}" data-value="${index}"${enabled ? '' : ' disabled'}${selected?.source === index ? ' aria-pressed="true"' : ''}><strong>Грядка ${index + 1}</strong><span>${transplantBedDescription(bed)}</span><small>${selected ? selected.source === index ? 'Исходная посадка' : enabled ? 'Выбрать вторую грядку' : 'Недоступна' : mother ? 'Выбрать для размножения' : 'Нужна зрелая ягода'}</small></button>`
-    }).join('')}</div></section>`
+      const available = selected ? getBerryPropagation(farm, selected.source, index).available : hasDestination && mother
+      const chosen = selected?.source === index
+      const purpose = chosen ? 'Выбрана исходной. Выберите другую грядку.' : selected
+        ? available ? 'Выбрать вторую грядку.' : getBerryPropagation(farm, selected.source, index).label
+        : !mother ? 'Нужна зрелая ягода.' : hasDestination ? 'Выбрать для размножения.' : 'Сначала подготовьте свободную грядку.'
+      return gardenCell(bed, index, { action: selected ? 'berry-nursery-destination' : 'berry-nursery-source', available, selected: chosen, purpose })
+    }).join('')}</div>
+    <div class="dialog-actions garden-actions">${selected ? reset() : button('К семенам', 'open-panel', 'seeds') + button('Собрать ягоды и сохранить посадку', 'open-panel', 'berry-renewal') + close()}</div></section>`
 }
