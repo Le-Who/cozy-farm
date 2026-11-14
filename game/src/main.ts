@@ -319,6 +319,8 @@ const berryRenewalSelection = new BerryRenewalSelection()
 const recipeSurplusSelection = new RecipeSurplusSelection()
 let activeTool: Tool = 'seeds'
 let panel: Panel | undefined
+// Consume the successful sleep close once; ordinary close/back keeps its cue.
+let committedRestClose = false
 let celebratedFestival: FestivalTradition | undefined
 let celebrationReceipt: {effect?:string; coins:number} | undefined
 let treeSlot = 0
@@ -2047,6 +2049,9 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next !== panel && next !== 'festival') celebratedFestival=undefined
   if (panel !== next) playBaySound(cue==='page.unfold' && (next==='guide' || next==='boat') ? 'page.map' : cue,.76,0)
   panel = next
+  // Warm the two possible morning cues silently while the explicit forecast is open.
+  // primeEvents preserves mute/zero-volume/locked-audio gating and the shared cache.
+  if (next === 'rest') void bayAudio.primeEvents(['daybreak.shutters', 'harbour.berth'])
   const miniature = next.startsWith('bay-') || next === 'cookery' || next === 'workshop' || next === 'fishing' || next === 'arrangement'
   island.setViewMode(miniature ? 'minigame' : next === 'cove' ? 'world' : 'dialog')
   app.dataset.scene=next==='cove'?'cove':''
@@ -3292,7 +3297,11 @@ app.addEventListener('click', async (event) => {
       const flockSize = farm.flockSize
       const oldShip=farm.freight.ship
       const expeditionWasSailing=farm.freight.expeditions.active?.phase==='sailing'
-      const rested=perform(() => endDay(farm),true)
+      const rested=perform(() => {
+        const result=endDay(farm)
+        if(result.ok)committedRestClose=true
+        return result
+      },true)
       if(rested){playBaySound(expeditionWasSailing&&farm.freight.expeditions.active?.phase==='ready'||oldShip.phase==='sailing'&&farm.freight.ship.phase==='docked'?'harbour.berth':'daybreak.shutters')}
       if (rested && farm.flockSize > flockSize) {
         playBaySound('flock.hatch', 1, 0);island.showHatch()
@@ -3546,10 +3555,12 @@ dialog.addEventListener('click', (event) => {
   if (event.target === dialog) closeDialog()
 })
 dialog.addEventListener('close', () => {
+  const quietRestClose = committedRestClose
+  committedRestClose = false
   if (!dialog.open) {
     transplantSelection.reset()
   berryNurserySelection.reset(); berryRenewalSelection.reset(); recipeSurplusSelection.reset()
-    playBaySound('page.fold',.72,0)
+    if (!quietRestClose) playBaySound('page.fold',.72,0)
     island.setViewMode('world')
     app.dataset.scene=''
     island.setCoveFocus(false)
