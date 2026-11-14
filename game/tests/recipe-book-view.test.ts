@@ -69,3 +69,19 @@ test('selection survives favorite sorting, rejects stale IDs and falls back safe
   farm.culinary.recipes=farm.culinary.recipes.filter(recipe=>recipe.id!==first)
   nav.reconcile(farm);assert.equal(nav.view.selectedId,second);assert.equal(nav.view.mode,'index');assert.equal(nav.view.focus,undefined)
 })
+
+test('hiding the narrow recipe index does not replace its saved offset with the CSSOM zero', async () => {
+  const {RecipeBookNavigation}=await import('../src/recipe-book-view.ts')
+  const nav=new RecipeBookNavigation()
+  nav.view={mode:'index',selectedId:'s4'}
+  const root=(visible:boolean,scrollTop:number)=>({
+    querySelector:(selector:string)=>selector==='.signature-book'
+      ? {dataset:{mode:'detail',selectedRecipe:'s4'}}
+      : {scrollTop,getClientRects:()=>visible?[{}]:[]},
+  }) as unknown as HTMLElement
+  nav.capture(root(true,882))
+  nav.capture(root(false,0))
+  assert.equal(nav.view.indexScroll,882)
+  nav.capture(root(true,0))
+  assert.equal(nav.view.indexScroll,0,'a visible pane actually scrolled to the top still records zero')
+})

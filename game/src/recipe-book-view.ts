@@ -28,6 +28,11 @@ function focusId(element: Element | null): string | undefined {
   return element.dataset.recipeFocus
 }
 const focusable = 'button:not(:disabled),input,textarea,summary,[data-recipe-focus]'
+function paneScroll(root: HTMLElement, selector: string) {
+  const pane = root.querySelector<HTMLElement>(selector)
+  // At narrow widths the inactive pane has no layout box, so CSSOM reports 0.
+  return pane?.getClientRects().length ? pane.scrollTop : undefined
+}
 
 /** Owns selection plus the view snapshot used by rerenders and PanelVisit. */
 export class RecipeBookNavigation {
@@ -50,8 +55,8 @@ export class RecipeBookNavigation {
     const book=root.querySelector<HTMLElement>('.signature-book')
     if (!book) return
     const same=book.dataset.selectedRecipe===this.view.selectedId && book.dataset.mode===(this.view.mode??'index')
-    this.view={...this.view,indexScroll:root.querySelector<HTMLElement>('.recipe-book-index')?.scrollTop??this.view.indexScroll,
-      ...(same?{detailScroll:root.querySelector<HTMLElement>('.recipe-book-detail')?.scrollTop??0,
+    this.view={...this.view,indexScroll:paneScroll(root,'.recipe-book-index')??this.view.indexScroll,
+      ...(same?{detailScroll:paneScroll(root,'.recipe-book-detail')??this.view.detailScroll,
         disclosures:[...root.querySelectorAll<HTMLDetailsElement>('details[data-recipe-disclosure][open]')].map(item=>item.dataset.recipeDisclosure!),
         focus:root.contains(document.activeElement)?focusId(document.activeElement):this.view.focus}:{}),
     }
