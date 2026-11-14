@@ -6,6 +6,7 @@ import './bay-freight.css';
 import { nextFerryExploration } from './ferry-discovery.ts';
 import { getFerryRestockPlan } from './ferry-restock.ts';
 import { ferryProjectProgress } from './ferry-project-progress.ts';
+import { captureFerryPanelView, restoreFerryPanelView } from './ferry-panel-view.ts';
 
 export type FreightProduct = { id: string; name: string; icon: string; artwork?: string };
 export type FreightPanelContext = {
@@ -104,7 +105,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
     ${button(restock.kind === 'supply' ? 'Посмотреть поставку' : ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро','expedition-restock',id)}
     <small>${restock.kind === 'supply' ? 'Это только выбор рейса. Припасы и оплата будут показаны перед отдельной отправкой.' : 'Переход не начинает ночь. После отдыха отдельно выберите и отправьте заказ.'}</small>
   </section>`;
-  const status = phase === 'sailing' ? `Вернётся утром дня ${active!.returnsOn}` : phase === 'ready' ? 'Паром вернулся. Груз вас дождётся.' : `${discovery || restock ? `Выбран рейс «${manifest.name}». ` : ''}Вернётся следующим игровым утром`;
+  const status = phase === 'sailing' ? `Вернётся утром дня ${active!.returnsOn}` : phase === 'ready' ? 'Паром вернулся. Груз вас дождётся.' : `${discovery || restock ? `Выбран рейс «${manifest.name}». ` : ''}${quote.available ? 'После отправки вернётся следующим игровым утром' : ''}`;
   return `<section class="bay-freight" data-expedition-phase="${phase}" data-combined="${combined}" aria-label="Торговые экспедиции">
     <header class="bay-freight-heading">${button('‹', 'back', '', 'class="bay-freight-back" aria-label="Назад"')}<h2>Паром «Ласточка»</h2><span class="expedition-balance">${ctx.icon('coin')} ${ctx.coins ?? 0}</span>${button('×', 'close', '', 'class="bay-freight-close" aria-label="Закрыть паром"')}</header>
     <div class="bay-freight-workspace">
@@ -146,8 +147,15 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
         }).join('')}</div></details>` : ''}
           ${world.last && !active ? `<p class="expedition-receipt">${world.last.explored ? 'Новый порт на карте' : 'Прошлый груз получен'} · день ${world.last.day}</p>` : ''}
         </div>
-        <footer class="expedition-departure"><p>${esc(status)}</p>${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь. Игровое утро начинается после сна. Настоящий таймер не идёт.</small>` : phase === 'ready' ? `${button(exploring ? 'Открыть новый порт' : 'Получить груз и выручку', 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения и потери груза.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
+        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь. Игровое утро начинается после сна. Настоящий таймер не идёт.</small>` : phase === 'ready' ? `${button(exploring ? 'Открыть новый порт' : 'Получить груз и выручку', 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения и потери груза.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
       </div>
     </div>
   </section>`;
+}
+
+/** DOM entry used by the game and the isolated ferry interaction fixture. */
+export function renderFreightPanelInto(host: HTMLElement, state: BayFreightState, ctx: FreightPanelContext): void {
+  const view = captureFerryPanelView(host);
+  host.innerHTML = renderFreightPanel(state, ctx);
+  restoreFerryPanelView(host, view);
 }

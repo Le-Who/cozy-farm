@@ -1,0 +1,8 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Проверка выбора заказов парома</title>
+<style>body{margin:16px;font:16px/1.4 system-ui;background:#faf7f0}#fixture{height:600px;max-height:90dvh;width:960px;max-width:100%}pre{white-space:pre-wrap}</style>
+<h1>Выбор заказов парома</h1><p>Изолированная синтетическая ферма. Сохранения браузера не читаются и не меняются.</p><button id="run">Проверить</button><pre id="results"></pre><div id="fixture"></div>
+<script type="module">
+import {runFerryPanelViewChecks} from '../helpers/ferry-panel-view-checks.ts';
+const host=document.querySelector('#fixture'),results=document.querySelector('#results');
+document.querySelector('#run').onclick=()=>{try{results.textContent=runFerryPanelViewChecks(host).map(message=>'✓ '+message).join('\n');results.dataset.status='passed'}catch(error){results.textContent=String(error);results.dataset.status='failed';throw error}};
+</script></html>

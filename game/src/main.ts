@@ -92,7 +92,8 @@ import { getFerryRestockPlan } from './ferry-restock'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
-import { renderFreightPanel, freightControl } from './bay-freight-ui'
+import { renderFreightPanelInto, freightControl } from './bay-freight-ui'
+import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } from './ferry-panel-view'
 import { getMusicMaterialGuidance, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
 import { createBayMusic, type BayMusicViewState } from './bay-music'
 import { describeFood } from './intent-orders'
@@ -1333,6 +1334,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  ferryView: FerryPanelView | undefined;
   marketNextOpen: string[];
   warehouseRequest: StockItem | undefined;
   expeditionPort: ExpeditionPort; expeditionOffer: string;
@@ -1355,7 +1357,7 @@ function focusKey(button: HTMLButtonElement) {
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
-  return {marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  return {ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
@@ -1376,6 +1378,7 @@ function goBack() {
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;signatureFamily=previous.signatureFamily
   openPanel(previous.panel,false,farm.island,'page.fold')
+  restoreFerryPanelView(dialogContent,previous.ferryView)
   dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next]').forEach(item=>item.open=previous.marketNextOpen.includes(item.dataset.marketNext!))
   const restoredVersion = panelRenderVersion
   requestAnimationFrame(()=>{
@@ -1383,7 +1386,7 @@ function goBack() {
     if (!dialog.open || panel !== previous.panel || panelRenderVersion !== restoredVersion) return
     dialogContent.scrollTop=previous.scroll
     const target=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')).find(button=>focusKey(button)===previous.focus&&button.getClientRects().length>0)
-    if (target) target.focus({preventScroll:true})
+    if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
   })
 }
 let harbourScene: {destroy():void} | undefined
@@ -1581,7 +1584,7 @@ function drawPanel() {
     case 'bay-freight': {
       reconcileFreightPorts(farm.freight,openedFreightPorts(farm))
       const goods=harbourGoods()
-      dialogContent.innerHTML=renderFreightPanel(farm.freight,{day:farm.day,harvestTier:farm.festivals.completed.harvest,coins:farm.coins,boatOwned:farm.boatOwned,villageBuilt:farm.village.built,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,playerPort:farm.island,selectedPort:selectedWarehouse,waxAvailable:farm.capeLevel>=2,routeEditorOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? freightPlanOpen,
+      renderFreightPanelInto(dialogContent,farm.freight,{day:farm.day,harvestTier:farm.festivals.completed.harvest,coins:farm.coins,boatOwned:farm.boatOwned,villageBuilt:farm.village.built,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,playerPort:farm.island,selectedPort:selectedWarehouse,waxAvailable:farm.capeLevel>=2,routeEditorOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? freightPlanOpen,
         openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),icon})
       break
     }
@@ -1986,7 +1989,7 @@ function drawPanel() {
   }
 
   applyIngredientFinishes(dialogContent)
-  if (focused) {
+  if (focused && panel !== 'bay-freight') {
     const replacement = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
       .find(candidate => focusKey(candidate) === focusKey(focused))
     const nextFocus = replacement ?? closeButton
