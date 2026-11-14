@@ -79,7 +79,10 @@ test('the actual handler returns to the request, regardless of which recipe was 
     state.dialog.open=false;await runInNewContext(js,state);assert.deepEqual(routes,['request'])
     state.dialog.open=true;endDay(farm);await runInNewContext(js,state);assert.deepEqual(routes,['request'])
   }
-  assert.match(text,/case 'rest':[\s\n]*dialogContent.innerHTML = `\$\{renderSelectedIntentRest/,'selected pending request precedes other rest forecasts')
+  const rest=text.slice(text.indexOf("    case 'rest':"),text.indexOf("    case 'journal':"))
+  assert.ok(rest.indexOf('renderSelectedIntentRest(farm,communityRequest)')>=0,'selected pending request remains visible at home')
+  assert.ok(rest.indexOf('renderSelectedIntentRest(farm,communityRequest)')<rest.indexOf('renderPicnicStatus(farm,true)'),'selected pending request precedes the other day-end notices')
+  assert.doesNotMatch(rest,/<details|hidden/,'the request deadline is not collapsed behind the rest action')
   assert.match(text,/const deadline = selectedDailyIntent\(farm, communityRequest\)/)
 })
 

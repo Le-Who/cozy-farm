@@ -141,6 +141,18 @@ test('the rest screen distinguishes closed, empty, unaffordable and exhausted st
   assert.match(renderShopRest(open), /полки пусты/)
 })
 
+test('the rest sales quantity, revenue and close action stay outside the optional shelf details', () => {
+  const farm=shopRestFixture(),before=structuredClone(farm),html=renderShopRest(farm)
+  const details=html.indexOf('<details>')
+  for(const text of ['купят товаров с полок: 6','Выручка: 24 монеты','data-action="rest-close-shop" data-value="5"','Закрытие сохранит товары и не переведёт день.']){
+    assert.ok(html.indexOf(text)>=0 && html.indexOf(text)<details,text)
+  }
+  assert.match(html,/Остаток на полках после отдыха/)
+  assert.match(html,/Прогноз по нынешним полкам и ценам/)
+  assert.match(html,/оставшихся гостей сегодняшнего дня/)
+  assert.deepEqual(farm,before)
+})
+
 test('leaving the shop screen no longer claims to close the business', () => {
   const source = readFileSync(new URL('../src/bay-shop.ts', import.meta.url), 'utf8')
   assert.match(source, /data-close aria-label="Вернуться в бухту"/)

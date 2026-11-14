@@ -4,7 +4,7 @@ import { createFarm, restoreFarm, workBed, endDay } from '../src/farm.ts';
 import { getDiscoveryTask } from '../src/discovery-path.ts';
 import { chooseDiscoveryIdea, createDiscoveryPreferences, forgetDiscoveryIdea, restoreDiscoveryPreferences, resumeDiscoveryIdea, setDiscoveryPace } from '../src/discovery-preferences.ts';
 import { getGuidanceTask } from '../src/discovery-guidance.ts';
-import { renderDiscoveryPreferences } from '../src/discovery-preferences-ui.ts';
+import { renderDiscoveryGuidance } from '../src/discovery-preferences-ui.ts';
 
 function reload(farm: ReturnType<typeof createFarm>) {
   const restored = restoreFarm(JSON.parse(JSON.stringify(farm))); assert.ok(restored); return restored;
@@ -111,17 +111,87 @@ test('preferences strictly validate values and strip executable fields from vali
 
 test('journal renders explicit quiet/return controls, preserves selected text and escapes saved markup', () => {
   const farm = createFarm(), next = pick(farm), before = structuredClone(farm);
-  assert.match(renderDiscoveryPreferences(farm.discoveryPreferences, next), />В своём ритме<\/button>/);
+  assert.match(renderDiscoveryGuidance(farm.discoveryPreferences, next).settings, />В своём ритме<\/button>/);
   assert.deepEqual(farm, before);
   setDiscoveryPace(farm.discoveryPreferences, true);
-  const quiet = renderDiscoveryPreferences(farm.discoveryPreferences, next);
-  assert.match(quiet, /Подсказки на острове скрыты/);
-  assert.match(quiet, /Вернуться к задумке/);
-  assert.match(quiet, /Выбранная задумка · сохранена/);
+  const quiet = renderDiscoveryGuidance(farm.discoveryPreferences, next);
+  assert.match(quiet.settings, /Подсказки на острове скрыты/);
+  assert.match(quiet.focus, /Вернуться к задумке/);
+  assert.match(quiet.focus, /Выбранная задумка · сохранена/);
   const malicious = {quiet:false,idea:{id:'x',label:'<img src=x onerror=alert(1)>',detail:'<script>bad</script>'}};
-  const html = renderDiscoveryPreferences(malicious);
+  const { focus: html } = renderDiscoveryGuidance(malicious);
   assert.doesNotMatch(html, /<img|<script/);
   assert.match(html, /&lt;img/);
   assert.match(html, /Доступные дела/);
   assert.doesNotMatch(html, /data-action="follow-task"/);
+});
+
+test('the current step is presented once, with its action, progress, reward and optional bookmark together', () => {
+  const farm = createFarm();
+  const next = { ...getDiscoveryTask(farm, farm.orientation)!, progress: 2, target: 3, reward: 21 };
+  const before = structuredClone(farm);
+  const { focus, settings } = renderDiscoveryGuidance(farm.discoveryPreferences, next, next);
+  assert.match(focus, /aria-label="Ближайший шаг"/);
+  assert.match(focus, /2\/3 · Награда: 21 монета/);
+  assert.ok(focus.indexOf('data-action="follow-task"') < focus.indexOf('data-action="discovery-pin"'));
+  assert.match(focus, /class="dialog-button secondary" data-action="discovery-pin"/);
+  assert.equal((focus + settings).split(`<h3>${next.label}</h3>`).length - 1, 1);
+  assert.doesNotMatch(settings, /discovery-choice|discovery-pin/);
+  assert.deepEqual(farm, before);
+});
+
+test('a current bookmark keeps its action and newly derived progress in the leading card', () => {
+  const farm = createFarm(), selected = pick(farm);
+  const next = { ...selected, detail: 'Текущие условия', progress: 3, target: 4, reward: 5 };
+  const { focus, settings } = renderDiscoveryGuidance(farm.discoveryPreferences, next, next);
+  assert.match(focus, /Текущие условия/);
+  assert.match(focus, /3\/4 · Награда: 5 монет/);
+  assert.match(focus, /data-action="follow-task"/);
+  assert.match(focus, /data-action="discovery-forget"/);
+  assert.doesNotMatch(focus + settings, /discovery-pin|сохранённая запись/);
+  assert.doesNotMatch(settings, /discovery-bookmark|discovery-now/);
+});
+
+test('an old bookmark stays first without replaying an action, while the new suggestion remains optional', () => {
+  const farm = createFarm(), selected = pick(farm);
+  const next = { ...selected, id: 'different-step', label: 'Следующее дело', reward: 99 };
+  const before = structuredClone(farm);
+  const { focus, settings } = renderDiscoveryGuidance(farm.discoveryPreferences, next, getGuidanceTask(farm.discoveryPreferences, next));
+  assert.ok(focus.includes(selected.label));
+  assert.match(focus, /сохранённая запись/);
+  assert.match(focus, /data-action="open-panel" data-value="guide"/);
+  assert.doesNotMatch(focus, /follow-task|Награда|Следующее дело/);
+  assert.match(settings, /Следующее дело/);
+  assert.match(settings, /data-action="discovery-pin" data-value="different-step"/);
+  assert.deepEqual(farm, before);
+});
+
+test('quiet play does not restore a current step merely by opening the journal', () => {
+  const farm = createFarm(), next = getDiscoveryTask(farm, farm.orientation)!;
+  setDiscoveryPace(farm.discoveryPreferences, true);
+  const before = structuredClone(farm);
+  const { focus, settings } = renderDiscoveryGuidance(farm.discoveryPreferences, next, next);
+  assert.equal(focus, '');
+  assert.doesNotMatch(settings, /follow-task/);
+  assert.match(settings, /Показать подсказки/);
+  assert.match(settings, /discovery-pin/);
+  assert.deepEqual(farm, before);
+});
+
+test('quiet bookmarks can be resumed or forgotten, but do not expose an immediate task action', () => {
+  const farm = createFarm(), next = pick(farm);
+  setDiscoveryPace(farm.discoveryPreferences, true);
+  const { focus, settings } = renderDiscoveryGuidance(farm.discoveryPreferences, next, next);
+  assert.match(focus, /discovery-resume/);
+  assert.match(focus, /discovery-forget/);
+  assert.doesNotMatch(focus + settings, /follow-task|discovery-pin/);
+});
+
+test('local guidance without a task action keeps its details and does not invent controls', () => {
+  const preferences = createDiscoveryPreferences();
+  const goal = { label: 'Исследуйте Солёную рощу', detail: 'Сегодня можно собрать соль.', progress: 1, target: 3 };
+  const { focus } = renderDiscoveryGuidance(preferences, undefined, goal);
+  assert.match(focus, /Исследуйте Солёную рощу/);
+  assert.match(focus, /1\/3/);
+  assert.doesNotMatch(focus, /<button|dialog-nav/);
 });

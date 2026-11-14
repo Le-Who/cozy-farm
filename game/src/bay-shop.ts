@@ -76,7 +76,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     return `${selectedPanel}<div class="bay-shop-stock-heading"><strong>Припасы</strong></div>
       <div class="bay-shop-products">${products.length ? products.map(product => {
         return `<button type="button" class="bay-shop-product" data-user-text data-stock="${escape(product.id)}" data-action="shop-stock-select" aria-label="Выбрать товар: ${escape(product.name)}. В запасе: ${product.quantity}"><span class="bay-shop-product-art">${art(product)}</span><span data-user-text>${escape(product.name)}</span><small>×${product.quantity}</small>${product.signature ? '<em title="Мой рецепт" aria-label="Мой рецепт">♥</em>' : ''}</button>`;
-      }).join('') : `<div class="bay-shop-stock-empty"><p>Привезите продукты или испеките булочки.</p>${options.onOpenFreight ? '<button type="button" data-freight>Открыть склад</button>' : ''}</div>`}</div>`;
+      }).join('') : `<div class="bay-shop-stock-empty"><p>Привезите продукты или испеките булочки.</p>${options.onOpenFreight ? '<button type="button" data-freight>К парому</button>' : ''}</div>`}</div>`;
   }
   function journal(): string {
     const reputation = Object.entries(state.reputation).sort(([, a], [, b]) => b.liked - a.liked || b.sold - a.sold);

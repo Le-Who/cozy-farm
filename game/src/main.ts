@@ -60,7 +60,7 @@ import { nextFerryExploration } from './ferry-discovery'
 import './rest-preview.css'
 import { chooseDiscoveryIdea, setDiscoveryPace, resumeDiscoveryIdea, forgetDiscoveryIdea } from './discovery-preferences'
 import { getGuidanceTask } from './discovery-guidance'
-import { renderDiscoveryPreferences } from './discovery-preferences-ui'
+import { renderDiscoveryGuidance } from './discovery-preferences-ui'
 import { getNeighborFoodRecovery, repeatNeighborFood, repeatRequestedSignature } from './neighbor-food-recovery'
 import { BedTransplantSelection, renderBedTransplant } from './bed-transplant'
 import './bed-transplant.css'
@@ -1754,25 +1754,24 @@ function drawPanel() {
         </div>`
       break
     case 'rest':
-      dialogContent.innerHTML = `${renderVisitRest(farm)}${farm.village.built?nav(button(farm.neighborVisits.active?'Поговорить с гостем':'Гостевая книга', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderFerryReturn(farm,harbourGoods())}${renderRestPreview(farm)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}
-        ${renderShopRest(farm)}<ul class="dialog-list">${row('moon', `День ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}`, '', button('До утра', 'sleep', true, {value:farm.day}))}</ul>
+      dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра"><header class="rest-morning"><div><strong>День ${farm.day + 1}</strong><span>${weatherNames[getClimate(farm.day + 1).weather]}</span></div>${button('До утра', 'sleep', true, {value:farm.day})}</header>${renderShopRest(farm)}</section>
+        <div class="rest-before-morning">${renderVisitRest(farm)}${farm.neighborVisits.active?nav(button('Поговорить с гостем', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderRestPreview(farm)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}</div>
+        ${renderFerryReturn(farm,harbourGoods())}${farm.village.built&&!farm.neighborVisits.active?nav(button('Гостевая книга', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}
         ${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}`
       break
     case 'journal': {
       const goal = currentTask(), journal = getDiscoveryJournal(farm)
+      const guidance = renderDiscoveryGuidance(farm.discoveryPreferences, getDiscoveryTask(farm, farm.orientation), goal)
       const chapter = journal.current
       const groveActivities = farm.island === 'grove'
         ? row('tool-rod', 'Рыбалка в роще', `Сегодня поймано: ${farm.fishCaughtToday.grove} / ${getFishLimit(farm, 'grove')}`)
           + row('ui-sea-salt', 'Морская соль', farm.saltGatheredToday ? 'Сегодня собрано' : 'Можно собрать на солончаках')
         : ''
-      dialogContent.innerHTML = `${renderFerryReturn(farm,harbourGoods())}<section class="discovery-chapter">
+      dialogContent.innerHTML = `${renderFerryReturn(farm,harbourGoods())}${guidance.focus}<section class="discovery-chapter">
           ${icon(chapter?.icon ?? 'star')}<div><small>Знакомство с бухтой · ${journal.completed}/${journal.chapters.length}</small><h2>${chapter?.title ?? 'Бухта живёт дальше'}</h2></div>
           <p>${chapter?.detail ?? 'Продолжайте свои рецепты, встречи с соседями и новые праздники. Каждая традиция может расти дальше.'}</p>
         </section>
-        ${goal && !farm.discoveryPreferences.idea ? `<section class="discovery-now" aria-label="Ближайший шаг"><h3>${goal.label}</h3><p>${goal.detail}</p>
-          ${goal.target > 1 || goal.reward !== undefined ? `<small>${goal.progress}/${goal.target}${goal.reward === undefined ? '' : ` · Награда: ${quantity(goal.reward, 'монета')}`}</small>` : ''}
-          ${'action' in goal ? nav(button(goal.action.label, 'follow-task')) : ''}</section>` : ''}
-        ${renderDiscoveryPreferences(farm.discoveryPreferences, getDiscoveryTask(farm, farm.orientation))}
+        ${guidance.settings}
         <p class="discovery-tip">${journal.tip}</p>
         ${journal.next ? `<section class="discovery-next"><strong>Впереди: ${journal.next.title.toLowerCase()}</strong><p>${journal.next.detail}</p></section>` : ''}
         <details class="discovery-roadmap"${journalDetailsOpen ? ' open' : ''}><summary>Все открытия бухты</summary><ol>${journal.chapters.map(chapter => `<li data-current="${chapter.id === journal.current?.id}" data-complete="${chapter.complete}">${icon(chapter.icon)}<strong>${chapter.title}</strong><small>${chapter.complete ? 'Открыто' : chapter.id === journal.current?.id ? 'Сейчас' : 'Впереди'}</small></li>`).join('')}</ol></details>

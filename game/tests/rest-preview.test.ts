@@ -97,6 +97,35 @@ test('rest shortcut only visits home and the sleep branch requires an open previ
   assert.match(main,/button\('До утра', 'sleep', true, \{value:farm.day\}\)/)
 })
 
+test('Home starts with the day decision and shop consequence, without hiding the existing warnings or routes', async () => {
+  const main=await readFile(new URL('../src/main.ts',import.meta.url),'utf8')
+  const rest=main.slice(main.indexOf("    case 'rest':"),main.indexOf("    case 'journal':"))
+  const sleep=rest.indexOf("button('До утра'")
+  assert.ok(sleep>=0 && sleep<rest.indexOf('renderShopRest(farm)'))
+  for(const renderer of ['renderVisitRest','renderSelectedIntentRest','renderPicnicStatus','renderRestPreview','renderCoopCapacityWarning']){
+    assert.ok(rest.indexOf(renderer)>rest.indexOf('renderShopRest(farm)'),renderer)
+    assert.ok(rest.indexOf(renderer)<rest.indexOf('renderFerryReturn(farm'),renderer)
+  }
+  assert.equal(rest.match(/'sleep'/g)?.length,1)
+  assert.doesNotMatch(rest,/<details|hidden|endDay\(/)
+  for(const action of ['flockFeedRow()','neighbor-visits',"'kitchen'","'upgrades'"])assert.ok(rest.includes(action),action)
+})
+
+test('the dry-bed action and rain timing precede forecast statistics, while all four groups remain', () => {
+  const farm=createFarm();farm.day=Array.from({length:30},(_,i)=>i+1).find(day=>getClimate(day+1).weather==='rain')!
+  farm.beds=[
+    {kind:'crop',crop:'carrot',growth:0,watered:false},
+    {kind:'crop',crop:'carrot',growth:0,watered:true},
+    {kind:'crop',crop:'pumpkin',growth:0,watered:true},
+    {kind:'crop',crop:'carrot',growth:1,watered:false},
+  ]
+  const before=structuredClone(farm),html=renderRestPreview(farm)
+  assert.ok(html.indexOf('Завтрашний дождь')<html.indexOf('rest-preview-stats'))
+  assert.ok(html.indexOf('data-action="focus-bed" data-value="0"')<html.indexOf('rest-preview-stats'))
+  for(const label of ['К сбору утром','Продолжат рост','Ждёт полива','Уже можно собрать','Созревший урожай останется'])assert.ok(html.includes(label),label)
+  assert.deepEqual(farm,before)
+})
+
  test('opening a local home panel does not require owning a boat', async () => {
   const main=await readFile(new URL('../src/main.ts',import.meta.url),'utf8')
   const visit=main.slice(main.indexOf('async function visitPanelAt'),main.indexOf('function openPanel'))

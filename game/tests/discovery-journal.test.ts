@@ -50,7 +50,7 @@ test('the inhabited bay exposes its repeatable systems rather than an all-quests
   let journal = getDiscoveryJournal(farm);
   assert.equal(journal.current?.id, 'living-bay');
   assert.equal(journal.completed, 4);
-  assert.deepEqual(journal.activities.map(activity => activity.panel), ['bay-freight', 'bay-shop', 'bay-music', 'festival']);
+  assert.deepEqual(journal.activities.map(activity => activity.panel), ['bay-freight', 'neighbor-visits', 'bay-shop', 'bay-music', 'festival']);
   farm.bayShop.sold = 1;
   assert.equal(getDiscoveryJournal(farm).current?.id, 'living-bay');
   farm.musicGarden.performances = 1;
@@ -68,7 +68,7 @@ test('three repeats of one festival do not imply discovery of all traditions', (
   const journal = getDiscoveryJournal(farm);
   assert.equal(journal.current, undefined);
   assert.equal(journal.completed, 6);
-  assert.equal(journal.activities.length, 4, 'the journal keeps real activities available after the introduction');
+  assert.equal(journal.activities.length, 5, 'the journal keeps real activities, including the guest book, available after the introduction');
 });
 
 test('opening and reopening the journal never changes saves or grants rewards', () => {

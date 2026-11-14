@@ -7,4 +7,18 @@
 .rest-preview p{font-size:13px;line-height:1.45;margin:10px 0}
 .rest-preview .dialog-button{min-height:44px;white-space:normal;max-width:100%}
 .rest-preview-footnote{color:var(--muted)}
+.farm-dialog[data-panel="rest"] .dialog-emblem{display:none}
+.rest-decision{padding:12px;border:1px solid var(--rule);border-radius:15px;background:var(--paper-light)}
+.rest-morning{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rest-morning>div{min-width:0;display:grid;gap:2px}
+.rest-morning strong{color:var(--plum);font-size:18px}
+.rest-morning span{color:var(--muted);font-size:13px}
+.rest-morning .dialog-button{flex-shrink:0;min-height:44px}
+.rest-decision .shop-rest{margin:10px 0 0;padding:10px 0 0;border:0;border-top:1px solid var(--rule);border-radius:0;background:none}
+.rest-decision .shop-rest h2{font-size:16px}
+.rest-decision .shop-rest p,.rest-decision .shop-rest details{margin:7px 0}
+.rest-decision .shop-rest details:last-child{margin-bottom:0}
+.rest-before-morning{margin-top:12px}
+.rest-before-morning>.rest-preview:first-child{margin-top:0}
+.rest-preview-note~.rest-preview-stats{margin-top:10px}
 @media(max-width:360px){.rest-preview-stats{grid-template-columns:1fr}}
