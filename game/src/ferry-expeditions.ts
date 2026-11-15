@@ -26,6 +26,8 @@ export type FerryExpedition = ExpeditionManifest & {
   returnsOn: number;
   phase: 'sailing' | 'ready';
 };
+/** Display-only settled history: deliberately has no active phase, timing or claim serial. */
+export type ExpeditionSettlement = Pick<ExpeditionManifest, 'id' | 'outgoing' | 'incoming' | 'payCoins' | 'earnCoins' | 'harvestBonus'>;
 export type FerryExpeditions = {
   version: 1;
   lastDay: number;
@@ -34,7 +36,7 @@ export type FerryExpeditions = {
   discovered: ExpeditionPort[];
   markets: Record<ExpeditionPort, PortMarket>;
   active: FerryExpedition | null;
-  last: { name: string; port: ExpeditionPort; day: number; explored: boolean } | null;
+  last: { name: string; port: ExpeditionPort; day: number; explored: boolean; settled?: ExpeditionSettlement } | null;
 };
 export type ExpeditionWallet = { bag: Record<string, number>; coins: number; boatOwned: boolean; harvestTier?: number };
 export type ExpeditionQuote = ExpeditionManifest & { available: boolean; reason: string };
@@ -173,7 +175,9 @@ export function finishExpedition(state: FerryExpeditions, day: number): Expediti
     if (!state.discovered.includes(voyage.port)) state.discovered.push(voyage.port);
   } else state.markets[voyage.port].visits++;
   state.completed++;
-  state.last = { name: voyage.name, port: voyage.port, day, explored: voyage.kind === 'explore' };
+  state.last = { name: voyage.name, port: voyage.port, day, explored: voyage.kind === 'explore',
+    settled: { id: voyage.id, outgoing: cloneItems(voyage.outgoing), incoming: cloneItems(voyage.incoming),
+      payCoins: voyage.payCoins, earnCoins: voyage.earnCoins, harvestBonus: voyage.harvestBonus ?? 0 } };
   state.active = null;
   return { id: voyage.id, port: voyage.port, kind: voyage.kind, name: voyage.name, outgoing: cloneItems(voyage.outgoing), incoming: cloneItems(voyage.incoming), payCoins: voyage.payCoins, earnCoins: voyage.earnCoins, harvestBonus: voyage.harvestBonus ?? 0 };
 }
@@ -256,7 +260,11 @@ export function restoreFerryExpeditions(value: unknown, day = 1): FerryExpeditio
       || balance < lowest + Number(bonus) || balance > highest + Number(bonus)) throw new Error('Invalid combined ferry settlement');
   }
   const last = record(raw.last);
-  if (isPort(last.port) && typeof last.name === 'string') state.last = { port: last.port, name: last.name.slice(0, 100), day: Math.min(day, count(last.day)), explored: last.explored === true };
+  if (isPort(last.port) && typeof last.name === 'string') {
+    state.last = { port: last.port, name: last.name.slice(0, 100), day: Math.min(day, count(last.day)), explored: last.explored === true };
+    const settled = restoreSettledReceipt(last.settled, state.last.port, state.last.explored);
+    if (settled) state.last.settled = settled;
+  }
   // Never erase a paid, in-flight shipment silently when its save is damaged.
   if (raw.active !== null && raw.active !== undefined && !state.active) throw new Error('Invalid ferry expedition manifest');
   if (state.active && (!Number.isSafeInteger(active.payCoins) || !Number.isSafeInteger(active.earnCoins)
@@ -274,4 +282,32 @@ function safeItems(value: unknown): ExpeditionItem[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, 8).map(record).filter(item => typeof item.id === 'string' && knownItems.has(item.id) && count(item.quantity, 24) > 0)
     .map(item => lot(String(item.id), count(item.quantity, 24)));
+}
+
+/** Invalid optional display history falls back to the legacy receipt, never blocks a paid active voyage. */
+function restoreSettledReceipt(value: unknown, port: ExpeditionPort, explored: boolean): ExpeditionSettlement | undefined {
+  const raw = record(value);
+  if (typeof raw.id !== 'string' || raw.id.length > 160) return;
+  // Retired offers are still history. Only their bounded ID and destination syntax matter here.
+  const ids = raw.id.startsWith('pair:') ? raw.id.slice(5).split('+') : [raw.id];
+  const tradeId = new RegExp(`^${port}-[a-z0-9]+(?:-[a-z0-9]+)*$`);
+  if (explored ? raw.id !== `explore-${port}` || port === 'mill'
+    : ids.length !== (raw.id.startsWith('pair:') ? 2 : 1) || new Set(ids).size !== ids.length || !ids.every(id => tradeId.test(id))) return;
+  const outgoing = safeItems(raw.outgoing), incoming = safeItems(raw.incoming);
+  // History must not silently truncate, round, duplicate or discard cargo.
+  const exactCargo = (value: unknown, items: ExpeditionItem[]) =>
+    Array.isArray(value) && value.length === items.length && new Set(items.map(item => item.id)).size === items.length
+    && value.every((item, index) => {
+      const saved = record(item);
+      return saved.id === items[index].id && saved.quantity === items[index].quantity;
+    });
+  if (!exactCargo(raw.outgoing, outgoing) || !exactCargo(raw.incoming, incoming)) return;
+  const payCoins = raw.payCoins, earnCoins = raw.earnCoins, harvestBonus = raw.harvestBonus === undefined ? 0 : raw.harvestBonus;
+  if (![payCoins, earnCoins, harvestBonus].every(value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 100)
+    || Number(payCoins) > 0 && Number(earnCoins) > 0 || Number(harvestBonus) > 3) return;
+  if (explored) {
+    if (incoming.length || payCoins !== 0 || earnCoins !== 0 || harvestBonus !== 0) return;
+  } else if (!outgoing.length && !incoming.length && payCoins === 0 && earnCoins === 0) return;
+  // No current quote, recipe or price-table comparison: a balance patch cannot rewrite a paid receipt.
+  return { id: raw.id, outgoing, incoming, payCoins: Number(payCoins), earnCoins: Number(earnCoins), harvestBonus: Number(harvestBonus) };
 }

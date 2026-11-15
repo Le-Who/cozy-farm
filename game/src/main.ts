@@ -2854,9 +2854,17 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'expedition-claim': {
+      const keyboardClaim = event.detail === 0 && document.activeElement === control
       const voyage=farm.freight.expeditions.active
       if(voyage){selectedExpeditionPort=voyage.port;selectedExpeditionOffer=expeditionTrades(farm.freight.expeditions,voyage.port)[0].id}
-      if(perform(()=>receiveFerryExpedition(farm)))bayAudio.playEvent('harbour.crate')
+      if(perform(()=>receiveFerryExpedition(farm))) {
+        bayAudio.playEvent('harbour.crate')
+        if (keyboardClaim) {
+          const receipt = dialogContent.querySelector<HTMLElement>('.expedition-receipt')
+          receipt?.focus({preventScroll:true})
+          receipt?.scrollIntoView({block:'nearest'})
+        }
+      }
       break
     }
     case 'music-warehouse-visit': {

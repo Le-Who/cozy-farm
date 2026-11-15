@@ -1,4 +1,4 @@
-type FerryFocus = { action: string; value: string; area: 'offers' | 'selection' | 'panel' } | { summary: 'offers' | 'port-details' };
+type FerryFocus = { action: string; value: string; area: 'offers' | 'selection' | 'panel' } | { summary: 'offers' | 'port-details' } | { receipt: true };
 export type FerryPanelView = {
   offersOpen?: boolean;
   portDetailsOpen?: boolean;
@@ -19,7 +19,8 @@ export function captureFerryPanelView(host: HTMLElement): FerryPanelView | undef
       ? { action: (active as HTMLElement).dataset.action!, value: (active as HTMLElement).dataset.value ?? '',
         area: active.closest('.expedition-offers') ? 'offers' : active.closest('.expedition-selection') ? 'selection' : 'panel' }
       : active === offers?.querySelector('summary') ? { summary: 'offers' }
-        : active === portDetails?.querySelector('summary') ? { summary: 'port-details' } : undefined
+        : active === portDetails?.querySelector('summary') ? { summary: 'port-details' }
+          : active.matches('.expedition-receipt') ? { receipt: true } : undefined
     : undefined;
   return { offersOpen: offers?.open, portDetailsOpen: portDetails?.open,
     scroll: scrollAreas.map(selector => panel.querySelector<HTMLElement>(selector)?.scrollTop ?? 0), focus };
@@ -50,7 +51,7 @@ export function restoreFerryPanelView(host: HTMLElement, view: FerryPanelView | 
   if (!focus) return;
   const matches = 'action' in focus ? [...panel.querySelectorAll<HTMLButtonElement>('button[data-action]')]
     .filter(button => button.dataset.action === focus.action && (button.dataset.value ?? '') === focus.value) : [];
-  const target = 'summary' in focus
+  const target = 'receipt' in focus ? panel.querySelector<HTMLElement>('.expedition-receipt') ?? undefined : 'summary' in focus
     ? panel.querySelector<HTMLElement>(`.expedition-${focus.summary} > summary`) ?? undefined
     : matches.find(button => focus.area === 'panel' || button.closest(`.expedition-${focus.area}`)) ?? matches.find(canFocus);
   const picker = 'action' in focus && (focus.action === 'expedition-offer' || focus.action === 'expedition-pair');

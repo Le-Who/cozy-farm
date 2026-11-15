@@ -1,6 +1,6 @@
-import { createFarm } from '../../src/farm.ts';
+import { createFarm, endDay } from '../../src/farm.ts';
 import { combinedExpeditionId, expeditionOfferIds, type ExpeditionPort } from '../../src/ferry-expeditions.ts';
-import { expeditionWallet, sendFerryExpedition } from '../../src/harbour-economy.ts';
+import { expeditionWallet, sendFerryExpedition, receiveFerryExpedition } from '../../src/harbour-economy.ts';
 import { renderFreightPanelInto } from '../../src/bay-freight-ui.ts';
 import { captureFerryPanelView, restoreFerryPanelView } from '../../src/ferry-panel-view.ts';
 
@@ -89,6 +89,14 @@ export function runFerryPanelViewChecks(host: HTMLElement): string[] {
     check(dispatched === 1 && farm.freight.expeditions.active?.id === 'mill-grain','Only the explicit dispatch sends the currently selected order');
     check(!host.querySelector('.expedition-offers'),'A sent voyage does not restore a vanished order picker');
     check(document.activeElement === host.querySelector('.bay-freight-close'),'When dispatch disappears focus goes to the visible ferry close control');
+    endDay(farm); receiveFerryExpedition(farm); render();
+    check(document.activeElement === host.querySelector('.bay-freight-close'),'An ordinary settled redraw does not focus its receipt');
+    const receipt = host.querySelector<HTMLElement>('.expedition-receipt')!;
+    check(receipt.tabIndex === -1 && !receipt.hasAttribute('aria-live') && !receipt.hasAttribute('role'),'Receipt is a non-tabbable heading, not a duplicate live status');
+    receipt.focus({preventScroll:true}); render();
+    check(document.activeElement === host.querySelector('.expedition-receipt'),'An already focused receipt keeps focus on ordinary redraw');
+    activate('expedition-port','salt');
+    check(document.activeElement === button('expedition-port','salt'),'Switching ports keeps focus on the selected port, not the receipt');
   } finally { host.removeEventListener('click',clicked); }
   return results;
 }
