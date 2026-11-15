@@ -23,7 +23,7 @@ const guardedActions = new Set([
   'garden-slot', 'garden-edit', 'garden-copy', 'garden-cancel', 'garden-brush', 'garden-paint', 'garden-save', 'garden-follow', 'garden-delete', 'garden-remove', 'garden-bed',
   'visit-invite', 'visit-finish', 'visit-reply', 'visit-introduce-hen', 'visit-do', 'visit-book-home',
   'hen-walk-start', 'hen-walk-return',
-  'hen-friendship-open', 'hen-treat', 'pet',
+  'hen-friendship-open', 'hen-friend-select', 'hen-treat', 'pet',
   'chicken-feed-open', 'mix-chicken-feed',
   'harbour-fish-trade', 'harbour-fish-catch',
   'berry-nursery-ingredient', 'berry-nursery-source', 'berry-nursery-destination', 'berry-nursery-confirm', 'berry-nursery-reset',

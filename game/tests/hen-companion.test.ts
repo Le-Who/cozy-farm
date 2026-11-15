@@ -51,8 +51,8 @@ test('walk choices disclose the free relationship threshold, one companion and s
   const f=createFarm();f.henFriendship.hens[0].points=3
   const before=structuredClone(f),ready=renderHenFriendship(f)
   assert.match(ready,/data-action="hen-walk-start" data-value="0">Погулять вместе/)
-  assert.match(ready,/data-action="hen-walk-start" data-value="1" disabled/)
-  assert.match(ready,/Прогулка бесплатна/);assert.match(renderHenFriendship(f,null,false),/когда отобразится остров/)
+  assert.match(renderHenFriendship(f,null,true,1),/data-action="hen-walk-start" data-value="1" disabled/)
+  assert.match(ready,/Прогулка бесплатна/);assert.match(renderHenFriendship(f,null,false),/Когда отобразится остров/)
   assert.match(renderHenFriendship(f,{id:0,returning:false}),/data-action="hen-walk-return" data-value="0">Закончить прогулку/)
   assert.match(renderHenFriendship(f,{id:0,returning:true}),/data-action="hen-walk-return" data-value="0" disabled/)
   assert.deepEqual(f,before);for(const action of ['hen-walk-start','hen-walk-return'])assert.ok(isGuardedAction(action))

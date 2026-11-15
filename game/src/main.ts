@@ -377,6 +377,7 @@ type CommunityRequest = { kind: 'intent'; orderId: string } | { kind: 'neighbor'
 let communityRequest: CommunityRequest | undefined
 let communityOrderId = ''
 let communityResident: ResidentId = 'bea'
+let selectedFriendHen = 0
 let requestedFood: FoodOfferId | undefined
 let arrangementRequest: { kind: 'neighbor'; id: string } | { kind: 'packing'; mode: 'eggs' | 'crate' } | undefined
 const communitySelectionKey = 'cozy-farm-community-selection-v1'
@@ -1771,7 +1772,7 @@ function drawPanel() {
       dialogContent.innerHTML = renderNeighborVisits(farm, icon)
       break
     case 'hen-friendship':
-      dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable())
+      dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable(), selectedFriendHen, icon)
       break
     case 'chicken-feed':
       dialogContent.innerHTML = renderChickenFeedMixes(farm, icon)
@@ -3373,6 +3374,12 @@ app.addEventListener('click', async (event) => {
       closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
       if(index>=0)island.focusTarget({kind:kind==='crop'?'bed':'tree',index})
       else notify(kind==='crop'?'Пока нет зрелого урожая. Можно пригласить гостя после созревания.':'Пока нет спелых плодов. Можно пригласить гостя позднее.')
+      break
+    }
+    case 'hen-friend-select': {
+      if (panel !== 'hen-friendship' || !dialog.open || farm.island !== 'home' || !/^[0-4]$/.test(value ?? '') || Number(value) >= farm.flockSize) break
+      selectedFriendHen = Number(value)
+      drawPanel()
       break
     }
     case 'hen-walk-start': {
