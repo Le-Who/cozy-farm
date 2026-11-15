@@ -1,6 +1,7 @@
 import { playBaySound, prepareBaySoundScene, setBaySoundContact } from './game-sound'
 import { loadArtTexture } from './art-texture';
 import { ruCount } from './ru.ts'
+import { dishDefinitions } from './farm.ts'
 import * as THREE from 'three'
 import { doughVolume } from './workshop-geometry'
 import { doughTransferBuffers, executeDoughCut, packDoughGeometry, unpackDoughGeometry, type DoughCutRequest, type DoughCutResult } from './workshop-cut-transfer'
@@ -567,7 +568,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     root.dataset.stage = stage
     root.dataset.shape = chosenShape
     shapeButtons.forEach(button=>{button.disabled=contextLost||cutPending||stage==='baking'||stage==='finished'||stage==='transferring';button.setAttribute('aria-pressed',String(button.dataset.shape===chosenShape))})
-    const namedShape=shapeNames[chosenShape]
+    const namedShape=options.recipe==='bread'?dishDefinitions.farmhouseBread.name:shapeNames[chosenShape]
     resultLabel.textContent=stage==='baking'?'Тесто поднимается и румянится…':stage==='finished'?`${namedShape} · в запасах`:pieces.length?`Получится: ${namedShape.toLowerCase()}`:`Выберите форму · затем замесите тесто`
     resultLabel.hidden=!assetsReady||stage!=='baking'&&stage!=='finished'
     root.dataset.worked = String(work > .05)
