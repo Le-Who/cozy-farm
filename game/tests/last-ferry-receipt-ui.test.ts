@@ -16,7 +16,7 @@ test.before(async () => {
 test.after(async () => { await server?.close() })
 function receipt(farm: FarmState, port: ExpeditionPort = 'mill', name = 'Круглая булочка') {
   const html = renderPanel(farm.freight, {day:farm.day,coins:farm.coins,boatOwned:farm.boatOwned,
-    expeditionPort:port,playerPort:'home',openedPorts:['home','grove'],products:[{id:'handmade:round',name,icon:''}],
+    expeditionPort:port,playerPort:'home',openedPorts:['home','grove'],products:[{id:'handmade:round',name,icon:''},{id:'eggs',name:'Яйцо',icon:''}],
     carried:expeditionWallet(farm).bag,icon:()=>''})
   return html.match(/<h4 class="expedition-receipt" tabindex="-1">([\s\S]*?)<\/h4>/)?.[1] ?? ''
 }
@@ -27,7 +27,7 @@ test('the compact receipt names its actual port and frozen ten coins in every se
   for (let reload = 0; reload < 2; reload++) {
     const before = structuredClone(farm)
     for (const port of ['mill','salt','orchard'] as const) {
-      assert.match(receipt(farm, port), /Прошлый груз получен · Мельничный посад · день 10 · 10 монет/)
+      assert.match(receipt(farm, port), /Прошлый груз получен · Мельничный посад · день 10 · Пшеница ×2 → 10 монет/)
       assert.doesNotMatch(receipt(farm, port), /8 монет|Соляной маяк|Садовая пристань|data-action/)
     }
     assert.deepEqual(farm, before)
@@ -37,9 +37,11 @@ test('the compact receipt names its actual port and frozen ten coins in every se
 
 test('goods, paid purchases, combined harvest premiums and exploration render only their settled outcome', () => {
   for (const [offer, expected, bonus] of [
-    ['mill-buy', /Круглая булочка ×1$/, 0],
-    ['pair:mill-grain+mill-eggs', /Круглая булочка ×2 · 13 монет$/, 3],
-    ['explore-salt', /^Новый порт на карте · Соляной маяк · день 2$/, 0],
+    ['mill-buy', /день 2 · 15 монет → Круглая булочка ×1$/, 0],
+    ['mill-baking', /Пшеница ×4 \+ 10 монет → Круглая булочка ×2$/, 0],
+    ['pair:mill-sale+mill-buy', /Пшеница ×2 \+ 5 монет → Круглая булочка ×1$/, 0],
+    ['pair:mill-grain+mill-eggs', /Яйцо ×4 \+ Пшеница ×4 → Круглая булочка ×2 \+ 13 монет$/, 3],
+    ['explore-salt', /^Новый порт на карте · Соляной маяк · день 2 · отдали: Пшеница ×2$/, 0],
   ] as const) {
     let farm = createFarm()
     farm.boatOwned = true; farm.coins = 100; farm.produce.wheat = 10; farm.eggs = 8
@@ -53,7 +55,7 @@ test('goods, paid purchases, combined harvest premiums and exploration render on
     farm = restoreFarm(JSON.parse(JSON.stringify(farm)))!
     assert.deepEqual(farm.freight.expeditions.last, settled)
     assert.match(receipt(farm, 'orchard'), expected)
-    assert.doesNotMatch(receipt(farm, 'orchard'), /Садовая пристань|data-action|оплат|15 монет/)
+    assert.doesNotMatch(receipt(farm, 'orchard'), /Садовая пристань|data-action|оплат/)
   }
 })
 
