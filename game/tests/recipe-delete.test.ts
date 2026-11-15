@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { createServer } from 'vite'
 import { forgetSignature, repeatSignature, restoreFarm } from '../src/farm.ts'
 import { ActivationKeyGuard, installActionClickGuard, isGuardedAction } from '../src/action-click-guard.ts'
 import { recipeDeleteFixture } from './fixtures/recipe-delete.ts'
@@ -79,9 +80,25 @@ test('held activation cannot leak from a deleted recipe to the replacement contr
   assert.equal(guard.blocks({ key: 'Enter', repeat: false }, true), false)
 })
 
-test('book deletion continues to carry the exact recipe ID into the domain action', () => {
-  const ui = readFileSync(new URL('../src/culinary-ui.ts', import.meta.url), 'utf8')
+test('rendered book deletion offers only the selected empty recipe ID and retains domain guards', async () => {
+  const server = await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try {
+    const { signatureBook } = await server.ssrLoadModule('/src/culinary-ui.ts')
+    const farm = recipeDeleteFixture(), before = structuredClone(farm)
+    const art = {icon:()=>'<img alt="">',stock:()=>''}
+    const render = (selectedId:string) => signatureBook(farm,art,{selectedId,mode:'detail'})
+    const ids = (html:string) => [...html.matchAll(/data-action="forget-signature" data-value="([^"]+)"/g)].map(match=>match[1])
+    assert.deepEqual(ids(render('s1')),['s1'])
+    assert.deepEqual(ids(render('s2')),['s2'])
+    assert.deepEqual(farm,before)
+    assert.ok(forgetSignature(farm,'s1').ok)
+    assert.deepEqual(ids(render('s1')),['s3'],'a stale detail cannot expose the deleted recipe ID')
+    farm.culinary.recipes.find(recipe=>recipe.id==='s2')!.favorite=true
+    assert.deepEqual(ids(render('s2')),[])
+    farm.culinary.stock.s3=1
+    assert.deepEqual(ids(render('s3')),[])
+  } finally { await server.close() }
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
-  assert.ok(ui.includes('data-action="forget-signature" data-value="${recipe.id}"'))
-  assert.match(main, /case 'forget-signature':if\(value\)perform\(\(\)=>forgetSignature\(farm,value!\),false,true\)/)
+  const handler = main.slice(main.indexOf("case 'forget-signature':"),main.indexOf("case 'recipe-surplus-choose':"))
+  assert.match(handler, /perform\(\s*\(\)\s*=>\s*forgetSignature\(farm,\s*value!?\)/)
 })

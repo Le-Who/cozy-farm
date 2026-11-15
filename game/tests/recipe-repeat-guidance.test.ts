@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { createServer } from 'vite'
 import { getRecipeRepeatGuide, renderRecipeRepeatGuide } from '../src/recipe-repeat-guidance.ts'
 import { repeatSignature, restoreFarm, sail, unpackEggBasket, completeSignature, favoriteSignature, forgetSignature, createFarm } from '../src/farm.ts'
 import { isGuardedAction } from '../src/action-click-guard.ts'
 import { recipeRepeatReturnFixture } from './fixtures/recipe-repeat-return.ts'
+import { RecipeBookNavigation } from '../src/recipe-book-view.ts'
 
 const stock = (item: {kind:string,item?:string,trait?:string,quantity:number}) => `<li>${item.kind}:${item.item??''}:${item.trait??''} ×${item.quantity}</li>`
 
@@ -89,10 +91,24 @@ test('stale or removed recipe IDs cannot show another recipe or become a new dra
   assert.deepEqual(farm,before)
 })
 
-test('book integration keeps exact repeat, guards travel, and restores the disclosure with Back', () => {
-  const ui=readFileSync(new URL('../src/culinary-ui.ts',import.meta.url),'utf8')
+test('rendered book keeps exact repeat and restores the selected recipe disclosure with Back', async () => {
+  const server = await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try {
+    const { signatureBook } = await server.ssrLoadModule('/src/culinary-ui.ts')
+    const {farm,recipeId}=recipeRepeatReturnFixture('missing')
+    const before=structuredClone(farm),nav=new RecipeBookNavigation()
+    assert.ok(nav.select(farm,recipeId,true))
+    const art = {icon:()=>'<img alt="">',stock}
+    const html=signatureBook(farm,art,nav.view)
+    assert.match(html,new RegExp(`data-repeat-guide="${recipeId}" open`))
+    assert.match(html,/fruit:apple: ×2[\s\S]*produce:wheat: ×1[\s\S]*eggs:: ×1/)
+    assert.match(html,new RegExp(`data-action="make-signature" data-value="${recipeId}"[^>]*disabled`))
+    const saved=structuredClone(nav.view)
+    nav.index();nav.load(saved)
+    assert.equal(signatureBook(farm,art,nav.view),html)
+    assert.deepEqual(farm,before)
+  } finally { await server.close() }
   const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
-  assert.match(ui,/renderRecipeRepeatGuide\(farm,recipe.id,art.stock,expandedRepeatId===recipe.id\)/)
   assert.match(main,/expandedRepeatId=previous.expandedRepeatId/)
   const handler=main.slice(main.indexOf("case 'recipe-repeat-home':"),main.indexOf("case 'make-signature':"))
   assert.match(handler,/if\(!recipe\)break/)

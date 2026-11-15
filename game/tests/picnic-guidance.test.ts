@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { createServer } from 'vite'
 import { createFarm, restoreFarm, completeSignature, useSignature, repeatSignature, cookDish, endDay, beginFishingTrip, cancelFishingTrip, workBed, collectEggs } from '../src/farm.ts'
 import { type CookeryResult, type SignatureProcessing, signatureProcessingIds } from '../src/culinary.ts'
 import { createFishingPractice } from '../src/fishing-practice.ts'
@@ -141,11 +142,30 @@ test('quota note uses reachable islands and current limits, without blocking pic
   assert.equal(picnicLimitNote(farm, 'silky'), '')
 })
 
-test('book and home are wired to pure visible guidance, with no new action or expiry policy', () => {
-  const book = readFileSync(new URL('../src/culinary-ui.ts', import.meta.url), 'utf8')
+test('the rendered recipe book shows the exact picnic cost and marks an active effect without spending it', async () => {
+  const server = await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try {
+    const { signatureBook } = await server.ssrLoadModule('/src/culinary-ui.ts')
+    const { farm, id } = recipeFarm('silky')
+    const art = {icon:()=>'<img alt="">',stock:()=>''}
+    const view = {selectedId:id,mode:'detail',disclosures:['picnic-offer','picnic-status']}
+    const before = structuredClone(farm)
+    const offer = signatureBook(farm,art,view)
+    assert.match(offer, new RegExp(`data-action="use-signature" data-value="${id}"(?![^>]*disabled)[^>]*>Пикник · 1 порция<`))
+    assert.match(offer, /data-recipe-disclosure="picnic-offer" open/)
+    assert.ok(offer.includes(renderPicnicOffer(farm,'silky')))
+    assert.deepEqual(farm,before)
+    assert.equal(useSignature(farm,id).ok,true)
+    const active = structuredClone(farm)
+    const book = signatureBook(farm,art,view)
+    assert.match(book, /data-recipe-disclosure="picnic-status" open/)
+    assert.ok(book.includes(renderPicnicStatus(farm)))
+    assert.match(book, /data-action="use-signature"[^>]*disabled/)
+    assert.deepEqual(farm,active)
+  } finally { await server.close() }
+})
+
+test('the rest panel is wired to the existing nonmutating picnic warning', () => {
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
-  assert.match(book, /renderPicnicStatus\(farm\)/)
-  assert.match(book, /renderPicnicOffer\(farm,recipe.processing\)/)
-  assert.match(book, /Устроить пикник · 1 порция/)
   assert.match(main, /case 'rest':[\s\S]*?renderPicnicStatus\(farm,true\)/)
 })
