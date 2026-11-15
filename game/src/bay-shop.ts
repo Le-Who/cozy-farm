@@ -10,6 +10,7 @@ import './bay-shop.css';
 import { BayShopCustomerView, renderBayShopCustomers } from './bay-shop-customers';
 import './bay-shop-customers.css';
 import { placeShopQuantity, shopQuantityPreview } from './bay-shop-quantity';
+import { shopRemainderQuote, shopReturnLabel } from './bay-shop-price-copy';
 import { applyIngredientFinishes } from './ingredient-finish';
 
 export type BayShopOptions = {
@@ -72,9 +73,10 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     }
     const selectedPanel = slot ? `<div class="bay-shop-selected">
       <span class="bay-shop-selected-art">${art(slot.product)}</span><div><strong data-user-text>${escape(slot.product.name)}</strong><span>На полке ×${slot.quantity}</span></div>
-      <label class="bay-shop-price">Цена <span><input data-price type="number" inputmode="numeric" min="1" max="10000" step="1" value="${slot.price}" aria-label="Цена товара в монетах"><span aria-hidden="true">●</span></span></label>
+      <label class="bay-shop-price">За 1 шт. <span><input data-price type="number" inputmode="numeric" min="1" max="10000" step="1" value="${slot.price}" aria-label="Цена за одну штуку в монетах"><span aria-hidden="true">●</span></span></label>
       <div class="bay-shop-price-presets" aria-label="Быстрая цена">${[[.8, '−20%'], [1, 'Обычно'], [1.35, '+35%']].map(([factor, label]) => `<button type="button" data-price-factor="${factor}" aria-label="${label}: ${Math.max(1, Math.round(slot.product.basePrice * Number(factor)))} монет" aria-pressed="${slot.price === Math.max(1, Math.round(slot.product.basePrice * Number(factor)))}">${label}</button>`).join('')}</div>
-      <button type="button" class="bay-shop-return" data-return aria-label="Убрать товар в запас" title="Убрать в запас">↶</button>
+      <button type="button" class="bay-shop-return" data-return aria-label="${shopReturnLabel(slot.quantity)}" title="${shopReturnLabel(slot.quantity)}">↶</button>
+      <p class="bay-shop-remainder" data-shelf-quote>${shopRemainderQuote(slot.quantity,slot.price)}</p>
       </div>` : `<p class="bay-shop-empty-slot">Выберите товар и количество для полки.</p>`;
     return `${selectedPanel}<div class="bay-shop-stock-heading"><strong>Припасы</strong></div>
       <div class="bay-shop-products">${products.length ? products.map(product => {
@@ -222,7 +224,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!product || !output || !confirm) return;
     const preview = shopQuantityPreview(state, selected, product, Number(pending.quantity));
     confirm.disabled = !preview.valid;
-    output.textContent = preview.valid ? `На полке будет: ${preview.after}. Останется в запасе: ${preview.remaining}. Цена за штуку: ${ruCount(preview.price,'монета','монеты','монет')}. Выручка появится после покупки посетителем.`
+    output.textContent = preview.valid ? `На полке будет: ${preview.after} · в запасе останется: ${preview.remaining}. За 1: ${ruCount(preview.price,'монета','монеты','монет')}. ${shopRemainderQuote(preview.after,preview.price)} Оплата только за купленное.`
       : `Укажите целое количество от 1 до ${preview.maximum}.`;
   }
   function quantityInput(event: Event): void {
@@ -253,6 +255,8 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       notice = 'Цена сохранена'; options.onChange();
       const slot = state.slots[selected]!, shelf = host.querySelector<HTMLElement>(`[data-slot="${selected}"]`);
       shelf?.setAttribute('aria-label', `Место ${selected + 1}: ${slot.product.name}, остаток ${slot.quantity}, цена ${slot.price} монет`);
+      const quote = host.querySelector<HTMLElement>('[data-shelf-quote]');
+      if (quote) quote.textContent = shopRemainderQuote(slot.quantity,slot.price);
       const label = shelf?.querySelector('.bay-shop-shelf-label');
       if (label) label.innerHTML = `${money(slot.price)} <span aria-hidden="true">●</span><small>×${slot.quantity}</small>`;
       for (const preset of host.querySelectorAll<HTMLButtonElement>('[data-price-factor]')) {

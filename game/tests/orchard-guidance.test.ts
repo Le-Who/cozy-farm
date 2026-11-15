@@ -13,9 +13,9 @@ test('a missing peach in a full orchard leads to safe relocation, not occupied p
   const before = structuredClone(farm);
   const task = getSupplyGuidance(farm, peach, 'парфе');
   assert.equal(task.action.target, 'orchard');
-  assert.match(task.detail, /питомник/);
+  assert.match(task.detail, /хранени/);
   assert.equal(getRequirementHint(farm, { kind: 'stock', item: peach }).action.target, 'orchard');
-  assert.match(getRequirementHint(farm, { kind: 'stock', item: peach }).notice!, /питомник/);
+  assert.match(getRequirementHint(farm, { kind: 'stock', item: peach }).notice!, /хранени/);
   assert.deepEqual(farm, before);
 });
 
@@ -65,7 +65,7 @@ test('ripe nursery guidance frees space first and leaves ready orchard fruit as 
   assert.equal(storeTree(farm, 1).ok, true);
   for (const island of ['home', 'grove'] as const) farm.trees[island] = Array.from({ length: 3 }, () => ({ tree: 'peach', age: 0, fruitReady: 0 }));
   assert.equal(getSupplyGuidance(farm, peach, 'парфе').action.target, 'orchard');
-  assert.match(getRequirementHint(farm, { kind: 'stock', item: peach }).notice!, /питомник/);
+  assert.match(getRequirementHint(farm, { kind: 'stock', item: peach }).notice!, /хранени/);
   farm.trees.grove[2] = null;
   assert.equal(getSupplyGuidance(farm, peach, 'парфе').action.value, 'grove');
   farm.island = 'grove';

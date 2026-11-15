@@ -1212,13 +1212,13 @@ export function storeTree(farm: FarmState, slot: number): ActionResult {
   farm.treeNursery.push({ id, tree: { ...tree } });
   farm.trees[farm.island][slot] = null;
   farm.workToday += 1;
-  return { ok: true, message: `${treeDefinitions[tree.tree].treeName} в питомнике. Возраст и плоды сохранены. Место свободно.` };
+  return { ok: true, message: `${treeDefinitions[tree.tree].treeName} на хранении. Возраст, плоды и особенность сохранены. Место свободно.` };
 }
 
 export function returnNurseryTree(farm: FarmState, slot: number, nurseryId: number): ActionResult {
   if (!isId(orchardIslandIds, farm.island)) return failure('Верните дерево в сад на Родном острове или в Солёной роще.');
   if (!Number.isInteger(slot) || slot < 0 || slot >= treeSlotCount || farm.trees[farm.island][slot] !== null) {
-    return failure('Сначала освободите место в саду: перенесите дерево в питомник.');
+    return failure('Сначала освободите место в саду: уберите другое дерево на хранение.');
   }
   const index = farm.treeNursery.findIndex(entry => entry.id === nurseryId);
   if (index < 0) return failure('Это дерево уже возвращено в сад.');

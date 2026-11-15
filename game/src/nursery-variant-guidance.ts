@@ -16,5 +16,5 @@ export function getNurseryVariantSource(farm:FarmState,request:VariantRequest){
 }
 
 export function nurseryVariantNotice(request:VariantRequest):string{
- return `В питомнике сохранено: ${variantLabel(request.item,request.trait).name} ×1. Бесплатно верните выделенное дерево на свободное место в саду, затем отдельно соберите его плоды. В питомнике собирать нельзя.`;
+ return `На сохранённом дереве: ${variantLabel(request.item,request.trait).name} ×1. Бесплатно верните выделенное дерево на свободное место в саду, затем отдельно соберите его плоды. На хранении собирать нельзя.`;
 }

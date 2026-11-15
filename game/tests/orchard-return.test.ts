@@ -19,7 +19,7 @@ test('a paused adult is a one-night source when a reachable free slot exists', (
   const f=fixture(), before=structuredClone(f);
   assert.deepEqual(getFruitSource(f,'peach'), {island:'home',slot:1,kind:'return',nurseryId:7,nights:1});
   const task=getSupplyGuidance(f,peach,'пирог'), hint=getRequirementHint(f,{kind:'stock',item:peach});
-  assert.deepEqual(task.action,{label:'К дереву в питомнике',target:'orchard',value:'7'});
+  assert.deepEqual(task.action,{label:'К дереву на хранении',target:'orchard',value:'7'});
   assert.match(task.detail,/следующим утром/); assert.match(task.detail,/рост на паузе/);
   assert.match(hint.selector!,/data-value="7"/); assert.deepEqual(f,before);
   const loaded=restoreFarm(JSON.parse(JSON.stringify(f)))!;

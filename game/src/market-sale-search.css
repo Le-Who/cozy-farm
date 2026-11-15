@@ -27,3 +27,16 @@
     font-size:12px; white-space:nowrap; padding-inline:2px;
   }
 }
+.market-sale-family-select { display: grid; gap: 3px; min-width: 0; font-size: 13px; font-weight: 700; }
+.market-sale-family-select select { min-width: 0; width: 100%; min-height: 44px; border: 1px solid #d7ae79; border-radius: 10px; background: #fffaf0; color: #50374e; font: inherit; }
+.market-sale-filters[data-family="true"] { display: grid; grid-template-columns: 164px minmax(0,1fr); align-items: start; gap: 8px; }
+@media (max-width: 450px) {
+  .market-sale-groups, .market-sale-family-select { display: none; }
+  .market-sale-group-select { display: grid; gap: 3px; font-size: 13px; font-weight: 700; }
+  .market-sale-group-select select { width: 100%; min-height: 44px; border: 1px solid #d7ae79; border-radius: 10px; background: #fffaf0; color: #50374e; font: inherit; }
+  .market-sale-filters, .market-sale-filters[data-family="true"] { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; }
+}
+@media (max-height: 400px) and (orientation: landscape) {
+  .market-sale-family-select { display: none; }
+  .market-sale-filters, .market-sale-filters[data-family="true"] { display: grid; grid-template-columns: minmax(112px,33%) minmax(0,1fr); gap: 8px; }
+}
