@@ -186,7 +186,13 @@ export function presentFerryDeparture(host: HTMLElement): boolean {
 /** Called only after a pending arrival is consumed by the first visible panel opening. */
 export function presentFerryArrival(host: HTMLElement): boolean {
   const panel = host.querySelector<HTMLElement>('.bay-freight[data-expedition-phase="ready"]');
-  if (!panel || panel.dataset.expeditionArriving === 'true') return false;
+  if (!panel || panel.dataset.expeditionArriving === 'true'
+    || host.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
   panel.dataset.expeditionArriving = 'true';
+  const settle = (event: AnimationEvent) => {
+    if (event.animationName === 'expedition-arrive') delete panel.dataset.expeditionArriving;
+  };
+  panel.addEventListener('animationend', settle);
+  panel.addEventListener('animationcancel', settle);
   return true;
 }
