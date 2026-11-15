@@ -2,6 +2,7 @@ import { syncHomeVisitor, stepHomeVisitor, type HomeVisitor } from './neighbor-v
 import { canWalkWithHen, createHenCompanion, returnHenCompanion, stepHenCompanion, type HenCompanion, type HenCompanionStatus } from './hen-companion';
 import { playBaySound } from './game-sound'
 import {BedPointerGuard} from './bed-work-intent'
+import {compactFieldHintRooms, fieldHintOverlaps, type FieldHintBands} from './field-hint'
 import { bayAudio } from './bay-audio'
 import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
 import { cookeryFinishTraits, type SignatureRecipe } from './culinary';
@@ -43,6 +44,8 @@ type CapeWork = { target: { kind: 'flower'; index: number } | { kind: 'hive' | '
 
 const servedJars = new WeakMap<SignatureRecipe, HTMLImageElement | HTMLCanvasElement>();
 const WORLD = { w: 1440, h: 900 };
+const fieldRight = Math.max(...plots.map(plot => plot.center.x + plot.w / 2));
+const fieldLeft = Math.min(...plots.map(plot => plot.center.x - plot.w / 2));
 const HOME = scenePoint(1174, 585);
 const sceneOrigin=scenePoint(0,0);
 const nativeHenPoint=(point:Point):HenNativePoint=>({x:(point.x-sceneOrigin.x)/sceneScale,y:(point.y-sceneOrigin.y)/sceneScale});
@@ -338,7 +341,7 @@ function roundTurns(points: Point[]): Point[] {
 
 export function createIsland(
   canvas: HTMLCanvasElement,
-  { inspect, activate, moveHen, harbourViewChanged, henWalkChanged }: { henWalkChanged?: () => void; harbourViewChanged?: (view: HarbourView, traveling: boolean) => void; inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
+  { inspect, activate, moveHen, harbourViewChanged, henWalkChanged, fieldHintBands }: { fieldHintBands?: () => FieldHintBands; henWalkChanged?: () => void; harbourViewChanged?: (view: HarbourView, traveling: boolean) => void; inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
 ) {
   const hint = document.createElement('div');
   hint.className = 'island-hint';
@@ -983,16 +986,48 @@ export function createIsland(
     });
   }
 
+  let hintMeasureKey = '', hintMaxWidth = '';
+  const hintMeasures = new Map<number, { width: number; height: number }>();
+  function setHintWidth(width = 0) {
+    const value = width ? `${width}px` : '';
+    if (value !== hintMaxWidth) { hint.style.maxWidth = value; hintMaxWidth = value; }
+  }
+  function measureHint(width = 0) {
+    let measured = hintMeasures.get(width);
+    if (!measured) { setHintWidth(width); measured = { width: hint.offsetWidth, height: hint.offsetHeight }; hintMeasures.set(width, measured); }
+    return measured;
+  }
   function paintHint(area: Area | undefined): void {
     const label = area && inspect(area.target);
     hint.hidden = !label;
     if (!area || !label) return;
     if (hint.textContent !== label) hint.textContent = label;
+    const measureKey = `${label}|${viewport.width}|${viewport.height}`;
+    if (measureKey !== hintMeasureKey) { hintMeasures.clear(); hintMeasureKey = measureKey; }
+    const normal = measureHint();
     const x = offset.x + area.center.x * scale;
     const y = offset.y + (area.center.y - Math.min(area.h * 0.54, 57) - 10) * scale;
-    hint.style.left = `${clamp(x, hint.offsetWidth / 2 + 10, viewport.width - hint.offsetWidth / 2 - 10)}px`;
+    const normalLeft = clamp(x, normal.width / 2 + 10, viewport.width - normal.width / 2 - 10);
+    const normalTop = Math.max(normal.height + 8, y);
+    if (fieldView && viewport.width > viewport.height && viewport.height < 480 && state?.island === 'home' && area.target.kind === 'bed') {
+      const bands = fieldHintBands?.();
+      if (bands && fieldHintOverlaps({ x: normalLeft - normal.width / 2, y: normalTop - normal.height, ...normal }, bands.obstacles)) {
+        const field = { left: offset.x + fieldLeft * scale, right: offset.x + fieldRight * scale };
+        for (const room of compactFieldHintRooms(viewport, field, bands)) {
+          const measured = measureHint(room.maxWidth);
+          const moved = { x: room.x, y: room.bottom - measured.height, ...measured };
+          if (moved.y < room.top || fieldHintOverlaps(moved, bands.obstacles)) continue;
+          setHintWidth(room.maxWidth);
+          hint.style.left = `${room.x + measured.width / 2}px`;
+          hint.style.top = `${room.bottom}px`;
+          return;
+        }
+      }
+    }
+    setHintWidth();
+    hint.style.left = `${normalLeft}px`;
     const framed = state?.island === 'village' && harbourCamera(harbourViewport(), harbourJourney ? 'overview' : harbourView).close;
-    hint.style.top = `${framed ? clamp(y, harbourInsets.top + hint.offsetHeight + 8, viewport.height - harbourInsets.bottom - 8) : Math.max(hint.offsetHeight + 8, y)}px`;
+    hint.style.top = `${framed ? clamp(y, harbourInsets.top + normal.height + 8, viewport.height - harbourInsets.bottom - 8) : normalTop}px`;
   }
 
   function paintWaypoint(x: number, y: number, time: number, color: string): void {

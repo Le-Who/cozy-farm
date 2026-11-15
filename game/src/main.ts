@@ -509,6 +509,7 @@ const fieldLayout = window.matchMedia(`${portraitView.media}, (max-width: 900px)
 const numberFormat = new Intl.NumberFormat('ru-RU')
 let toastTimer: number | undefined
 let dialogFeedbackTimer:number|undefined
+let fieldHintCache: { key: string; value: ReturnType<typeof readFieldHintBands> } | undefined
 
 function textAt(id: string, value: string) {
   document.getElementById(id)!.textContent = value
@@ -569,6 +570,7 @@ function currentTask() {
 }
 
 function status() {
+  fieldHintCache = undefined
   updateCommunityReturn()
   const tool = tools.find(({ id }) => id === activeTool)!
   const goal = currentTask()
@@ -2213,7 +2215,24 @@ function updateFieldContext(index: number | undefined) {
   if (contextIcon.getAttribute('src') !== source) contextIcon.src = source
 }
 
+function readFieldHintBands() {
+  const origin = canvas.getBoundingClientRect()
+  const obstacles = [...app.querySelectorAll<HTMLElement>('.status-bar,.hud-actions,.task-card,.view-toggle,.island-location,.garden-mode,.hud-hint,.hotbar,.toast:not(.sr-only)')].map(control => {
+    const box = control.getBoundingClientRect()
+    return { x: box.x - origin.x, y: box.y - origin.y, width: box.width, height: box.height }
+  })
+  return { obstacles, top: app.querySelector<HTMLElement>('.hud-top')!.getBoundingClientRect().bottom - origin.y,
+    bottom: app.querySelector<HTMLElement>('.hotbar')!.getBoundingClientRect().top - origin.y }
+}
+
 const island = createIsland(canvas, {
+  fieldHintBands() {
+    // Status changes clear the cache; viewport and transient result changes have
+    // their own keys. Stable animation frames never query or measure the HUD.
+    const key = `${innerWidth}|${innerHeight}|${visualViewport?.width}|${visualViewport?.height}|${fieldViewButton.textContent}|${toast.hidden}|${toast.className}|${toast.textContent}`
+    if (fieldHintCache?.key !== key) fieldHintCache = { key, value: readFieldHintBands() }
+    return fieldHintCache.value
+  },
   henWalkChanged: () => { if (dialog.open && panel === 'hen-friendship') drawPanel() },
   harbourViewChanged: (view, traveling) => harbourControls?.select(view, traveling),
   moveHen(index, point) {
