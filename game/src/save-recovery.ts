@@ -26,6 +26,7 @@ export function mountSaveRecovery(source: RecoverySource) {
   const download = dialog.querySelector<HTMLButtonElement>('[data-recovery="download"]')!
   const retry = dialog.querySelector<HTMLButtonElement>('[data-recovery="retry"]')!
   const resume = dialog.querySelector<HTMLButtonElement>('[data-recovery="continue"]')!
+  let conflictNotified = source.issue === 'changed'
   const update = () => {
     notice.hidden = !source.issue
     notice.textContent = source.blocked ? 'Сохранение защищено · Подробнее' : 'Прогресс не сохранён · Подробнее'
@@ -46,6 +47,12 @@ export function mountSaveRecovery(source: RecoverySource) {
           ? 'Браузер не дал прочитать сохранение. Запись остановлена: существующая ферма не будет заменена новой. Проверьте доступ к данным сайта и повторите загрузку.'
           : 'Браузер не смог записать последний прогресс. Предыдущее сохранение не изменено. Освободите место или разрешите хранение данных сайта; следующее действие попробует сохранить снова.'
     download.disabled = typeof source.raw !== 'string'
+    // An outside notice is inert behind an open game dialog. Surface a newly
+    // detected collision once, but respect continuing the now read-only session.
+    if (source.issue === 'changed' && !conflictNotified) {
+      conflictNotified = true
+      show()
+    }
   }
   const show = () => {
     update()

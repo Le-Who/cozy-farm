@@ -20,6 +20,8 @@ import {ruCount} from './ru.ts';
 
 export type DiscoveryTask = {
   id: string; label: string; detail: string; icon: string; progress: number; target: number;
+  /** Ephemeral identity shared only by the available unfinished dock supply routes. Never saved. */
+  bookmarkScope?: 'dock-supplies';
   reward?: number; action: { label: string; target: string; value?: string };
 };
 export type DiscoverySeen = { collections: boolean; islands: boolean };
@@ -284,9 +286,12 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
     : home(farm, task('farmhouse-upgrade', 'Улучшите дом', 'Большая кухня открывает новые блюда и выбор специализации.', 'upgrade-farmhouse-card', { label: 'Улучшения', target: 'upgrades' }));
   const dock = getProject(farm, 'dock');
   if (!isProjectComplete(farm, 'dock')) {
-    if (dock.items.some(item => item.available > 0)) return farm.island !== 'grove'
-      ? task('grove', 'Посетите Солёную рощу', 'Привезите припасы к причалу рощи.', 'boat', { label: 'В рощу', target: 'sail', value: 'grove' })
-      : task('dock', 'Постройте причал рощи', 'Доставьте припасы, чтобы открыть путь к цветам и мёду. Специализация кухни позже добавит заказы гавани.', 'boat', { label: 'Припасы для причала', target: 'project-dock' });
+    if (dock.items.some(item => item.available > 0)) {
+      const next = farm.island !== 'grove'
+        ? task('grove', 'Посетите Солёную рощу', 'Привезите припасы к причалу рощи.', 'boat', { label: 'В рощу', target: 'sail', value: 'grove' })
+        : task('dock', 'Постройте причал рощи', 'Доставьте припасы, чтобы открыть путь к цветам и мёду. Специализация кухни позже добавит заказы гавани.', 'boat', { label: 'Припасы для причала', target: 'project-dock' });
+      return { ...next, bookmarkScope: 'dock-supplies' };
+    }
     const missing = dock.items.find(({ item, delivered }) => delivered < item.quantity)!;
     return supply(farm, { ...missing.item, quantity: missing.item.quantity - missing.delivered }, 'причал рощи');
   }

@@ -1,5 +1,6 @@
 import type { DiscoveryTask } from './discovery-path.ts';
 import type { DiscoveryPreferences } from './discovery-preferences.ts';
+import { isCurrentDiscoveryIdea } from './discovery-guidance.ts';
 import { ruCount } from './ru.ts';
 
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]!);
@@ -17,7 +18,7 @@ function progress(goal: JournalGoal): string {
 /** Keep the selected/current action ahead of context without repeating it as a suggestion. */
 export function renderDiscoveryGuidance(preferences: DiscoveryPreferences, suggested?: DiscoveryTask, goal?: JournalGoal): { focus: string; settings: string } {
   const idea = preferences.idea;
-  const current = idea && suggested?.id === idea.id ? suggested : undefined;
+  const current = isCurrentDiscoveryIdea(idea, suggested) ? suggested : undefined;
   const chosen = current ?? idea;
   const active = preferences.quiet ? undefined : goal;
   const pinId = !idea && active && suggested && active.id === suggested.id ? suggested.id : undefined;
@@ -30,7 +31,7 @@ export function renderDiscoveryGuidance(preferences: DiscoveryPreferences, sugge
     <h3>${preferences.quiet ? 'В своём ритме' : 'Подсказки и своя задумка'}</h3>
     <p>${preferences.quiet ? 'Подсказки на острове скрыты. Открытые занятия и выбранная задумка остаются доступны.' : 'Можно убрать подсказки с острова и вернуться к выбранной задумке позже.'}</p>
     <div class="dialog-grid dialog-nav">${button(preferences.quiet ? 'Показать подсказки' : 'В своём ритме', 'discovery-pace', preferences.quiet ? 'guided' : 'quiet', true)}</div>
-    ${suggested && suggested.id !== idea?.id && !pinId ? `<div class="discovery-choice"><small>Предложенная задумка</small><strong>${escape(suggested.label)}</strong>${button('Выбрать задумку', 'discovery-pin', suggested.id, true)}</div>` : ''}
+    ${suggested && !current && !pinId ? `<div class="discovery-choice"><small>Предложенная задумка</small><strong>${escape(suggested.label)}</strong>${button('Выбрать задумку', 'discovery-pin', suggested.id, true)}</div>` : ''}
   </section>`;
   return { focus, settings };
 }
