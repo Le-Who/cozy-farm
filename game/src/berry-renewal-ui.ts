@@ -1,5 +1,5 @@
-import { berryCropIds, cropDefinitions, getBedHarvestPreview, getBedStage, getBerryRenewalPreview, variantLabel, type FarmState } from './farm.ts'
-import { transplantBedDescription } from './bed-transplant.ts'
+import { berryCropIds, cropDefinitions, getBedHarvestPreview, getBerryRenewalPreview, variantLabel, type FarmState } from './farm.ts'
+import { gardenCell } from './garden-spatial.ts'
 import { ruCount } from './ru.ts'
 
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]!))
@@ -37,14 +37,30 @@ export function renderBerryRenewal(farm: FarmState, selection: BerryRenewalSelec
       ${quote.picnicBonus ? '<p class="dialog-status">В показанный урожай уже включена одна дополнительная обычная ягода от пикника. Этот бонус расходуется один раз, как при обычном сборе.</p>' : ''}
       <div class="dialog-actions">${button(`Бережно собрать ×${quote.total}`, 'berry-renewal-confirm', quote.token)}${button('К посадке без сбора', 'berry-renewal-bed', String(quote.index))}${button('Отменить выбор', 'berry-renewal-reset')}</div></section>`
   }
-  const beds = farm.beds.flatMap((bed, index) => bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop) ? [{ bed, index }] : [])
-  return `<section class="bed-transplant berry-nursery"><h2 class="transplant-step" tabindex="-1">Свой ягодник</h2>
-    <p>Одни посадки собирайте целиком, другие оставляйте на будущие урожаи. Бережный сбор даёт одну ягоду вместо обычных трёх и сохраняет посадку. Она снова растёт с начала, без новых семян.</p>
-    <p><strong>Обычное нажатие на зрелую грядку по-прежнему собирает весь урожай и освобождает её.</strong> Бережный сбор выбирается здесь отдельно каждый раз.</p>
-    <div class="dialog-actions">${button('К семенам', 'open-panel', 'seeds')}${button('Разделить ягодную посадку', 'open-panel', 'berry-nursery')}${button('К грядкам', 'close')}</div>
-    ${beds.length ? `<div class="transplant-beds" role="group" aria-label="Ягодные грядки">${beds.map(({ bed, index }) => {
-      const ripe = getBedStage(bed) === 'ripe'
-      return `<button type="button" class="transplant-bed" data-action="berry-renewal-source" data-value="${index}"${ripe ? '' : ' disabled'}><strong>Грядка ${index + 1} · ${cropDefinitions[bed.crop].name}</strong><span>${escape(transplantBedDescription(bed))}</span><small>${ripe ? 'Выбрать бережный сбор' : 'Сначала дождитесь зрелости'}</small></button>`
-    }).join('')}</div>` : '<p>Начните с клубники, черники или малины. Посейте семена на свободной грядке и вырастите их до зрелости.</p>'}
-    <p>Хотите изменить огород? При следующем созревании соберите посадку обычным действием. Разделение в питомнике остаётся отдельным выбором вместо любого урожая.</p></section>`
+  const hasBerries = farm.beds.some(bed => bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop))
+  return `<section class="bed-transplant berry-nursery berry-renewal garden-workspace"><div class="garden-summary"><h2 class="transplant-step" tabindex="-1">Выберите зрелую ягодную посадку</h2>
+    <p>Бережный сбор даёт одну ягоду вместо обычных трёх и сохраняет посадку. Она снова растёт с начала, без новых семян.</p>
+    <p class="garden-rule"><strong>Обычное нажатие на зрелую грядку по-прежнему собирает весь урожай и освобождает её.</strong> Бережный сбор выбирается здесь отдельно каждый раз.</p>
+    ${hasBerries ? '' : '<p>Начните с клубники, черники или малины. Посейте семена на свободной грядке и вырастите их до зрелости.</p>'}</div>
+    <div class="transplant-beds garden-map" role="group" aria-label="Свой ягодник: четыре ряда по четыре, как на поле">${farm.beds.map((bed, index) => {
+      const berry = bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop)
+      const available = getBerryRenewalPreview(farm, index) !== undefined
+      const purpose = available ? 'Выбрать бережный сбор.' : berry ? 'Сначала дождитесь зрелости.'
+        : bed.kind === 'crop' ? 'Бережный сбор доступен только ягодам.'
+        : bed.kind === 'tilled' ? 'Посейте и вырастите ягодную посадку.' : 'Сначала вскопайте и вырастите ягодную посадку.'
+      return gardenCell(bed, index, { action: 'berry-renewal-source', available, selected: false, purpose })
+    }).join('')}</div>
+    <div class="dialog-actions garden-actions">${button('К семенам', 'open-panel', 'seeds')}${button('Разделить ягодную посадку', 'open-panel', 'berry-nursery')}${button('К грядкам', 'close')}</div></section>`
+}
+
+/** Return to the physical source after cancelling, not to the disappearing cancel
+ * control or Close. A changed source may be unavailable by the time we redraw. */
+export function restoreBerryRenewalFocus(root: HTMLElement, index: number | undefined) {
+  const source = index === undefined ? null : root.querySelector<HTMLButtonElement>(`[data-action="berry-renewal-source"][data-value="${index}"]:not(:disabled)`)
+  const target = source ?? root.querySelector<HTMLElement>('.transplant-step')
+  if (!target) return
+  target.classList.add('berry-renewal-focus')
+  target.addEventListener('blur', () => target.classList.remove('berry-renewal-focus'), { once: true })
+  target.focus({ preventScroll: true })
+  target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 }

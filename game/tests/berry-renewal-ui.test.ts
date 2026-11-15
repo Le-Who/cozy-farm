@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createFarm, harvestBerryAndKeep } from '../src/farm.ts'
-import { BerryRenewalSelection, renderBerryRenewal } from '../src/berry-renewal-ui.ts'
+import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus } from '../src/berry-renewal-ui.ts'
 import { isGuardedAction, ActionClickGuard, ActivationKeyGuard } from '../src/action-click-guard.ts'
 
 function garden() {
@@ -16,7 +16,7 @@ test('berry garden explains both choices and keeps selection, preview and cancel
   const list = renderBerryRenewal(farm, selection, () => '')
   assert.match(list, /Обычное нажатие на зрелую грядку/)
   assert.match(list, /data-action="berry-renewal-source" data-value="0"/)
-  assert.match(list, /data-action="berry-renewal-source" data-value="2" disabled/)
+  assert.match(list, /data-action="berry-renewal-source" data-value="2"[^>]* disabled/)
   assert.equal(selection.choose(farm, 2), false); assert.equal(selection.choose(farm, 99), false)
   assert.equal(selection.choose(farm, 0), true)
   const html = renderBerryRenewal(farm, selection, () => '')
@@ -54,4 +54,62 @@ test('empty gardens, travel and repeat input have safe explicit UI paths', () =>
   clicks.remember(first); assert.ok(clicks.blocks({ ...first, detail: 2, timeStamp: 1100 }))
   const keys = new ActivationKeyGuard(); assert.equal(keys.blocks({ key: 'Enter', repeat: false }, true), false)
   assert.ok(keys.blocks({ key: 'Enter', repeat: true }, false))
+})
+
+
+test('berry map keeps all sixteen physical slots and explains each unavailable kind', () => {
+  const farm = garden(), selection = new BerryRenewalSelection()
+  farm.beds[1] = { kind: 'empty' }
+  farm.beds[3] = { kind: 'crop', crop: 'carrot', growth: 1, watered: true }
+  farm.beds[4] = { kind: 'tilled' }
+  farm.beds[14] = { kind: 'crop', crop: 'raspberry', growth: 2, watered: true, trait: 'sun' }
+  farm.beds[15] = { kind: 'crop', crop: 'blueberry', growth: 3, watered: false }
+  const before = structuredClone(farm), html = renderBerryRenewal(farm, selection, () => '')
+  const cells = [...html.matchAll(/<button class="transplant-bed garden-cell"[^>]+>/g)].map(match => match[0])
+  assert.equal(cells.length, 16)
+  assert.deepEqual(cells.map(cell => Number(cell.match(/data-value="(\d+)"/)![1])), Array.from({ length: 16 }, (_, index) => index))
+  assert.match(html, /role="group" aria-label="Свой ягодник: четыре ряда по четыре, как на поле"/)
+  assert.doesNotMatch(html, /role="grid"/)
+  assert.match(cells[1], / disabled[^>]*Сначала вскопайте и вырастите ягодную посадку/)
+  assert.match(cells[2], / disabled[^>]*Сначала дождитесь зрелости/)
+  assert.match(cells[3], / disabled[^>]*Бережный сбор доступен только ягодам/)
+  assert.match(cells[4], / disabled[^>]*Посейте и вырастите ягодную посадку/)
+  assert.match(cells[15], /Грядка 16, ряд 4, место 4[^>]*Выбрать бережный сбор/)
+  for (const index of [0, 14, 15]) assert.doesNotMatch(cells[index], / disabled/)
+  assert.match(html, /crop-strawberry.webp[^>]*background-position:0%/)
+  assert.match(html, /crop-blueberry.webp[^>]*background-position:100%/)
+  assert.equal(selection.choose(farm, 15), true)
+  assert.match(renderBerryRenewal(farm, selection, () => ''), /Грядка 16 · Сохранить посадку/)
+  selection.reset(); assert.deepEqual(farm, before)
+})
+
+test('cancel focus returns visibly to the same eligible source, with heading fallback', () => {
+  function target() {
+    const calls: string[] = [], classes = new Set<string>(); let onBlur: () => void = () => {}
+    return {
+      calls, classes,
+      classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) },
+      addEventListener: (event: string, callback: () => void, options: { once: boolean }) => {
+        assert.equal(event, 'blur'); assert.equal(options.once, true); onBlur = callback
+      },
+      focus: (options: { preventScroll: boolean }) => { assert.equal(options.preventScroll, true); calls.push('focus') },
+      scrollIntoView: (options: { block: string; inline: string }) => { assert.deepEqual(options, { block: 'nearest', inline: 'nearest' }); calls.push('scroll') },
+      blur: () => onBlur(),
+    }
+  }
+  const source = target(), heading = target(), selectors: string[] = []
+  let eligible = true
+  const root = { querySelector: (selector: string) => {
+    selectors.push(selector)
+    return selector === '.transplant-step' ? heading : eligible ? source : null
+  } } as unknown as HTMLElement
+  restoreBerryRenewalFocus(root, 15)
+  assert.match(selectors[0], /data-value="15"\]:not\(:disabled\)/)
+  assert.deepEqual(source.calls, ['focus', 'scroll']); assert.deepEqual(heading.calls, [])
+  assert.ok(source.classes.has('berry-renewal-focus')); source.blur(); assert.equal(source.classes.size, 0)
+  eligible = false; restoreBerryRenewalFocus(root, 15)
+  assert.deepEqual(heading.calls, ['focus', 'scroll']); assert.ok(heading.classes.has('berry-renewal-focus'))
+  heading.blur(); assert.equal(heading.classes.size, 0)
+  selectors.length = 0; restoreBerryRenewalFocus(root, undefined)
+  assert.deepEqual(selectors, ['.transplant-step'])
 })

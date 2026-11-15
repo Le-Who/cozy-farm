@@ -4,7 +4,7 @@ import {seedChoice,chooseSeedForBed} from './seed-choice'
 import {planBedWork,isCurrentBedWork,bedWorkKind} from './bed-work-intent'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
 import './recipe-surplus.css'
-import { BerryRenewalSelection, renderBerryRenewal } from './berry-renewal-ui'
+import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus } from './berry-renewal-ui'
 import { getBerryRenewalPreview, harvestBerryAndKeep } from './farm'
 import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
 import { activeGardenPlan, plannedCropAt, seedForBed, followGardenPlan, removeGardenPlan } from './garden-plans'
@@ -2625,7 +2625,10 @@ app.addEventListener('click', async (event) => {
       }
       break
     case 'berry-renewal-reset':
-      if (panel === 'berry-renewal') { berryRenewalSelection.reset(); drawPanel(); dialogContent.scrollTop = 0 }
+      if (panel === 'berry-renewal' && dialog.open) {
+        const index = berryRenewalSelection.selected?.index
+        berryRenewalSelection.reset(); drawPanel(); restoreBerryRenewalFocus(dialogContent, index)
+      }
       break
     case 'berry-renewal-bed': {
       const selected = berryRenewalSelection.selected
