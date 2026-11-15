@@ -66,3 +66,13 @@
 .expedition-next-discovery h4{font-size:15px;line-height:1.25;margin:0 0 6px}
 .expedition-next-discovery p{margin:6px 0}.expedition-next-discovery small{display:block;margin-top:6px;line-height:1.35}
 .bay-freight .expedition-next-discovery button{width:100%;min-height:44px;white-space:normal}
+
+/* Keep the selected trade's payoff beside its focused receipt in short landscape.
+   Reuse the existing project block; the exploration choice stays in the other column. */
+@media(max-width:700px) and (max-height:500px){
+.bay-freight[data-expedition-phase=planning]:has(.expedition-receipt):has([aria-label="Следующая разведка"]) .expedition-card-scroll{display:flex;flex-direction:column}
+.bay-freight[data-expedition-phase=planning]:has(.expedition-receipt):has([aria-label="Следующая разведка"]) .expedition-card-scroll>*{flex:none}
+.bay-freight[data-expedition-phase=planning]:has(.expedition-receipt):has([aria-label="Следующая разведка"]) .expedition-effect{order:1;line-height:1.2;padding-block:3px}
+.bay-freight[data-expedition-phase=planning]:has(.expedition-receipt):has([aria-label="Следующая разведка"]) .expedition-receipt{order:2;margin-block:4px}
+.bay-freight[data-expedition-phase=planning]:has(.expedition-receipt):has([aria-label="Следующая разведка"]) .expedition-departure>p{font-size:11px;line-height:1.2;margin-block:2px}
+}
