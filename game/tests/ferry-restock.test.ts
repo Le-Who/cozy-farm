@@ -213,3 +213,20 @@ test('later natural fruit cannot promise a basket whose other export disappears 
   assert.equal(world.markets.orchard.stock.apple,0)
   assert.equal(sendFerryExpedition(farm,id).ok,false)
 })
+
+test('alternating fruit does not displace a causal supply plan for the other missing export', () => {
+  const farm=createFarm(); farm.boatOwned=true; farm.day=2; farm.coins=100; farm.fruit.apple=6
+  const world=farm.freight.expeditions; world.lastDay=2; world.discovered.push('orchard')
+  const market=world.markets.orchard
+  market.supplied=Object.fromEntries(portProjects.orchard.needs.map(item=>[item.id,item.quantity]))
+  market.stock={apple:0,pear:0,peach:4,'dish:appleJam':1,'handmade:round':0}
+  const id=combinedExpeditionId('orchard-apples','orchard-mixed')!, before=structuredClone(farm)
+  const plan=getFerryRestockPlan(world,id,farm.day,expeditionWallet(farm))
+  assert.equal(plan?.kind,'supply')
+  if(plan?.kind!=='supply')return
+  assert.equal(plan.offer.id,'orchard-apples'); assert.equal(plan.day,3); assert.equal(plan.complete,true)
+  assert.deepEqual(farm,before)
+  assert.ok(sendFerryExpedition(farm,plan.offer.id).ok)
+  assert.ok(endDay(farm).ok); assert.ok(receiveFerryExpedition(farm).ok)
+  assert.ok(sendFerryExpedition(farm,id).ok,'the suggested delivery plus natural pears really supplies the whole original basket')
+})
