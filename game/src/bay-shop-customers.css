@@ -1,0 +1,31 @@
+/* Customers tab only; stock, pricing, orders and shop simulation are unchanged. */
+.bay-shop-customers{font-size:12px;line-height:1.35;min-width:0}
+.bay-shop-customer-roster{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;position:sticky;top:-10px;z-index:2;background:var(--shop-cream);padding:3px 0 7px}
+.bay-shop-customer-roster>button{min-width:0;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 1px;border:1px solid #ddc8a3;border-radius:9px;background:#fcf3df;color:var(--shop-ink);font-size:11px}
+.bay-shop-customer-roster>button[aria-pressed=true]{background:#e8daee;border-color:#a58ab5;box-shadow:inset 0 0 0 1px #a58ab5;color:#654b76}
+.bay-shop-customer-roster img{width:34px;height:34px;object-fit:contain}
+.bay-shop-customer-card{border:1px solid #ddc8a3;border-radius:11px;padding:9px;background:#fffaf0;margin-bottom:7px;overflow-wrap:anywhere}
+.bay-shop-customer-card>header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bay-shop-customer-card h3{font-size:17px;color:#705187;margin:0}
+.bay-shop-customer-card>header>span{font-size:10px;color:#80684d;text-align:right}
+.bay-shop-customer-card p{margin:6px 0;line-height:1.35}
+.bay-shop-customer-budget strong{white-space:nowrap;color:#705187}
+.bay-shop-customer-budget small{display:block;color:#80684d;font-size:10px;margin-top:2px}
+.bay-shop-customer-wish,.bay-shop-customer-unknown{color:#80684d}
+.bay-shop-customer-purchases{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.bay-shop-customer-purchases>li{display:flex;flex-direction:column;gap:2px;border-top:1px solid #eadcc4;padding-top:6px}
+.bay-shop-customer-purchases span{font-size:11px;color:#80684d}
+.bay-shop-customer-help{display:block;width:100%;min-height:44px;border:1px solid #d7c3a1;border-radius:9px;background:#f5ebd7;color:#71583f;padding:7px 10px;text-align:center;font-size:12px}
+.bay-shop-customer-explanation{padding:0 4px;color:#80684d}.bay-shop-customer-explanation[hidden]{display:none}
+.bay-shop-customer-history{margin-top:10px;border-top:1px solid #eadcc4;padding-top:8px}
+.bay-shop-customer-totals{display:flex;flex-wrap:wrap;gap:6px 18px;color:#80684d}.bay-shop-customer-totals strong{color:#705187}
+.bay-shop-customer-history h3{font-size:13px;color:#7c6686;margin:12px 0 0}
+@media(max-height:500px){
+ .bay-shop-customer-roster{top:-5px;padding-bottom:5px}.bay-shop-customer-roster>button{min-height:44px;font-size:10px;padding:2px 1px;gap:0}.bay-shop-customer-roster img{width:22px;height:22px}
+ .bay-shop-customer-card{padding:6px;font-size:11px}.bay-shop-customer-card h3{font-size:15px}.bay-shop-customer-card>header>span{font-size:9px}.bay-shop-customer-card p{margin:4px 0}
+}
+@media(max-height:500px){
+ .bay-shop-customer-purchases{margin-top:4px}
+ .bay-shop-customer-purchases>li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px;padding-top:4px}
+ .bay-shop-customer-purchases span{font-size:10px;text-align:right;max-width:200px}
+}

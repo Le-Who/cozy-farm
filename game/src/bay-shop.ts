@@ -7,6 +7,8 @@ import {
   setBayShopPrice, syncBayShopProducts, type BayShopProduct, type BayShopState, type BayShopStock,
 } from './bay-shop-model.ts';
 import './bay-shop.css';
+import { BayShopCustomerView, renderBayShopCustomers } from './bay-shop-customers';
+import './bay-shop-customers.css';
 import { placeShopQuantity, shopQuantityPreview } from './bay-shop-quantity';
 import { applyIngredientFinishes } from './ingredient-finish';
 
@@ -37,6 +39,7 @@ const visitorMessages = {
 /** A scene owns its animation; the farm owns inventory, earnings and persistence. */
 export function mountBayShop(host: HTMLElement, options: BayShopOptions): { destroy(): void; refresh(): void } {
   const state = options.state;
+  const customerView = new BayShopCustomerView();
   if (options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
   let pending: { id: string; identity: string; quantity: string } | undefined;
@@ -78,23 +81,11 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
         return `<button type="button" class="bay-shop-product" data-user-text data-stock="${escape(product.id)}" data-action="shop-stock-select" aria-label="Выбрать товар: ${escape(product.name)}. В запасе: ${product.quantity}"><span class="bay-shop-product-art">${art(product)}</span><span data-user-text>${escape(product.name)}</span><small>×${product.quantity}</small>${product.signature ? '<em title="Мой рецепт" aria-label="Мой рецепт">♥</em>' : ''}</button>`;
       }).join('') : `<div class="bay-shop-stock-empty"><p>Привезите продукты или испеките булочки.</p>${options.onOpenFreight ? '<button type="button" data-freight>К парому</button>' : ''}</div>`}</div>`;
   }
-  function journal(): string {
-    const reputation = Object.entries(state.reputation).sort(([, a], [, b]) => b.liked - a.liked || b.sold - a.sold);
-    return `<div class="bay-shop-journal"><div class="bay-shop-journal-totals"><span>Продано <strong>${state.sold}</strong></span><span>Выручка <strong>${money(state.revenue)} <small>монет</small></strong></span></div>
-      <h3>Товары, за которыми возвращаются</h3>${reputation.length ? reputation.map(([key, rep]) => {
-        const fans = bayShopVisitors.filter(person => (state.memories[person.id].purchases[key]?.liked ?? 0) > 0).map(person => person.name);
-        return `<div class="bay-shop-reputation"><strong data-user-text>${escape(rep.name)}</strong><span>Купили: ${rep.sold} · понравилось: ${rep.liked}</span><small>${fans.length ? `Помнят вкус: ${fans.join(', ')}` : 'Первое знакомство с вашим товаром'}</small></div>`;
-      }).join('') : '<p>После первых покупок здесь появятся любимые товары жителей. Они запоминают конкретный рецепт и охотнее выбирают его снова.</p>'}
-      <h3>Кто заходит в лавку</h3><div class="bay-shop-customer-list">${bayShopVisitors.map(person => {
-        const memory = state.memories[person.id], purchases = Object.values(memory.purchases).reduce((sum, p) => sum + p.bought, 0);
-        return `<div><strong>${person.name}</strong><span>${person.wish}</span><small>${memory.visits ? `Встречи: ${memory.visits} · покупки: ${purchases}` : `Бюджет от ${person.budget} монет`}</small></div>`;
-      }).join('')}</div></div>`;
-  }
   function render(): void {
     if (destroyed) return;
     const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
     const priceDraft = active instanceof HTMLInputElement && active.hasAttribute('data-price') ? active.value : undefined;
-    const focusAttribute = active ? ['data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next'].find(key => active.hasAttribute(key)) : undefined;
+    const focusAttribute = active ? ['data-customer', 'data-customer-help', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next'].find(key => active.hasAttribute(key)) : undefined;
     const focusValue = focusAttribute ? active!.getAttribute(focusAttribute)! : '';
     const scroll = host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
     rendering = true;
@@ -107,7 +98,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       </div><div class="bay-shop-speech" data-user-text role="status" aria-live="polite"></div></div>
       <div class="bay-shop-desk"><nav class="bay-shop-tabs" aria-label="Управление лавкой"><button type="button" data-tab="stock" aria-pressed="${tab === 'stock'}">Прилавок</button><button type="button" data-tab="journal" aria-pressed="${tab === 'journal'}">Покупатели</button>${options.onOpenCommissions ? '<button type="button" data-commissions>Заказы</button>' : ''}${options.performanceBonus?.() ? '<span title="Сегодня ещё два гостя из сада">+2 гостя ♫</span>' : ''}</nav>
       <section class="bay-shop-day" aria-label="Гости сегодня" ${pending ? 'hidden' : ''}><div><p class="bay-shop-day-count"></p><p class="bay-shop-day-detail" role="status" aria-live="polite"></p></div><button type="button" data-shop-next hidden></button></section>
-      <p class="bay-shop-notice" role="status">${escape(notice)}</p><div class="bay-shop-desk-content">${tab === 'stock' ? stockControls() : journal()}</div></div>
+      <p class="bay-shop-notice" role="status">${escape(notice)}</p><div class="bay-shop-desk-content">${tab === 'stock' ? stockControls() : renderBayShopCustomers(state, customerView)}</div></div>
       </section>`;
     rendering = false;
     const priceInput = host.querySelector<HTMLInputElement>('[data-price]');
@@ -179,6 +170,11 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   function click(event: Event): void {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
     if (!button || !host.contains(button) || button.disabled) return;
+    if (button.hasAttribute('data-customer')) {
+      if (customerView.choose(button.getAttribute('data-customer'))) { render(); const content=host.querySelector('.bay-shop-desk-content'); if(content)content.scrollTop=0; }
+      return;
+    }
+    if (button.hasAttribute('data-customer-help')) { customerView.explanation=!customerView.explanation; render(); return; }
     if (button.hasAttribute('data-shop-next')) {
       const next = dayGuidance().action;
       if (next === 'music') options.onOpenMusic?.(); else if (next === 'rest') options.onGoRest?.();
@@ -274,7 +270,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       const phase = state.visitor ? `${state.visitor.serial}:${state.visitor.phase}` : 'idle';
       if (sales.length) { options.onChange(); render(); savedAt = now; }
       else if (phase !== lastPhase || now - savedAt > 5000 && state.visitor) { options.onChange(); savedAt = now; }
-      if (phase !== lastPhase) paintDayGuidance();
+      if (phase !== lastPhase) { paintDayGuidance(); if(tab === 'journal' && !sales.length) render(); }
       lastPhase = phase; paintVisitor();
     }
     frame = requestAnimationFrame(tick);

@@ -1,0 +1,68 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { advanceBayShop, advanceBayShopDay, createBayShop, stockBayShop, setBayShopOpen, setBayShopPrice, restoreBayShop, bayShopVisitors, type BayShopProduct, type BayShopState } from '../src/bay-shop-model.ts'
+import { BayShopCustomerView, renderBayShopCustomers } from '../src/bay-shop-customers.ts'
+
+const pear:BayShopProduct={id:'signature:s1',identity:'pear-silky-a',name:'Грушевое облако',image:'/art/lavender/ui-tart.webp',basePrice:50,tags:['pear','fruit','delicate','silky','sweet'],signature:true}
+const run=(state:BayShopState,ms:number)=>{while(ms>0){const step=Math.min(ms,1000);advanceBayShop(state,step);ms-=step}}
+function opened(){const s=createBayShop();assert.ok(stockBayShop(s,0,pear,100));setBayShopOpen(s,true);return s}
+const card=(s:BayShopState,v:BayShopCustomerView)=>renderBayShopCustomers(s,v).split('<article')[1].split('</article>')[0]
+
+test('all six visual choices expose exactly one active card, without touching state',()=>{
+ const s=createBayShop(),v=new BayShopCustomerView(),before=structuredClone(s)
+ for(const person of bayShopVisitors){assert.ok(v.choose(person.id));const html=renderBayShopCustomers(s,v);assert.equal((html.match(/data-customer="/g)??[]).length,6);assert.equal((html.match(/aria-pressed="true"/g)??[]).length,1);assert.equal((html.match(/<article/g)??[]).length,1);assert.match(card(s,v),new RegExp(`<h3>${person.name}</h3>`))}
+ assert.deepEqual(s,before);assert.equal(v.choose('unknown'),false);assert.equal(v.selected,'mark')
+})
+
+test('unvisited customers reveal no hidden likes or unobserved request',()=>{
+ const s=createBayShop(),v=new BayShopCustomerView(),html=card(s,v)
+ assert.match(html,/Любимые товары ещё неизвестны/);assert.doesNotMatch(html,/Нежное к чаю|груш|шёлк|silky|delicate|pear|Просит/)
+ assert.match(html,/Базовый бюджет визита/);assert.match(html,/95 монет/);assert.match(html,/Не цена товара и не оценка качества/)
+ assert.doesNotMatch(readFileSync(new URL('../src/bay-shop-customers.ts',import.meta.url),'utf8'),/\.likes|bayShopInterest/)
+})
+
+test('real arrival reveals only spoken request and exact actual visit budget, including later cycles',()=>{
+ const s=opened(),v=new BayShopCustomerView();run(s,1200)
+ assert.equal(s.visitor?.budget,95);assert.match(card(s,v),/Бюджет этого визита/);assert.match(card(s,v),/Нежное к чаю/);assert.doesNotMatch(card(s,v),/Грушевое облако/)
+ advanceBayShopDay(s,2);run(s,1200);assert.equal(s.visitor?.id,'bea');assert.equal(s.visitor?.budget,103);assert.match(card(s,v),/103 монеты/)
+ advanceBayShopDay(s,3);run(s,1200);assert.equal(s.visitor?.budget,111);assert.match(card(s,v),/111 монет/)
+ advanceBayShopDay(s,4);run(s,1200);assert.equal(s.visitor?.budget,95);assert.match(card(s,v),/95 монет/)
+ assert.ok(restoreBayShop(JSON.parse(JSON.stringify(s)),s.businessDay))
+})
+
+test('only actual liked purchase becomes a remembered taste, exact recipe identities remain separate',()=>{
+ const s=opened(),v=new BayShopCustomerView();run(s,7400)
+ assert.equal(s.memories.bea.purchases[pear.identity].liked,1);let html=card(s,v);assert.match(html,/Грушевое облако/);assert.match(html,/Понравилось: 1/);assert.match(html,/Куплено: 1/)
+ const other={...pear,id:'signature:s2',identity:'pear-silky-b',name:'Другое облако'};assert.ok(stockBayShop(s,1,other,10));html=card(s,v);assert.doesNotMatch(html,/Другое облако|pear-silky-b/)
+ v.choose('finn');assert.doesNotMatch(card(s,v),/Грушевое облако|Понравилось/)
+})
+
+test('a real neutral purchase never becomes a favourite even after repeat sales',()=>{
+ const s=createBayShop(),v=new BayShopCustomerView(),plain={...pear,identity:'plain-a',name:'Простая булочка',tags:['bread']}
+ stockBayShop(s,0,plain,30);setBayShopOpen(s,true);run(s,7400);assert.equal(s.memories.bea.purchases[plain.identity].liked,0)
+ advanceBayShopDay(s,2);run(s,7400);const html=card(s,v);assert.match(html,/Куплено: 2/);assert.doesNotMatch(html,/Понравилось:/)
+})
+
+test('budget is not willingness or a guaranteed price; observed rejected visit creates no favourite',()=>{
+ const s=opened(),v=new BayShopCustomerView();setBayShopPrice(s,0,90);run(s,7400)
+ assert.equal(s.visitor?.budget,95);assert.equal(s.visitor?.outcome?.kind,'expensive');assert.equal(s.sold,0);assert.match(card(s,v),/Покупок пока нет/)
+ assert.doesNotMatch(card(s,v),/Грушевое облако/)
+})
+
+test('help hides only explanatory prose; exact aggregate sales and remembered product data remain available',()=>{
+ const s=opened(),v=new BayShopCustomerView();run(s,7400);const before=structuredClone(s),closed=renderBayShopCustomers(s,v)
+ assert.match(closed,/aria-expanded="false"/);assert.match(closed,/id="bay-shop-customer-explanation" hidden/);assert.match(closed,/Продано: <strong>1/);assert.match(closed,/Выручка: <strong>50 монет/);assert.match(closed,/Помнят вкус: Беа/)
+ v.explanation=true;const open=renderBayShopCustomers(s,v);assert.match(open,/aria-expanded="true"/);assert.doesNotMatch(open,/id="bay-shop-customer-explanation" hidden/);assert.deepEqual(s,before)
+})
+
+test('saved player recipe names are escaped, not interpreted as markup',()=>{
+ const s=opened(),v=new BayShopCustomerView();run(s,7400);s.reputation[pear.identity].name='Мой <тарт> & «Чай»';const html=renderBayShopCustomers(s,v)
+ assert.match(html,/Мой &lt;тарт&gt; &amp; «Чай»/);assert.doesNotMatch(html,/<тарт>/)
+})
+
+test('customer actions are local render-only and focus is retained across live refresh',()=>{
+ const src=readFileSync(new URL('../src/bay-shop.ts',import.meta.url),'utf8');const a=src.indexOf("if (button.hasAttribute('data-customer'))"),b=src.indexOf("if (button.hasAttribute('data-shop-next'))",a),actions=src.slice(a,b)
+ assert.match(actions,/customerView.choose/);assert.match(actions,/customerView.explanation/);assert.doesNotMatch(actions,/changed\(|onChange\(|setBayShop|advanceBayShop|takeStock/)
+ assert.match(src,/'data-customer', 'data-customer-help'/);assert.match(src,/phase !== lastPhase[^\n]+tab === 'journal'/)
+})

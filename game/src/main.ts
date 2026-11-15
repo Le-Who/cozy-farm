@@ -77,7 +77,7 @@ import { renderFishingPracticeEntry } from './fishing-practice-ui'
 import { canPracticeFishing, createFishingPractice } from './fishing-practice'
 import { getEggUnpackAction, unpackEggBasket, unpackEggCrate, getHarborWithdrawal, withdrawHarborSupplies } from './farm'
 import { installActionClickGuard } from './action-click-guard'
-import { exactSaleQuote, saleStock, type SaleTarget } from './exact-sale'
+import { exactSaleQuote, saleStock, stepSaleQuantity, type SaleTarget } from './exact-sale'
 import './exact-sale.css'
 import { getBedHarvestPreview } from './farm'
 import { fieldContextCopyMarkup, harvestPreviewCopy, updateFieldContextCopy } from './harvest-preview'
@@ -339,7 +339,7 @@ let marketTab: 'buy' | 'sell' | 'orders' | 'projects' = 'buy'
 let marketCategory:'seeds'|'trees'|'care'|'buildings'='seeds'
 let marketSellGroup:'all'|'harvest'|'kitchen'|'shore'='all'
 let marketSaleQuery = ''
-let selectedSale: (SaleTarget & { name: string }) | undefined
+let selectedSale: (SaleTarget & { name: string; image?: string; trait?: Trait }) | undefined
 let saleQuantity = '1'
 let saleReceipt: { quantity: number; total: number; remaining: number } | undefined
 let inventoryGroup: 'harvest'|'kitchen'|'shore' = 'harvest'
@@ -1556,12 +1556,12 @@ function openMusicScene(host:HTMLElement) {
 function beginExactSale(target: SaleTarget) {
   const stock = saleStock(farm, target)
   if (!stock || stock.count < 1) return
+  const listing = target.kind==='market' ? goods().find(item=>item.key===target.key) : undefined
   const name = target.kind === 'signature' ? farm.culinary.recipes.find(recipe => recipe.id === target.key)!.name
-    : goods().find(item => item.key === target.key)!.name
-  selectedSale = { ...target, name }; saleQuantity = '1'; saleReceipt = undefined
+    : listing!.name
+  selectedSale = { ...target, name, image:listing?.image, trait:listing?.trait }; saleQuantity = '1'; saleReceipt = undefined
   openPanel('sale')
-  const input = dialogContent.querySelector<HTMLInputElement>('[data-sale-quantity]')
-  input?.focus({ preventScroll: true }); input?.select()
+  dialogContent.querySelector<HTMLElement>('.exact-sale h2')?.focus({preventScroll:true})
 }
 
 function updateSaleQuote() {
@@ -1570,12 +1570,15 @@ function updateSaleQuote() {
   const quote = stock && exactSaleQuote(saleQuantity, stock.count, stock.price)
   const summary = dialogContent.querySelector<HTMLElement>('.exact-sale-summary')
   const confirm = dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')
-  if (summary) summary.textContent = quote?.valid ? `Цена: ${quantity(quote.total, 'монета')}. Останется: ${quote.remaining}.`
+  if (summary) summary.textContent = quote?.valid ? `Итого: ${quantity(quote.total, 'монета')}. Останется: ${quote.remaining}.`
     : `Введите целое число от 1 до ${stock?.count ?? 0}.`
   if (confirm) { confirm.disabled = !quote?.valid; confirm.textContent = quote?.valid ? `Продать ${quote.quantity} · ${quote.total}` : 'Продать выбранное' }
+  dialogContent.querySelectorAll<HTMLButtonElement>('[data-action="sale-step"]').forEach(control=>{
+    control.disabled = !stock?.count || Boolean(quote?.valid && (control.dataset.value==='less' ? quote.quantity<=1 : quote.quantity>=stock.count))
+  })
 }
 
-function confirmExactSale() {
+function confirmExactSale(focusReceipt = false) {
   if (panel !== 'sale' || !selectedSale || saleReceipt) return
   const stock = saleStock(farm, selectedSale)
   const quote = stock && exactSaleQuote(saleQuantity, stock.count, stock.price)
@@ -1583,7 +1586,10 @@ function confirmExactSale() {
   const result = selectedSale.kind === 'signature' ? sellSignature(farm, selectedSale.key, quote.quantity)
     : sellMarketItem(farm, selectedSale.key, quote.quantity)
   if (result.ok) saleReceipt = { quantity: quote.quantity, total: quote.total, remaining: quote.remaining }
-  if (perform(() => result, false, true)) playBaySound('trade.receive')
+  if (perform(() => result, false, true)) {
+    playBaySound('trade.receive')
+    if(focusReceipt)dialogContent.querySelector<HTMLElement>('.exact-sale-receipt')?.focus({preventScroll:true})
+  }
 }
 
 
@@ -1623,11 +1629,14 @@ function drawPanel() {
       dialogContent.innerHTML = renderRecipeSurplus(farm, recipeSurplusSelection, item => stockLabel(item).name)
       break
     case 'sale': {
-      const stock = selectedSale && saleStock(farm, selectedSale)
+      const stock = selectedSale && (saleStock(farm, selectedSale) ?? (saleReceipt ? {count:0,price:saleReceipt.total/saleReceipt.quantity} : undefined))
       if (!selectedSale || !stock) { dialogContent.innerHTML = '<p class="dialog-intro">Товар недоступен.</p>'; break }
-      dialogContent.innerHTML = `<section class="exact-sale"><h2>${escapeHtml(selectedSale.name)}</h2>${saleReceipt
-        ? `<p class="exact-sale-receipt" role="status">Продано: ${saleReceipt.quantity}. Цена: ${quantity(saleReceipt.total, 'монета')}. Осталось: ${saleReceipt.remaining}.</p>${nav(button('Продать ещё', 'sale-again', stock.count > 0), button('Назад', 'back', true, { secondary: true }))}`
-        : `<p>В запасе: ${stock.count}. За 1: ${quantity(stock.price, 'монета')}.</p><label for="sale-quantity">Количество</label><input id="sale-quantity" data-sale-quantity type="number" min="1" max="${stock.count}" step="1" inputmode="numeric" value="${escapeHtml(saleQuantity)}" aria-describedby="sale-quote"><p id="sale-quote" class="exact-sale-summary" aria-live="polite"></p>${nav(button('Продать выбранное', 'confirm-sale', false), button('Отмена', 'back', true, { secondary: true }))}`}</section>`
+      const recipe = selectedSale.kind==='signature' ? farm.culinary.recipes.find(item=>item.id===selectedSale!.key) : undefined
+      const art = selectedSale.image ? itemIcon(selectedSale.image,selectedSale.trait) : recipe ? signatureResultPicture(recipe,{icon}) : ''
+      dialogContent.innerHTML = `<section class="exact-sale"><div class="exact-sale-product"><span class="exact-sale-art" aria-hidden="true">${art}</span><h2 tabindex="-1">${escapeHtml(selectedSale.name)}</h2><p>В запасе: ${stock.count}</p><p>За 1: ${quantity(stock.price,'монета')}</p></div><div class="exact-sale-editor">${saleReceipt
+        ? `<p class="exact-sale-receipt" role="status" tabindex="-1">Продано: ${saleReceipt.quantity}. Цена: ${quantity(saleReceipt.total, 'монета')}. Осталось: ${saleReceipt.remaining}.</p>${nav(button('Продать ещё', 'sale-again', stock.count > 0), button('Назад', 'back', true, { secondary: true }))}`
+        : `<label for="sale-quantity">Количество</label><div class="exact-sale-stepper"><button class="dialog-button secondary" type="button" data-action="sale-step" data-value="less" aria-label="Уменьшить количество на 1">−</button><input id="sale-quantity" data-sale-quantity type="number" min="1" max="${stock.count}" step="1" inputmode="numeric" value="${escapeHtml(saleQuantity)}" aria-describedby="sale-quote"><button class="dialog-button secondary" type="button" data-action="sale-step" data-value="more" aria-label="Увеличить количество на 1">+</button><button class="dialog-button secondary" type="button" data-action="sale-step" data-value="all" aria-label="Весь этот товар: ${stock.count}">Всё</button></div><p id="sale-quote" class="exact-sale-summary" aria-live="polite"></p>${nav(button('Продать выбранное', 'confirm-sale', false), button('Отмена', 'back', true, { secondary: true }))}`}</div></section>`
+
       updateSaleQuote()
       break
     }
@@ -3341,7 +3350,13 @@ app.addEventListener('click', async (event) => {
       break
     case 'sell': if(perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('trade.receive'); break
     case 'sell-item': if(value)beginExactSale({kind:'market',key:value}); break
-    case 'confirm-sale': confirmExactSale(); break
+    case 'sale-step':
+      if(panel==='sale'&&dialog.open&&selectedSale&&!saleReceipt&&(value==='less'||value==='more'||value==='all')){
+        const stock=saleStock(farm,selectedSale)
+        if(stock){saleQuantity=stepSaleQuantity(saleQuantity,stock.count,value);const input=dialogContent.querySelector<HTMLInputElement>('[data-sale-quantity]');if(input)input.value=saleQuantity;updateSaleQuote()}
+      }
+      break
+    case 'confirm-sale': confirmExactSale(event.detail===0); break
     case 'sale-again': if(selectedSale)beginExactSale(selectedSale); break
     case 'buy-feed': if(perform(() => buyFeed(farm)))playBaySound('trade.pay'); break
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
