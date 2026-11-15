@@ -38,7 +38,7 @@ const reset = () => button('Отменить выбор', 'berry-nursery-reset')
 const close = () => button('К грядкам', 'close')
 export function renderBerryNursery(farm: FarmState, selection: BerryNurserySelection, icon: (key: string) => string) {
   const selected = selection.selected
-  if (farm.island !== 'home') return '<p>Ягодный питомник находится на Родном острове.</p>'
+  if (farm.island !== 'home') return '<p>Размножить ягодный куст можно на Родном острове.</p>'
   if (selection.receipt) return `<section class="bed-transplant"><p role="status">${selection.receipt}</p><p>Молодым посадкам нужен обычный уход. Подойдите к каждой и полейте, если сегодня нет дождя.</p><div class="dialog-actions">${close()}${button('Выбрать ещё куст', 'berry-nursery-reset')}</div></section>`
   if (selected?.destination !== undefined) {
     const preview = getBerryPropagation(farm, selected.source, selected.destination), bed = selected.crop
@@ -53,13 +53,14 @@ export function renderBerryNursery(farm: FarmState, selection: BerryNurserySelec
       <div class="nursery-outcome" role="group" aria-label="Грядка ${selected.source + 1} → две молодые посадки на грядках ${selected.source + 1} и ${selected.destination + 1}"><div class="nursery-mother">${gardenCropArt(bed)}<span>Грядка ${selected.source + 1}</span></div><span class="nursery-arrow" aria-hidden="true">↙　↘</span><div class="nursery-young">${[selected.source, selected.destination].map(index => `<div>${gardenCropArt({...bed, growth:0})}<span>Грядка ${index + 1}</span></div>`).join('')}</div></div>
       <div class="dialog-actions garden-actions">${button('Разделить на две посадки', 'berry-nursery-confirm', '', preview.available)}${reset()}</div></section>`
   }
-  const hasDestination = farm.beds.some(bed => bed.kind === 'tilled')
-  const hasMother = farm.beds.some(bed => bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop) && getBedStage(bed) === 'ripe')
-  return `<section class="bed-transplant berry-nursery garden-workspace"><div class="garden-summary"><h2 class="transplant-step" tabindex="-1">${selected ? '2. Выберите вторую грядку' : '1. Выберите зрелую ягодную посадку'}</h2>
-    ${selected ? gardenSourceSummary(selected.source, selected.crop) : '<p>Размножайте клубнику, чернику и малину.</p>'}
-    <p class="garden-rule">Вместо готового урожая получите две молодые посадки. Известная особенность сохранится у обеих.</p>
+  const destinations = farm.beds.filter(bed => bed.kind === 'tilled').length
+  const mothers = farm.beds.filter(bed => bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop) && getBedStage(bed) === 'ripe').length
+  const hasDestination = destinations > 0, hasMother = mothers > 0
+  return `<section class="bed-transplant berry-nursery garden-workspace"><div class="garden-summary"><h2 class="transplant-step" tabindex="-1">${selected ? `2. Выберите вторую грядку · свободно ${destinations}` : `1. Выберите зрелый куст · доступно ${hasDestination ? mothers : 0}`}</h2>
+    ${selected ? gardenSourceSummary(selected.source, selected.crop) : ''}
+    <p class="garden-rule"><strong>Без сбора ягод: один куст → две молодые посадки.</strong> Обе начнут расти с нуля: на прежней и выбранной свободной грядках. Известная особенность сохранится у обеих.</p>
     ${!hasMother ? '<p>Сначала вырастите хотя бы одну ягодную посадку до зрелости.</p>' : ''}${!hasDestination ? '<p>Нужна ещё одна свободная вспаханная грядка. Подготовьте место в огороде.</p>' : ''}</div>
-    <div class="transplant-beds garden-map" role="group" aria-label="Грядки ягодного питомника: четыре ряда по четыре">${farm.beds.map((bed, index) => {
+    <div class="transplant-beds garden-map" role="group" aria-label="Размножение ягодного куста: четыре ряда по четыре">${farm.beds.map((bed, index) => {
       const mother = bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop) && getBedStage(bed) === 'ripe'
       const available = selected ? getBerryPropagation(farm, selected.source, index).available : hasDestination && mother
       const chosen = selected?.source === index

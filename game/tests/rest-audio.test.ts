@@ -7,6 +7,7 @@ import { createFarm, endDay } from '../src/farm.ts'
 import { canConfirmRest } from '../src/rest-preview.ts'
 import { sendFerryExpedition } from '../src/harbour-economy.ts'
 import { closeShopBeforeRest } from '../src/shop-rest.ts'
+import { SalePresentation } from '../src/sale-presentation.ts'
 import { shopRestFixture } from './fixtures/shop-rest.ts'
 const main = await readFile(new URL('../src/main.ts', import.meta.url),'utf8')
 const sleep = main.slice(main.indexOf("    case 'sleep': {"),main.indexOf("    case 'refill':"))
@@ -53,13 +54,14 @@ test('the exact close listener consumes committed sleep once and preserves later
  const begin=main.indexOf("dialog.addEventListener('close', () => {")
  const source=main.slice(begin,main.indexOf("\n\napp.addEventListener('change'",begin))
  const events:string[]=[];let close!:()=>void
- const noop=()=>{},selection={reset:noop}
- const state={committedRestClose:true,dialog:{open:false,addEventListener:(_id:string,fn:()=>void)=>{close=fn}},
+ const noop=()=>{},selection={reset:noop},salePresentation=new SalePresentation()
+ salePresentation.open({kind:'market',key:'fruit:apple'},{index:0,scroll:0})
+ const state={salePresentation,committedRestClose:true,dialog:{open:false,addEventListener:(_id:string,fn:()=>void)=>{close=fn}},
   transplantSelection:selection,berryNurserySelection:selection,berryRenewalSelection:selection,recipeSurplusSelection:selection,
   playBaySound:(id:string)=>events.push(id),island:{setViewMode:noop,setCoveFocus:noop},app:{dataset:{scene:''}},
   stopHarbour:noop,stopFishing:noop,stopWorkshop:noop,stopCookery:noop,stopArrangement:noop,
   panel:'rest',seedPickerBed:undefined,panelHistory:[],updateCommunityReturn:noop}
- runInNewContext(source,state);close();assert.deepEqual(events,[]);assert.equal(state.committedRestClose,false)
+ runInNewContext(source,state);close();assert.deepEqual(events,[]);assert.equal(state.committedRestClose,false);assert.equal(salePresentation.token,'')
  close();assert.deepEqual(events,['page.fold'])
  // A queued close delivered after reopening consumes only its own suppression.
  state.committedRestClose=true;state.dialog.open=true;close();assert.equal(state.committedRestClose,false)

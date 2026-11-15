@@ -27,3 +27,14 @@
   .exact-sale-art { grid-row: 1 / 4; }
   .exact-sale h2 { font-size: 18px; }
 }
+.market-sale-expanded { padding: 10px; border: 2px solid #ae83b9; border-radius: 14px; background: #fff8e9; min-width: 0; }
+.market-sale-expanded .exact-sale h2 { padding: 3px; }
+.market-sale-expanded .exact-sale h2:focus-visible { outline-offset: 0; }
+.market-sale-expanded .exact-sale .dialog-nav { gap: 6px; }
+.market-sale-expanded .exact-sale .dialog-button { padding-inline: 8px; }
+@media (max-height: 400px) and (orientation: landscape) {
+  .farm-dialog[data-panel="market"]:has(.market-sale-expanded) .market-controls { position: static; }
+  .market-sale-expanded { padding: 6px; }
+  .market-sale-expanded .exact-sale-editor > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .market-sale-expanded .exact-sale-summary { min-height: 0; font-size: 13px; line-height: 1.2; }
+}

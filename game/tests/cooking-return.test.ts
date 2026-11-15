@@ -6,6 +6,7 @@ import { runInNewContext } from 'node:vm'
 import * as farmApi from '../src/farm.ts'
 import { communityReturnRoute } from '../src/community-return.ts'
 import { getNeighborSceneState, stepNeighborWalker } from '../src/neighbor-scene.ts'
+import { SalePresentation } from '../src/sale-presentation.ts'
 import { cookingReturnFixture } from './fixtures/cooking-return.ts'
 
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
@@ -13,6 +14,7 @@ const islandSource = readFileSync(new URL('../src/island.ts', import.meta.url), 
 const js = (source: string) => stripTypeScriptTypes(source)
 const cookery = main.slice(main.indexOf("    case 'cookery': {"), main.indexOf("    case 'village-project':"))
 const workshop = main.slice(main.indexOf("    case 'workshop': {"), main.indexOf("    case 'cookery': {"))
+const closeSale = main.slice(main.indexOf('function closeContextualSale('), main.indexOf('function beginExactSale('))
 const close = main.slice(main.indexOf('function closeCurrentPanel()'), main.indexOf("closeButton.addEventListener('click'"))
 const back = main.slice(main.indexOf('function returnFromPanel('), main.indexOf("dialog.addEventListener('cancel'"))
 const resume = main.slice(main.indexOf('async function resumeCommunityRequest('), main.indexOf('function requestedRecipe()'))
@@ -21,7 +23,7 @@ function setup(at: farmApi.IslandId, signature = false, from = at === 'cape' ? '
   const { farm, selection } = cookingReturnFixture(at)
   assert.ok(farmApi.restoreFarm(farm), 'fixture remains a valid save')
   const calls: string[] = [], state: any = {
-    ...farmApi, farm, panel: 'cookery', panelHistory: [{ panel: from }], communityRequest: selection.request,
+    ...farmApi, farm, salePresentation: new SalePresentation(), selectedSale: undefined, panel: 'cookery', panelHistory: [{ panel: from }], communityRequest: selection.request,
     cookingDish: at === 'cape' ? 'honeyBiscuits' : 'orchardTart', cookingFish: 'seaBass', cookingMode: signature ? 'signature' : 'dish',
     signatureBase: 'tart', signatureSlots: [{ id: 'apple', quantity: 2 }], signatureRepeatId: undefined, signatureFamily: undefined,
     signatureFruitIds: [], signatureFruitNames: {}, familyRecipeName: () => undefined, signatureBookCapacity: () => ({ canCreate: true }),
@@ -69,7 +71,7 @@ for (const scene of ['cookery', 'workshop']) for (const path of ['close', 'escap
   if (path === 'close') await runInNewContext(js(`${close}; closeCurrentPanel()`), state)
   else {
     state.event = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true } }
-    await runInNewContext(js(`${back}; returnFromPanel(event)`), state)
+    await runInNewContext(js(`${closeSale}; ${back}; returnFromPanel(event)`), state)
     assert.equal(state.event.defaultPrevented, true)
   }
   assert.ok(calls.includes('close') || calls.includes('local-back'))
