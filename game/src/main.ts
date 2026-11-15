@@ -1042,7 +1042,8 @@ function projectCard(id: ProjectId) {
     : (complete ? `Теперь в роще можно поймать до ${getFishLimit(farm,'grove')} рыб за день. Раньше — ${fishDailyLimit}.` : `Откроет путь на Цветочный мыс. В роще можно будет ловить до ${fishDailyLimit+1} рыб за день вместо ${fishDailyLimit}.`)
   const action = !complete && away && !farm.boatOwned ? button('Как получить лодку','project-boat')
     : !complete&&away ? button(fair?'К стройке дома':'К причалу рощи','sail',farm.boatOwned,{value:fair?'home':'grove'}) : complete
-    ? (!fair && farm.island === 'grove' ? button('На Цветочный мыс','sail',true,{value:'cape'}) : '')
+    ? (!fair ? farm.island === 'grove' ? button('На Цветочный мыс','sail',true,{value:'cape'})
+      : button('В рощу к причалу','sail',canSailTo(farm,'grove'),{value:'grove'}) : '')
     : project.status === 'locked' && fair
       ? button('Улучшения', 'upgrades', true, { secondary: true })
       : button('Внести припасы', 'deliver-project', project.status === 'ready', { value: id, context: project.name })
