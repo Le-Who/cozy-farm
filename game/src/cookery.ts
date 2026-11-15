@@ -321,7 +321,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     renderedStage = model.stage
     const messages: Record<string, string> = {
       fruit: model.kind === 'preserves' ? 'Добавьте фрукты в кастрюлю' : 'Разложите фрукты по своему вкусу',
-      stir: 'Возьмите ложку и перемешайте', fill: 'Переложите конфитюр ложкой в банку',
+      stir: drag?.kind === 'spoon' ? 'Мешайте широкими кругами' : 'Возьмите ложку и мешайте по кругу', fill: 'Переложите конфитюр ложкой в банку',
       sprinkle: 'Посыпьте тарт сахаром', ready: '',
       committing: 'Подаём…', finished: '', cancelled: '',
     }

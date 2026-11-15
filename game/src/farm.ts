@@ -1234,7 +1234,7 @@ export function buySapling(farm: FarmState, tree: TreeId): ActionResult {
   if (farm.coins < saplingPrice) return failure('Не хватает монет на саженец.');
   farm.coins -= saplingPrice;
   farm.saplings[tree] += 1;
-  return { ok: true, message: `Куплен ${saplingName.toLowerCase()}.` };
+  return { ok: true, message: `${saplingName} в запасах. Посадите его на свободное место в саду.` };
 }
 
 export function buyAndPlantTree(farm: FarmState, slot: number, tree: TreeId): ActionResult {

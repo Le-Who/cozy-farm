@@ -2145,7 +2145,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
   openPanel(next,false)
 }
 
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { seedPreview: CropId }) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { seedPreview?: CropId; grillFish?: FishId }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
@@ -2162,6 +2162,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if(next==='cove'&&farm.island!=='grove')return
   if ((next === 'transplant' || next === 'garden-plans' || next === 'recipe-surplus') && farm.island !== 'home') return
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
+  if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
   if (next === 'recipes') {
     if (recipeTarget) recipeBook.select(farm,recipeTarget)
     else if (remember && next !== panel) recipeBook.view.mode='index'
@@ -2174,7 +2175,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     if (panel!=='bay-music') selectedWarehouse=farm.island
   }
   if (next !== panel) { stopHarbour(); stopFishing(); stopWorkshop(); stopCookery(); stopArrangement() }
-  if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = next === 'seeds' && entry ? entry.seedPreview : seedPickerBed === undefined ? farm.selectedSeed : seedForBed(farm, seedPickerBed)
+  if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = next === 'seeds' && entry?.seedPreview ? entry.seedPreview : seedPickerBed === undefined ? farm.selectedSeed : seedForBed(farm, seedPickerBed)
   if (remember && next !== panel && next === 'irrigation') irrigationMode = farm.wellSpecialization === 'pipes' ? 'pair' : 'row'
   if (remember && next !== panel && next === 'boat') { boatIsland = destinationIsland; journeyDetailsOpen=false }
   if (next === 'archive' || next === 'boat') {
@@ -3304,11 +3305,11 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'fish-kitchen': {
+      if(panel!=='inventory'||!dialog.open)break
       const id=fishIds.find(id=>id===value)
-      if(!id)break
-      cookingFish=id
+      if(!id || farm.fish[id]<1)break
       if(farm.island!=='home') {closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))}
-      openPanel('kitchen')
+      if(farm.island==='home')openPanel('kitchen',true,farm.island,'page.unfold',undefined,{grillFish:id})
       break
     }
     case 'fish-market':

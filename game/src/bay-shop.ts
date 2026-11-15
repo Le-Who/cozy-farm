@@ -100,7 +100,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       </div><div class="bay-shop-speech" data-user-text role="status" aria-live="polite"></div></div>
       <div class="bay-shop-desk"><nav class="bay-shop-tabs" aria-label="Управление лавкой"><button type="button" data-tab="stock" aria-pressed="${tab === 'stock'}">Прилавок</button><button type="button" data-tab="journal" aria-pressed="${tab === 'journal'}">Покупатели</button>${options.onOpenCommissions ? '<button type="button" data-commissions>Заказы</button>' : ''}${options.performanceBonus?.() ? '<span title="Сегодня ещё два гостя из сада">+2 гостя ♫</span>' : ''}</nav>
       <section class="bay-shop-day" aria-label="Гости сегодня" ${pending ? 'hidden' : ''}><div><p class="bay-shop-day-count"></p><p class="bay-shop-day-detail" role="status" aria-live="polite"></p></div><button type="button" data-shop-next hidden></button></section>
-      <p class="bay-shop-notice" role="status">${escape(notice)}</p><div class="bay-shop-desk-content">${tab === 'stock' ? stockControls() : renderBayShopCustomers(state, customerView)}</div></div>
+      <p class="bay-shop-notice" role="status">${escape(notice)}</p><div class="bay-shop-desk-content">${tab === 'stock' ? stockControls() : renderBayShopCustomers(state, customerView, options.catalog)}</div></div>
       </section>`;
     rendering = false;
     const priceInput = host.querySelector<HTMLInputElement>('[data-price]');

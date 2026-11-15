@@ -137,7 +137,7 @@ export function signatureStudio(farm:FarmState,base:SignatureDraft['base'],slots
 }
 
 const coveChoiceSummary=(choices:CoveChoices)=>`${choices.flow==='open'?'Открытое течение':'Тихое течение'} · ${choices.cover==='kelp'?'водоросли':'луг'} · ${choices.refuge==='stones'?'камни':'песок'}`
-const coveEffectSummary=(choices:CoveChoices)=>`${choices.cover==='kelp'?'Морской окунь чаще':'Окунь чаще'} · ${choices.flow==='open'?'больше редкой рыбы на глубине':'медленные косяки'}. ${choices.refuge==='stones'?'Камни укрывают краба и смягчают рывки рыб.':'На песке краб ищет корм.'}`
+const coveEffectSummary=(choices:CoveChoices)=>`${choices.cover==='kelp'?'Обычно морской окунь, иногда окунь':'Окунь чаще'} · ${choices.flow==='open'?'больше редкой рыбы на глубине':'медленные косяки'}. ${choices.refuge==='stones'?'Камни укрывают краба и смягчают рывки рыб.':'На песке краб ищет корм.'}`
 export function coveControls(farm:FarmState):string{
   const shoreline=farm.shoreline,action=getCoveActions(farm),{ecology,choices,forecast}=action
   const groups:[keyof CoveChoices,string,string,readonly [string,string][]][]=[['flow','cove-current','Течение',[['sheltered','Тихое'],['open','Открытое']]],['cover','cove-kelp-right','Растения',[['kelp','Водоросли'],['meadow','Луг']]],['refuge','cove-refuge','Берег',[['sand','Песок'],['stones','Камни']]]]
