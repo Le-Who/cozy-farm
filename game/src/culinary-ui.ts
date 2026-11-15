@@ -1,7 +1,7 @@
 import { recipePlanningChoices, recipePlanningGuide } from './recipe-planning'
 import { recipeDraftKey } from './recipe-draft'
 import { getRecipeRepeatGuide, recipeIngredientsDisclosureLabel } from './recipe-repeat-guidance'
-import { sortedBookRecipes, selectedBookId, type RecipeBookView } from './recipe-book-view'
+import { sortedBookRecipes, visibleBookRecipes, selectedBookId, type RecipeBookView } from './recipe-book-view'
 import './recipe-book.css'
 import './recipe-repeat-guidance.css'
 import {getCoveActions,getSignatureAction,ingredientCount,type FarmState,type StockItem} from './farm'
@@ -91,6 +91,14 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
   </article>`
 }
 
+export function recipeBookSearchStatus(farm:FarmState,view:RecipeBookView):string {
+  return view.query?.trim() ? `Найдено ${visibleBookRecipes(farm,view).length} из ${farm.culinary.recipes.length}` : ''
+}
+export function recipeBookResults(farm:FarmState,art:Icons,view:RecipeBookView):string {
+  const recipes=visibleBookRecipes(farm,view),selectedId=selectedBookId(farm,view)
+  return `${recipes.map(recipe=>`<div class="recipe-book-row" data-selected="${recipe.id===selectedId}"><button type="button" class="recipe-book-select" data-action="select-recipe" data-value="${recipe.id}" aria-pressed="${recipe.id===selectedId}"><span class="recipe-book-thumb">${signatureResultPicture(recipe,art)}</span><span><strong>${escapeRecipeText(recipe.name)}</strong><small>С собой ${farm.culinary.stock[recipe.id]??0}</small></span><span aria-hidden="true">›</span></button>${control(recipe.favorite?'★':'☆','favorite-signature',recipe.id,true,`aria-label="${recipe.favorite?'Убрать из избранного':'В избранное'} ${escapeRecipeText(recipe.name)}" aria-pressed="${recipe.favorite}"`)}</div>`).join('')}${!recipes.length&&view.query?.trim()?'<p class="recipe-book-search-empty">По этому названию рецептов нет. Измените запрос или очистите поиск.</p>':''}`
+}
+
 export function signatureBook(farm:FarmState,art:Icons,state:RecipeBookView|string={}):string {
   const view:RecipeBookView=typeof state==='string'?{selectedId:state,expandedRepeatId:state,mode:'detail'}:state
   const recipes=sortedBookRecipes(farm), selectedId=selectedBookId(farm,view), selected=recipes.find(recipe=>recipe.id===selectedId), capacity=signatureBookCapacity(farm.culinary)
@@ -98,8 +106,10 @@ export function signatureBook(farm:FarmState,art:Icons,state:RecipeBookView|stri
   const status=renderPicnicStatus(farm)
   return `<div class="signature-book" data-selected-recipe="${selectedId??''}" data-mode="${view.mode??'index'}">
     <section class="recipe-book-index" aria-label="Список рецептов">${status?`<details class="recipe-book-picnic recipe-book-picnic-index" data-recipe-disclosure="picnic-status-index"${view.disclosures?.includes('picnic-status-index')?' open':''}><summary>Пикник действует · до сна</summary>${status}</details>`:''}<div class="recipe-book-tools"><span class="recipe-book-capacity" aria-label="Рецептов в книге: ${recipes.length} из 24">${recipes.length}/24</span><div class="signature-book-tools">${control(`${art.icon('ui-apple-jam')}Варенье +`,'new-signature','preserves',capacity.canCreate)}${control(`${art.icon('ui-tart')}Тарт +`,'new-signature','tart',capacity.canCreate)}</div>${capacity.message?`<p class="signature-capacity" role="status">${capacity.message}</p>`:''}</div>
+      <div class="recipe-book-search"><label for="recipe-book-query">Найти рецепт<input id="recipe-book-query" type="search" data-recipe-query maxlength="100" value="${escapeRecipeText(view.query??'')}" placeholder="Название рецепта" aria-controls="recipe-book-results" autocomplete="off"></label>${control('Очистить','recipe-search-clear','',Boolean(view.query))}</div>
+      <p class="recipe-book-search-status" role="status" aria-live="polite">${recipeBookSearchStatus(farm,view)}</p>
       ${draft?`<button class="recipe-book-draft" type="button" data-action="select-recipe" data-value="draft" aria-pressed="${selectedId==='draft'}"><strong>Черновик</strong><span>${draft.slots.map(part=>part?ingredientName(part):'ещё не выбрано').join(' + ')}</span><span aria-hidden="true">›</span></button>`:''}
-      <div class="recipe-book-list">${recipes.map(recipe=>`<div class="recipe-book-row" data-selected="${recipe.id===selectedId}"><button type="button" class="recipe-book-select" data-action="select-recipe" data-value="${recipe.id}" aria-pressed="${recipe.id===selectedId}"><span class="recipe-book-thumb">${signatureResultPicture(recipe,art)}</span><span><strong>${escapeRecipeText(recipe.name)}</strong><small>С собой ${farm.culinary.stock[recipe.id]??0}</small></span><span aria-hidden="true">›</span></button>${control(recipe.favorite?'★':'☆','favorite-signature',recipe.id,true,`aria-label="${recipe.favorite?'Убрать из избранного':'В избранное'} ${escapeRecipeText(recipe.name)}" aria-pressed="${recipe.favorite}"`)}</div>`).join('')}</div>
+      <div class="recipe-book-list" id="recipe-book-results">${recipeBookResults(farm,art,view)}</div>
       ${!recipes.length&&!draft?'<p class="recipe-book-note">Сохранённых рецептов пока нет. Начните с варенья или тарта.</p>':''}
     </section>
     <section class="recipe-book-detail" aria-label="Выбранный рецепт">${status?`<details class="recipe-book-picnic" data-recipe-disclosure="picnic-status"${view.disclosures?.includes('picnic-status')?' open':''}><summary>Пикник действует · до сна</summary>${status}</details>`:''}${selected?bookRecipe(farm,selected,art,view):selectedId==='draft'?recipeDraftCard(farm,art):`<div class="recipe-book-empty">${art.icon('ui-signature-bright')}<p>Ваши рецепты будут здесь.</p></div>`}</section>

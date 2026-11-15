@@ -122,3 +122,25 @@
  .recipe-book-detail>.signature-page,.recipe-book-detail>.recipe-draft-card{flex:none}
  .recipe-book-detail>.recipe-book-picnic{order:1;flex:none;margin-top:12px}
 }
+
+/* Same labeled search/clear pattern as the market, scoped to the recipe index. */
+.signature-book .recipe-book-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end;margin:0 0 8px}
+.signature-book .recipe-book-search label{display:grid;gap:3px;min-width:0;font-size:13px;font-weight:700}
+.signature-book .recipe-book-search input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:7px 10px;border:1px solid #d7ae79;border-radius:10px;background:#fffaf0;color:#50374e;font:inherit;font-size:16px}
+.signature-book .recipe-book-search .dialog-button{min-height:44px;padding:7px 10px}
+.signature-book .recipe-book-search-status{margin:0 0 8px;font-size:13px}
+.signature-book .recipe-book-search-status:empty{display:none}
+.signature-book .recipe-book-search-empty{padding:12px;border:1px solid #d7ae79;border-radius:10px;margin:0 0 8px;font-size:14px}
+/* Short landscape: keep creation, the query, a draft and the first match together. */
+@media(max-height:400px) and (min-width:480px){
+ .signature-book .recipe-book-tools{display:flex;align-items:center;gap:8px;padding-top:0;margin-bottom:4px}
+ .signature-book .recipe-book-capacity{position:static;flex:none}
+ .signature-book .signature-book-tools{flex:1;margin:0;gap:8px}
+ .signature-book .signature-book-tools .dialog-button{display:flex;align-items:center;justify-content:center;min-height:44px;padding:6px 8px}
+ .signature-book .recipe-book-search label{display:flex;align-items:center;gap:8px;white-space:nowrap}
+ .signature-book .recipe-book-search input{flex:1;width:auto}
+ .signature-book .recipe-book-search-status{margin-bottom:4px}
+ .signature-book .recipe-book-draft{grid-template-columns:auto minmax(0,1fr) 24px;gap:8px;min-height:44px;margin-bottom:4px;padding:6px 8px}
+ .signature-book .recipe-book-draft>span:first-of-type{grid-row:auto;line-height:1.2}
+ .signature-book .recipe-book-draft>span:last-child{grid-column:3;grid-row:auto}
+}

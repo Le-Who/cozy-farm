@@ -133,7 +133,7 @@ import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
 import { RecipeBookNavigation, recipeBookNarrow, type RecipeBookView } from './recipe-book-view'
-import {signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
+import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
 import { communityBoard, communityIntent, neighborDetail, neighborHelpCard, type CommunityArt } from './community-ui'
 import { neighborHelpStatus } from './neighbor-help'
@@ -2213,6 +2213,20 @@ function openRecipeBook(id?: string, expanded=false, remember=true) {
   if(expanded)expandedRepeatId=id
   openPanel('recipes',remember,farm.island,'page.unfold',id)
 }
+function updateRecipeBookSearch(query: string) {
+  if (panel !== 'recipes' || !dialog.open) return
+  recipeBook.setQuery(query)
+  const input = dialogContent.querySelector<HTMLInputElement>('[data-recipe-query]')
+  if (input && input.value !== (recipeBook.view.query ?? '')) input.value = recipeBook.view.query ?? ''
+  const results = dialogContent.querySelector<HTMLElement>('#recipe-book-results')
+  if (results) { results.innerHTML = recipeBookResults(farm,{icon,stock:stockTile},recipeBook.view); applyIngredientFinishes(results) }
+  const status = dialogContent.querySelector<HTMLElement>('.recipe-book-search-status')
+  if (status) status.textContent = recipeBookSearchStatus(farm,recipeBook.view)
+  const clear = dialogContent.querySelector<HTMLButtonElement>('[data-action="recipe-search-clear"]')
+  if (clear) clear.disabled = !recipeBook.view.query
+  const index = dialogContent.querySelector<HTMLElement>('.recipe-book-index')
+  if (index) index.scrollTop = 0
+}
 function focusRecipeAction(withdraw=false) {
   const target=withdraw?dialogContent.querySelector<HTMLElement>('[data-action="recipe-warehouse-withdraw"]:not(:disabled)'):dialogContent.querySelector<HTMLElement>('[data-action="make-signature"]:not(:disabled)')
   const visible=target??dialogContent.querySelector<HTMLElement>('[data-recipe-focus="blocker"]')??dialogContent.querySelector<HTMLElement>('[data-recipe-focus="cooking"], .recipe-draft-card')
@@ -3178,6 +3192,9 @@ app.addEventListener('click', async (event) => {
       if(panel==='market'&&marketTab==='sell'&&dialog.open){closeContextualSale(false);marketSaleQuery='';const input=dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]');if(input){input.value='';updateMarketSaleSearch();input.focus({preventScroll:true})}}
       break
     case 'market-sell-group':if(value==='all'||value==='harvest'||value==='kitchen'||value==='shore'){closeContextualSale(false);marketSellGroup=value;marketSaleFamily=undefined;drawPanel();dialogContent.scrollTop=0}break
+    case 'recipe-search-clear':
+      if(dialog.open&&panel==='recipes'){updateRecipeBookSearch('');dialogContent.querySelector<HTMLInputElement>('[data-recipe-query]')?.focus({preventScroll:true})}
+      break
     case 'select-recipe':
       if(dialog.open&&panel==='recipes'){recipeBook.capture(dialogContent);if(recipeBook.select(farm,value,false,true)){expandedRepeatId=undefined;drawPanel();const heading=dialogContent.querySelector<HTMLElement>('.signature-page,.recipe-draft-card');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true})}}}
       break
@@ -3858,6 +3875,7 @@ app.addEventListener('change',event=>{
   if((input instanceof HTMLInputElement||input instanceof HTMLTextAreaElement)&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
 })
 app.addEventListener('input', event => {
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-recipe-query]')) updateRecipeBookSearch(event.target.value)
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]') && panel==='market' && marketTab==='sell') { closeContextualSale(false);marketSaleQuery=event.target.value; updateMarketSaleSearch() }
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-garden-name]') && panel === 'garden-plans' && gardenEditor.draft) gardenEditor.draft.name = event.target.value
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
