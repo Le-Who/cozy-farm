@@ -66,8 +66,10 @@ test('real UI routes browsing and buying separately from the guarded explicit ch
   assert.doesNotMatch(preview,/chooseSeed\(|selectSeed\(|perform\(/)
   const buy=main.slice(main.indexOf("    case 'buy-seeds':"),main.indexOf("    case 'garden-shop':"))
   assert.doesNotMatch(buy,/chooseSeed\(|selectSeed\(|closeDialog\(/)
-  assert.match(main,/aria-pressed="\$\{previewSeed === crop\}"/)
-  assert.match(main,/button\(choice.label,'choose-seed'/)
+  const picker=readFileSync(new URL('../src/seed-picker-ui.ts',import.meta.url),'utf8')
+  assert.match(picker,/aria-pressed="\$\{previewSeed === crop\}"/)
+  assert.match(picker,/art.button\(label, 'choose-seed'/)
+  assert.match(main,/renderSeedPicker\(farm, previewSeed, seedPickerBed/)
   for(const action of ['preview-seed','choose-seed','buy-seeds','save-crop-seeds'])assert.ok(isGuardedAction(action))
 })
 

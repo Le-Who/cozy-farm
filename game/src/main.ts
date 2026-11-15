@@ -1,7 +1,10 @@
 import { recipePlanningIngredient } from './recipe-planning'
-import {seedSavingQuote,saveCropSeeds,renderSeedSaving} from './seed-saving'
+import {seedSavingQuote,saveCropSeeds} from './seed-saving'
+import {renderSeedPicker} from './seed-picker-ui'
+import './seed-picker.css'
 import {seedChoice,chooseSeedForBed} from './seed-choice'
 import {planBedWork,isCurrentBedWork,bedWorkKind} from './bed-work-intent'
+import { basketHotbarLabels } from './basket-hotbar'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
 import './recipe-surplus.css'
 import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus, berrySeedPreview, revealBerrySeedPreview } from './berry-renewal-ui'
@@ -612,7 +615,7 @@ function status() {
   textAt('status-coins', numberFormat.format(farm.coins))
   textAt('status-water', `${farm.water}/${getWaterCapacity(farm)}`)
   textAt('status-seed', sowingPlan && atHome ? `Посев по плану: ${sowingPlan.name}` : `Семена: ${cropDefinitions[farm.selectedSeed].name.toLowerCase()}`)
-  textAt('status-tool', tool.label)
+  textAt('status-tool', activeTool === 'basket' ? basketHotbarLabels[farm.island] : tool.label)
 
   textAt('task-name', goal?.label ?? 'Заказы рынка')
   textAt('task-count', goal && !bookmarkOnly ? `${goal.progress}/${goal.target}` : '')
@@ -645,7 +648,7 @@ function status() {
     const definition = tools.find(tool => tool.id === toolId)!
     const atVillage = farm.island === 'village'
     button.hidden = atVillage && toolId !== 'basket' && toolId !== 'coop' && toolId !== 'boat'
-    const label = atVillage && toolId === 'basket' ? 'Кондитерская' : atVillage && toolId === 'coop' ? 'Соседи' : definition.label
+    const label = toolId === 'basket' ? basketHotbarLabels[farm.island] : atVillage && toolId === 'coop' ? 'Соседи' : definition.label
     button.setAttribute('aria-label', label)
     button.title = `${label} (${definition.key})`
     const image = button.querySelector<HTMLImageElement>('.slot-icon img')!
@@ -852,14 +855,7 @@ function flockFeedRow() {
 }
 
 function seedCards() {
-  const seed = cropDefinitions[previewSeed]
-  const choice = seedChoice(farm, previewSeed, seedPickerBed)
-  return renderGardenMode(farm) + `<div class="seed-grid">${cropIds.map((crop) =>
-    `<button class="seed-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${previewSeed === crop}" aria-label="Посмотреть семена: ${cropDefinitions[crop].name.toLowerCase()}, в наличии: ${farm.seeds[crop]}">
-      ${icon(`ui-seed-${crop}`)}<strong>${cropDefinitions[crop].name}</strong><span>×${farm.seeds[crop]}</span>
-    </button>`).join('')}</div>
-    <section class="seed-detail">${icon(previewSeed)}<div><h2>Семена: ${seed.name.toLowerCase()}</h2><p>${quantity(seed.days, 'ночь')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p>
-      ${choice.available?button(choice.label,'choose-seed',true,{value:choice.token})+`<p>${choice.detail}</p>`:button('Купить семена','buy-seeds',farm.coins>=seed.seedPrice,{crop:previewSeed,cost:{icon:'coin',amount:seed.seedPrice}})}${renderSeedSaving(farm,previewSeed)}</div></section>`
+  return renderSeedPicker(farm, previewSeed, seedPickerBed, {icon, button}, renderGardenMode(farm), (farm.island === 'home' ? nav(button('Свои планы огорода', 'open-panel', true, {value:'garden-plans', secondary:true}),button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Размножить ягодный куст','open-panel',true,{value:'berry-nursery',secondary:true}),button('Свой ягодник','open-panel',true,{value:'berry-renewal',secondary:true})) : ''))
 }
 
 function stockLabel(item: StockItem): { name: string; image: string } {
@@ -1696,7 +1692,7 @@ function drawPanel() {
           ${goods().filter(({count,group})=>count>0&&group===inventoryGroup).map(inventoryStockRow).join('')}
           ${inventoryGroup==='harvest'?treeIds.filter(tree=>farm.saplings[tree]>0).map((tree) => row('ui-tree-'+tree, treeDefinitions[tree].saplingName, `×${farm.saplings[tree]}`)).join(''):''}
           ${inventoryGroup==='shore'&&!goods().some(({count,group})=>count>0&&group==='shore')?'<li class="dialog-status">Пока пусто</li>':''}
-        </ul>` : seedCards() + (farm.island === 'home' ? nav(button('Свои планы огорода', 'open-panel', true, {value:'garden-plans', secondary:true}),button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Ягодный питомник','open-panel',true,{value:'berry-nursery',secondary:true}),button('Свой ягодник','open-panel',true,{value:'berry-renewal',secondary:true})) : '')}`
+        </ul>` : seedCards()}`
       break
     }
     case 'archive':
@@ -2499,8 +2495,9 @@ function useHotbar(tool: Tool) {
       if (farm.island === 'grove') {
         openPanel('orchard')
       } else {
-        canvas.focus({ preventScroll: true })
-        notify('Выберите грядку с золотой отметкой и соберите урожай.')
+        bagTab = 'harvest'
+        inventoryGroup = 'harvest'
+        openPanel('inventory')
       }
       break
     case 'coop':

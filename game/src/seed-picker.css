@@ -1,0 +1,43 @@
+/* Only the seed picker, including its inventory tab; no market or hotbar rules. */
+.farm-dialog:has(.seed-picker) .dialog-emblem,.farm-dialog:has(.seed-picker) .dialog-destinations{display:none}
+.farm-dialog:has(.seed-picker) .dialog-content{scroll-padding-top:150px}
+.seed-picker{container-type:inline-size;position:relative}
+.seed-picker-current{position:sticky;top:0;z-index:2;display:grid;grid-template-columns:40px minmax(0,1fr) minmax(120px,160px);align-items:center;gap:5px 9px;padding:10px;margin:0 0 10px;border:1px solid var(--rule);border-radius:14px;background:#fff7e5;box-shadow:0 3px 8px #674a4520}
+.seed-picker-current>.icon{width:40px;height:40px;object-fit:contain}
+.seed-picker-current-copy{min-width:0}.seed-picker-current h2{margin:0 0 3px;font-size:18px;line-height:1.2;color:var(--plum)}
+.seed-picker-current p{margin:0;font-size:12px;line-height:1.35}
+.seed-picker-current-copy p{color:var(--muted)}
+.seed-picker-primary .dialog-button{margin:0;min-height:44px;width:100%;padding:7px;white-space:normal;font-size:13px;line-height:1.2}
+.seed-picker-current .seed-picker-contract{grid-column:1/-1;font-size:11px;color:var(--muted)}
+.seed-picker-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
+.seed-picker-tile{position:relative;display:grid;justify-items:center;align-content:center;min-width:0;min-height:77px;padding:5px;border:1px solid var(--rule);border-radius:13px;background:var(--paper-light);color:var(--plum);font:inherit;cursor:pointer;scroll-margin-top:150px}
+.seed-picker-tile>.icon{width:41px;height:41px;object-fit:contain}
+.seed-picker-tile strong{max-width:100%;font-size:12px;line-height:1.2;overflow-wrap:break-word}
+.seed-picker-tile>span{position:absolute;right:4px;top:4px;padding:1px 4px;border-radius:8px;background:var(--paper);font-size:11px;font-weight:700;max-width:calc(100% - 8px);overflow-wrap:anywhere}
+.seed-picker-tile[aria-pressed="true"]{background:#f2e2f0;border-color:#ab80b6;box-shadow:inset 0 0 0 2px #cba6d4}
+.seed-picker-tile:focus-visible{outline:3px solid #805a95;outline-offset:2px}
+.seed-saving{margin-top:10px;padding:10px;border:1px solid var(--rule);border-radius:13px;background:var(--paper-light)}
+.seed-saving p{font-size:12px;line-height:1.4;margin:6px 0;color:var(--muted)}
+.seed-saving-exchange{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:7px;align-items:center}
+.seed-saving-exchange>.icon{width:32px;height:32px;object-fit:contain}
+.seed-saving-exchange h3{margin:0;color:var(--plum);font-size:14px}
+.seed-saving-exchange p{margin:2px 0;font-size:12px}
+.seed-saving-exchange .dialog-button{min-height:44px;max-width:100%;padding:7px;white-space:normal;font-size:12px;line-height:1.2}
+.seed-saving .seed-saving-stock{color:var(--plum);font-variant-numeric:tabular-nums}
+.seed-saving-prices{margin-top:5px;border-top:1px solid var(--rule)}
+.seed-saving-prices>summary{padding:10px 0;min-height:44px;box-sizing:border-box;font-size:12px;color:var(--muted);cursor:pointer}
+@container(max-width:380px){
+ .seed-picker-current{grid-template-columns:35px minmax(0,1fr);gap:5px 8px;padding:8px}
+ .seed-picker-current>.icon{width:35px;height:35px}.seed-picker-primary{grid-column:1/-1}
+ .seed-picker-current h2{font-size:17px}.seed-picker-current .seed-picker-contract{font-size:11px}
+ .seed-saving-exchange{grid-template-columns:28px minmax(0,1fr)}
+ .seed-saving-exchange .dialog-button{grid-column:1/-1;width:100%;margin:0}
+}
+@container(max-width:280px){.seed-picker-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:461px) and (max-height:480px){
+ .farm-dialog:has(.seed-picker) .dialog-panel{padding-top:8px;padding-bottom:8px}
+ .farm-dialog:has(.seed-picker) .dialog-header{min-height:44px;padding-bottom:4px}
+ .farm-dialog:has(.seed-picker) .dialog-close{bottom:4px}
+ .seed-picker-current{padding:7px;margin-bottom:7px}.seed-picker-current h2{font-size:16px}
+ .seed-picker-tile{min-height:70px}.seed-picker-tile>.icon{width:35px;height:35px}
+}

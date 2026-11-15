@@ -19,7 +19,7 @@ test('the existing seed detail can show an honest tradeoff, including pumpkins t
   const {renderSeedSaving}=await import('../src/seed-saving.ts')
   const farm=createFarm();assert.ok(workBed(farm,7,0).ok)
   const before=structuredClone(farm),html=renderSeedSaving(farm,'pumpkin')
-  assert.match(html,/Тыква: 1 обычный продукт → 3 семени/)
+  assert.match(html,/Цена: тыква ×1 · обычный урожай/)
   assert.match(html,/В припасах: 2 → 1/);assert.match(html,/Семян: 1 → 4/)
   assert.match(html,/Продажа продукта: 9 монет/);assert.match(html,/пакет на рынке: 8 монет/)
   assert.match(html,/data-action="save-crop-seeds"/)

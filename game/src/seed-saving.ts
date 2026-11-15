@@ -17,14 +17,14 @@ export function seedSavingQuote(farm:FarmState,value:unknown){
 }
 
 /** A single choice inside the selected crop detail, not a new panel or seed-selection mode. */
-export function renderSeedSaving(farm:FarmState,crop:unknown):string{
+export function renderSeedSaving(farm:FarmState,crop:unknown,icon:(name:string)=>string=()=> ''):string{
   const quote=seedSavingQuote(farm,crop)
   if(!quote)return ''
-  return `<div class="seed-saving"><p><strong>Семена со своего урожая</strong></p>
-    <p>${quote.name}: 1 обычный продукт → ${quote.pack} семени. В припасах: ${quote.produce} → ${quote.remaining}. Семян: ${quote.seeds} → ${quote.total}.</p>
-    <p>Продажа продукта: ${ruCount(quote.saleValue,'монета','монеты','монет')}; такой же пакет на рынке: ${ruCount(quote.marketPrice,'монета','монеты','монет')}.</p>
-    <button type="button" class="dialog-button secondary" data-action="save-crop-seeds" data-value="${quote.token}"${quote.available?'':' disabled'}>Оставить 1 на семена · +${quote.pack}</button>
-    <p>${!quote.room?'В запасах пока нет места для нового пакета. ':!quote.available?'Сначала соберите обычный урожай. ':''}Необычные продукты останутся у вас. Посев выбирается отдельно.</p></div>`
+  return `<section class="seed-saving" aria-label="Получить семена из урожая"><div class="seed-saving-exchange">${icon(quote.crop)}<div><h3>Из урожая</h3><p>Цена: ${quote.name.toLowerCase()} ×1 · обычный урожай</p></div>
+    <button type="button" class="dialog-button secondary" data-action="save-crop-seeds" data-value="${quote.token}"${quote.available?'':' disabled'}>Получить ${quote.pack} семени</button></div>
+    <p class="seed-saving-stock">В припасах: ${quote.produce} → ${quote.remaining}. Семян: ${quote.seeds} → ${quote.total}.</p>
+    <p>${!quote.room?'В запасах пока нет места для нового пакета. ':!quote.available?'Сначала соберите обычный урожай. ':''}Необычные продукты останутся у вас. Посев выбирается отдельно.</p>
+    <details class="seed-saving-prices"><summary>Сравнить с покупкой</summary><p>Продажа продукта: ${ruCount(quote.saleValue,'монета','монеты','монет')}; такой же пакет на рынке: ${ruCount(quote.marketPrice,'монета','монеты','монет')}.</p></details></section>`
 }
 
 export function saveCropSeeds(farm:FarmState,token:unknown):ActionResult{
