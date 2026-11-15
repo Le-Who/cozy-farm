@@ -58,6 +58,7 @@ import { renderShopRest, closeShopBeforeRest } from './shop-rest'
 import './shop-rest.css'
 import { shoalReturnCopy } from './shoal-return'
 import { getApiaryCopy } from './apiary-preview'
+import { getCapeJourneyStatus } from './cape-journey-status'
 import './apiary-preview.css'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopCapacityWarning } from './coop-preview'
@@ -1168,7 +1169,7 @@ function treeRow(index: number) {
   const action = getTreeAction(farm, index)
   const detail = slot && definition
     ? slot.age >= definition.days
-      ? `Плодов к сбору: ${slot.fruitReady}`
+      ? slot.fruitReady > 0 ? `Плодов к сбору: ${slot.fruitReady}` : 'Новые плоды завтра'
       : `${quantity(definition.days - slot.age, 'ночь')} до зрелости`
     : 'Место для саженца'
   return row(slot?.tree === 'apple' ? 'apple' : 'orchard', definition?.treeName ?? `Свободное место ${index + 1}`, detail,
@@ -2024,6 +2025,7 @@ function drawPanel() {
         return `<button type="button" data-action="boat-island" data-value="${place.id}" aria-pressed="${place.id===destination.id}" aria-label="${place.name}${status}" title="${place.name}${status}">${icon({home:'upgrade-farmhouse-card',grove:'ui-tree-apple',cape:'ui-honey',village:'ui-bea'}[place.id])}<span>${place.name}</span></button>`
       }).join('')
       const action = destination.nextAction
+      const capeStatus = getCapeJourneyStatus(farm, destination.id)
       const requirements = destination.requirements.filter(item => !item.complete)
       const unpaidBoat = action?.target === 'buy-boat' && !action.enabled
       const nextStep = unpaidBoat
@@ -2040,7 +2042,7 @@ function drawPanel() {
           <div class="journey-overview">
             <div class="journey-picture"><img src="${import.meta.env.BASE_URL}art/lavender/${destination.id}-plate.webp" alt="" draggable="false"></div>
             <div class="journey-caption"><div class="journey-heading"><h2>${destination.name}</h2></div>
-              <p>${destination.description}</p>${destination.current ? '<span class="journey-here">Вы здесь</span>' : ''}
+              <p>${destination.description}</p>${capeStatus ? `<p class="journey-return-status">${escapeHtml(capeStatus)}</p>` : ''}${destination.current ? '<span class="journey-here">Вы здесь</span>' : ''}
             </div>
           </div>
           <nav class="island-places" aria-label="Действия на острове">
