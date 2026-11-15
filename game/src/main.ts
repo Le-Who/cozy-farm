@@ -43,6 +43,8 @@ import { withdrawStoredSignature } from './stored-signature'
 import './village-budget.css'
 import { treeVariantCopy } from './ready-variant-guidance'
 import { canVisitMarketRest, getNextMarketOrders, renderNextMarketOrder } from './market-return'
+import { getMarketOrderBoard, renderMarketOrderPicker } from './market-orders-view'
+import './market-orders-view.css'
 import './market-return.css'
 import { renderFairReturn } from './fair-return'
 import './fair-return.css'
@@ -967,24 +969,23 @@ function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily)
   return fruits.length === 1 ? names[fruits[0]] : draft.base === 'tart' ? berry ? 'Ягодный тарт' : 'Фруктовый тарт' : berry ? 'Ягодное варенье' : 'Фруктовый конфитюр'
 }
 
+let selectedMarketOrder: string | undefined
 function marketOrders() {
-  const next = getNextMarketOrders(farm)
-  const rank = { ready: 0, waiting: 1, upgrade: 1, delivered: 2 }
-  const orders = getMarketOrders(farm).sort((a, b) => rank[a.status] - rank[b.status])
-  const cards = orders.map((order) => {
-    const delivered = order.status === 'delivered'
-    return `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
+  const board = getMarketOrderBoard(farm, selectedMarketOrder)
+  selectedMarketOrder = board.selected
+  const order = getMarketOrders(farm).find(order => order.lane === board.selected)
+  const next = getNextMarketOrders(farm).find(order => order.lane === board.selected)
+  const detail = board.selected === 'harbor' ? `<p class="market-order-location">Причал рощи · можно вносить частями</p>${harborCard()}` : order
+    ? `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
       <header class="order-header"><h2 id="order-${order.lane}">${order.name}</h2>
         <span class="order-reward">${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></header>
-      ${delivered ? `<p class="order-done">✓ Доставлено</p>${next.filter(item=>item.lane===order.lane).map(item=>renderNextMarketOrder(item,stockTile)).join('')}`
+      ${order.status === 'delivered' ? `<p class="order-done">✓ Сегодня доставлено</p>${next ? renderNextMarketOrder(next,stockTile)+button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)}) : ''}`
         : `<ul class="ingredients order-items">${order.items.map(stockTile).join('')}</ul>
           ${order.status === 'upgrade' ? button('Улучшить дом', 'upgrades', true, { secondary: true })
             : button('Доставить', 'deliver-order', order.status === 'ready', { value: order.lane, context: order.name })}`}
-    </section>`
-  })
-  const waiting = orders.findIndex(({ status }) => status !== 'ready')
-  cards.splice(waiting < 0 ? cards.length : waiting, 0, harborCard())
-  return `<p class="market-return-help">После доставки следующий заказ появится после отдыха дома. Несданные заказы не сгорают от сна.</p><div class="order-list">${cards.join('')}</div>${next.length ? nav(button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)})) : ''}`
+    </section>` : ''
+  return `<div class="market-orders-workspace">${renderMarketOrderPicker(board,icon)}<div class="market-order-detail" tabindex="-1" role="region" aria-labelledby="${board.selected==='harbor'?'harbor-order':`order-${board.selected}`}">${detail}</div></div>
+    <details class="market-orders-timing"><summary>Когда появится следующий заказ</summary><p>После доставки следующий заказ появится после отдыха дома. Несданные заказы не сгорают от сна.</p></details>`
 }
 
 function deliveryItems(items: ReturnType<typeof getProject>['items']) {
@@ -1097,7 +1098,7 @@ function marketCards() {
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
   const stall = farm.village.built ? button(farm.island === 'village' ? 'Своя лавка' : 'В лавку в гавань', 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
   const controls = `<div class="market-controls"><div class="market-header">${balance}${stall}</div>${tabs}</div>`
-  if (marketTab === 'orders') return controls + (isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : '') + marketOrders()
+  if (marketTab === 'orders') return controls + marketOrders() + (isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : '')
   if (marketTab === 'projects') {
     const dockBuilt=isProjectComplete(farm,'dock')
     return controls + projectCard('fair') + `<ul class="dialog-list building-destinations">
@@ -3298,6 +3299,15 @@ app.addEventListener('click', async (event) => {
         dialogFeedback.textContent = ''
         drawPanel()
         dialogContent.scrollTop = 0
+      }
+      break
+    case 'market-order-select':
+      if (panel === 'market' && dialog.open && marketTab === 'orders' && getMarketOrderBoard(farm).choices.some(order => order.id === value)) {
+        selectedMarketOrder = value
+        drawPanel()
+        const detail = dialogContent.querySelector<HTMLElement>('.market-order-detail')
+        detail?.focus({preventScroll:true})
+        detail?.scrollIntoView({block:'nearest'})
       }
       break
     case 'deliver-order': {
