@@ -133,6 +133,12 @@ export function expeditionBid(state: FerryExpeditions, port: ExpeditionPort, id:
 export function expeditionTrades(state: FerryExpeditions, port: ExpeditionPort): readonly Trade[] {
   return trades.filter(trade => trade.port === port && (!trade.project || portProjectComplete(state, port)));
 }
+/** Keep the completed trade as a fresh preview, never as a repeated dispatch or frozen quote. */
+export function expeditionOfferAfterClaim(state: FerryExpeditions, voyage: Pick<ExpeditionManifest, 'id' | 'port' | 'kind'>): string {
+  const choices = expeditionTrades(state, voyage.port), ids = expeditionOfferIds(voyage.id);
+  return voyage.kind === 'trade' && state.discovered.includes(voyage.port) && ids.length > 0
+    && ids.every(id => choices.some(choice => choice.id === id)) ? voyage.id : choices[0].id;
+}
 export function explorationReason(state: FerryExpeditions, port: ExpeditionPort): string {
   if (state.discovered.includes(port)) return 'Этот порт уже нанесён на карту.';
   if (port === 'salt' && state.markets.mill.visits < 1) return 'Сначала получите груз из Мельничного посада.';

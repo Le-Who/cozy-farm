@@ -87,7 +87,7 @@ import { beginFestival, cancelFestival, contributeFestival, finishFestival, getF
 import { playBaySound } from './game-sound'
 import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
-import { combinedExpeditionId, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
+import { combinedExpeditionId, expeditionOfferAfterClaim, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
 import { getFerryRestockPlan } from './ferry-restock'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
@@ -2871,7 +2871,7 @@ app.addEventListener('click', async (event) => {
     case 'expedition-claim': {
       const keyboardClaim = event.detail === 0 && document.activeElement === control
       const voyage=farm.freight.expeditions.active
-      if(voyage){selectedExpeditionPort=voyage.port;selectedExpeditionOffer=expeditionTrades(farm.freight.expeditions,voyage.port)[0].id}
+      if(voyage){selectedExpeditionPort=voyage.port;selectedExpeditionOffer=expeditionOfferAfterClaim(farm.freight.expeditions,voyage)}
       if(perform(()=>receiveFerryExpedition(farm))) {
         bayAudio.playEvent('harbour.crate')
         if (keyboardClaim) {
