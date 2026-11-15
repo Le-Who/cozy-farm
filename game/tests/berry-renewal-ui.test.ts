@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { berryCropIds, canRenewBerryBed, createFarm, cropDefinitions, cropIds, getBerryRenewalPreview, harvestBerryAndKeep, type Bed } from '../src/farm.ts'
-import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus } from '../src/berry-renewal-ui.ts'
+import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus, berrySeedPreview, revealBerrySeedPreview } from '../src/berry-renewal-ui.ts'
 import { isGuardedAction, ActionClickGuard, ActivationKeyGuard } from '../src/action-click-guard.ts'
 
 function garden() {
@@ -49,7 +49,7 @@ test('empty gardens, travel and repeat input have safe explicit UI paths', () =>
   assert.match(renderBerryRenewal(farm, selection, () => ''), /Начните с клубники, черники или малины/)
   farm.island = 'grove'; assert.equal(selection.choose(farm, 0), false)
   assert.match(renderBerryRenewal(farm, selection, () => ''), /Родном острове/)
-  for (const action of ['source', 'reset', 'bed', 'confirm']) assert.ok(isGuardedAction(`berry-renewal-${action}`))
+  for (const action of ['source', 'reset', 'bed', 'confirm', 'seeds']) assert.ok(isGuardedAction(`berry-renewal-${action}`))
   const clicks = new ActionClickGuard(), first = { detail: 1, timeStamp: 1000, clientX: 20, clientY: 20 }
   clicks.remember(first); assert.ok(clicks.blocks({ ...first, detail: 2, timeStamp: 1100 }))
   const keys = new ActivationKeyGuard(); assert.equal(keys.blocks({ key: 'Enter', repeat: false }, true), false)
@@ -166,4 +166,41 @@ test('shared renewal eligibility keeps home and exact-index guards without creat
     assert.equal(getBerryRenewalPreview(farm, 0), undefined)
   }
   assert.equal(stringify.mock.callCount(), 0)
+})
+
+
+test('berry seed entry prefers an owned berry and never changes the farm or active sowing choice', () => {
+  const farm = createFarm(), before = structuredClone(farm)
+  assert.equal(berrySeedPreview(farm), 'strawberry')
+  assert.deepEqual(farm, before)
+  farm.coins = 0; farm.seeds.raspberry = 2
+  farm.gardenPlans = { revision: 1, active: 0, pages: [{ name: 'Морковь', crops: Array(16).fill('carrot') }, null, null, null] }
+  const planned = structuredClone(farm)
+  assert.equal(berrySeedPreview(farm), 'raspberry')
+  assert.deepEqual(farm, planned)
+  farm.seeds.blueberry = 1; assert.equal(berrySeedPreview(farm), 'blueberry')
+  farm.seeds.strawberry = 1; assert.equal(berrySeedPreview(farm), 'strawberry')
+  assert.match(renderBerryRenewal(farm, new BerryRenewalSelection(), () => ''), /data-action="berry-renewal-seeds"/)
+  assert.equal(farm.selectedSeed, 'carrot'); assert.equal(farm.gardenPlans.active, 0)
+})
+
+test('berry seed entry reveals the existing detail and focuses its heading, never its purchase action', () => {
+  const calls: string[] = [], classes = new Set<string>(); let blur: () => void = () => {}
+  const heading = {
+    tabIndex: 0,
+    classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) },
+    addEventListener: (event: string, callback: () => void, options: { once: boolean }) => {
+      assert.equal(event, 'blur'); assert.equal(options.once, true); blur = callback
+    },
+    focus: (options: { preventScroll: boolean }) => { assert.equal(options.preventScroll, true); calls.push('heading focus') },
+  }
+  const detail = {
+    querySelector: (selector: string) => { assert.equal(selector, 'h2'); return heading },
+    scrollIntoView: (options: { block: string; inline: string }) => { assert.deepEqual(options, { block: 'center', inline: 'nearest' }); calls.push('detail scroll') },
+  }
+  const root = { querySelector: (selector: string) => { assert.equal(selector, '.seed-detail'); return detail } } as unknown as HTMLElement
+  revealBerrySeedPreview(root)
+  assert.deepEqual(calls, ['detail scroll', 'heading focus'])
+  assert.equal(heading.tabIndex, -1); assert.ok(classes.has('berry-renewal-focus'))
+  blur(); assert.equal(classes.size, 0)
 })

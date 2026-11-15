@@ -50,7 +50,7 @@ export function renderBerryRenewal(farm: FarmState, selection: BerryRenewalSelec
         : bed.kind === 'tilled' ? 'Посейте и вырастите ягодную посадку.' : 'Сначала вскопайте и вырастите ягодную посадку.'
       return gardenCell(bed, index, { action: 'berry-renewal-source', available, selected: false, purpose })
     }).join('')}</div>
-    <div class="dialog-actions garden-actions">${button('К семенам', 'open-panel', 'seeds')}${button('Разделить ягодную посадку', 'open-panel', 'berry-nursery')}${button('К грядкам', 'close')}</div></section>`
+    <div class="dialog-actions garden-actions">${button('К семенам', 'berry-renewal-seeds')}${button('Разделить ягодную посадку', 'open-panel', 'berry-nursery')}${button('К грядкам', 'close')}</div></section>`
 }
 
 /** Return to the physical source after cancelling, not to the disappearing cancel
@@ -63,4 +63,22 @@ export function restoreBerryRenewalFocus(root: HTMLElement, index: number | unde
   target.addEventListener('blur', () => target.classList.remove('berry-renewal-focus'), { once: true })
   target.focus({ preventScroll: true })
   target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+
+/** Preview a useful packet without choosing a sowing crop or changing a plan. */
+export function berrySeedPreview(farm: FarmState) {
+  return berryCropIds.find(crop => farm.seeds[crop] > 0) ?? 'strawberry'
+}
+
+/** A non-action focus target keeps a held entry key away from Buy or Sow. */
+export function revealBerrySeedPreview(root: HTMLElement) {
+  const detail = root.querySelector<HTMLElement>('.seed-detail')
+  const heading = detail?.querySelector<HTMLElement>('h2')
+  if (!detail || !heading) return
+  heading.tabIndex = -1
+  heading.classList.add('berry-renewal-focus')
+  heading.addEventListener('blur', () => heading.classList.remove('berry-renewal-focus'), { once: true })
+  detail.scrollIntoView({ block: 'center', inline: 'nearest' })
+  heading.focus({ preventScroll: true })
 }

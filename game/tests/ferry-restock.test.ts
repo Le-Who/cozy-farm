@@ -6,6 +6,7 @@ import { createFarm, workBed, sellMarketItem, buyBoat, endDay, restoreFarm } fro
 import { expeditionWallet, sendFerryExpedition, receiveFerryExpedition, getFerrySupplyRequirement } from '../src/harbour-economy.ts'
 import { combinedExpeditionId, portProjects } from '../src/ferry-expeditions.ts'
 import { getFerryRestockPlan } from '../src/ferry-restock.ts'
+import { delayedLastFerryReceiptFarm } from './fixtures/last-ferry-receipt.ts'
 import { isGuardedAction, ActionClickGuard, ActivationKeyGuard } from '../src/action-click-guard.ts'
 
 function depletedBakery() {
@@ -166,4 +167,49 @@ test('the blocked order distinguishes a supply preview, partial recovery and a g
     assert.match(morning,/В дом · посмотреть утро/)
     assert.doesNotMatch(morning,/Посмотреть поставку/)
   } finally { await server.close() }
+})
+
+
+test('an honestly depleted orchard basket gives its first sufficient alternating-fruit morning', () => {
+  let farm=delayedLastFerryReceiptFarm()
+  assert.ok(receiveFerryExpedition(farm).ok)
+  assert.ok(sendFerryExpedition(farm,'mill-buy').ok)
+  assert.ok(endDay(farm).ok); assert.ok(receiveFerryExpedition(farm).ok)
+  const id=combinedExpeditionId('orchard-buns','orchard-peaches')!
+  assert.ok(sendFerryExpedition(farm,id).ok)
+  assert.ok(endDay(farm).ok); assert.ok(receiveFerryExpedition(farm).ok)
+  farm=restoreFarm(JSON.parse(JSON.stringify(farm)))!
+  assert.equal(farm.day,12); assert.equal(farm.coins,66); assert.equal(farm.handmade.round,1)
+  const before=structuredClone(farm)
+  const plan=getFerryRestockPlan(farm.freight.expeditions,id,farm.day,expeditionWallet(farm))
+  assert.equal(plan?.kind,'rest')
+  assert.equal(plan?.day,14)
+  assert.deepEqual(plan?.stock,[{id:'peach',needed:4,now:2,nextMorning:4}])
+  assert.deepEqual(farm,before,'forecast spends nothing and does not sleep or select another order')
+  const beforeBlocked=structuredClone(farm)
+  assert.equal(sendFerryExpedition(farm,id).ok,false)
+  assert.deepEqual(farm,beforeBlocked)
+  assert.ok(endDay(farm).ok)
+  assert.equal(farm.freight.expeditions.markets.orchard.stock.peach,2)
+  assert.equal(sendFerryExpedition(farm,id).ok,false)
+  assert.ok(endDay(farm).ok)
+  assert.equal(farm.freight.expeditions.markets.orchard.stock.peach,4)
+  assert.equal(getFerryRestockPlan(farm.freight.expeditions,id,farm.day,expeditionWallet(farm)),undefined)
+  assert.ok(sendFerryExpedition(farm,id).ok,'the exact shown basket really becomes sendable on day fourteen')
+})
+
+test('later natural fruit cannot promise a basket whose other export disappears into production', () => {
+  const farm=createFarm(); farm.boatOwned=true; farm.day=2; farm.coins=100
+  const world=farm.freight.expeditions; world.lastDay=2; world.discovered.push('orchard')
+  const market=world.markets.orchard
+  market.supplied=Object.fromEntries(portProjects.orchard.needs.map(item=>[item.id,item.quantity]))
+  market.stock={apple:2,pear:0,peach:0,'dish:appleJam':0}
+  const id=combinedExpeditionId('orchard-mixed','orchard-pears')!, before=structuredClone(farm)
+  assert.equal(getFerryRestockPlan(world,id,farm.day,expeditionWallet(farm)),undefined)
+  assert.deepEqual(farm,before)
+  for(let morning=0;morning<6;morning++)assert.ok(endDay(farm).ok)
+  assert.equal(world.markets.orchard.stock.pear,4)
+  assert.equal(world.markets.orchard.stock.peach,4)
+  assert.equal(world.markets.orchard.stock.apple,0)
+  assert.equal(sendFerryExpedition(farm,id).ok,false)
 })

@@ -22,10 +22,11 @@ export function getFerryRestockPlan(state: FerryExpeditions, id: string, day: nu
   const stock = request.incoming.map(item => ({id:item.id,needed:item.quantity,now:expeditionStock(state,request.port,item.id),nextMorning:expeditionStock(waiting,request.port,item.id)}))
   if (stock.every(item => item.nextMorning >= item.needed)) return {kind:'rest',port:request.port,day:tomorrow,stock}
 
-  // Local fish and salt replenish without another delivery. The working kitchen
-  // also uses them, so find the first sufficient morning for the whole basket
-  // within the existing six-morning horizon, using the real production rules.
-  if (expeditionOfferIds(id).some(offer => offer === 'salt-fish' || offer === 'salt-buy')) {
+  // Local fish, salt and alternating orchard fruit replenish without a delivery.
+  // Production may consume another export in the basket, so use the real rules
+  // to find its first sufficient morning within the existing six-morning horizon.
+  if (expeditionOfferIds(id).some(offer => offer === 'salt-fish' || offer === 'salt-buy')
+    || request.port === 'orchard' && request.incoming.some(item => item.id === 'pear' || item.id === 'peach')) {
     const future = structuredClone(waiting)
     for (let offset = 1; offset <= 5; offset++) {
       advanceExpeditions(future, tomorrow + offset)

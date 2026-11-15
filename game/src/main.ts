@@ -4,7 +4,7 @@ import {seedChoice,chooseSeedForBed} from './seed-choice'
 import {planBedWork,isCurrentBedWork,bedWorkKind} from './bed-work-intent'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
 import './recipe-surplus.css'
-import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus } from './berry-renewal-ui'
+import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus, berrySeedPreview, revealBerrySeedPreview } from './berry-renewal-ui'
 import { getBerryRenewalPreview, harvestBerryAndKeep } from './farm'
 import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
 import { activeGardenPlan, plannedCropAt, seedForBed, followGardenPlan, removeGardenPlan } from './garden-plans'
@@ -2035,7 +2035,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
   openPanel(next,false)
 }
 
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { seedPreview: CropId }) {
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
   if (next === 'shoal' && (farm.island !== 'grove' || !hasShoal(farm))) return
@@ -2063,7 +2063,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     if (panel!=='bay-music') selectedWarehouse=farm.island
   }
   if (next !== panel) { stopHarbour(); stopFishing(); stopWorkshop(); stopCookery(); stopArrangement() }
-  if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = seedPickerBed === undefined ? farm.selectedSeed : seedForBed(farm, seedPickerBed)
+  if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = next === 'seeds' && entry ? entry.seedPreview : seedPickerBed === undefined ? farm.selectedSeed : seedForBed(farm, seedPickerBed)
   if (remember && next !== panel && next === 'irrigation') irrigationMode = farm.wellSpecialization === 'pipes' ? 'pair' : 'row'
   if (remember && next !== panel && next === 'boat') { boatIsland = destinationIsland; journeyDetailsOpen=false }
   if (next === 'archive' || next === 'boat') {
@@ -2631,6 +2631,15 @@ app.addEventListener('click', async (event) => {
       if (panel === 'berry-renewal' && dialog.open) {
         const index = berryRenewalSelection.selected?.index
         berryRenewalSelection.reset(); drawPanel(); restoreBerryRenewalFocus(dialogContent, index)
+      }
+      break
+    case 'berry-renewal-seeds':
+      if (panel === 'berry-renewal' && dialog.open && farm.island === 'home') {
+        // Preserve the touched entry as the history target, not the old Close button.
+        control.focus({ preventScroll: true })
+        const crop = berrySeedPreview(farm)
+        openPanel('seeds', true, farm.island, 'page.unfold', undefined, { seedPreview: crop })
+        revealBerrySeedPreview(dialogContent)
       }
       break
     case 'berry-renewal-bed': {
