@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createFarm, harvestBerryAndKeep } from '../src/farm.ts'
+import { berryCropIds, canRenewBerryBed, createFarm, cropDefinitions, cropIds, getBerryRenewalPreview, harvestBerryAndKeep, type Bed } from '../src/farm.ts'
 import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus } from '../src/berry-renewal-ui.ts'
 import { isGuardedAction, ActionClickGuard, ActivationKeyGuard } from '../src/action-click-guard.ts'
 
@@ -112,4 +112,58 @@ test('cancel focus returns visibly to the same eligible source, with heading fal
   heading.blur(); assert.equal(heading.classes.size, 0)
   selectors.length = 0; restoreBerryRenewalFocus(root, undefined)
   assert.deepEqual(selectors, ['.transplant-step'])
+})
+
+
+test('map eligibility stays equal to the authoritative preview across crop and harvest contexts', () => {
+  const beds: Bed[] = [{ kind: 'empty' }, { kind: 'tilled' }]
+  for (const crop of cropIds) for (const growth of [0, cropDefinitions[crop].days - 1, cropDefinitions[crop].days, cropDefinitions[crop].days + 1]) {
+    for (const watered of [false, true]) for (const trait of [undefined, 'dew'] as const) {
+      beds.push({ kind: 'crop', crop, growth, watered, ...(trait ? { trait } : {}) })
+    }
+  }
+  for (const day of [1, 6]) for (const processing of [null, 'chunky', 'bright', 'expired'] as const) {
+    const farm = createFarm(), selection = new BerryRenewalSelection()
+    farm.day = day
+    farm.culinary.picnic = processing === null ? null : { day: processing === 'expired' ? day - 1 : day, processing: processing === 'expired' ? 'chunky' : processing }
+    for (let offset = 0; offset < beds.length; offset += 16) {
+      farm.beds = Array.from({ length: 16 }, (_, index) => beds[(offset + index) % beds.length])
+      const before = structuredClone(farm)
+      const cells = [...renderBerryRenewal(farm, selection, () => '').matchAll(/<button class="transplant-bed garden-cell"[^>]+>/g)].map(match => match[0])
+      assert.equal(cells.length, 16)
+      cells.forEach((cell, index) => {
+        const bed = farm.beds[index]
+        const expected = bed.kind === 'crop' && berryCropIds.some(crop => crop === bed.crop) && bed.growth >= cropDefinitions[bed.crop].days
+        assert.equal(canRenewBerryBed(farm, index), expected)
+        assert.equal(!cell.includes(' disabled'), getBerryRenewalPreview(farm, index) !== undefined, `bed ${index}, day ${day}, picnic ${processing}`)
+      })
+      assert.deepEqual(farm, before)
+    }
+  }
+})
+
+test('mapping ripe beds does not serialize harvest tokens; selection and review still do', t => {
+  const farm = createFarm(), selection = new BerryRenewalSelection()
+  farm.beds = Array.from({ length: 16 }, () => ({ kind: 'crop', crop: 'blueberry', growth: 3, watered: false, trait: 'dew' }))
+  const stringify = t.mock.method(JSON, 'stringify')
+  const html = renderBerryRenewal(farm, selection, () => '')
+  assert.equal(stringify.mock.callCount(), 0, 'a read-only map needs eligibility, not 16 complete quotes')
+  assert.equal((html.match(/data-action="berry-renewal-source"/g) ?? []).length, 16)
+  assert.ok(selection.choose(farm, 15))
+  assert.equal(stringify.mock.callCount(), 1, 'the explicit choice still freezes its exact quote')
+  assert.match(renderBerryRenewal(farm, selection, () => ''), /data-action="berry-renewal-confirm"/)
+  assert.equal(stringify.mock.callCount(), 2, 'review still revalidates the quote')
+})
+
+
+test('shared renewal eligibility keeps home and exact-index guards without creating quotes', t => {
+  const farm = garden(), stringify = t.mock.method(JSON, 'stringify')
+  assert.equal(canRenewBerryBed(farm, 0), true)
+  for (const index of [-1, 0.5, NaN, Infinity, 16]) assert.equal(canRenewBerryBed(farm, index), false)
+  for (const island of ['grove', 'cape', 'village'] as const) {
+    farm.island = island
+    assert.equal(canRenewBerryBed(farm, 0), false)
+    assert.equal(getBerryRenewalPreview(farm, 0), undefined)
+  }
+  assert.equal(stringify.mock.callCount(), 0)
 })

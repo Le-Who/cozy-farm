@@ -1,4 +1,4 @@
-import { berryCropIds, cropDefinitions, getBedHarvestPreview, getBerryRenewalPreview, variantLabel, type FarmState } from './farm.ts'
+import { berryCropIds, canRenewBerryBed, cropDefinitions, getBedHarvestPreview, getBerryRenewalPreview, variantLabel, type FarmState } from './farm.ts'
 import { gardenCell } from './garden-spatial.ts'
 import { ruCount } from './ru.ts'
 
@@ -44,7 +44,7 @@ export function renderBerryRenewal(farm: FarmState, selection: BerryRenewalSelec
     ${hasBerries ? '' : '<p>Начните с клубники, черники или малины. Посейте семена на свободной грядке и вырастите их до зрелости.</p>'}</div>
     <div class="transplant-beds garden-map" role="group" aria-label="Свой ягодник: четыре ряда по четыре, как на поле">${farm.beds.map((bed, index) => {
       const berry = bed.kind === 'crop' && berryCropIds.some(id => id === bed.crop)
-      const available = getBerryRenewalPreview(farm, index) !== undefined
+      const available = canRenewBerryBed(farm, index)
       const purpose = available ? 'Выбрать бережный сбор.' : berry ? 'Сначала дождитесь зрелости.'
         : bed.kind === 'crop' ? 'Бережный сбор доступен только ягодам.'
         : bed.kind === 'tilled' ? 'Посейте и вырастите ягодную посадку.' : 'Сначала вскопайте и вырастите ягодную посадку.'

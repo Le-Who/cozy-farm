@@ -731,10 +731,18 @@ export function getBedHarvestPreview(farm: FarmState, index: number): BedHarvest
   return { crop: bed.crop, ...resourceYield(cropDefinitions[bed.crop].yield + picnicBonus, bed.trait), picnicBonus };
 }
 
+/** Shared eligibility for the map and the reviewed action, without quoting a yield. */
+export function canRenewBerryBed(farm: FarmState, index: number): boolean {
+  if (farm.island !== 'home' || !Number.isInteger(index)) return false;
+  const bed = farm.beds[index];
+  return !!bed && bed.kind === 'crop' && getBedStage(bed) === 'ripe'
+    && berryCropIds.some(crop => crop === bed.crop);
+}
+
 /** Pick a smaller harvest instead of clearing the berry planting. Reading reserves nothing. */
 export function getBerryRenewalPreview(farm: FarmState, index: number) {
-  const harvest = getBedHarvestPreview(farm, index);
-  if (!harvest || !berryCropIds.some(crop => crop === harvest.crop)) return undefined;
+  if (!canRenewBerryBed(farm, index)) return undefined;
+  const harvest = getBedHarvestPreview(farm, index)!;
   const bed = farm.beds[index] as CropBed, crop = cropDefinitions[bed.crop];
   const token = `br1;${farm.day};${index};${JSON.stringify([
     bed.kind, bed.crop, bed.growth, bed.watered, bed.wateredAt ?? null, bed.trait ?? null,
