@@ -14,7 +14,8 @@ function ready() {
 
 test('the coop entry uses its own guarded action rather than generic navigation', () => {
   const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
-  assert.match(main, /button\('Выбрать смесь', 'chicken-feed-open'/)
+  const view = readFileSync(new URL('../src/coop-panel.ts', import.meta.url), 'utf8')
+  assert.match(view, /button\('Выбрать смесь', 'chicken-feed-open'/)
   assert.match(main, /case 'chicken-feed-open':[\s\S]*?panel === 'coop' && dialog\.open && farm\.island === 'home' && farm\.buildingLevels\.coop >= 2[\s\S]*?openPanel\('chicken-feed'\)/)
   assert.equal(isGuardedAction('chicken-feed-open'), true)
   assert.equal(isGuardedAction('open-panel'), false, 'unrelated navigation keeps its behavior')

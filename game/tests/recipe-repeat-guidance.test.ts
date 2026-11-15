@@ -17,7 +17,7 @@ test('the saved tart explains all exact ingredients, including wheat and the mis
   assert.deepEqual(guide.missing,[{kind:'eggs',quantity:1}])
   assert.equal(guide.available,false)
   const html=renderRecipeRepeatGuide(farm,recipeId,stock,true)
-  assert.match(html,/Для точного повтора ×1/)
+  assert.match(html,/Ингредиенты на 1 порцию/)
   assert.match(html,/eggs:: ×1/)
   assert.match(html,/data-repeat-guide="s1" open/)
   assert.match(html,/втрое больше каждого ингредиента/)

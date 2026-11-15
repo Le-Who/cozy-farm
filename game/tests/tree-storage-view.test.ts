@@ -6,10 +6,11 @@ import {runInNewContext} from 'node:vm'
 import {createFarm,treeDefinitions,buyAndPlantTree,storeTree,returnNurseryTree,endDay,pickFruit,restoreCurrentFarm} from '../src/farm.ts'
 import {nurseryFruitDetail} from '../src/orchard-guidance.ts'
 import {treeVariantCopy} from '../src/ready-variant-guidance.ts'
+import {TreeStorageChoice,storedTreeChoiceLabel} from '../src/tree-storage-choice.ts'
 const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
 const fn=source.slice(source.indexOf('function nurseryCard('),source.indexOf('\nlet fishingGame:'))
 function render(farm:ReturnType<typeof createFarm>,slot?:number){
- const ctx={farm,slot,treeDefinitions,nurseryFruitDetail,treeVariantCopy,
+ const ctx={farm,slot,treeDefinitions,nurseryFruitDetail,treeVariantCopy,treeStorageChoice:new TreeStorageChoice(),storedTreeChoiceLabel,escapeHtml:(s:string)=>s,
   button:(label:string,action:string,enabled=true,o:any={})=>`<button data-action="${action}" data-value="${o.value}"${enabled?'':' disabled'}>${label}</button>`,
   row:(icon:string,name:string,detail:string,action:string,trait?:string)=>`<li data-trait="${trait??''}"><strong>${name}</strong>${detail}${action}</li>`}
  return runInNewContext(stripTypeScriptTypes(fn+'\nnurseryCard(slot)'),ctx) as string

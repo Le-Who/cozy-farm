@@ -1,6 +1,6 @@
 import { recipePlanningChoices, recipePlanningGuide } from './recipe-planning'
 import { recipeDraftKey } from './recipe-draft'
-import { getRecipeRepeatGuide } from './recipe-repeat-guidance'
+import { getRecipeRepeatGuide, recipeIngredientsDisclosureLabel } from './recipe-repeat-guidance'
 import { sortedBookRecipes, selectedBookId, type RecipeBookView } from './recipe-book-view'
 import './recipe-book.css'
 import './recipe-repeat-guidance.css'
@@ -73,7 +73,7 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
     <section class="recipe-book-cooking" aria-labelledby="recipe-cooking-title"><h2 id="recipe-cooking-title" tabindex="-1" data-recipe-focus="cooking">Приготовить точно</h2>
       <div class="signature-actions recipe-book-repeat">${control('Повторить ×1','make-signature',recipe.id,action.available)}${control('Партия ×3','batch-signature',recipe.id,batch)}</div>
       ${reason?`<p class="recipe-book-blocker" tabindex="-1" data-recipe-focus="blocker" role="status">${escapeRecipeText(reason)}</p>`:!batch?'<p class="recipe-book-blocker">Для партии ×3 нужно втрое больше каждого ингредиента.</p>':''}
-      <section class="recipe-repeat-guide" aria-label="Точный повтор рецепта"><details data-repeat-guide="${recipe.id}"${reason||view.expandedRepeatId===recipe.id?' open':''}><summary>Для точного повтора ×1</summary><ul class="ingredients">${guide.items.map(art.stock).join('')}</ul><p class="recipe-repeat-note">Тот же состав, особенности и оформление. Для партии ×3 нужно втрое больше каждого ингредиента.</p></details>${guide.away?control('На домашнюю кухню','recipe-repeat-home',recipe.id):''}</section>
+      <section class="recipe-repeat-guide" aria-label="Точный повтор рецепта"><details data-repeat-guide="${recipe.id}"${reason||view.expandedRepeatId===recipe.id?' open':''}><summary>${recipeIngredientsDisclosureLabel}</summary><ul class="ingredients">${guide.items.map(art.stock).join('')}</ul><p class="recipe-repeat-note">Тот же состав, особенности и оформление. Для партии ×3 нужно втрое больше каждого ингредиента.</p></details>${guide.away?control('На домашнюю кухню','recipe-repeat-home',recipe.id):''}</section>
       ${control('Готовить вручную','manual-signature',recipe.id,capacity.canCreate)}${!capacity.canCreate?`<p class="recipe-book-note">${capacity.message}</p>`:''}
     </section>
     <section class="recipe-book-uses" aria-label="Применить готовые порции"><h2>Применить</h2>

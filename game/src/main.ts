@@ -60,7 +60,9 @@ import { shoalReturnCopy } from './shoal-return'
 import { getApiaryCopy } from './apiary-preview'
 import './apiary-preview.css'
 import { renderPicnicStatus } from './picnic-guidance'
-import { renderCoopMorning, renderCoopCapacityWarning } from './coop-preview'
+import { renderCoopCapacityWarning } from './coop-preview'
+import { renderCoopPanel } from './coop-panel'
+import './coop-panel.css'
 import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
 import './chicken-feed.css'
 import { henFriends, henFriendshipStage, renderHenFriendship, treatHen } from './hen-friendship'
@@ -124,6 +126,8 @@ import { getIslandJourneys } from './journey'
 import { getDiscoveryTask } from './discovery-path'
 import { getDiscoveryJournal } from './discovery-journal'
 import { getFruitSource, nurseryFruitDetail } from './orchard-guidance'
+import {TreeStorageChoice,storedTreeChoiceLabel,revealTreeStorageReturn} from './tree-storage-choice'
+import './tree-storage-choice.css'
 import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
@@ -184,8 +188,6 @@ import {
   dishIds,
   isTartDish,
   endDay,
-  eggsPerBasket,
-  eggsPerCrate,
   expandedWaterCapacity,
   feedBagPrice,
   feedBagSize,
@@ -223,8 +225,6 @@ import {
   isProjectComplete,
   isHoneyWind,
   islandIds,
-  maxChickenHappiness,
-  maxFlockSize,
   needsSeedChoice,
   orderLanes,
   packEggBasket,
@@ -1175,17 +1175,20 @@ function treeRow(index: number) {
     button(action.kind === 'pick' ? 'Собрать плоды' : slot ? 'Осмотреть' : 'Посадить дерево', 'visit-tree', true, { value: index }))
 }
 
+const treeStorageChoice = new TreeStorageChoice()
 function nurseryCard(slot?: number) {
   if (farm.island !== 'home' && farm.island !== 'grove' || !farm.treeNursery.length) return ''
   const target = slot ?? farm.trees[farm.island].findIndex(tree => tree === null)
   const available = farm.trees[farm.island][target] === null
-  return `<section aria-label="Деревья на хранении"><h2>Деревья на хранении · ${farm.treeNursery.length}</h2>
-    <p class="dialog-intro">Перенос бесплатный. Возраст, готовые плоды и особенность сохраняются. На хранении рост и новые плоды на паузе.${available ? '' : ' Чтобы вернуть дерево, сначала освободите место в саду.'}</p>
-    <ul class="dialog-list">${farm.treeNursery.map(({ id, tree }) => {
-      const definition = treeDefinitions[tree.tree]
-      const detail = [nurseryFruitDetail(tree), treeVariantCopy(tree)].filter(Boolean).join(' ')
-      return row('ui-tree-' + tree.tree, definition.treeName, detail, button(available ? `Вернуть · место ${target + 1}` : 'Нет места в саду', 'return-nursery-tree', available, { value: id, context: definition.treeName }), tree.trait)
-    }).join('')}</ul></section>`
+  const entry = treeStorageChoice.current(farm)!
+  const {id,tree} = entry, definition = treeDefinitions[tree.tree]
+  const detail = [nurseryFruitDetail(tree), treeVariantCopy(tree)].filter(Boolean).join(' ')
+  return `<section class="tree-storage" aria-label="Деревья на хранении">
+    <label class="tree-storage-picker">Деревья на хранении · ${farm.treeNursery.length}<select data-tree-storage-choice aria-label="Выберите дерево на хранении">${farm.treeNursery.map(item=>`<option value="${item.id}"${item.id===id?' selected':''}>${escapeHtml(storedTreeChoiceLabel(item))}</option>`).join('')}</select></label>
+    <ul class="dialog-list">${row('ui-tree-' + tree.tree, `${definition.treeName} · №${id}`, detail, button(available ? `Вернуть · место ${target + 1}` : 'Нет места в саду', 'return-nursery-tree', available, { value: id, context: definition.treeName }), tree.trait)}</ul>
+    ${available ? '' : '<p class="tree-storage-availability">Сначала освободите место в этом саду.</p>'}
+    <details class="tree-storage-rules"><summary>Бесплатное хранение: правила</summary><p>Перенос бесплатный. Возраст, готовые плоды и особенность сохраняются. На хранении рост и новые плоды на паузе. После возврата плоды собираются отдельно.</p></details>
+  </section>`
 }
 
 let fishingGame: ReturnType<typeof createFishingGame> | undefined
@@ -1677,6 +1680,7 @@ function drawPanel() {
   dialog.dataset.panel = panel
   dialog.dataset.marketTab = marketTab
   dialogEmblem.src = iconUrl(panel === 'specialize' ? `upgrade-${specializationBuilding}-card` : panelEmblems[panel])
+  const focusedStorageChoice = document.activeElement instanceof HTMLSelectElement && document.activeElement.matches('[data-tree-storage-choice]') && dialogContent.contains(document.activeElement)
   const focused = document.activeElement instanceof HTMLButtonElement && dialogContent.contains(document.activeElement)
     ? document.activeElement
     : undefined
@@ -1872,25 +1876,7 @@ function drawPanel() {
       break
     case 'coop':
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
-      dialogContent.innerHTML = `${renderCoopMorning(farm)}<div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>
-        ${button('Улучшения', 'upgrades', true, { secondary: true })}</div>
-        <ul class="dialog-list">
-          ${flockFeedRow()}
-          ${row('tool-hen', 'Дружба со стаей', 'Погладить, угостить, погулять', button('Познакомиться', 'hen-friendship-open', true, {secondary:true}))}
-          ${farm.buildingLevels.coop >= 2 ? row('tool-feed', 'Корм из урожая', '3 порции с морковью · 4 с яблоком', button('Выбрать смесь', 'chicken-feed-open', true, {secondary:true})) : row('tool-feed', 'Домашние кормовые смеси', 'Откроются после улучшения курятника')}
-          ${row('egg', 'Яйца', `×${farm.eggsReady}`, button('Собрать', 'collect', farm.eggsReady > 0, {context:'яйца'}))}
-          ${farm.coopSpecialization === 'hatchery' && farm.flockSize < maxFlockSize
-            ? row('egg', 'Инкубатор', farm.hatchDay === null ? `Нужно 1 · в запасе ${farm.eggs}` : quantity(farm.hatchDay - farm.day, 'ночь'),
-              farm.hatchDay === null ? button('Положить яйцо', 'incubate-egg', farm.eggs > 0) : '') : ''}
-          ${farm.coopSpecialization === 'packing' ? row('ui-egg-crate', `Ящики яиц · ${farm.eggCrates}`, `Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,
-            button('Упаковать', 'pack-egg-crate', farm.eggs >= eggsPerCrate, { context: 'ящик яиц' })+button(`Распаковать · +${eggsPerCrate}`, 'unpack-egg-crate', getEggUnpackAction(farm,'crate').available, {secondary:true})) : ''}
-          ${farm.buildingLevels.coop >= 2 || farm.eggBaskets > 0 ? row('ui-egg-basket', `Корзины яиц · ${farm.eggBaskets}`, `Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,
-            button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket, { context: 'корзина яиц' })+button(`Распаковать · +${eggsPerBasket}`, 'unpack-egg-basket', getEggUnpackAction(farm,'basket').available, {secondary:true})) : ''}
-        </ul><div class="hen-grid" role="group" aria-label="Курочки">${Array.from({ length: farm.flockSize }, (_, index) => {
-            const petted = farm.pettedChickens.includes(index)
-            return `<button type="button" class="hen-card" data-action="pet" data-value="${index}" aria-label="${henFriends[index].name}, ${petted?'сегодня поглажена, погладить снова':'погладить'}">${icon('tool-hen')}<span>${henFriends[index].name}</span><small>${petted?'Поглажена':'Погладить'}</small></button>`
-          }).join('')}
-        </div>`
+      dialogContent.innerHTML = renderCoopPanel(farm, {icon,row,button,feedRow:flockFeedRow})
       break
     case 'rest':
       dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра"><header class="rest-morning"><div><strong>Сейчас · день ${farm.day}</strong><span>Утром · день ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}</span></div>${button('До утра', 'sleep', true, {value:farm.day})}</header><p class="rest-commit-note">Сон завершит этот день. Вернуться назад нельзя.</p>${renderShopRest(farm)}</section>
@@ -2130,6 +2116,7 @@ function drawPanel() {
   }
 
   applyIngredientFinishes(dialogContent)
+  if (focusedStorageChoice) dialogContent.querySelector<HTMLSelectElement>('[data-tree-storage-choice]')?.focus({preventScroll:true})
   if(panel==='market'&&salePresentation.place)updateSaleQuote()
   if (panel === 'recipes') recipeBook.restore(dialogContent,true)
   if (focused && panel !== 'bay-freight' && panel !== 'recipes') {
@@ -2669,7 +2656,7 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
     treeSlot=index
     openPanel('tree')
   }
-  else if (target === 'orchard') openPanel('orchard')
+  else if (target === 'orchard') { if (value) treeStorageChoice.choose(farm,value); openPanel('orchard') }
   else if (target === 'project-dock') openPanel('dock-project')
   else if (target === 'visit-harbor') openPanel('harbor')
   else if (target === 'fair-project') {marketTab='projects';openPanel('market')}
@@ -3599,13 +3586,15 @@ app.addEventListener('click', async (event) => {
       island.visit({kind:'tree',index})
       drawPanel()
       dialogContent.querySelector<HTMLButtonElement>('.tree-selector [aria-pressed="true"]')?.focus({preventScroll:true})
+      revealTreeStorageReturn(dialogContent)
       break
     }
-    case 'visit-tree': activateTarget({ kind: 'tree', index: Number(value) }); break
+    case 'visit-tree': activateTarget({ kind: 'tree', index: Number(value) }); revealTreeStorageReturn(dialogContent); break
     case 'pet': activateTarget({ kind: 'hen', index: Number(value) }); break
     case 'gather-salt': activateTarget({ kind: 'salt' }); break
     case 'guide': openPanel('guide'); break
     case 'orchard':
+      if (value) treeStorageChoice.choose(farm,value)
       openPanel('orchard')
       if (value && farm.treeNursery.some(entry => entry.id === Number(value))) highlightControl(dialogContent.querySelector<HTMLElement>(`[data-action="return-nursery-tree"][data-value="${Number(value)}"]`))
       break
@@ -3699,6 +3688,7 @@ app.addEventListener('click', async (event) => {
       if (panel === 'tree' && Number(value) === treeSlot && perform(() => storeTree(farm, treeSlot))) {
         dialogContent.scrollTop = 0
         dialogContent.querySelector<HTMLButtonElement>('[data-action="return-nursery-tree"]')?.focus({ preventScroll: true })
+        revealTreeStorageReturn(dialogContent)
       }
       break
     }
@@ -3852,6 +3842,15 @@ app.addEventListener('change',event=>{
       const scroll = dialogContent.scrollTop
       drawPanel(); dialogContent.scrollTop = scroll
       dialogContent.querySelector<HTMLSelectElement>(`[data-commission-pair="${part}"][data-customer="${CSS.escape(customer!)}"]`)?.focus({preventScroll:true})
+    }
+  }
+  if (input instanceof HTMLSelectElement && input.matches('[data-tree-storage-choice]') && (panel === 'tree' || panel === 'orchard') && dialog.open) {
+    if (treeStorageChoice.choose(farm,input.value)) {
+      drawPanel()
+      const choice=dialogContent.querySelector<HTMLSelectElement>('[data-tree-storage-choice]')
+      choice?.focus({preventScroll:true})
+      choice?.scrollIntoView({block:'nearest'})
+      revealTreeStorageReturn(dialogContent)
     }
   }
   if((input instanceof HTMLInputElement||input instanceof HTMLTextAreaElement)&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)

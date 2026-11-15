@@ -83,9 +83,9 @@ test('a valid legacy basket at coop one stays actionable, without enabling new p
   const farm=packed('basket');farm.buildingLevels.coop=1
   assert.ok(restoreFarm(JSON.parse(JSON.stringify(farm))))
   assert.equal(getPackedEggSource(farm,1)?.kind,'basket')
-  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
-  assert.match(main,/farm.buildingLevels.coop >= 2 \|\| farm.eggBaskets > 0 \? row\('ui-egg-basket'/)
-  assert.match(main,/button\('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket/)
+  const view=readFileSync(new URL('../src/coop-panel.ts',import.meta.url),'utf8')
+  assert.match(view,/farm.buildingLevels.coop >= 2 \|\| farm.eggBaskets > 0 \? row\('ui-egg-basket'/)
+  assert.match(view,/button\('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket/)
 })
 
 
