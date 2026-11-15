@@ -51,9 +51,9 @@ test('prepared feed persists through un-fed days, travel and reload without a ne
 
 test('preview and cancellation are read-only, disclose exact costs, alternatives and no bonus',()=>{
  const f=ready();unchanged(f,()=>{
-  const html=renderChickenFeedMixes(f);assert.match(html,/Пшеница ×1 · есть 4, останется 3/);assert.match(html,/Морковь ×1 · есть 2, останется 1/)
-  assert.match(html,/Яблоко ×1 · есть 3, останется 2/);assert.match(html,/Количество яиц от вида смеси не меняется/)
-  assert.match(html,/2 порции за 4 монеты/);assert.match(html,/необычный урожай сохранится/);assert.match(html,/Смешать · \+4 порции/)
+  const html=renderChickenFeedMixes(f);assert.match(html,/Пшеница ×1<\/strong><small>Есть 4 → 3/);assert.match(html,/Морковь ×1<\/strong><small>Есть 2 → 1/)
+  assert.match(html,/Яблоко ×1<\/strong><small>Есть 3 → 2/);assert.match(html,/Количество яиц от вида смеси не меняется/)
+  assert.match(html,/2 порции за 4 монеты/);assert.match(html,/необычный урожай сохранится/);assert.match(html,/Садовая смесь: смешать 4 порции/)
  });f.produce.wheat=0;assert.equal((renderChickenFeedMixes(f).match(/ disabled/g)||[]).length,2)
 })
 

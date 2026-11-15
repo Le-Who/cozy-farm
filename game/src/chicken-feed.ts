@@ -33,17 +33,20 @@ export function mixChickenFeed(farm: FarmState, recipe: unknown): ActionResult {
   return { ok: true, message: `${mix.name} готова: ${ruCount(mix.portions, 'порция', 'порции', 'порций')} корма. Кормление — отдельное действие.` }
 }
 
-export function renderChickenFeedMixes(farm: FarmState) {
+export function renderChickenFeedMixes(farm: FarmState, icon: (name: string) => string = () => '') {
   if (farm.island !== 'home') return ''
-  if (farm.buildingLevels.coop < 2) return '<section class="coop-morning chicken-feed"><h2>Корм со своей фермы</h2><p>В улучшенном курятнике можно смешивать пшеницу с морковью или яблоком. Покупной корм остаётся доступен.</p></section>'
-  return `<section class="coop-morning chicken-feed" aria-label="Домашние кормовые смеси"><h2>Корм со своей фермы</h2>
-    <p>В запасе ${ruCount(farm.feed, 'порция', 'порции', 'порций')}. Одной порции хватает всей стае на одно утро. Смесь нужно отдельно дать курам.</p>
-    <p>Используются только обычные продукты, необычный урожай сохранится. Количество яиц от вида смеси не меняется.</p>
-    <div class="chicken-feed-recipes">${(Object.keys(chickenFeedRecipes) as ChickenFeedRecipe[]).map(recipe => {
+  if (farm.buildingLevels.coop < 2) return '<section class="feed-choice"><p>Смеси откроются после улучшения курятника. Покупной корм остаётся доступен.</p></section>'
+  return `<section class="feed-choice" aria-label="Домашние кормовые смеси">
+    <div class="feed-choice-summary"><p>1 порция — вся стая на 1 утро</p><strong>В запасе ${farm.feed}</strong></div>
+    <div class="feed-choice-grid">${(Object.keys(chickenFeedRecipes) as ChickenFeedRecipe[]).map(recipe => {
       const mix = getChickenFeedMix(farm, recipe)
-      return `<article class="chicken-feed-recipe"><h3>${mix.name}</h3>
-        <p>Пшеница ×1 · есть ${mix.wheat}, останется ${mix.remainingWheat}<br>${mix.extraName} ×1 · есть ${mix.extraCount}, останется ${mix.remainingExtra}</p>
-        <p>${!mix.room ? 'В кладовой пока нет места для новой смеси.' : mix.available ? `После смешивания в запасе: ${ruCount(mix.total, 'порция', 'порции', 'порций')}.` : 'Нужны оба обычных продукта в запасах.'}</p>
-        <button type="button" class="dialog-button" data-action="mix-chicken-feed" data-value="${recipe}"${mix.available ? '' : ' disabled'}>Смешать · +${ruCount(mix.portions, 'порция', 'порции', 'порций')}</button></article>`
-    }).join('')}</div><p class="coop-morning-detail">Можно по-прежнему покупать корм: ${feedBagSize} порции за ${feedBagPrice} монеты. Смешивание не кормит автоматически и не требует ежедневного повтора.</p></section>`
+      const ingredient = (name: string, image: string, stock: number, remaining: number) => `<li data-missing="${stock < 1}">${icon(image)}<span><strong>${name} ×1</strong><small>${stock < 1 ? 'Нет в запасе' : `Есть ${stock} → ${remaining}`}</small></span></li>`
+      const missing = [mix.wheat < 1 ? 'пшеница' : '', mix.extraCount < 1 ? mix.extraName.toLowerCase() : ''].filter(Boolean).join(' и ')
+      return `<article class="feed-choice-card" aria-label="${mix.name}"><h2>${recipe === 'garden' ? 'Огородная' : 'Садовая'}</h2>
+        <ul class="feed-choice-cost" aria-label="Расход обычных продуктов">${ingredient('Пшеница', 'wheat', mix.wheat, mix.remainingWheat)}${ingredient(mix.extraName, mix.extra, mix.extraCount, mix.remainingExtra)}</ul>
+        <div class="feed-choice-result"><strong>${ruCount(mix.portions, 'порция', 'порции', 'порций')}</strong><span>${!mix.room ? 'Нет места для новой смеси' : !mix.available ? `Нужны: ${missing}` : `Запас: ${farm.feed} → ${mix.total}`}</span></div>
+        <button type="button" class="dialog-button" data-action="mix-chicken-feed" data-value="${recipe}" aria-label="${mix.name}: смешать ${ruCount(mix.portions, 'порцию', 'порции', 'порций')}"${mix.available ? '' : ' disabled'}>Смешать</button></article>`
+    }).join('')}</div>
+    <div class="feed-choice-next"><p>${farm.chickensFed ? 'Стая уже накормлена. Новый корм останется на следующие дни.' : 'Смешивание не кормит стаю. Дайте корм в курятнике.'}</p><button type="button" class="dialog-button secondary" data-action="back">К курятнику</button></div>
+    <details class="feed-choice-notes"><summary>О корме</summary><p>Используются только обычные продукты: необычный урожай сохранится. Количество яиц от вида смеси не меняется.</p><p>Покупной корм: ${feedBagSize} порции за ${feedBagPrice} монеты. Смешивание не требует ежедневного повтора.</p></details></section>`
 }

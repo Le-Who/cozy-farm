@@ -50,6 +50,7 @@ import './apiary-preview.css'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopMorning, renderCoopCapacityWarning } from './coop-preview'
 import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
+import './chicken-feed.css'
 import { henFriends, henFriendshipStage, renderHenFriendship, treatHen } from './hen-friendship'
 import './hen-friendship.css'
 import './coop-preview.css'
@@ -104,6 +105,7 @@ import './harbour-life.css'
 import {applyIngredientFinishes} from './ingredient-finish'
 import './style.css'
 import './navigation.css'
+import './kitchen-neighbours.css'
 import { ruPlural } from './ru'
 import { archiveCards } from './archive'
 import { getIslandJourneys } from './journey'
@@ -358,6 +360,10 @@ function rememberCurrentRecipeDraft() {
 const recipeBook = new RecipeBookNavigation()
 let expandedRepeatId:string|undefined
 let cookingMode:'dish'|'signature'='dish'
+const kitchenGroups = ['tart', 'preserves', 'dishes'] as const
+type KitchenGroup = typeof kitchenGroups[number]
+let kitchenGroup: KitchenGroup = 'tart'
+let kitchenDish: DishId = 'grilledFish'
 type KitchenTart = 'orchardTart' | 'strawberryTart' | 'blueberryTart' | 'raspberryTart' | 'mixed'
 type KitchenPreserves = 'appleJam' | 'orchardPreserves' | 'custom'
 type SignatureFamily = 'berries' | 'preserves' | undefined
@@ -669,7 +675,7 @@ const panelTitles: Record<Panel, string> = {
   settings: 'Настройки',
   journal: 'Дневник',
   coop: 'Курятник',
-  'chicken-feed': 'Корм со своей фермы',
+  'chicken-feed': 'Корм для стаи',
   'garden-plans': 'Свои планы огорода',
   'neighbor-visits': 'Гостевая книга',
   'hen-friendship': 'Дружба со стаей',
@@ -910,13 +916,33 @@ function recipeCards(recipes: readonly DishId[]) {
 }
 
 function kitchenFamilies() {
-  const familyChoices = (group: 'tart' | 'preserves', selected: string, choices: readonly { id: string; image: string; name: string }[]) => `<div class="recipe-family-choices" role="group" aria-label="${group === 'tart' ? 'Фрукты для пирога' : 'Фрукты для варенья'}">${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}</button>`).join('')}</div>`
-  const tarts = familyChoices('tart', kitchenTart, [{ id: 'orchardTart', image: 'apple', name: 'Яблочный пирог' }, { id: 'strawberryTart', image: 'strawberry', name: 'Клубничный тарт' }, { id: 'blueberryTart', image: 'blueberry', name: 'Черничный тарт' }, { id: 'raspberryTart', image: 'raspberry', name: 'Малиновый тарт' }, { id: 'mixed', image: 'ui-tart', name: 'Ягодный тарт: выбрать сочетание' }])
-  const preserves = familyChoices('preserves', kitchenPreserves, [{ id: 'appleJam', image: 'apple', name: 'Яблочное варенье' }, { id: 'orchardPreserves', image: 'ui-pear', name: 'Садовый конфитюр' }, { id: 'custom', image: 'ui-signature-bright', name: 'Варенье: выбрать фрукты' }])
-  const tartCard = kitchenTart === 'mixed' ? `<section class="recipe">${icon('ui-tart', 'recipe-art')}<h2>Ягодный тарт</h2>${button('Выбрать ягоды', 'family-signature', true, { value: 'berries' })}</section>` : recipeCards([kitchenTart])
-  const preservesCard = kitchenPreserves === 'custom' ? `<section class="recipe">${icon('ui-apple-jam', 'recipe-art')}<h2>Фруктовое варенье</h2>${button('Выбрать фрукты', 'family-signature', true, { value: 'preserves' })}</section>` : recipeCards([kitchenPreserves])
-  const others = dishIds.filter(dish => !isTartDish(dish) && dish !== 'appleJam' && dish !== 'orchardPreserves' && !dishDefinitions[dish].capeLevel && (dish !== 'honeyCake' || canSailTo(farm, 'cape')) && (!dishDefinitions[dish].specialization || hasFarmhouseSpecialization(farm, dishDefinitions[dish].specialization!)))
-  return `<div class="kitchen-family-list"><div class="recipe-family">${tarts}${tartCard}</div><div class="recipe-family">${preserves}${preservesCard}</div>${recipeCards(others)}</div>`
+  const labels = { tart: 'Тарты', preserves: 'Варенье', dishes: 'Блюда' } satisfies Record<KitchenGroup, string>
+  const tabs = kitchenGroups.map(group => `<button type="button" class="dialog-button${kitchenGroup === group ? '' : ' secondary'}" data-action="kitchen-group" data-value="${group}" aria-pressed="${kitchenGroup === group}">${labels[group]}</button>`).join('')
+  const familyChoices = (group: KitchenGroup, selected: string, choices: readonly { id: string; image: string; name: string; short?:string }[]) => `<div class="recipe-family-choices kitchen-menu-choices" role="group" aria-label="${labels[group]}">${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}<span>${choice.short ?? choice.name}</span></button>`).join('')}</div>`
+  const otherDishes = dishIds.filter(dish => !isTartDish(dish) && dish !== 'appleJam' && dish !== 'orchardPreserves' && !dishDefinitions[dish].capeLevel && (dish !== 'honeyCake' || canSailTo(farm, 'cape')) && (!dishDefinitions[dish].specialization || hasFarmhouseSpecialization(farm, dishDefinitions[dish].specialization!)))
+  const other = otherDishes.find(dish => dish === kitchenDish) ?? otherDishes[0]
+  const choices = kitchenGroup === 'tart'
+    ? familyChoices('tart', kitchenTart, [
+      { id: 'orchardTart', image: dishIcons.orchardTart, name: 'Яблочный пирог', short:'Яблоко' },
+      { id: 'strawberryTart', image: dishIcons.strawberryTart, name: 'Клубничный тарт', short:'Клубника' },
+      { id: 'blueberryTart', image: dishIcons.blueberryTart, name: 'Черничный тарт', short:'Черника' },
+      { id: 'raspberryTart', image: dishIcons.raspberryTart, name: 'Малиновый тарт', short:'Малина' },
+      { id: 'mixed', image: 'ui-tart', name: 'Ягодный тарт: выбрать сочетание', short:'Своя смесь' }
+    ]) : kitchenGroup === 'preserves'
+      ? familyChoices('preserves', kitchenPreserves, [
+        { id: 'appleJam', image: dishIcons.appleJam, name: 'Яблочное варенье', short:'Яблочное' },
+        { id: 'orchardPreserves', image: dishIcons.orchardPreserves, name: 'Садовый конфитюр', short:'Конфитюр' },
+        { id: 'custom', image: 'ui-signature-bright', name: 'Варенье: выбрать фрукты', short:'Своя смесь' }
+      ])
+      : familyChoices('dishes', other, otherDishes.map(id=>({ id, image:dishIcons[id], name:dishDefinitions[id].name })))
+  const recipe = kitchenGroup === 'tart'
+    ? kitchenTart === 'mixed' ? `<section class="recipe kitchen-custom"><h2>Ягодный тарт</h2>${button('Выбрать ягоды', 'family-signature', true, { value: 'berries' })}</section>` : recipeCards([kitchenTart])
+    : kitchenGroup === 'preserves'
+      ? kitchenPreserves === 'custom' ? `<section class="recipe kitchen-custom"><h2>Фруктовое варенье</h2>${button('Выбрать фрукты', 'family-signature', true, { value: 'preserves' })}</section>` : recipeCards([kitchenPreserves])
+      : recipeCards(other ? [other] : [])
+  return `<div class="kitchen-workbench"><nav class="kitchen-menu-tabs panel-tabs" aria-label="Разделы кухни">${tabs}</nav>
+    <div class="kitchen-menu-book">${button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})}</div>
+    ${choices}<div class="kitchen-menu-recipe">${recipe}</div></div>`
 }
 function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily): string | undefined {
   if (!family) return undefined
@@ -1296,7 +1322,12 @@ function mountFishing(practiceOnly = false) {
 }
 
 function pastryChoices() {
-  return `<div class="pastry-pattern-choices">${workshopShapes.map(shape => `<button type="button" data-action="pastry-shape" data-value="${shape}" aria-pressed="${pastryShape===shape}">${icon(pastryIcons[shape])}<span>${workshopDefinitions[shape].name}</span><small>${farm.workshopPatterns.includes(shape)?'Освоено':'Освоить в мастерской'}</small></button>`).join('')}</div>`
+  const labels = { round:'Булочка', long:'Батон', folded:'Слойка' } satisfies Record<WorkshopShape,string>
+  const order: readonly WorkshopShape[] = ['round','long','folded']
+  return `<div class="pastry-pattern-choices" role="group" aria-label="Форма выпечки">${order.map(shape => {
+    const learned=farm.workshopPatterns.includes(shape)
+    return `<button type="button" data-action="pastry-shape" data-value="${shape}" aria-pressed="${pastryShape===shape}" aria-label="${workshopDefinitions[shape].name}, ${learned?'освоено':'можно освоить в мастерской'}">${icon(pastryIcons[shape])}<span>${labels[shape]}</span>${learned?'<b class="pastry-mastered" aria-hidden="true">✓</b>':''}</button>`
+  }).join('')}</div>`
 }
 
 function villageProjectCard() {
@@ -1318,24 +1349,25 @@ function neighboursCard() {
   const resident = farm.village.residents[villageSlot]
   const houseTabs = `<nav class="house-selector" aria-label="Домики соседей">${[0, 1].map(slot => {
     const occupant = farm.village.residents[slot]
-    return `<button type="button" data-action="village-slot" data-value="${slot}" aria-pressed="${villageSlot === slot}">${icon(occupant ? `ui-${occupant}` : 'upgrade-farmhouse-card')}<span>Домик ${slot + 1}</span><small>${slot >= homes ? villageHomeProgress(farm) : occupant ? residentDefinitions[occupant].name : 'Свободен'}</small></button>`
+    return `<button type="button" data-action="village-slot" data-value="${slot}" aria-pressed="${villageSlot === slot}">${icon('upgrade-farmhouse-card')}<span><strong>Домик ${slot + 1}</strong><small>${slot >= homes ? villageHomeProgress(farm) : occupant ? residentDefinitions[occupant].name : 'Свободен'}</small></span></button>`
   }).join('')}</nav>`
-  const dinner = `<div class="harbour-next">${icon('ui-grilled-fish')}<div><strong>${homes < 2 ? `Общие ужины · ${Math.min(2, farm.village.meals)}/2` : 'Общий ужин'}</strong>${homes < 2 ? '<small>Второй домик после двух ужинов</small>' : ''}</div>${button('Накрыть стол', 'village-meal')}</div>`
+  const dinnerServed = getVillageMeal(farm, pastryShape).served
+  const dinner = `<div class="harbour-next">${icon('ui-grilled-fish')}<div><strong>${dinnerServed ? 'Ужин завтра' : 'Общий ужин'}</strong>${homes < 2 ? `<small>До второго домика: ${farm.village.meals}/2 ужина</small>` : ''}</div>${dinnerServed ? '' : button('Накрыть стол', 'village-meal')}</div>`
   return `${houseTabs}${villageSlot >= homes ? dinner : `
     <div class="resident-cards" data-occupied="${Boolean(resident)}">${residentIds.filter(id => resident ? id === resident : !farm.village.residents.includes(id)).map(id => {
       const def = residentDefinitions[id]
       const service = getResidentService(farm, id, pastryShape)
       const here = resident === id
-      return `<section class="resident-card" data-present="${here}">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2><div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${neighborHelpStatus(farm,id)?.summary ?? (id==='bea'?'3 изделия в день':'+1 рыба · крепче снасть')}</span></div>
-        ${here ? button('Замысел соседа', 'open-neighbor', true, { value: id, secondary: true }) : ''}
+      return `<section class="resident-card" data-present="${here}"><header class="resident-heading">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2></header>
+        ${here ? '' : `<div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 изделия в день':'+1 рыба · крепче снасть'}</span></div>`}
         ${here ? (id === 'bea' ? `<div class="resident-patterns">${pastryChoices()}</div><ul class="ingredients">${[{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }].map(item => stockTile(item as StockItem)).join('')}</ul>${button(farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?'Испечь ×4':'Испечь ×3', 'resident-service', service.available, { value: id })}`
           : button(farm.village.scouting ? 'Маршрут готов · +1 рыба' : 'Разведать · +1 рыба', 'resident-service', service.available, { value: id }))
         : button('Пригласить', 'invite-resident', true, { value: id })}
-        ${here ? neighborHelpCard(farm,id) : ''}
         ${here&&!service.available?`<p class="dialog-status">${service.label}</p>${id==='bea'&&!farm.workshopPatterns.includes(pastryShape)?button(`Освоить: ${workshopDefinitions[pastryShape].name.toLowerCase()}`,'practice-pattern',true,{value:pastryShape}):''}`:''}
+        ${here ? dinner + nav(button(`Замысел: ${def.name}`, 'open-neighbor', true, { value: id, secondary: true })) + neighborHelpCard(farm,id) : ''}
       </section>`
     }).join('')}</div>`}
-    ${villageSlot < homes ? dinner : ''}
+    ${villageSlot < homes && !resident ? dinner : ''}
     ${nav(button('Кухня', 'kitchen'),button('Кондитерская', 'workshop', true, {secondary:true}))}`
 }
 
@@ -1354,7 +1386,7 @@ type PanelVisit = {
   workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; cookingFish: FishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
   signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;expandedRepeatId:string|undefined;cookingMode:'dish'|'signature';
   communityOrderId:string;communityResident:ResidentId;requestedFood:FoodOfferId|undefined;
-  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;signatureFamily:SignatureFamily;
+  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenGroup;kitchenDish:DishId;signatureFamily:SignatureFamily;
 }
 const panelHistory: PanelVisit[] = []
 let panelRenderVersion = 0
@@ -1366,7 +1398,7 @@ function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
   return {recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
-    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
+    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
   const previous=panelHistory.pop()
@@ -1385,7 +1417,7 @@ function goBack() {
   seedPickerBed=previous.seedPickerBed
   signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;expandedRepeatId=previous.expandedRepeatId;cookingMode=previous.cookingMode
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
-  kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;signatureFamily=previous.signatureFamily
+  kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;signatureFamily=previous.signatureFamily
   openPanel(previous.panel,false,farm.island,'page.fold')
   restoreFerryPanelView(dialogContent,previous.ferryView)
   if(previous.panel==='festival') {
@@ -1484,12 +1516,6 @@ function openMusicScene(host:HTMLElement) {
     onOpenSupplies:()=>openPanel('music-supplies'),
   })
 }
-function harbourPlaces() {
-  return nav(button('Праздники гавани','open-panel',true,{value:'festival'})+button('Своя лавка','open-panel',true,{value:'bay-shop'})+
-    button('Грузовой паром','open-panel',true,{value:'bay-freight'})+
-    button('Музыкальный сад','open-panel',true,{value:'bay-music'}))
-}
-
 function beginExactSale(target: SaleTarget) {
   const stock = saleStock(farm, target)
   if (!stock || stock.count < 1) return
@@ -1752,7 +1778,7 @@ function drawPanel() {
       dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable())
       break
     case 'chicken-feed':
-      dialogContent.innerHTML = renderChickenFeedMixes(farm)
+      dialogContent.innerHTML = renderChickenFeedMixes(farm, icon)
       break
     case 'coop':
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
@@ -1760,8 +1786,8 @@ function drawPanel() {
         ${button('Улучшения', 'upgrades', true, { secondary: true })}</div>
         <ul class="dialog-list">
           ${flockFeedRow()}
-          ${row('tool-hen', 'Дружба со стаей', 'Имена, угощения и любимые привычки', button('Познакомиться', 'hen-friendship-open', true, {secondary:true}))}
-          ${farm.buildingLevels.coop >= 2 ? row('tool-feed', 'Домашние кормовые смеси', 'Пшеница с морковью или яблоком', button('Выбрать смесь', 'chicken-feed-open', true, {secondary:true})) : row('tool-feed', 'Домашние кормовые смеси', 'Откроются после улучшения курятника')}
+          ${row('tool-hen', 'Дружба со стаей', 'Погладить, угостить, погулять', button('Познакомиться', 'hen-friendship-open', true, {secondary:true}))}
+          ${farm.buildingLevels.coop >= 2 ? row('tool-feed', 'Корм из урожая', '3 порции с морковью · 4 с яблоком', button('Выбрать смесь', 'chicken-feed-open', true, {secondary:true})) : row('tool-feed', 'Домашние кормовые смеси', 'Откроются после улучшения курятника')}
           ${row('egg', 'Яйца', `×${farm.eggsReady}`, button('Собрать', 'collect', farm.eggsReady > 0, {context:'яйца'}))}
           ${farm.coopSpecialization === 'hatchery' && farm.flockSize < maxFlockSize
             ? row('egg', 'Инкубатор', farm.hatchDay === null ? `Нужно 1 · в запасе ${farm.eggs}` : quantity(farm.hatchDay - farm.day, 'ночь'),
@@ -1895,7 +1921,7 @@ function drawPanel() {
       break
     }
     case 'village-project': dialogContent.innerHTML = villageProjectCard(); break
-    case 'village': dialogContent.innerHTML = neighboursCard() + harbourPlaces(); break
+    case 'village': dialogContent.innerHTML = neighboursCard(); break
     case 'village-meal': {
       const meal = getVillageMeal(farm, pastryShape)
       const signatures = getReadySignatureSuppers(farm)
@@ -1958,7 +1984,7 @@ function drawPanel() {
     case 'orchard':
       if (farm.island !== 'home' && farm.island !== 'grove') break
       dialogContent.innerHTML = `<p class="dialog-intro">Деревья растут ночью. После отдыха взрослые деревья снова приносят плоды.</p>
-        <p class="dialog-intro">Нужно место? Откройте дерево и перенесите его в питомник. Позже его можно бесплатно вернуть.</p>
+        <p class="dialog-intro">Дерево можно убрать с участка и бесплатно посадить снова.</p>
         <ul class="dialog-list">${farm.trees[farm.island].map((_, index) => treeRow(index)).join('')}</ul>${nurseryCard()}`
       break
     case 'tree': {
@@ -1971,8 +1997,8 @@ function drawPanel() {
         const definition=treeDefinitions[slot.tree],growing=slot.age<definition.days
         dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong>${growing ? 'До зрелости: ' + quantity(definition.days-slot.age,'ночь') : 'Новые плоды завтра'}</strong>`}
           ${treeVariantCopy(slot)?`<p class="dialog-intro">${treeVariantCopy(slot)}</p>`:''}${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):''}</div>
-          <p class="dialog-intro">Освободите место бесплатно: дерево, его возраст и созревшие плоды сохранятся в питомнике. Там рост и новые плоды на паузе. Вернуть дерево можно на любое свободное место.</p>
-          ${nav(button('Перенести в питомник','store-tree',true,{value:treeSlot,secondary:true}))}`
+          <p class="dialog-intro">Возраст и плоды сохранятся. Пока дерево не посажено, оно не растёт.</p>
+          ${nav(button('Убрать дерево на хранение','store-tree',true,{value:treeSlot,secondary:true}))}`
       }else{
         dialogContent.innerHTML=treeSelector()+nurseryCard(treeSlot)+`<div class="sapling-options">${treeIds.map(tree=>{
           const definition=treeDefinitions[tree],owned=farm.saplings[tree]>0
@@ -2009,7 +2035,7 @@ function drawPanel() {
       dialogContent.innerHTML = irrigationRows()
       break
     case 'kitchen': {
-      dialogContent.innerHTML = nav(button('Мои рецепты','open-panel',true,{value:'recipes'}))+kitchenFamilies()
+      dialogContent.innerHTML = kitchenFamilies()
       break
     }
   }
@@ -3036,9 +3062,18 @@ app.addEventListener('click', async (event) => {
       break
     case 'resume-community': await resumeCommunityRequest(control === communityResume ? 'recipe' : 'request'); break
     case 'intent-own-recipe': signatureBase = 'tart'; signatureSlots = [null, null]; signatureSlot = 0; signatureRepeatId = undefined; signatureFamily = undefined; openPanel('signature'); break
+    case 'kitchen-group': {
+      const group = kitchenGroups.find(group => group === value)
+      if (group !== undefined) { kitchenGroup = group; drawPanel(); dialogContent.scrollTop = 0 }
+      break
+    }
     case 'recipe-family': {
       if (control.dataset.family === 'tart' && (value === 'mixed' || dishIds.some(dish=>dish===value&&isTartDish(dish)))) kitchenTart = value as KitchenTart
       if (control.dataset.family === 'preserves' && (value === 'appleJam' || value === 'orchardPreserves' || value === 'custom')) kitchenPreserves = value
+      if (control.dataset.family === 'dishes') {
+        const dish = dishIds.find(dish => dish === value)
+        if (dish) kitchenDish = dish
+      }
       drawPanel(); break
     }
     case 'family-signature': {
