@@ -1853,7 +1853,7 @@ function drawPanel() {
       workshopGame = createWorkshop(dialogContent.querySelector<HTMLElement>('.workshop-host')!, {
         initialShape: bread ? 'long' : pastryShape, recipe: bread ? 'bread' : 'pastry',
         onBake(shape) { if (made) return true; if (panel !== 'workshop') return false; made = perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true);  return made },
-        onCancel() { if (communityRequest) void resumeCommunityRequest(); else leaveScene() },
+        onCancel: leaveScene,
       })
       break
     }
@@ -1874,12 +1874,15 @@ function drawPanel() {
       const selectedFruit=signature?draft.ingredients:recipe.ingredients.flatMap(part=>'item' in part&&signatureFruitIds.includes(part.item as typeof signatureFruitIds[number])?[{id:part.item,quantity:part.quantity}]:[])
       const kind=signature?draft.base==='tart'?'decorate':'preserves':(['honeyPear','honeyBiscuits','windParfait','honeyCake','grilledFish'] as const).find(id=>id===preparedDish)??(isTartDish(preparedDish)?'decorate':'preserves')
       let made=false, resultRecipeId=repeatId
+      // The saved neighbour selection is an explicit travel shortcut, not this
+      // cooking session's return address. Keep ordinary exits at their entry.
+      const fromRequestedFood = panelHistory.at(-1)?.panel === 'request-food'
       dialogContent.innerHTML = '<div class="cookery-host"></div>'
       cookeryGame = createCookery(dialogContent.querySelector<HTMLElement>('.cookery-host')!, {
         recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??familyName??'Мой рецепт':preparedDish==='grilledFish'?`${fishDefinitions[preparedFish].name} на гриле`:recipe.name, kind, signature,processing:savedRecipe?.processing,fishSpecies:preparedDish==='grilledFish'?preparedFish:undefined,
           selectedFruit,fruitOptions:selectedFruit.map(part=>({id:part.id,name:signatureFruitNames[part.id as typeof signatureFruitIds[number]],art:part.id==='apple'?'apple-slice':part.id==='pear'?'pear-piece':part.id==='peach'?'peach-slice':part.id})),
           ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity,...(item.kind==='variants'?{trait:item.trait}:{})})) },
-        returnLabel: communityRequest ? 'К просьбе' : signature ? 'Мои рецепты' : 'На кухню',
+        returnLabel: fromRequestedFood ? 'К рецепту' : signature ? 'Мои рецепты' : 'На кухню',
         onComplete(result) {if(made)return true;if(panel!=='cookery')return false;made=perform(()=>{
           const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
           const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
@@ -1887,7 +1890,7 @@ function drawPanel() {
           if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
           return receipt
         },false,true);return made},
-        onCancel(){if(communityRequest)void resumeCommunityRequest();else if(signature){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
+        onCancel(){if(signature&&!fromRequestedFood){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
       })
       break
     }
@@ -3594,14 +3597,14 @@ app.addEventListener('click', async (event) => {
 })
 
 function closeCurrentPanel() {
-  if (communityRequest && (panel === 'cookery' || panel === 'workshop' || panel === 'arrangement')) void resumeCommunityRequest()
+  if (communityRequest && panel === 'arrangement') void resumeCommunityRequest()
   else closeDialog()
 }
 closeButton.addEventListener('click', closeCurrentPanel)
 function returnFromPanel(event: Event) {
   if (event.defaultPrevented) return
   if(returnToRecipeIndex()){event.preventDefault();return}
-  if (communityRequest && (panel === 'cookery' || panel === 'workshop' || panel === 'arrangement')) {
+  if (communityRequest && panel === 'arrangement') {
     event.preventDefault()
     void resumeCommunityRequest()
   } else if (panelHistory.length) {
