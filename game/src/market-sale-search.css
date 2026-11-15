@@ -1,0 +1,29 @@
+.market-sale-search { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; align-items: end; margin: 0 0 8px; }
+.market-sale-search label { display: grid; gap: 3px; min-width: 0; font-size: 13px; font-weight: 700; }
+.market-sale-search input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 7px 10px; border: 1px solid #d7ae79; border-radius: 10px; background: #fffaf0; color: #50374e; font: inherit; font-size: 16px; }
+.market-sale-search input:focus-visible { outline: 3px solid #805789; outline-offset: 2px; }
+.market-sale-search-status { margin: 0 0 8px; font-size: 13px; }
+.market-sale-search-empty { padding: 12px; border: 1px solid #d7ae79; border-radius: 10px; margin: 0 0 8px; }
+.market-sale-group-select { display: none; }
+@media (max-height: 400px) and (orientation: landscape) {
+  .market-sale-groups { display: none; }
+  .market-sale-filters { display: grid; grid-template-columns: 112px minmax(0,1fr); align-items: start; gap: 8px; }
+  .market-sale-group-select { display: grid; gap: 3px; font-size: 13px; font-weight: 700; }
+  .market-sale-group-select select { width: 100%; min-height: 44px; border: 1px solid #d7ae79; border-radius: 10px; background: #fffaf0; color: #50374e; font: inherit; }
+}
+
+@media (max-height: 400px) and (orientation: landscape) {
+  .farm-dialog[data-panel=market][data-market-tab=sell] .dialog-destinations { display:none; }
+  .farm-dialog[data-panel=market][data-market-tab=sell] .dialog-emblem { display:none; }
+  .market-sale-search { margin-bottom:5px; }
+  .market-sale-search-status { margin-bottom:4px; }
+  #market-sale-results .dialog-row { min-height:49px; padding:2px 6px; gap:5px; }
+  #market-sale-results .dialog-row .dialog-icon .icon { width:34px; height:34px; }
+  #market-sale-results .dialog-row-copy, #market-sale-results .dialog-row-copy small { font-size:13px; }
+  #market-sale-results .dialog-row-actions .dialog-button { margin:0; min-height:44px; padding:4px 7px; }
+}
+@media (min-width: 520px) and (max-height: 400px) and (orientation: landscape) {
+  .farm-dialog[data-panel=market][data-market-tab=sell] .market-controls .panel-tabs button {
+    font-size:12px; white-space:nowrap; padding-inline:2px;
+  }
+}
