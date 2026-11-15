@@ -1,0 +1,37 @@
+/* Inventory supplies only. Market, seed picker and other dialogs retain their layout. */
+.farm-dialog:has(.inventory-supplies) .dialog-emblem,.farm-dialog:has(.inventory-supplies) .dialog-destinations{display:none}
+.farm-dialog:has(.inventory-supplies) .dialog-content{scroll-padding-top:56px}
+.inventory-supplies{position:relative}
+.inventory-supplies-tabs{position:sticky;top:0;z-index:2;padding:3px 0 7px;background:#fff4df;box-shadow:0 3px 7px #674a4515}
+.inventory-supplies-tabs .panel-tabs{margin:0;grid-auto-flow:column;grid-template-columns:repeat(3,minmax(0,1fr))}
+.inventory-supplies-tabs button{min-height:44px}
+.inventory-use{display:flex;justify-content:flex-end;margin:0 0 8px}
+.inventory-use>.dialog-button{margin:0;min-height:44px;font-size:12px}
+.inventory-harvest-grid{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:8px;margin:0;padding:0}
+.inventory-resource{min-width:0;padding:9px;border:1px solid var(--rule);border-radius:13px;background:var(--paper-light)}
+.inventory-resource>header{display:flex;align-items:center;gap:7px;min-height:31px}
+.inventory-resource>header>.icon{width:30px;height:30px;object-fit:contain}
+.inventory-resource h3{min-width:0;margin:0;font-size:14px;line-height:1.25;color:var(--plum);overflow-wrap:break-word}
+.inventory-ordinary{display:flex;justify-content:space-between;gap:5px;margin:5px 0;color:var(--muted);font-size:12px;line-height:1.4}
+.inventory-ordinary strong,.inventory-variants strong{color:var(--plum);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.inventory-variants{list-style:none;padding:6px 0 0;margin:5px 0 0;border-top:1px solid var(--rule);display:grid;gap:4px}
+.inventory-variants>li{display:grid;grid-template-columns:19px minmax(0,1fr) auto;gap:4px;align-items:center;min-height:20px;font-size:12px;line-height:1.3}
+.inventory-variants>li>.variant-art,.inventory-variants>li>.icon{width:19px;height:19px}
+.inventory-variants .icon{width:19px;height:19px;object-fit:contain}
+.inventory-variants>li>span:not(.variant-art){min-width:0;overflow-wrap:break-word}
+.inventory-harvest-grid>.dialog-row{grid-template-columns:30px minmax(0,1fr);gap:6px;min-width:0;grid-column:1/-1}
+.inventory-harvest-grid>.dialog-row .icon{width:30px;height:30px}
+.inventory-harvest-grid>.dialog-row .dialog-row-copy{font-size:13px;min-width:0}
+.inventory-harvest-grid>.dialog-row .dialog-row-copy small{font-size:12px}
+@media(max-width:400px){
+ .inventory-resource{padding:7px}.inventory-resource>header{gap:5px}
+ .inventory-resource>header>.icon{width:25px;height:25px}.inventory-resource h3{font-size:13px}
+ .inventory-variants>li{grid-template-columns:16px minmax(0,1fr) auto;gap:3px;font-size:11px}
+ .inventory-variants>li>.variant-art,.inventory-variants>li>.icon,.inventory-variants .icon{width:16px;height:16px}
+ .inventory-harvest-grid{gap:6px}
+}
+@media(max-height:480px){
+ .farm-dialog:has(.inventory-supplies) .dialog-panel{padding-top:8px;padding-bottom:8px}
+ .farm-dialog:has(.inventory-supplies) .dialog-header{min-height:44px;padding-bottom:4px}
+ .farm-dialog:has(.inventory-supplies) .dialog-close{bottom:4px}
+}

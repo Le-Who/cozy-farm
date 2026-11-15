@@ -82,7 +82,7 @@ test('the actual handler returns to the request, regardless of which recipe was 
   const rest=text.slice(text.indexOf("    case 'rest':"),text.indexOf("    case 'journal':"))
   assert.ok(rest.indexOf('renderSelectedIntentRest(farm,communityRequest)')>=0,'selected pending request remains visible at home')
   assert.ok(rest.indexOf('renderSelectedIntentRest(farm,communityRequest)')<rest.indexOf('renderPicnicStatus(farm,true)'),'selected pending request precedes the other day-end notices')
-  assert.doesNotMatch(rest,/<details|hidden/,'the request deadline is not collapsed behind the rest action')
+  assert.doesNotMatch(rest.slice(0,rest.indexOf('renderSelectedIntentRest(farm,communityRequest)')),/<details|hidden/,'the request deadline is not collapsed behind the rest action')
   assert.match(text,/const deadline = selectedDailyIntent\(farm, communityRequest\)/)
 })
 

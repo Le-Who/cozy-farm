@@ -97,17 +97,21 @@ test('rest shortcut only visits home and the sleep branch requires an open previ
   assert.match(main,/button\('До утра', 'sleep', true, \{value:farm.day\}\)/)
 })
 
-test('Home starts with the day decision and shop consequence, without hiding the existing warnings or routes', async () => {
+test('Home states the current day before the unchanged explicit sleep token and keeps live consequences outside disclosures', async () => {
   const main=await readFile(new URL('../src/main.ts',import.meta.url),'utf8')
   const rest=main.slice(main.indexOf("    case 'rest':"),main.indexOf("    case 'journal':"))
+  assert.match(rest,/Сейчас · день \$\{farm.day\}/)
+  assert.match(rest,/Утром · день \$\{farm.day \+ 1\}/)
+  assert.match(rest,/Сон завершит этот день. Вернуться назад нельзя/)
   const sleep=rest.indexOf("button('До утра'")
   assert.ok(sleep>=0 && sleep<rest.indexOf('renderShopRest(farm)'))
-  for(const renderer of ['renderVisitRest','renderSelectedIntentRest','renderPicnicStatus','renderRestPreview','renderCoopCapacityWarning']){
-    assert.ok(rest.indexOf(renderer)>rest.indexOf('renderShopRest(farm)'),renderer)
-    assert.ok(rest.indexOf(renderer)<rest.indexOf('renderFerryReturn(farm'),renderer)
+  for(const renderer of ['renderShopRest','renderVisitRest','renderSelectedIntentRest','renderPicnicStatus','renderCoopCapacityWarning']){
+    assert.ok(rest.indexOf(renderer)<rest.indexOf('<details class="home-rest-details home-rest-services"'),renderer)
   }
   assert.equal(rest.match(/'sleep'/g)?.length,1)
-  assert.doesNotMatch(rest,/<details|hidden|endDay\(/)
+  assert.doesNotMatch(rest,/endDay\(/)
+  assert.match(rest,/renderRestPreview\(farm,true\)/)
+  assert.match(rest,/renderFerryReturn\(farm,harbourGoods\(\),true\)/)
   for(const action of ['flockFeedRow()','neighbor-visits',"'kitchen'","'upgrades'"])assert.ok(rest.includes(action),action)
 })
 

@@ -5,6 +5,8 @@ import './seed-picker.css'
 import {seedChoice,chooseSeedForBed} from './seed-choice'
 import {planBedWork,isCurrentBedWork,bedWorkKind} from './bed-work-intent'
 import { basketHotbarLabels } from './basket-hotbar'
+import { renderHarvestStocks } from './inventory-harvest'
+import './inventory-supplies.css'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
 import './recipe-surplus.css'
 import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus, berrySeedPreview, revealBerrySeedPreview } from './berry-renewal-ui'
@@ -816,12 +818,24 @@ function fishSource(id: FishId): string {
 
 function inventoryStockRow(listing: ReturnType<typeof goods>[number]): string {
   const { image, name, count, trait, item, key, price } = listing
+  const identified = (html:string) => html.replace(/^<li\b[^>]*>/, tag => tag.replace(/>$/, ` data-stock-key="${key}" data-stock-count="${count}">`))
   if(item.kind==='eggBaskets'||item.kind==='eggCrates'){
     const kind=item.kind==='eggBaskets'?'basket':'crate',action=getEggUnpackAction(farm,kind)
-    return row(image,name,`×${count}`,button(farm.island==='home'?`Распаковать · +${action.eggs}`:'Распаковать дома',kind==='basket'?'unpack-egg-basket':'unpack-egg-crate',action.available,{secondary:true}),trait)
+    return identified(row(image,name,`×${count}`,button(farm.island==='home'?`Распаковать · +${action.eggs}`:'Распаковать дома',kind==='basket'?'unpack-egg-basket':'unpack-egg-crate',action.available,{secondary:true}),trait))
   }
-  if(item.kind!=='fish')return row(image,name,`×${count}`,'',trait)
-  return row(image,name,`×${count} · ${fishSource(item.item)}`,button('На гриль','fish-kitchen',true,{value:item.item})+button(`Продать 1 · ${price}`,farm.island==='home'?'sell-item':'fish-market',true,{value:key,secondary:true}))
+  if(item.kind!=='fish')return identified(row(image,name,`×${count}`,'',trait))
+  return identified(row(image,name,`×${count} · ${fishSource(item.item)}`,button('На гриль','fish-kitchen',true,{value:item.item})+button(`Продать 1 · ${price}`,farm.island==='home'?'sell-item':'fish-market',true,{value:key,secondary:true})))
+}
+
+function inventorySupplies() {
+  const stock = goods().filter(({count,group})=>count>0&&group===inventoryGroup)
+  const tabs = panelTabs('inventory-group',inventoryGroup,[['harvest','Ферма'],['kitchen','Кухня'],['shore','Берег']], 'Продукты')
+  const contents = inventoryGroup==='harvest'
+    ? renderHarvestStocks(stock,itemIcon,inventoryStockRow,
+      row('tool-feed', 'Корм для кур', quantity(farm.feed, 'порция')),
+      treeIds.filter(tree=>farm.saplings[tree]>0).map(tree=>row('ui-tree-'+tree,treeDefinitions[tree].saplingName,`×${farm.saplings[tree]}`)).join(''))
+    : `<ul class="dialog-list inventory-stock">${inventoryGroup==='kitchen'?row('ui-signature-bright','Мои рецепты',`×${Object.values(farm.culinary.stock).reduce((sum,count)=>sum+count,0)}`,button('Открыть','open-panel',true,{value:'recipes'})):''}${stock.map(inventoryStockRow).join('')}${inventoryGroup==='shore'&&!stock.length?'<li class="dialog-status">Пока пусто</li>':''}</ul>`
+  return `<section class="inventory-supplies" aria-label="Припасы"><div class="inventory-supplies-tabs">${tabs}</div>${farm.island==='home'&&inventoryGroup==='harvest'?`<div class="inventory-use">${button('На кухню','kitchen',true,{secondary:true})}</div>`:''}${contents}</section>`
 }
 
 function specializationCards() {
@@ -1059,7 +1073,8 @@ function irrigationRows() {
 function marketCards() {
   const balance = `<p class="coin-balance" aria-label="${quantity(farm.coins, 'монета')}">${icon('coin')} ${numberFormat.format(farm.coins)}</p>`
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
-  const controls = `<div class="market-controls">${balance}${tabs}</div>`
+  const stall = farm.village.built ? button(farm.island === 'village' ? 'Своя лавка' : 'В лавку в гавань', 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
+  const controls = `<div class="market-controls"><div class="market-header">${balance}${stall}</div>${tabs}</div>`
   if (marketTab === 'orders') return controls + (isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : '') + marketOrders()
   if (marketTab === 'projects') {
     const dockBuilt=isProjectComplete(farm,'dock')
@@ -1668,7 +1683,7 @@ function drawPanel() {
       break
     }
     case 'market':
-      dialogContent.innerHTML = marketCards() + (farm.village.built ? nav(button('Своя лавка','open-panel',true,{value:'bay-shop'})) : '')
+      dialogContent.innerHTML = marketCards()
       break
     case 'berry-renewal':
       dialogContent.innerHTML = renderBerryRenewal(farm, berryRenewalSelection, icon)
@@ -1687,13 +1702,7 @@ function drawPanel() {
       const inventory = panel === 'inventory'
       const harvest = inventory && bagTab === 'harvest'
       dialogContent.innerHTML = `${inventory ? panelTabs('bag-tab', bagTab, [['seeds', 'Семена'], ['harvest', 'Припасы'], ['archive', 'Коллекции']], 'Разделы запасов') : ''}
-        ${harvest ? `${panelTabs('inventory-group',inventoryGroup,[['harvest','Ферма'],['kitchen','Кухня'],['shore','Берег']], 'Продукты')}<ul class="dialog-list inventory-stock">
-          ${inventoryGroup==='kitchen'?row('ui-signature-bright','Мои рецепты',`×${Object.values(farm.culinary.stock).reduce((sum,count)=>sum+count,0)}`,button('Открыть','open-panel',true,{value:'recipes'})):''}
-          ${inventoryGroup==='harvest'?row('tool-feed', 'Корм для кур', quantity(farm.feed, 'порция')):''}
-          ${goods().filter(({count,group})=>count>0&&group===inventoryGroup).map(inventoryStockRow).join('')}
-          ${inventoryGroup==='harvest'?treeIds.filter(tree=>farm.saplings[tree]>0).map((tree) => row('ui-tree-'+tree, treeDefinitions[tree].saplingName, `×${farm.saplings[tree]}`)).join(''):''}
-          ${inventoryGroup==='shore'&&!goods().some(({count,group})=>count>0&&group==='shore')?'<li class="dialog-status">Пока пусто</li>':''}
-        </ul>` : seedCards()}`
+        ${harvest ? inventorySupplies() : seedCards()}`
       break
     }
     case 'archive':
@@ -1800,10 +1809,10 @@ function drawPanel() {
         </div>`
       break
     case 'rest':
-      dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра"><header class="rest-morning"><div><strong>День ${farm.day + 1}</strong><span>${weatherNames[getClimate(farm.day + 1).weather]}</span></div>${button('До утра', 'sleep', true, {value:farm.day})}</header>${renderShopRest(farm)}</section>
-        <div class="rest-before-morning">${renderVisitRest(farm)}${farm.neighborVisits.active?nav(button('Поговорить с гостем', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderRestPreview(farm)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}</div>
-        ${renderFerryReturn(farm,harbourGoods())}${farm.village.built&&!farm.neighborVisits.active?nav(button('Гостевая книга', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}
-        ${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}`
+      dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра"><header class="rest-morning"><div><strong>Сейчас · день ${farm.day}</strong><span>Утром · день ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}</span></div>${button('До утра', 'sleep', true, {value:farm.day})}</header><p class="rest-commit-note">Сон завершит этот день. Вернуться назад нельзя.</p>${renderShopRest(farm)}</section>
+        <div class="home-morning-preview">${renderRestPreview(farm,true)}${renderFerryReturn(farm,harbourGoods(),true)}</div>
+        <div class="rest-before-morning">${renderVisitRest(farm)}${farm.neighborVisits.active?nav(button('Поговорить с гостем', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${renderSelectedIntentRest(farm,communityRequest)}${renderPicnicStatus(farm,true)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}</div>
+        <details class="home-rest-details home-rest-services"><summary>${farm.village.built&&!farm.neighborVisits.active?'Кухня, гости и улучшения':'Кухня и улучшения'}</summary><div>${farm.village.built&&!farm.neighborVisits.active?nav(button('Гостевая книга', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}</div></details>`
       break
     case 'journal': {
       const goal = currentTask(), journal = getDiscoveryJournal(farm)
