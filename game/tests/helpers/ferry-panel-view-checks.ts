@@ -1,7 +1,7 @@
-import { createFarm, endDay } from '../../src/farm.ts';
+import { createFarm, endDay, restoreFarm } from '../../src/farm.ts';
 import { combinedExpeditionId, expeditionOfferIds, type ExpeditionPort } from '../../src/ferry-expeditions.ts';
 import { expeditionWallet, sendFerryExpedition, receiveFerryExpedition } from '../../src/harbour-economy.ts';
-import { renderFreightPanelInto } from '../../src/bay-freight-ui.ts';
+import { renderFreightPanelInto, presentFerryDeparture } from '../../src/bay-freight-ui.ts';
 import { captureFerryPanelView, restoreFerryPanelView } from '../../src/ferry-panel-view.ts';
 
 /** Runs against a real document in the manual fixture, or a DOM runner without game assets. */
@@ -11,9 +11,9 @@ export function runFerryPanelViewChecks(host: HTMLElement): string[] {
   const farm = createFarm(); farm.boatOwned = true; farm.coins = 100; farm.produce.wheat = 30; farm.eggs = 20;
   let port: ExpeditionPort = 'mill', offer = 'mill-grain', dispatched = 0;
   const baseline = JSON.stringify(farm);
-  const render = () => renderFreightPanelInto(host, farm.freight, {
-    day: farm.day, coins: farm.coins, boatOwned: true, expeditionPort: port, expeditionOffer: offer,
-    playerPort: 'home', openedPorts: ['home','grove'], products: [], carried: expeditionWallet(farm).bag, icon: () => '',
+  const render = (state = farm) => renderFreightPanelInto(host, state.freight, {
+    day: state.day, coins: state.coins, boatOwned: true, expeditionPort: port, expeditionOffer: offer,
+    playerPort: 'home', openedPorts: ['home','grove'], products: [], carried: expeditionWallet(state).bag, icon: () => '',
   });
   const details = (name: 'offers'|'port-details') => host.querySelector<HTMLDetailsElement>(`.expedition-${name}`)!;
   const button = (action: string, value: string) => [...host.querySelectorAll<HTMLButtonElement>('button')]
@@ -27,18 +27,21 @@ export function runFerryPanelViewChecks(host: HTMLElement): string[] {
     const control = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
     if (!control || !host.contains(control) || control.disabled) return;
     const {action,value=''} = control.dataset;
+    let acceptedDeparture = false;
     if (action === 'expedition-offer') offer = value;
     else if (action === 'expedition-pair') {
       const ids = expeditionOfferIds(offer);
       offer = ids[1] === value ? ids[0] : combinedExpeditionId(ids[0],value)!;
     } else if (action === 'expedition-port') { port = value as ExpeditionPort; offer = 'salt-carrots'; }
-    else if (action === 'expedition-send') { if (sendFerryExpedition(farm,value).ok) dispatched++; }
+    else if (action === 'expedition-send') { if (sendFerryExpedition(farm,value).ok) { dispatched++; acceptedDeparture = true; } }
     else return;
     render();
+    if (acceptedDeparture) presentFerryDeparture(host);
   };
   host.addEventListener('click',clicked);
   try {
     render(); render();
+    check(!presentFerryDeparture(host),'Planning cannot present a departure');
     check(!details('offers').open && !details('port-details').open,'Closed disclosures stay closed on redraw');
     details('offers').open = true;
     activate('expedition-offer','mill-eggs');
@@ -89,7 +92,25 @@ export function runFerryPanelViewChecks(host: HTMLElement): string[] {
     check(dispatched === 1 && farm.freight.expeditions.active?.id === 'mill-grain','Only the explicit dispatch sends the currently selected order');
     check(!host.querySelector('.expedition-offers'),'A sent voyage does not restore a vanished order picker');
     check(document.activeElement === host.querySelector('.bay-freight-close'),'When dispatch disappears focus goes to the visible ferry close control');
-    endDay(farm); receiveFerryExpedition(farm); render();
+    const presented = host.querySelector<HTMLElement>('.bay-freight')!;
+    check(presented.dataset.expeditionDeparting === 'true','An accepted dispatch presents its one departure');
+    check(!presentFerryDeparture(host),'The same presentation cannot restart its departure');
+    const sent = JSON.stringify(farm);
+    render();
+    check(!host.querySelector('[data-expedition-departing]'),'Ordinary sailing redraw is already at sea');
+    host.innerHTML = '<button type="button">Другое меню</button>';
+    render();
+    check(!host.querySelector('[data-expedition-departing]'),'Closing and reopening sailing cannot replay departure');
+    const loaded = restoreFarm(JSON.parse(sent))!;
+    check(!!loaded,'The sent farm remains reloadable');
+    const loadedBefore = JSON.stringify(loaded);
+    render(loaded);
+    check(!host.querySelector('[data-expedition-departing]'),'Reloaded sailing cannot replay departure');
+    check(JSON.stringify(farm) === sent && JSON.stringify(loaded) === loadedBefore,'Presentation does not change the frozen voyage or save');
+    host.querySelector<HTMLElement>('.bay-freight-close')!.focus({preventScroll:true});
+    endDay(farm); render();
+    check(!presentFerryDeparture(host),'The ready berth cannot present a departure');
+    receiveFerryExpedition(farm); render();
     check(document.activeElement === host.querySelector('.bay-freight-close'),'An ordinary settled redraw does not focus its receipt');
     const receipt = host.querySelector<HTMLElement>('.expedition-receipt')!;
     check(receipt.tabIndex === -1 && !receipt.hasAttribute('aria-live') && !receipt.hasAttribute('role'),'Receipt is a non-tabbable heading, not a duplicate live status');

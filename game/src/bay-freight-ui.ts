@@ -174,3 +174,11 @@ export function renderFreightPanelInto(host: HTMLElement, state: BayFreightState
   host.innerHTML = renderFreightPanel(state, ctx);
   restoreFerryPanelView(host, view);
 }
+
+/** Ephemeral presentation only. Call after an accepted dispatch has rendered its sailing panel. */
+export function presentFerryDeparture(host: HTMLElement): boolean {
+  const panel = host.querySelector<HTMLElement>('.bay-freight[data-expedition-phase="sailing"]');
+  if (!panel || panel.dataset.expeditionDeparting === 'true') return false;
+  panel.dataset.expeditionDeparting = 'true';
+  return true;
+}

@@ -92,7 +92,7 @@ import { getFerryRestockPlan } from './ferry-restock'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
-import { renderFreightPanelInto, freightControl } from './bay-freight-ui'
+import { renderFreightPanelInto, presentFerryDeparture, freightControl } from './bay-freight-ui'
 import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } from './ferry-panel-view'
 import { getMusicMaterialGuidance, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
 import { createBayMusic, type BayMusicViewState } from './bay-music'
@@ -2850,7 +2850,10 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'expedition-send': {
-      if(perform(()=>sendFerryExpedition(farm,value??'')))bayAudio.playEvent('harbour.castoff')
+      if(perform(()=>sendFerryExpedition(farm,value??''))) {
+        presentFerryDeparture(dialogContent)
+        bayAudio.playEvent('harbour.castoff')
+      }
       break
     }
     case 'expedition-claim': {
