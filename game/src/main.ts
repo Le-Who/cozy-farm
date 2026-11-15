@@ -92,7 +92,8 @@ import { getFerryRestockPlan } from './ferry-restock'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
-import { renderFreightPanelInto, presentFerryDeparture, freightControl } from './bay-freight-ui'
+import { renderFreightPanelInto, presentFerryDeparture, presentFerryArrival, freightControl } from './bay-freight-ui'
+import { FerryArrivalPresentation } from './ferry-arrival-presentation'
 import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } from './ferry-panel-view'
 import { getMusicMaterialGuidance, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
 import { createBayMusic, type BayMusicViewState } from './bay-music'
@@ -1403,6 +1404,7 @@ function goBack() {
 }
 let harbourScene: {destroy():void} | undefined
 let selectedWarehouse = farm.island
+const ferryArrival = new FerryArrivalPresentation()
 let selectedExpeditionPort: ExpeditionPort = 'mill'
 const shopAssortmentChoice = new ShopAssortmentChoice()
 let selectedExpeditionOffer = 'mill-grain'
@@ -2085,6 +2087,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   drawPanel()
   dialogContent.scrollTop = 0
   if (!dialog.open) dialog.showModal()
+  if (next === 'bay-freight' && ferryArrival.take(farm.freight.expeditions.active,dialog.open)) presentFerryArrival(dialogContent)
   updateCommunityReturn()
   const sceneEntry = next === 'bay-shop' ? dialogContent.querySelector<HTMLElement>('.bay-shop-close')
     : next === 'bay-freight' ? dialogContent.querySelector<HTMLElement>('.bay-freight [data-action="close"]')
@@ -3355,12 +3358,14 @@ app.addEventListener('click', async (event) => {
       if (panel !== 'rest' || !dialog.open || !canConfirmRest(farm,value)) break
       const flockSize = farm.flockSize
       const oldShip=farm.freight.ship
+      const expeditionBeforeNight=farm.freight.expeditions.active ? {...farm.freight.expeditions.active} : null
       const expeditionWasSailing=farm.freight.expeditions.active?.phase==='sailing'
       const rested=perform(() => {
         const result=endDay(farm)
         if(result.ok)committedRestClose=true
         return result
       },true)
+      if(rested)ferryArrival.recordNight(expeditionBeforeNight,farm.freight.expeditions.active)
       if(rested){playBaySound(expeditionWasSailing&&farm.freight.expeditions.active?.phase==='ready'||oldShip.phase==='sailing'&&farm.freight.ship.phase==='docked'?'harbour.berth':'daybreak.shutters')}
       if (rested && farm.flockSize > flockSize) {
         playBaySound('flock.hatch', 1, 0);island.showHatch()

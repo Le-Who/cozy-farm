@@ -1,7 +1,7 @@
 import { createFarm, endDay, restoreFarm } from '../../src/farm.ts';
 import { combinedExpeditionId, expeditionOfferIds, type ExpeditionPort } from '../../src/ferry-expeditions.ts';
 import { expeditionWallet, sendFerryExpedition, receiveFerryExpedition } from '../../src/harbour-economy.ts';
-import { renderFreightPanelInto, presentFerryDeparture } from '../../src/bay-freight-ui.ts';
+import { renderFreightPanelInto, presentFerryDeparture, presentFerryArrival } from '../../src/bay-freight-ui.ts';
 import { captureFerryPanelView, restoreFerryPanelView } from '../../src/ferry-panel-view.ts';
 
 /** Runs against a real document in the manual fixture, or a DOM runner without game assets. */
@@ -42,6 +42,7 @@ export function runFerryPanelViewChecks(host: HTMLElement): string[] {
   try {
     render(); render();
     check(!presentFerryDeparture(host),'Planning cannot present a departure');
+    check(!presentFerryArrival(host),'Planning cannot present an arrival');
     check(!details('offers').open && !details('port-details').open,'Closed disclosures stay closed on redraw');
     details('offers').open = true;
     activate('expedition-offer','mill-eggs');
@@ -110,6 +111,10 @@ export function runFerryPanelViewChecks(host: HTMLElement): string[] {
     host.querySelector<HTMLElement>('.bay-freight-close')!.focus({preventScroll:true});
     endDay(farm); render();
     check(!presentFerryDeparture(host),'The ready berth cannot present a departure');
+    check(presentFerryArrival(host),'The first pending ready display can present its arrival');
+    check(!presentFerryArrival(host),'The same arrival presentation cannot restart');
+    render();
+    check(!host.querySelector('[data-expedition-arriving]'),'Ready redraw is already at berth');
     receiveFerryExpedition(farm); render();
     check(document.activeElement === host.querySelector('.bay-freight-close'),'An ordinary settled redraw does not focus its receipt');
     const receipt = host.querySelector<HTMLElement>('.expedition-receipt')!;

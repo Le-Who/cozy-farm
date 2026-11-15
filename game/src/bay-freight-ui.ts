@@ -182,3 +182,11 @@ export function presentFerryDeparture(host: HTMLElement): boolean {
   panel.dataset.expeditionDeparting = 'true';
   return true;
 }
+
+/** Called only after a pending arrival is consumed by the first visible panel opening. */
+export function presentFerryArrival(host: HTMLElement): boolean {
+  const panel = host.querySelector<HTMLElement>('.bay-freight[data-expedition-phase="ready"]');
+  if (!panel || panel.dataset.expeditionArriving === 'true') return false;
+  panel.dataset.expeditionArriving = 'true';
+  return true;
+}

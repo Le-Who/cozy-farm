@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFile } from 'node:fs/promises'
 import { runInNewContext } from 'node:vm'
+import { FerryArrivalPresentation } from '../src/ferry-arrival-presentation.ts'
 import { createFarm, endDay } from '../src/farm.ts'
 import { canConfirmRest } from '../src/rest-preview.ts'
 import { sendFerryExpedition } from '../src/harbour-economy.ts'
@@ -11,7 +12,7 @@ const main = await readFile(new URL('../src/main.ts', import.meta.url),'utf8')
 const sleep = main.slice(main.indexOf("    case 'sleep': {"),main.indexOf("    case 'refill':"))
 function run(farm:any, opts:any={}) {
  const events:string[]=[];let hatch=0
- const state={committedRestClose:false,farm,panel:'rest',dialog:{open:true},value:String(farm.day),canConfirmRest,endDay,
+ const state={ferryArrival:new FerryArrivalPresentation(),committedRestClose:false,farm,panel:'rest',dialog:{open:true},value:String(farm.day),canConfirmRest,endDay,
   perform:(action:any)=>action().ok,playBaySound:(id:string)=>events.push(id),island:{showHatch:()=>hatch++},notify:()=>{},...opts}
  runInNewContext(`switch('sleep'){${sleep}}`,state)
  return {events,hatch,committedRestClose:state.committedRestClose}
@@ -68,4 +69,18 @@ test('the exact close listener consumes committed sleep once and preserves later
 test('a successful hatching night preserves its extra hatch cue without a page fold',()=>{
  const f=createFarm();f.coopSpecialization='hatchery';f.hatchDay=f.day+1
  assert.deepEqual(run(f),{events:['daybreak.shutters','flock.hatch'],hatch:1,committedRestClose:true})
+})
+
+
+test('the exact successful sleep branch retains one reveal until the ready panel is visible',()=>{
+ const f=createFarm();f.boatOwned=true;f.coins=50;sendFerryExpedition(f,'mill-buy')
+ const ferryArrival=new FerryArrivalPresentation()
+ assert.deepEqual(run(f,{ferryArrival}).events,['harbour.berth'])
+ assert.equal(ferryArrival.take(f.freight.expeditions.active,false),false)
+ assert.equal(ferryArrival.take(f.freight.expeditions.active,true),true)
+ assert.equal(ferryArrival.take(f.freight.expeditions.active,true),false)
+ const blocked=new FerryArrivalPresentation(),g=createFarm();g.boatOwned=true;g.coins=50;sendFerryExpedition(g,'mill-buy')
+ run(g,{ferryArrival:blocked,perform:()=>false})
+ endDay(g)
+ assert.equal(blocked.take(g.freight.expeditions.active,true),false)
 })
