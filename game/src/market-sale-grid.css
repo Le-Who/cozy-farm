@@ -1,0 +1,63 @@
+/* Compact Sale presentation. Existing search, keys and sale handlers own all behavior. */
+.farm-dialog:has([data-market-sale-browser]) { width: min(760px, calc(100vw - 16px)); max-width: calc(100vw - 16px); }
+.farm-dialog:has([data-market-sale-browser]) .dialog-panel { height: min(740px, calc(100dvh - 16px)); max-height: calc(100dvh - 16px); padding: 10px 14px 12px; }
+.farm-dialog:has([data-market-sale-browser]) .dialog-emblem { display: none; }
+.farm-dialog:has([data-market-sale-browser]) .dialog-header { min-height: 44px; padding: 0 48px; margin-bottom: 6px; align-items: center; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+.farm-dialog:has([data-market-sale-browser]) .dialog-title { grid-area: 1 / 1; min-width: 0; border: 0; background: none; box-shadow: none; font-size: 22px; padding: 0; }
+.farm-dialog[data-panel="market"][data-market-tab="sell"]:has([data-market-sale-browser]) .dialog-destinations { display: flex; }
+.farm-dialog:has([data-market-sale-browser]) .dialog-destinations { grid-area: 1 / 2; padding: 0; gap: 4px; }
+.farm-dialog:has([data-market-sale-browser]) .dialog-destinations button { min-height: 44px; padding: 5px 7px; font-size: 12px; }
+.farm-dialog:has([data-market-sale-browser]) .dialog-destinations .icon { display: none; }
+.farm-dialog:has([data-market-sale-browser]) :is(.dialog-close,.dialog-back) { top: 0; bottom: auto; width: 44px; height: 44px; }
+.farm-dialog:has([data-market-sale-browser]) .dialog-content { margin: 0; padding: 3px; overflow: auto; }
+[data-market-sale-browser] { display: flex; flex-direction: column; gap: 6px; min-height: 0; height: 100%; }
+[data-market-sale-browser] .market-controls { flex: none; position: static; }
+[data-market-sale-browser] .market-controls .panel-tabs { margin: 0; }
+[data-market-sale-browser] .market-sale-groups,
+[data-market-sale-browser] .market-sale-family-select { display: none; }
+[data-market-sale-browser] .market-sale-filters { position: sticky; top: 0; z-index: 2; background: var(--paper); flex: none; display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.4fr); gap: 8px; }
+[data-market-sale-browser] .market-sale-group-select { display: grid; gap: 3px; min-width: 0; font-size: 12px; font-weight: 700; }
+[data-market-sale-browser] .market-sale-group-select select { width: 100%; min-width: 0; min-height: 44px; border: 1px solid #d7ae79; border-radius: 10px; background: #fffaf0; color: var(--ink); font: inherit; }
+[data-market-sale-browser] .market-sale-search { margin: 0; }
+[data-market-sale-browser] .market-sale-search-status { margin: 0; font-size: 12px; flex: none; }
+[data-market-sale-browser] #market-sale-results { flex: 1; min-height: 72px; overflow-y: auto; overscroll-behavior: contain; padding: 3px; border: 1px solid var(--rule); border-radius: 12px; }
+[data-market-sale-browser] #market-sale-results > .dialog-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; margin: 0; padding: 0; }
+[data-market-sale-browser] #market-sale-results .dialog-row { display: grid; grid-template-columns: 42px minmax(0,1fr); gap: 5px; padding: 7px; min-width: 0; align-items: center; align-content: start; }
+[data-market-sale-browser] #market-sale-results .dialog-icon { width: 42px; height: 42px; }
+[data-market-sale-browser] #market-sale-results .dialog-icon .icon { width: 100%; height: 100%; }
+[data-market-sale-browser] #market-sale-results .dialog-row-copy { min-width: 0; font-size: 14px; line-height: 1.2; }
+[data-market-sale-browser] #market-sale-results .dialog-row-copy small { font-size: 12px; }
+[data-market-sale-browser] #market-sale-results .dialog-row-actions { grid-column: 1 / -1; width: 100%; }
+[data-market-sale-browser] #market-sale-results .dialog-row-actions .dialog-button { width: 100%; min-height: 44px; margin: 0; padding: 5px; font-size: 13px; }
+[data-market-sale-browser] .market-total { flex: none; display: block; margin: 0; padding: 0; }
+[data-market-sale-browser] .market-total > .icon { display: none; }
+[data-market-sale-browser] .market-total > div { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+[data-market-sale-browser] .market-total strong { font-size: 12px; }
+[data-market-sale-browser] .market-total button { flex: none; margin: 0; min-height: 44px; }
+/* The explicit quantity step is a focused view; closing it reveals every item again. */
+[data-market-sale-browser]:has(.market-sale-expanded) .market-controls,
+[data-market-sale-browser]:has(.market-sale-expanded) .market-total,
+[data-market-sale-browser]:has(.market-sale-expanded) #market-sale-results .dialog-row { display: none; }
+[data-market-sale-browser] .market-sale-expanded { grid-column: 1 / -1; padding: 8px; }
+@media (max-width: 480px) {
+  .farm-dialog:has([data-market-sale-browser]) .dialog-header { grid-template-columns: minmax(0,1fr); grid-template-rows: 44px 44px; gap: 4px; }
+  .farm-dialog:has([data-market-sale-browser]) .dialog-destinations { grid-area: 2 / 1; width: calc(100% + 96px); margin-inline: -48px; }
+
+  [data-market-sale-browser] #market-sale-results > .dialog-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  [data-market-sale-browser] .market-sale-search { grid-template-columns: minmax(0,1fr); position: relative; }
+  [data-market-sale-browser] .market-sale-search input { padding-right: 38px; }
+  [data-market-sale-browser] [data-action="market-sale-clear"] { position: absolute; bottom: 0; right: 0; width: 44px; padding: 0; font-size: 0; }
+  [data-market-sale-browser] [data-action="market-sale-clear"]::after { content: '×'; font-size: 22px; }
+}
+@media (max-height: 400px) and (orientation: landscape) {
+  .farm-dialog:has([data-market-sale-browser]) .dialog-panel { padding: 6px 10px 8px; }
+  .farm-dialog:has([data-market-sale-browser]) .dialog-header { margin-bottom: 0; }
+  [data-market-sale-browser] { gap: 2px; }
+  [data-market-sale-browser] .market-sale-search-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  [data-market-sale-browser] #market-sale-results > .dialog-list { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; }
+  [data-market-sale-browser] #market-sale-results .dialog-row { grid-template-columns: minmax(0,1fr) 88px; padding: 4px; min-height: 64px; }
+  [data-market-sale-browser] #market-sale-results .dialog-icon { display: none; }
+  [data-market-sale-browser] #market-sale-results .dialog-row-actions { grid-column: 2; }
+  [data-market-sale-browser] #market-sale-results .dialog-row-copy { font-size: 13px; }
+  [data-market-sale-browser] .market-sale-expanded .exact-sale { gap: 8px; }
+}
