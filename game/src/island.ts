@@ -341,7 +341,7 @@ function roundTurns(points: Point[]): Point[] {
 
 export function createIsland(
   canvas: HTMLCanvasElement,
-  { inspect, activate, moveHen, harbourViewChanged, henWalkChanged, fieldHintBands }: { fieldHintBands?: () => FieldHintBands; henWalkChanged?: () => void; harbourViewChanged?: (view: HarbourView, traveling: boolean) => void; inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
+  { inspect, activate, moveHen, harbourViewChanged, henWalkChanged, fieldHintBands, fieldHudChanged }: { fieldHudChanged?: (field: { left: number; right: number } | undefined) => void; fieldHintBands?: () => FieldHintBands; henWalkChanged?: () => void; harbourViewChanged?: (view: HarbourView, traveling: boolean) => void; inspect: (target: IslandTarget) => string; activate: (target: IslandTarget, henGesture?: 'stroke' | 'settle') => void; moveHen?: (index:number,point:HenNativePoint)=>void },
 ) {
   const hint = document.createElement('div');
   hint.className = 'island-hint';
@@ -1738,11 +1738,22 @@ export function createIsland(
         y: baseCenter.y + (coveCenter.y - baseCenter.y) * coveBlend } };
   }
 
+  let fieldHudKey: string | undefined;
+  function syncFieldHud(): void {
+    const field = state?.island === 'home' && fieldView && viewport.width > viewport.height && viewport.width <= 900 && viewport.height < 480
+      ? { left: offset.x + fieldLeft * scale, right: offset.x + fieldRight * scale } : undefined;
+    const key = field ? `${viewport.width}|${viewport.height}|${field.left}|${field.right}` : '';
+    if (key === fieldHudKey) return;
+    fieldHudKey = key;
+    fieldHudChanged?.(field);
+  }
+
   function updateCameraView(): void {
     const view = cameraView(); scale = view.scale;
     const center = view.center;
     offset = { x: viewport.width / 2 - center.x * scale, y: viewport.height / 2 - center.y * scale };
     world.setView(viewport.width, viewport.height, scale, center);
+    syncFieldHud();
     syncShore();
   }
 
@@ -1755,6 +1766,7 @@ export function createIsland(
     const { scale: nextScale, center } = cameraView(); scale = nextScale;
     offset = { x: viewport.width / 2 - center.x * scale, y: viewport.height / 2 - center.y * scale };
     world.resize(viewport.width, viewport.height, window.devicePixelRatio || 1, scale, center);
+    syncFieldHud();
     syncShore();
     hovered = undefined;
     requestPaint();

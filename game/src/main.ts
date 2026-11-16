@@ -2351,7 +2351,30 @@ function readFieldHintBands() {
     bottom: app.querySelector<HTMLElement>('.hotbar')!.getBoundingClientRect().top - origin.y }
 }
 
+let taskRailField: { left: number; right: number } | undefined
+let taskRailKey = ''
+function updateFieldHud() {
+  const field = taskRailField
+  if (!field) { delete app.dataset.fieldRail; taskRailKey = ''; return }
+  const header = app.querySelector<HTMLElement>('.hud-top')!.getBoundingClientRect()
+  const key = `${field.left}|${field.right}|${header.left}|${header.right}|${header.height}`
+  if (key === taskRailKey) return
+  taskRailKey = key
+  const right = header.right - field.right - 8
+  const left = field.left - header.left - 8
+  const side = right >= 96 ? 'right' : left >= 96 ? 'left' : undefined
+  if (side) {
+    app.dataset.fieldRail = side
+    app.style.setProperty('--field-rail-width', `${Math.min(210, side === 'right' ? right : left)}px`)
+    app.style.setProperty('--field-hud-height', `${header.height}px`)
+  } else delete app.dataset.fieldRail
+}
+const fieldHudObserver = new ResizeObserver(updateFieldHud)
+fieldHudObserver.observe(app.querySelector('.hud-top')!)
+window.addEventListener('pagehide', event => { if (!event.persisted) fieldHudObserver.disconnect() })
+
 const island = createIsland(canvas, {
+  fieldHudChanged(field) { taskRailField = field; updateFieldHud() },
   fieldHintBands() {
     // Status changes clear the cache; viewport and transient result changes have
     // their own keys. Stable animation frames never query or measure the HUD.
