@@ -1,0 +1,51 @@
+/* The local house visit only: separate the neighbor's help from meeting/preparation routes. */
+.farm-dialog[data-panel=village] {width:min(820px,calc(100vw - 32px));max-width:calc(100vw - 16px)}
+.farm-dialog[data-panel=village] .dialog-emblem {display:none}
+.farm-dialog[data-panel=village] .dialog-header {min-height:58px}
+.neighbor-house-page {display:grid;gap:14px}
+.neighbor-house-page .house-selector {margin:0;gap:12px}
+.neighbor-house-page .house-selector>button {min-height:51px;font:inherit}
+.neighbor-house-page .house-selector strong {font-size:16px}
+.neighbor-house-page .house-selector small {font-size:13px}
+.farm-dialog[data-panel=village] .neighbor-house-page .resident-card {display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px 22px;padding:20px;align-items:start;justify-items:stretch}
+.farm-dialog[data-panel=village] .neighbor-house-page .resident-heading {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:8px 0}
+.farm-dialog[data-panel=village] .neighbor-house-page .resident-heading .resident-portrait {display:block;width:112px;height:142px;object-fit:contain}
+.neighbor-house-page .resident-heading h2 {font-size:25px}
+.resident-service {display:grid;justify-items:stretch;gap:12px;min-width:0}
+.resident-service>.dialog-button {justify-self:center;min-height:44px;margin:0;padding:9px 22px;font-size:16px}
+.resident-pattern-heading {display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 9px;text-align:left}
+.resident-pattern-heading h3,.resident-self-cook h3 {margin:0;font-size:16px;color:var(--plum)}
+.resident-pattern-heading small {font-size:12px;color:#526d34;white-space:nowrap}
+.farm-dialog[data-panel=village] .resident-service .pastry-pattern-choices {gap:10px}
+.farm-dialog[data-panel=village] .resident-service .pastry-pattern-choices>button {min-height:100px;padding:8px;gap:6px}
+.farm-dialog[data-panel=village] .resident-service .pastry-pattern-choices .icon {width:66px;height:53px}
+.farm-dialog[data-panel=village] .resident-service .pastry-pattern-choices span {font-size:16px;line-height:1.2}
+.resident-service .pastry-mastered {top:5px;right:6px;min-width:18px;font-size:13px}
+.resident-service .ingredients {margin:0;gap:10px}
+.resident-service .dialog-status {font-size:14px;line-height:1.4;text-align:center}
+.resident-gatherings {grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;border-top:1px solid #cdbbd3;padding-top:14px}
+.resident-gatherings .harbour-next {border:0;padding:0;margin:0;gap:10px;text-align:left}
+.resident-gatherings .harbour-next>.icon {width:42px;height:42px}
+.resident-gatherings .harbour-next strong {font-size:16px}
+.resident-gatherings .dialog-nav {margin:0}
+.resident-gatherings .dialog-button {min-height:44px;font-size:14px}
+.resident-gatherings .community-help {grid-column:1/-1}
+.resident-self-cook {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 4px}
+.resident-self-cook .dialog-nav {margin:0}
+.resident-self-cook .dialog-button {min-height:44px;margin:0;font-size:14px}
+@media(max-width:680px){
+ .farm-dialog[data-panel=village] {width:calc(100vw - 16px)}
+ .farm-dialog[data-panel=village] .neighbor-house-page .resident-card {grid-template-columns:minmax(0,1fr);padding:12px;gap:12px}
+ .farm-dialog[data-panel=village] .neighbor-house-page .resident-heading {padding:0;gap:4px}
+ .farm-dialog[data-panel=village] .neighbor-house-page .resident-heading .resident-portrait {width:60px;height:76px}
+ .neighbor-house-page .resident-heading h2 {font-size:22px}
+ .resident-gatherings {grid-template-columns:minmax(0,1fr);gap:10px}
+ .resident-gatherings>.dialog-nav {justify-content:center}
+ .resident-self-cook {flex-direction:column;align-items:stretch;text-align:center;gap:8px}
+ .resident-self-cook .dialog-nav {justify-content:center}
+ .farm-dialog[data-panel=village] .resident-service .pastry-pattern-choices>button {min-height:86px;padding:5px;gap:3px}
+ .farm-dialog[data-panel=village] .resident-service .pastry-pattern-choices .icon {width:48px;height:42px}
+ .farm-dialog[data-panel=village] .resident-service .pastry-pattern-choices span {font-size:14px}
+}
+.farm-dialog[data-panel=village] .neighbor-house-page .resident-card[data-present=false] {grid-template-columns:minmax(0,1fr);gap:10px}
+.neighbor-house-page .resident-card[data-present=false] .neighbour-promise {margin:0}
