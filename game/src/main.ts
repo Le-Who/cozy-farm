@@ -1,5 +1,7 @@
+import { MarketInlineSales } from './market-inline-sale'
+import { MarketSaleBrowseMemory } from './market-sale-browse'
 import { marketSaleFamilies } from './market-sale-family'
-import { SalePresentation, saleRowKeys } from './sale-presentation'
+import { SalePresentation } from './sale-presentation'
 import { searchMarketSales } from './market-sale-search'
 import './market-sale-search.css'
 import { recipePlanningIngredient } from './recipe-planning'
@@ -192,7 +194,6 @@ import {
   dishIds,
   isTartDish,
   endDay,
-  expandedWaterCapacity,
   feedBagPrice,
   feedBagSize,
   feedChickens,
@@ -282,6 +283,9 @@ import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
 import './market-sale-grid.css'
+import './market-buy-seeds.css'
+import './market-buy-trees.css'
+import './market-buy-care.css'
 
 const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreLegacyFarm)
 const farm = await saveStore.load() ?? createFarm()
@@ -350,8 +354,10 @@ let marketCategory:'seeds'|'trees'|'care'|'buildings'='seeds'
 let marketSellGroup:'all'|'harvest'|'kitchen'|'shore'='all'
 let marketSaleQuery = ''
 let marketSaleFamily: string | undefined
+const marketSaleBrowse = new MarketSaleBrowseMemory()
 let selectedSale: (SaleTarget & { name: string; image?: string; trait?: Trait }) | undefined
 const salePresentation = new SalePresentation()
+const marketInlineSales = new MarketInlineSales()
 let saleQuantity = '1'
 let saleReceipt: { quantity: number; total: number; remaining: number } | undefined
 let inventoryGroup: 'harvest'|'kitchen'|'shore' = 'harvest'
@@ -985,6 +991,15 @@ function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily)
   return fruits.length === 1 ? names[fruits[0]] : draft.base === 'tart' ? berry ? 'Ягодный тарт' : 'Фруктовый тарт' : berry ? 'Ягодное варенье' : 'Фруктовый конфитюр'
 }
 
+function marketOrderStockTile(item: StockItem) {
+  const stock = ingredientCount(farm, item), label = stockLabel(item)
+  const resource = item.kind === 'produce' || item.kind === 'fruit' ? item.item : item.kind === 'eggs' ? 'egg' : undefined
+  const specialStock = resource !== undefined && Object.values(farm.variants[resource] ?? {}).some(count => count > 0)
+  const name = stock < item.quantity && specialStock ? `${label.name} (обычный урожай)` : label.name
+  return requirementLink(`${icon(label.image)}<span class="order-item-name">${name}</span><strong class="order-item-needed">Нужно: ${item.quantity}</strong><small class="order-item-stock">В запасе: ${stock}</small>`,
+    {kind:'stock',item}, 'ingredient order-requirement', `${name}, нужно ${item.quantity}, в запасе ${stock}`, stock >= item.quantity)
+}
+
 let selectedMarketOrder: string | undefined
 function marketOrders() {
   const board = getMarketOrderBoard(farm, selectedMarketOrder)
@@ -994,9 +1009,9 @@ function marketOrders() {
   const detail = board.selected === 'harbor' ? `<p class="market-order-location">Причал рощи · можно вносить частями</p>${harborCard()}` : order
     ? `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
       <header class="order-header"><h2 id="order-${order.lane}">${order.name}</h2>
-        <span class="order-reward">${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></header>
-      ${order.status === 'delivered' ? `<p class="order-done">✓ Сегодня доставлено</p>${next ? renderNextMarketOrder(next,stockTile)+button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)}) : ''}`
-        : `<ul class="ingredients order-items">${order.items.map(stockTile).join('')}</ul>
+        <span class="order-reward"><small>Награда</small><span>${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></span></header>
+      ${order.status === 'delivered' ? `<p class="order-done">✓ Сегодня доставлено</p>${next ? renderNextMarketOrder(next,marketOrderStockTile)+button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)}) : ''}`
+        : `<ul class="ingredients order-items">${order.items.map(marketOrderStockTile).join('')}</ul>
           ${order.status === 'upgrade' ? button('Улучшить дом', 'upgrades', true, { secondary: true })
             : button('Доставить', 'deliver-order', order.status === 'ready', { value: order.lane, context: order.name })}`}
     </section>` : ''
@@ -1094,6 +1109,24 @@ function irrigationRows() {
 function marketFamilyOptions(selected: string | undefined) {
   return marketSaleFamilies(goods(),selected).map(family=>`<option value="family:${family.id}"${selected===family.id?' selected':''}>${escapeHtml(family.label)} · ${family.rows} ${ruPlural(family.rows,['вид','вида','видов'])}</option>`).join('')
 }
+function selectMarketSaleGroup(group: typeof marketSellGroup) {
+  if (panel !== 'market' || marketTab !== 'sell' || !dialog.open) return false
+  closeContextualSale(false)
+  const previous = { family: marketSaleFamily, scroll: dialogContent.querySelector<HTMLElement>('#market-sale-results')?.scrollTop ?? 0 }
+  const next = marketSaleBrowse.change(marketSellGroup, group, previous)
+  marketSellGroup = group; marketSaleFamily = next.family
+  drawPanel()
+  const results = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+  if (results) results.scrollTop = next.scroll
+  // Keep the existing group-navigation focus and outer-shell position.
+  dialogContent.scrollTop = 0
+  return true
+}
+function resetMarketSaleBrowsePosition() {
+  marketSaleBrowse.reset()
+  const results = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+  if (results) results.scrollTop = 0
+}
 function selectMarketFamily(value: string) {
   const id=value.startsWith('family:')?value.slice(7):undefined
   if(id&&!marketSaleFamilies(goods(),marketSaleFamily).some(family=>family.id===id))return false
@@ -1106,17 +1139,60 @@ function marketSaleSearchStatus() {
   const result = searchMarketSales(goods(), marketSellGroup, marketSaleQuery, marketSaleFamily)
   return `Товары: ${result.items.length} из ${result.total}`
 }
+function marketInlineCard(item: ReturnType<typeof goods>[number]) {
+  const view=marketInlineSales.view(item.key,item.count,item.price), quote=view.quote, receipt=view.receipt
+  const id=`inline-sale-${encodeURIComponent(item.key)}`
+  return `<li class="market-inline-card" data-inline-key="${escapeHtml(item.key)}" data-inline-token="${escapeHtml(view.token)}">
+    <span class="market-inline-art" aria-hidden="true">${itemIcon(item.image,item.trait)}</span>
+    <div class="market-inline-copy"><h2 class="market-inline-name">${escapeHtml(item.name)}</h2><p class="market-inline-stock">В запасе: ${item.count}</p><p class="market-inline-price">${item.price} ${icon('coin')} за штуку</p></div>
+    <div class="market-inline-footer"><div class="market-inline-stepper" role="group" aria-label="Количество: ${escapeHtml(item.name)}">
+      <button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button>
+      <input data-inline-quantity type="number" min="1" max="${item.count}" step="1" inputmode="numeric" value="${escapeHtml(view.raw)}" aria-label="Количество: ${escapeHtml(item.name)}" aria-describedby="${id}"${receipt||view.pending?' disabled':''}>
+      <button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="more" aria-label="Увеличить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity>=item.count?' disabled':''}>+</button>
+    </div><button type="button" class="market-inline-sell" aria-label="${escapeHtml(receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)}" data-action="${receipt?'inline-sale-again':'inline-sale-confirm'}" data-value="${escapeHtml(item.key)}"${view.pending||!receipt&&!quote.valid?' disabled':''}>${receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`}</button></div>
+    <p class="market-inline-status" id="${id}" role="status">${receipt?`Продано: ${receipt.quantity} · ${quantity(receipt.total,'монета')}. Осталось: ${receipt.remaining}.`:quote.valid?'':`Введите целое число от 1 до ${item.count}.`}</p>
+  </li>`
+}
 function marketSaleResults() {
   const {items,total} = searchMarketSales(goods(), marketSellGroup, marketSaleQuery, marketSaleFamily)
-  if(salePresentation.place&&selectedSale&&!saleReceipt&&!items.some(item=>item.key===selectedSale!.key))salePresentation.reset()
-  const context = salePresentation.place && selectedSale
-  const keys = context ? saleRowKeys(items.map(item=>item.key),context.key,salePresentation.place!,Boolean(saleReceipt)) : items.map(item=>item.key)
-  if (!keys.length) return `<p class="market-sale-search-empty">${total ? 'По этому запросу в выбранной группе ничего нет. Измените запрос или очистите поиск.' : 'В этой группе пока нет товаров для продажи.'}</p>`
-  return `<ul class="dialog-list">${keys.map(key=>{
-    if(context?.key===key)return `<li class="market-sale-expanded">${exactSaleCard(true)}</li>`
-    const item=items.find(item=>item.key===key)!
-    return row(item.image,item.name,`×${item.count} · ${item.price} за 1`,button('Выбрать количество','sell-item',true,{value:key,context:item.name}),item.trait)
-  }).join('')}</ul>`
+  if (!items.length) return `<p class="market-sale-search-empty">${total ? 'По этому запросу в выбранной группе ничего нет. Измените запрос или очистите поиск.' : 'В этой группе пока нет товаров для продажи.'}</p>`
+  return `<ul class="market-inline-grid">${items.map(marketInlineCard).join('')}</ul>`
+}
+function inlineSaleContext(control: Element) {
+  if(island.isCrossing() || !dialog.open || panel!=='market' || marketTab!=='sell' || !dialogContent.contains(control))return
+  const card=control.closest<HTMLElement>('[data-inline-key]'), key=card?.dataset.inlineKey
+  const item=key&&goods().find(item=>item.key===key&&item.count>0)
+  return card&&item ? {card,item,token:card.dataset.inlineToken} : undefined
+}
+function updateInlineSaleCard(card: HTMLElement) {
+  const context=inlineSaleContext(card)
+  if(!context)return
+  const {item}=context, view=marketInlineSales.view(item.key,item.count,item.price), quote=view.quote
+  card.dataset.inlineToken=view.token
+  const input=card.querySelector<HTMLInputElement>('[data-inline-quantity]')!
+  input.value=view.raw; input.max=String(item.count); input.disabled=Boolean(view.receipt||view.pending)
+  card.querySelectorAll<HTMLButtonElement>('[data-action="inline-sale-step"]').forEach(button=>button.disabled=Boolean(view.receipt||view.pending||quote.valid&&(button.dataset.step==='less'?quote.quantity<=1:quote.quantity>=item.count)))
+  const sell=card.querySelector<HTMLButtonElement>('.market-inline-sell')!
+  sell.dataset.action=view.receipt?'inline-sale-again':'inline-sale-confirm'
+  sell.disabled=view.pending||!view.receipt&&!quote.valid
+  sell.setAttribute('aria-label',view.receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)
+  sell.innerHTML=view.receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`
+  card.querySelector<HTMLElement>('.market-inline-status')!.textContent=view.receipt?`Продано: ${view.receipt.quantity} · ${quantity(view.receipt.total,'монета')}. Осталось: ${view.receipt.remaining}.`:quote.valid?'':`Введите целое число от 1 до ${item.count}.`
+}
+function confirmInlineSale(control: Element) {
+  const context=inlineSaleContext(control)
+  if(!context)return
+  const {item,token}=context, quote=marketInlineSales.take(item.key,token,item.count,item.price)
+  if(!quote){updateInlineSaleCard(context.card);return}
+  const scroll=dialogContent.querySelector<HTMLElement>('#market-sale-results')?.scrollTop??0
+  const result=sellMarketItem(farm,item.key,quote.quantity)
+  marketInlineSales.finish(item.key,result.ok?quote:undefined)
+  if(perform(()=>result,false,quote.remaining>0))playBaySound('trade.receive')
+  const grid=dialogContent.querySelector<HTMLElement>('#market-sale-results');if(grid)grid.scrollTop=scroll
+  const next=Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).find(card=>card.dataset.inlineKey===item.key)
+  const focus=next?.querySelector<HTMLButtonElement>('.market-inline-sell')??dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]')
+  focus?.focus({preventScroll:true})
+  if(!next)focus?.scrollIntoView({block:'nearest',inline:'nearest'})
 }
 function updateMarketSaleSearch() {
   if (panel !== 'market' || marketTab !== 'sell' || !dialog.open) return
@@ -1124,11 +1200,19 @@ function updateMarketSaleSearch() {
   const status = dialogContent.querySelector<HTMLElement>('.market-sale-search-status')
   const clear = dialogContent.querySelector<HTMLButtonElement>('[data-action="market-sale-clear"]')
   if (results) { results.innerHTML = marketSaleResults(); applyIngredientFinishes(results) }
-  if (status) status.textContent = marketSaleSearchStatus()
+  if (status) {status.textContent=marketSaleSearchStatus();status.classList.toggle('sr-only',!marketSaleQuery&&marketSellGroup==='all')}
   if (clear) clear.disabled = !marketSaleQuery
   const sellAll=dialogContent.querySelector<HTMLButtonElement>('[data-action="sell"]')
   if(sellAll){sellAll.disabled=Boolean(salePresentation.place)||getSale(farm).items===0;sellAll.title=salePresentation.place?'Сначала закройте выбор отдельного товара':''}
   if(salePresentation.place)updateSaleQuote()
+}
+
+function marketCareProducts(tabs: string, categories: string, stall: string) {
+  const capacity=getWaterCapacity(farm),upgradedCapacity=getWaterCapacity({...farm,canUpgraded:true})
+  return `<section data-market-care-browser><div class="market-controls">${tabs}</div>${categories}<div class="market-care-grid">
+    <section data-care-product="feed"><div class="market-care-art">${icon('tool-feed')}</div><div class="market-care-copy"><h2>Корм для кур</h2><p>В мешке: ${quantity(feedBagSize,'порция')}</p><p>В запасе: ${quantity(farm.feed,'порция')}</p><p class="market-care-price" aria-label="${quantity(feedBagPrice,'монета')} за мешок">${feedBagPrice} ${icon('coin')} за мешок</p></div>${button('Купить','buy-feed',farm.coins>=feedBagPrice,{context:'Корм для кур'})}</section>
+    <section data-care-product="can"><div class="market-care-art">${icon('tool-can')}</div><div class="market-care-copy"><h2>Большая лейка</h2><p class="market-care-capacity" aria-label="Объём лейки: ${farm.canUpgraded?quantity(capacity,'порция'):`${quantity(capacity,'порция')} → ${quantity(upgradedCapacity,'порция')}`} воды">Объём: ${farm.canUpgraded?capacity:`${capacity} → ${upgradedCapacity}`} ${icon('drop')}</p>${farm.canUpgraded?'':`<p class="market-care-price" aria-label="${quantity(canUpgradePrice,'монета')} за улучшение">${canUpgradePrice} ${icon('coin')} за улучшение</p>`}</div>${button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{context:'Большая лейка'})}</section>
+  </div>${stall?`<footer class="market-care-tools">${stall}</footer>`:''}</section>`
 }
 
 function marketCards() {
@@ -1136,7 +1220,7 @@ function marketCards() {
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
   const stall = farm.village.built ? button(farm.island === 'village' ? 'Своя лавка' : 'В лавку в гавань', 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
   const controls = `<div class="market-controls"><div class="market-header">${balance}${stall}</div>${tabs}</div>`
-  if (marketTab === 'orders') return controls + marketOrders() + (isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : '')
+  if (marketTab === 'orders') return `<section data-market-orders-browser><div class="market-controls">${tabs}</div>${stall ? `<div class="market-orders-shop">${stall}</div>` : ''}${marketOrders()}${isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : ''}</section>`
   if (marketTab === 'projects') {
     const dockBuilt=isProjectComplete(farm,'dock')
     return controls + projectCard('fair') + `<ul class="dialog-list building-destinations">
@@ -1146,18 +1230,26 @@ function marketCards() {
   }
   if (marketTab === 'sell') {
     const sale = getSale(farm)
-    return `<section data-market-sale-browser>${controls}
-      <div class="market-sale-groups">${panelTabs('market-sell-group',marketSellGroup,[['all','Всё'],['harvest','Урожай'],['kitchen','Кухня'],['shore','Берег']])}</div>
-      <div class="market-sale-filters" data-family="${marketSellGroup==='harvest'}"><label class="market-sale-group-select">Группа / товар<select data-market-sale-group>${[['all','Всё'],['harvest','Весь урожай'],['kitchen','Кухня'],['shore','Берег']].map(([id,label])=>`<option value="${id}"${marketSellGroup===id&&(id!=='harvest'||!marketSaleFamily)?' selected':''}>${label}</option>`).join('')}<optgroup label="Урожай: товар и его варианты">${marketFamilyOptions(marketSellGroup==='harvest'?marketSaleFamily:undefined)}</optgroup></select></label>${marketSellGroup==='harvest'?`<label class="market-sale-family-select">Товар<select data-market-sale-family><option value="harvest"${!marketSaleFamily?' selected':''}>Весь урожай</option>${marketFamilyOptions(marketSaleFamily)}</select></label>`:''}<div class="market-sale-search"><label for="market-sale-query">Найти товар<input id="market-sale-query" data-market-sale-query type="search" maxlength="100" value="${escapeHtml(marketSaleQuery)}" placeholder="Название или особенность" aria-controls="market-sale-results" autocomplete="off"></label>${button('Очистить','market-sale-clear',Boolean(marketSaleQuery),{secondary:true})}</div></div>
-      <p class="market-sale-search-status" role="status" aria-live="polite">${marketSaleSearchStatus()}</p>
+    return `<section data-market-sale-browser><div class="market-controls">${tabs}</div>
+      <div class="market-sale-filters"><div class="market-sale-search"><label for="market-sale-query"><span class="sr-only">Найти товар</span><input id="market-sale-query" data-market-sale-query type="search" maxlength="100" value="${escapeHtml(marketSaleQuery)}" placeholder="Найти товар" aria-controls="market-sale-results" autocomplete="off"></label>${button('Очистить','market-sale-clear',Boolean(marketSaleQuery),{secondary:true})}</div>
+      <nav class="market-inline-groups" aria-label="Группа товаров">${panelTabs('market-sell-group',marketSellGroup,[['all','Всё'],['harvest','Урожай'],['kitchen','Кухня'],['shore','Берег']])}</nav></div>
+      ${marketSellGroup==='harvest'?`<div class="market-inline-family"><select data-market-sale-family aria-label="Товар и его варианты"><option value="harvest"${!marketSaleFamily?' selected':''}>Весь урожай</option>${marketFamilyOptions(marketSaleFamily)}</select></div>`:''}
+      <p class="market-sale-search-status${marketSaleQuery||marketSellGroup!=='all'?'':' sr-only'}" role="status" aria-live="polite">${marketSaleSearchStatus()}</p>
       <div id="market-sale-results">${marketSaleResults()}</div>
-      ${marketSellGroup==='all'?`<section class="market-total">${icon('tool-crate')}<div><strong>${sale.items ? `Вся корзина: ${quantity(sale.items, 'предмет')} · ${quantity(sale.coins, 'монета')}` : 'Корзина пуста'}</strong>${button('Продать всё', 'sell', sale.items > 0 && !salePresentation.place)}</div></section>`:''}
-      ${farm.culinary.recipes.length?nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}</section>`
+      <footer class="market-inline-tools">${marketSellGroup==='all'?`<div class="market-total"><span>${sale.items ? `Всего: ${quantity(sale.items,'предмет')} · ${quantity(sale.coins,'монета')}` : 'Запасы пусты'}</span>${button('Продать всё','sell',sale.items>0)}</div>`:''}${stall}
+      ${farm.culinary.recipes.length?nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}</footer></section>`
   }
-  const categories=`<nav class="market-category-icons" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}</button>`).join('')}</nav>`
-  if(marketCategory==='seeds')return controls+categories+`<div class="market-seed-grid">${cropIds.map(crop=>{const definition=cropDefinitions[crop];return `<section>${icon('ui-seed-'+crop)}<strong>${definition.name}</strong><span>×${seedPackSize}</span>${button('Купить','buy-seeds',farm.coins>=definition.seedPrice,{crop,cost:{icon:'coin',amount:definition.seedPrice}})}</section>`}).join('')}</div>`
-  if(marketCategory==='trees')return controls+categories+(!farm.trees.home.includes(null)?`<p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','orchard',true,{secondary:true}))}`:'')+`<ul class="dialog-list market-shop">${treeIds.map(tree=>{const definition=treeDefinitions[tree];return row('ui-tree-'+tree,definition.saplingName,quantity(definition.days,'ночь')+' до зрелости',button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,cost:{icon:'coin',amount:definition.saplingPrice}}))}).join('')}</ul>`
-  if(marketCategory==='care')return controls+categories+`<ul class="dialog-list market-shop">${row('tool-feed','Корм для кур',quantity(feedBagSize,'порция'),button('Купить','buy-feed',farm.coins>=feedBagPrice,{cost:{icon:'coin',amount:feedBagPrice}}))}${row('tool-can','Большая лейка',`Объём: ${expandedWaterCapacity}`,button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{cost:farm.canUpgraded?undefined:{icon:'coin',amount:canUpgradePrice}}))}</ul>`
+
+  const categories=`<nav class="market-category-icons" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}${marketCategory==='seeds'||marketCategory==='trees'||marketCategory==='care'?`<span>${category.name}</span>`:''}</button>`).join('')}</nav>`
+  if(marketCategory==='seeds')return `<section data-market-seed-browser><div class="market-controls">${tabs}</div>${categories}<div class="market-seed-grid">${cropIds.map(crop=>{
+    const definition=cropDefinitions[crop]
+    return `<section data-seed-pack="${crop}"><div class="market-seed-art">${icon('ui-seed-'+crop)}</div><div class="market-seed-copy"><h2>${definition.name}</h2><p>В пакете: ${seedPackSize} ${ruPlural(seedPackSize,['семя','семени','семян'])}</p><p class="market-seed-price" aria-label="${quantity(definition.seedPrice,'монета')} за пакет">${definition.seedPrice} ${icon('coin')} за пакет</p></div>${button('Купить пакет','buy-seeds',farm.coins>=definition.seedPrice,{crop,context:`${definition.name}, ${seedPackSize} семени за ${quantity(definition.seedPrice,'монета')}`})}</section>`
+  }).join('')}</div>${stall?`<footer class="market-seed-tools">${stall}</footer>`:''}</section>`
+  if(marketCategory==='trees')return `<section data-market-tree-browser><div class="market-controls">${tabs}</div>${categories}${!farm.trees.home.includes(null)?`<div class="market-tree-space"><p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','orchard',true,{secondary:true}))}</div>`:''}<div class="market-tree-grid">${treeIds.map(tree=>{
+    const definition=treeDefinitions[tree]
+    return `<section data-tree-product="${tree}"><div class="market-tree-art">${icon('ui-tree-'+tree)}</div><div class="market-tree-copy"><h2>${definition.saplingName}</h2><p>${quantity(definition.days,'ночь')} до зрелости</p><p>В запасе: ${farm.saplings[tree]}</p><p class="market-tree-price" aria-label="${quantity(definition.saplingPrice,'монета')} за саженец">${definition.saplingPrice} ${icon('coin')} за саженец</p></div>${button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,context:definition.saplingName})}</section>`
+  }).join('')}</div>${stall?`<footer class="market-tree-tools">${stall}</footer>`:''}</section>`
+  if(marketCategory==='care')return marketCareProducts(tabs,categories,stall)
   return controls+categories+`<ul class="dialog-list market-shop">${buildingIds.map(building=>row('upgrade-'+building+'-card',buildingDefinitions[building].name,buildingDefinitions[building].benefit,button(farm.buildingLevels[building]>=2?'Посмотреть':'Улучшить',farm.buildingLevels[building]>=2?'upgrades':'upgrade-building',farm.buildingLevels[building]>=2||farm.coins>=buildingDefinitions[building].upgradePrice,{value:building,...(farm.buildingLevels[building]<2?{cost:{icon:'coin' as const,amount:buildingDefinitions[building].upgradePrice}}:{})}))).join('')}</ul>`+nav(button('Причал','visit-boat',true,{secondary:true}))
 }
 
@@ -1686,9 +1778,16 @@ function drawPanel() {
   closeButton.title = panelHistory.length ? 'Закрыть все меню' : 'Закрыть меню (Esc)'
   const destinations = dialog.querySelector<HTMLElement>('.dialog-destinations')!
   const destinationHeader = dialog.querySelector<HTMLElement>('.dialog-header')!
-  if (panel === 'market' && marketTab === 'sell') {
-    if (destinations.parentElement !== destinationHeader) destinationHeader.insertBefore(destinations, closeButton)
-  } else if (destinations.parentElement === destinationHeader) destinationHeader.after(destinations)
+  const inlineMarket=panel==='market'&&(marketTab==='sell'||marketTab==='orders'||marketTab==='buy'&&(marketCategory==='seeds'||marketCategory==='trees'||marketCategory==='care'))
+  if(inlineMarket){
+    if(destinations.nextElementSibling!==destinationHeader)destinationHeader.before(destinations)
+  }else if(destinationHeader.nextElementSibling!==destinations)destinationHeader.after(destinations)
+  let marketWallet=destinationHeader.querySelector<HTMLElement>('.market-inline-wallet')
+  if(inlineMarket){
+    if(!marketWallet){marketWallet=document.createElement('p');marketWallet.className='market-inline-wallet';destinationHeader.insertBefore(marketWallet,closeButton)}
+    marketWallet.innerHTML=`${icon('coin')} ${numberFormat.format(farm.coins)}`
+    marketWallet.setAttribute('aria-label',quantity(farm.coins,'монета'))
+  }else marketWallet?.remove()
   dialog.querySelectorAll<HTMLButtonElement>('.dialog-destinations [data-panel]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.panel===panel)))
   const title = panel === 'specialize' ? `${buildingDefinitions[specializationBuilding].name} · ур. 3`
     : panel === 'workshop' && workshopRecipe === 'bread' ? 'Домашний хлеб' : panel === 'neighbor' ? residentDefinitions[communityResident].name : panelTitles[panel]
@@ -1697,6 +1796,7 @@ function drawPanel() {
   dialog.dataset.panel = panel
   dialog.dataset.marketTab = marketTab
   dialogEmblem.src = iconUrl(panel === 'specialize' ? `upgrade-${specializationBuilding}-card` : panelEmblems[panel])
+  const focusedInlineKey=document.activeElement instanceof HTMLInputElement&&document.activeElement.matches('[data-inline-quantity]')?document.activeElement.closest<HTMLElement>('[data-inline-key]')?.dataset.inlineKey:undefined
   const focusedStorageChoice = document.activeElement instanceof HTMLSelectElement && document.activeElement.matches('[data-tree-storage-choice]') && dialogContent.contains(document.activeElement)
   const focused = document.activeElement instanceof HTMLButtonElement && dialogContent.contains(document.activeElement)
     ? document.activeElement
@@ -2134,6 +2234,7 @@ function drawPanel() {
   }
 
   applyIngredientFinishes(dialogContent)
+  if(focusedInlineKey)Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).find(card=>card.dataset.inlineKey===focusedInlineKey)?.querySelector<HTMLInputElement>('[data-inline-quantity]')?.focus({preventScroll:true})
   if (focusedStorageChoice) dialogContent.querySelector<HTMLSelectElement>('[data-tree-storage-choice]')?.focus({preventScroll:true})
   if(panel==='market'&&salePresentation.place)updateSaleQuote()
   if (panel === 'recipes') recipeBook.restore(dialogContent,true)
@@ -2177,6 +2278,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next === 'honey-kitchen' && farm.capeLevel < 3) return
   if(next==='cove'&&farm.island!=='grove')return
   if ((next === 'transplant' || next === 'garden-plans' || next === 'recipe-surplus') && farm.island !== 'home') return
+  if (!dialog.open) marketSaleBrowse.reset()
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
   if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
   if (next === 'recipes') {
@@ -3229,9 +3331,9 @@ app.addEventListener('click', async (event) => {
       journeyDetailsOpen=false
       if(islandIds.some(id=>id===value)){boatIsland=value as typeof boatIsland;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="boat-island"][data-value="${value}"]`)?.focus({preventScroll:true})}break
     case 'market-sale-clear':
-      if(panel==='market'&&marketTab==='sell'&&dialog.open){closeContextualSale(false);marketSaleQuery='';const input=dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]');if(input){input.value='';updateMarketSaleSearch();input.focus({preventScroll:true})}}
+      if(panel==='market'&&marketTab==='sell'&&dialog.open){closeContextualSale(false);marketSaleQuery='';const input=dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]');if(input){input.value='';updateMarketSaleSearch();resetMarketSaleBrowsePosition();input.focus({preventScroll:true})}}
       break
-    case 'market-sell-group':if(value==='all'||value==='harvest'||value==='kitchen'||value==='shore'){closeContextualSale(false);marketSellGroup=value;marketSaleFamily=undefined;drawPanel();dialogContent.scrollTop=0}break
+    case 'market-sell-group':if(value==='all'||value==='harvest'||value==='kitchen'||value==='shore')selectMarketSaleGroup(value);break
     case 'recipe-search-clear':
       if(dialog.open&&panel==='recipes'){updateRecipeBookSearch('');dialogContent.querySelector<HTMLInputElement>('[data-recipe-query]')?.focus({preventScroll:true})}
       break
@@ -3465,6 +3567,17 @@ app.addEventListener('click', async (event) => {
       if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value===seedChoice(farm,previewSeed,seedPickerBed).token) chooseSeed(previewSeed,value)
       break
     case 'sell': if(salePresentation.place)break;if(perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('trade.receive'); break
+    case 'inline-sale-step': {
+      const context=inlineSaleContext(control), direction=control.dataset.step
+      if(context&&(direction==='less'||direction==='more')&&marketInlineSales.step(context.item.key,context.token,direction,context.item.count,context.item.price))updateInlineSaleCard(context.card)
+      break
+    }
+    case 'inline-sale-confirm': if(event.detail<=1)confirmInlineSale(control); break
+    case 'inline-sale-again': {
+      const context=inlineSaleContext(control)
+      if(event.detail<=1&&context&&marketInlineSales.rearm(context.item.key,context.token,context.item.count,context.item.price))updateInlineSaleCard(context.card)
+      break
+    }
     case 'sell-item': if(value)beginExactSale({kind:'market',key:value}); break
     case 'sale-step':
       if(currentSaleControl(control)&&selectedSale&&!saleReceipt&&(value==='less'||value==='more'||value==='all')){
@@ -3892,7 +4005,7 @@ app.addEventListener('change',event=>{
     let changed=false
     if(input.value.startsWith('family:')||input.hasAttribute('data-market-sale-family'))changed=selectMarketFamily(input.value)
     else if(['all','harvest','kitchen','shore'].includes(input.value)){
-      closeContextualSale(false);marketSellGroup=input.value as typeof marketSellGroup;marketSaleFamily=undefined;drawPanel();dialogContent.scrollTop=0;changed=true
+      changed=selectMarketSaleGroup(input.value as typeof marketSellGroup)
     }
     if(changed)dialogContent.querySelector<HTMLSelectElement>(input.hasAttribute('data-market-sale-family')?'[data-market-sale-family]':'[data-market-sale-group]')?.focus({preventScroll:true})
   }
@@ -3922,15 +4035,27 @@ app.addEventListener('change',event=>{
   }
   if((input instanceof HTMLInputElement||input instanceof HTMLTextAreaElement)&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
 })
+// Native focus scrolling may reveal only a text caret in a nested short viewport.
+// Reveal the whole compact row once on focus so its exact quantity and action stay together.
+app.addEventListener('focusin',event=>{
+  if(panel==='market'&&marketTab==='buy'&&marketCategory==='care'&&event.target instanceof HTMLButtonElement&&event.target.matches('[data-action=buy-feed]:focus-visible,[data-action=upgrade-can]:focus-visible')&&matchMedia('(max-height:400px) and (orientation:landscape)').matches)
+    event.target.closest<HTMLElement>('[data-care-product]')?.scrollIntoView({block:'nearest',inline:'nearest'})
+  if(panel==='market'&&marketTab==='buy'&&marketCategory==='trees'&&event.target instanceof HTMLButtonElement&&event.target.matches('[data-action=buy-sapling]:focus-visible')&&matchMedia('(max-height:400px) and (orientation:landscape)').matches)
+    event.target.closest<HTMLElement>('[data-tree-product]')?.scrollIntoView({block:'nearest',inline:'nearest'})
+  if(panel==='market'&&marketTab==='sell'&&event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')&&matchMedia('(max-height:400px) and (orientation:landscape)').matches)
+    event.target.closest<HTMLElement>('.market-inline-card')?.scrollIntoView({block:'nearest',inline:'nearest'})
+})
 app.addEventListener('input', event => {
+  if(event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')){const context=inlineSaleContext(event.target);if(context&&marketInlineSales.edit(context.item.key,context.token,event.target.value,context.item.count,context.item.price))updateInlineSaleCard(context.card)}
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-recipe-query]')) updateRecipeBookSearch(event.target.value)
-  if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]') && panel==='market' && marketTab==='sell') { closeContextualSale(false);marketSaleQuery=event.target.value; updateMarketSaleSearch() }
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]') && panel==='market' && marketTab==='sell') { closeContextualSale(false);marketSaleQuery=event.target.value; updateMarketSaleSearch(); resetMarketSaleBrowsePosition() }
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-garden-name]') && panel === 'garden-plans' && gardenEditor.draft) gardenEditor.draft.name = event.target.value
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
     if(currentSaleControl(event.target)){saleQuantity = event.target.value; updateSaleQuote()}
   }
 })
 app.addEventListener('keydown', event => {
+  if(!event.defaultPrevented&&event.key==='Enter'&&event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')){event.preventDefault();if(!event.repeat)confirmInlineSale(event.target)}
   if (!event.defaultPrevented && event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
     event.preventDefault()
     if (!event.repeat && currentSaleControl(event.target)) dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')?.click()

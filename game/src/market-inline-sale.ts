@@ -1,0 +1,58 @@
+import { exactSaleQuote, stepSaleQuantity } from './exact-sale.ts'
+import { SalePresentation } from './sale-presentation.ts'
+
+type Receipt = { quantity: number; total: number; remaining: number }
+type Draft = { owner: SalePresentation; raw: string; count: number; price: number; pending: boolean; receipt?: Receipt }
+/** Per-row presentation only. Exact quote and the existing farm reducer remain authoritative. */
+export class MarketInlineSales {
+  private drafts = new Map<string, Draft>()
+  private draft(key: string, count: number, price: number) {
+    let draft = this.drafts.get(key)
+    if (!draft) {
+      draft = { owner: new SalePresentation(), raw: '1', count, price, pending: false }
+      draft.owner.open({kind:'market',key}); this.drafts.set(key,draft)
+    } else if (draft.count !== count || draft.price !== price) {
+      // An exhausted row may disappear before the same goods are earned again.
+      if (draft.receipt?.remaining === 0 && count > 0) { draft.raw='1'; draft.receipt=undefined }
+      draft.count=count; draft.price=price; draft.owner.open({kind:'market',key})
+    }
+    return draft
+  }
+  view(key: string, count: number, price: number) {
+    const draft=this.draft(key,count,price)
+    return { token:draft.owner.token, raw:draft.raw, quote:exactSaleQuote(draft.raw,count,price), receipt:draft.receipt, pending:draft.pending }
+  }
+  private current(key: string, token: string | undefined, count: number, price: number) {
+    const draft=this.draft(key,count,price)
+    return draft.owner.accepts(token,{kind:'market',key}) ? draft : undefined
+  }
+  edit(key: string, token: string | undefined, raw: string, count: number, price: number) {
+    const draft=this.current(key,token,count,price)
+    if(!draft || draft.pending || draft.receipt)return false
+    draft.raw=raw; draft.owner.open({kind:'market',key}); return true
+  }
+  step(key: string, token: string | undefined, direction: 'less'|'more', count: number, price: number) {
+    const draft=this.current(key,token,count,price)
+    return Boolean(draft && this.edit(key,token,stepSaleQuantity(draft.raw,count,direction),count,price))
+  }
+  take(key: string, token: string | undefined, count: number, price: number) {
+    const draft=this.current(key,token,count,price)
+    if(!draft || draft.pending || draft.receipt)return undefined
+    const quote=exactSaleQuote(draft.raw,count,price)
+    if(!quote.valid)return undefined
+    draft.pending=true; draft.owner.open({kind:'market',key})
+    return {quantity:quote.quantity,total:quote.total,remaining:quote.remaining}
+  }
+  finish(key: string, receipt?: Receipt) {
+    const draft=this.drafts.get(key)
+    if(!draft)return
+    draft.pending=false; draft.receipt=receipt
+    if(receipt)draft.count=receipt.remaining
+    draft.owner.open({kind:'market',key})
+  }
+  rearm(key: string, token: string | undefined, count: number, price: number) {
+    const draft=this.current(key,token,count,price)
+    if(!draft || draft.pending || !draft.receipt || count<1)return false
+    draft.raw='1'; draft.receipt=undefined; draft.owner.open({kind:'market',key}); return true
+  }
+}

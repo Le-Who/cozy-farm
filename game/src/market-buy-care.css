@@ -1,0 +1,80 @@
+/* Buy → Care only. Existing feed purchase and one-time can upgrade remain canonical. */
+.farm-dialog:has([data-market-care-browser]) {width:min(1240px,calc(100vw - 72px));max-width:calc(100vw - 16px)}
+.farm-dialog:has([data-market-care-browser]) .dialog-panel {max-height:calc(100dvh - 24px);padding:18px 24px 20px;background:radial-gradient(ellipse at 30% 0,#fffaf0aa,transparent 65%),var(--paper)}
+.farm-dialog[data-panel=market][data-market-tab=buy]:has([data-market-care-browser]) .dialog-destinations {display:flex;gap:12px;padding:0 0 14px;justify-content:center}
+.farm-dialog:has([data-market-care-browser]) .dialog-destinations button {min-height:44px;padding:7px 24px;font:700 18px Georgia,serif;border-color:#bea28d;background:linear-gradient(#fffaf0,#efdfcc);box-shadow:0 2px 2px #68463520}
+.farm-dialog:has([data-market-care-browser]) .dialog-destinations .icon {display:block;width:32px;height:32px}
+.farm-dialog:has([data-market-care-browser]) .dialog-header {grid-template-columns:76px minmax(0,1fr) auto;justify-items:start;align-items:center;gap:14px;min-height:76px;padding:0 52px 16px;margin:0 0 16px;border-bottom:1px solid #c5a482}
+.farm-dialog:has([data-market-care-browser]) .dialog-emblem {display:block;width:76px;height:64px;margin:0;grid-area:1 / 1}
+.farm-dialog:has([data-market-care-browser]) .dialog-title {grid-area:1 / 2;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;text-transform:none;text-align:left;font:800 42px Georgia,serif}
+.farm-dialog:has([data-market-care-browser]) :is(.dialog-close,.dialog-back) {top:8px;bottom:auto;width:44px;height:44px}
+.farm-dialog:has([data-market-care-browser]) .dialog-content {margin:0;padding:2px;overflow:auto}
+[data-market-care-browser] .market-controls {position:static;display:block;flex:none;padding:0;background:none}
+[data-market-care-browser] .market-controls .panel-tabs {margin:0;gap:12px}
+[data-market-care-browser] .market-controls .panel-tabs button {min-height:52px;padding:8px 12px;border:1px solid #b89aa9;border-radius:14px;background:linear-gradient(#ead9e8,#d9c3d8);font:700 24px Georgia,serif;color:var(--plum)}
+[data-market-care-browser] .market-controls .panel-tabs button[aria-pressed=true] {color:#fff8ff;background:linear-gradient(#a970ac,#87568f);box-shadow:inset 0 1px #ffffff55,0 2px 2px #68435f33}
+[data-market-care-browser] {display:flex;flex-direction:column;gap:12px;min-height:0}
+[data-market-care-browser] .market-category-icons {display:flex;align-items:center;gap:12px;flex:none;justify-content:flex-start;margin:0;padding:0}
+[data-market-care-browser] .market-category-icons button {display:flex;align-items:center;justify-content:center;gap:8px;flex:0 1 180px;width:auto;min-width:0;min-height:48px;padding:6px 16px;border:1px solid #bea092;border-radius:14px;background:#f7eadf;color:var(--plum);font:700 17px Georgia,serif;box-shadow:0 2px 1px #ad795726}
+[data-market-care-browser] .market-category-icons button[aria-pressed=true] {background:linear-gradient(#b48aba,#9771a4);color:#fff9ff;border-color:#99749f}
+[data-market-care-browser] .market-category-icons .icon {width:30px;height:30px;object-fit:contain}
+[data-market-care-browser] .market-care-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-content:start;padding:3px}
+[data-market-care-browser] .market-care-grid>section {display:grid;grid-template-columns:136px minmax(0,1fr);grid-template-rows:minmax(128px,auto) auto;align-items:center;gap:12px 10px;min-width:0;padding:14px;border:1px solid #bd9d7f;border-radius:17px;background:linear-gradient(130deg,#fffaf0,#f8e9d6);box-shadow:inset 0 1px #fff9ed,0 2px 1px #ad795726}
+.market-care-art {display:grid;place-items:center;width:136px;height:128px}
+.market-care-art>.icon {width:128px;height:128px;object-fit:contain}
+.market-care-copy {min-width:0}
+.market-care-copy h2 {font:700 23px/1.15 Georgia,serif;margin:0 0 10px;color:#4b2646;overflow-wrap:anywhere}
+.market-care-copy p {font:17px/1.25 Georgia,serif;color:#513247;margin:6px 0}
+.market-care-price {display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.market-care-price .icon {width:24px;height:24px}
+[data-market-care-browser] .market-care-grid .dialog-button {grid-column:1/-1;justify-self:end;min-width:170px;width:auto;min-height:46px;margin:0;padding:7px 20px;border:1px solid #9c5543;border-radius:12px;background:linear-gradient(#d78363,#b96047);box-shadow:inset 0 1px #ffcfab88,0 2px 0 #974d3833;color:#fffaf0;font:700 18px Georgia,serif}
+[data-market-care-browser] .market-care-grid .dialog-button:disabled {border-color:#c9b5a3;background:#e8dbcf;color:#87766f;box-shadow:none;cursor:default}
+[data-market-care-browser] .market-care-grid .dialog-button:focus-visible {outline:3px solid #805789;outline-offset:2px}
+.market-care-tools {flex:none;display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid #d5baa0}
+.market-care-tools .dialog-button {min-height:44px;margin:0}
+@media(max-width:1000px){
+ .farm-dialog:has([data-market-care-browser]) {width:calc(100vw - 24px)}
+ [data-market-care-browser] .market-care-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+ [data-market-care-browser] .market-care-grid>section {grid-template-columns:116px minmax(0,1fr)}
+ .market-care-art {width:116px}.market-care-art>.icon {width:112px;height:112px}
+ .market-care-copy h2 {font-size:21px}
+}
+@media(max-width:600px){
+ .farm-dialog:has([data-market-care-browser]) {width:calc(100vw - 12px)}
+ .farm-dialog:has([data-market-care-browser]) .dialog-panel {max-height:calc(100dvh - 16px);padding:10px 12px}
+ .farm-dialog[data-panel=market][data-market-tab=buy]:has([data-market-care-browser]) .dialog-destinations {gap:4px;padding-bottom:6px}
+ .farm-dialog:has([data-market-care-browser]) .dialog-destinations button {padding:5px 6px;font:700 13px Georgia,serif}
+ .farm-dialog:has([data-market-care-browser]) .dialog-destinations .icon {display:none}
+ .farm-dialog:has([data-market-care-browser]) .dialog-header {grid-template-columns:minmax(0,1fr) auto;min-height:52px;padding:0 44px 8px;gap:8px;margin-bottom:8px}
+ .farm-dialog:has([data-market-care-browser]) .dialog-emblem {display:none}
+ .farm-dialog:has([data-market-care-browser]) .dialog-title {grid-area:1/1;font-size:25px}
+ .farm-dialog:has([data-market-care-browser]) :is(.dialog-close,.dialog-back) {top:0}
+ [data-market-care-browser] {gap:7px}
+ [data-market-care-browser] .market-controls .panel-tabs {gap:4px}
+ [data-market-care-browser] .market-controls .panel-tabs button {min-height:44px;padding:4px 2px;font-size:16px}
+ [data-market-care-browser] .market-category-icons {gap:4px}
+ [data-market-care-browser] .market-category-icons button {flex:1;min-height:44px;padding:4px 2px;font-size:13px;gap:2px}
+ [data-market-care-browser] .market-category-icons .icon {width:23px;height:23px}
+ [data-market-care-browser] .market-care-grid {grid-template-columns:minmax(0,1fr);gap:10px}
+ [data-market-care-browser] .market-care-grid>section {grid-template-columns:100px minmax(0,1fr);grid-template-rows:minmax(100px,auto) auto;padding:10px;gap:8px 10px}
+ .market-care-art {width:100px;height:100px}.market-care-art>.icon {width:100px;height:100px}
+ .market-care-copy h2 {font-size:21px}.market-care-copy p {font-size:16px}
+ [data-market-care-browser] .market-care-grid .dialog-button {min-width:160px;font-size:17px;padding:6px 14px}
+}
+@media(max-width:420px){
+ [data-market-care-browser] .market-category-icons button {flex-direction:column;gap:1px;padding:3px 1px}
+ [data-market-care-browser] .market-category-icons .icon {width:20px;height:20px}
+}
+@media(max-height:400px) and (orientation:landscape){
+ .farm-dialog:has([data-market-care-browser]) .dialog-panel {max-height:calc(100dvh - 12px);padding:6px 10px}
+ .farm-dialog:has([data-market-care-browser]) .dialog-content {overflow:auto}
+ [data-market-care-browser] {height:auto;min-height:0}
+ [data-market-care-browser] .market-care-grid {grid-template-columns:minmax(0,1fr)}
+ [data-market-care-browser] .market-care-grid>section {grid-template-columns:100px minmax(0,1fr) 110px;grid-template-rows:auto;padding:8px;gap:10px}
+ .market-care-art,.market-care-art>.icon {height:86px}
+ .market-care-copy h2 {font-size:18px;margin-bottom:4px}
+ .market-care-copy p {font-size:15px;margin:3px 0}
+ [data-market-care-browser] .market-care-grid .dialog-button {grid-column:auto;min-width:110px;width:110px;padding:6px 10px}
+}
+
+.market-care-capacity{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.market-care-capacity .icon{width:22px;height:22px}

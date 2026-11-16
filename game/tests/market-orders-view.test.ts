@@ -14,7 +14,7 @@ const fn=source.slice(source.indexOf('function marketOrders()'),source.indexOf('
 function rendered(farm:ReturnType<typeof createFarm>,selectedMarketOrder?:string){
  const context={farm,selectedMarketOrder,getMarketOrderBoard,renderMarketOrderPicker,getMarketOrders,getNextMarketOrders,renderNextMarketOrder,
   icon:(name:string)=>`<img alt="" src="${name}.webp">`,numberFormat:new Intl.NumberFormat('ru-RU'),ruPlural:()=>'',
-  stockTile:(item:any)=>`<li>${item.kind}:${item.item??''} ${ingredientCount(farm,item)}/${item.quantity}</li>`,
+  marketOrderStockTile:(item:any)=>`<li>${item.kind}:${item.item??''} ${ingredientCount(farm,item)}/${item.quantity}</li>`,
   button:(name:string,action:string,enabled=true,options:any={})=>`<button data-action="${action}" data-value="${options.value??''}"${enabled?'':' disabled'}>${name}</button>`,
   harborCard:()=>'<section id="harbor-order">original unique harbor card</section>'}
  return runInNewContext(stripTypeScriptTypes(fn+'\nmarketOrders()'),context) as string
@@ -81,7 +81,7 @@ test('all unlocked lanes, actual adjusted rewards and current requirement/source
  }
  assert.deepEqual(f,before)
  const realStock=source.slice(source.indexOf('function stockTile('),source.indexOf('function recipeDestination'))
- assert.match(realStock,/ingredientCount\(farm, item\)/);assert.match(fn,/order.items.map\(stockTile\)/);assert.match(fn,/renderNextMarketOrder\(next,stockTile\)/)
+ assert.match(realStock,/ingredientCount\(farm, item\)/);assert.match(fn,/order.items.map\(marketOrderStockTile\)/);assert.match(fn,/renderNextMarketOrder\(next,marketOrderStockTile\)/)
  const harbor=source.slice(source.indexOf('function harborCard('),source.indexOf('function groveDockActions'))
  for(const original of ['deliveryItems(order.items)','getHarborWithdrawal(farm)',"'withdraw-harbor'","'sail'","'deliver-harbor'",'renderNextHarborOrder'])assert.ok(harbor.includes(original))
 })
