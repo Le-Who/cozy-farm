@@ -18,8 +18,9 @@ export function renderGuestBookPrototype(farm: FarmState, view: GuestBookView, i
       ${screen.commands.map(command).join('')}<p class="home-visit-note">Бесплатно. Один гость; уйдёт после отдыха или поездки.</p><p>${escape(activity.invitation)}</p></article>`
   } else if (screen.kind === 'active') {
     const active = screen.active!
+    const recordedToday = screen.memories.some(memory => memory.activity === active.activity && memory.serial === active.serial)
     const content = active.observation
-      ? `<p>${escape(activity.memory)}</p><aside class="home-visit-memory"><strong>${escape(active.observation.subject)}</strong><p>${escape(active.observation.detail)}</p><small>Момент уже сохранён. Урожай, выпечка и припасы остались у вас.</small></aside><p>О чём поговорим перед уходом?</p>`
+      ? `${recordedToday ? `<p>${escape(activity.memory)}</p>` : ''}<aside class="home-visit-memory"><strong>${recordedToday ? '' : 'Сегодня: '}${escape(active.observation.subject)}</strong><p>${escape(active.observation.detail)}</p><small>${recordedToday ? 'Воспоминание добавлено в книгу.' : 'В книге осталась ваша первая встреча за этим занятием.'}</small></aside><p>О чём поговорим перед уходом?</p>`
       : `<p>${escape(activity.invitation)}</p><p><strong>${escape(activity.goal)}</strong></p><p>${escape(screen.readiness!)}</p>`
     body = `<article class="home-visit-active" aria-label="Гость на ферме"><header>${icon(`ui-${screen.resident}`)}<div><small>Сегодня в гостях</small><h2>${visitName(screen.resident)} · ${escape(activity.title)}</h2></div></header>${content}
       ${screen.commands.map(item => command(item) + (item.action === 'visit-reply' ? `<p>${escape(item.value.endsWith(':quiet') ? activity.quiet : activity.curious)}</p>` : '')).join('')}
@@ -33,7 +34,7 @@ export function renderGuestBookPrototype(farm: FarmState, view: GuestBookView, i
         <article class="home-visit-memory"><header>${icon(`ui-${remembered.resident}`)}<div><h3>${escape(remembered.title)}</h3><small>${visitName(remembered.resident)} · День ${memory.day}</small></div></header><strong>${escape(memory.subject)}</strong><p>${escape(remembered.memory)}</p><p>${escape(memory.detail)}</p>${memory.reply ? `<p>${escape(remembered[memory.reply])}</p>` : ''}</article>`
     } else body += '<p>Здесь останутся первые встречи: урожай, выпечка и знакомства с вашими курочками. Можно собирать их в любом порядке.</p>'
   } else {
-    body = '<h2>О визитах</h2><p>Теперь соседи могут прийти к вам. Приглашения открываются после первой общей встречи в Лавандовой гавани. За визит не нужно платить или отдавать угощение.</p><p>Один гость за раз. Он уйдёт после отдыха или поездки, а воспоминания останутся. Повторные визиты не дают монет, урожая или очков дружбы.</p>'
+    body = '<h2>О визитах</h2><p>Теперь соседи могут прийти к вам. Чтобы пригласить соседа, сначала устройте встречу с ним в Лавандовой гавани. За визит не нужно платить или отдавать угощение.</p><p>Один гость за раз. Он уйдёт после отдыха или поездки, а воспоминания останутся. Повторные визиты не дают монет, урожая или очков дружбы.</p>'
   }
   const navigation = `${screen.kind !== 'memories' ? choice('page', 'memories', `Наши встречи · ${screen.memories.length}/${visitActivityIds.length}`) : ''}${screen.kind !== 'rules' ? choice('page', 'rules', 'О визитах') : ''}${screen.kind === 'rules' || screen.kind === 'memories' ? `<button type="button" class="dialog-button secondary" data-guest-back>${farm.neighborVisits.active ? 'К гостю' : 'К приглашениям'}</button>` : ''}`
   return `<section class="home-visits" aria-label="Гостевая книга: семантический прототип">${body}<nav aria-label="Разделы гостевой книги">${navigation}</nav></section>`

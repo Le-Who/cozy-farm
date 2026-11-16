@@ -231,3 +231,41 @@ test('rendered exact tokens use the real resolver, while stale/repeated/forged a
   assert.doesNotMatch(memory, /<script|<img|data-guest-command="visit-reply"/)
   assert.match(memory, /К гостю/)
 })
+
+test('the prototype tells today’s second harvest apart from the original crop and reply in the book', async () => {
+  const { renderGuestBookPrototype: render } = await import('../src/guest-book-prototype.ts')
+  const farm = eligible(), view = new GuestBookView(), icon = () => ''
+  farm.beds[0] = { kind: 'crop', crop: 'carrot', growth: 1, watered: false }
+  farm.beds[1] = { kind: 'crop', crop: 'wheat', growth: 2, watered: false }
+  assert.ok(inviteNeighborVisit(farm, 'beaHarvest').ok)
+  assert.ok(workBed(farm, 0).ok)
+  assert.match(render(farm, view, icon), /Воспоминание добавлено в книгу/)
+  assert.ok(finishNeighborVisit(farm, 1, 'quiet').ok)
+  const first = structuredClone(farm.neighborVisits.memories[0])
+  assert.ok(inviteNeighborVisit(farm, 'beaHarvest').ok)
+  assert.ok(workBed(farm, 1).ok)
+  const today = farm.neighborVisits.active!.observation!
+  assert.notEqual(today.subject, first.subject)
+  const before = JSON.stringify(farm), html = render(farm, view, icon)
+  assert.ok(html.includes(`Сегодня: ${today.subject}`))
+  assert.match(html, /В книге осталась ваша первая встреча/)
+  assert.doesNotMatch(html, /Воспоминание добавлено в книгу/)
+  assert.equal(JSON.stringify(farm), before)
+  assert.ok(finishNeighborVisit(farm, 2, 'curious').ok)
+  const loaded = restoreCurrentFarm(JSON.parse(JSON.stringify(farm)))!
+  assert.deepEqual(loaded.neighborVisits.memories, [first])
+  view.choose(loaded, 'page', 'memories')
+  assert.ok(render(loaded, view, icon).includes(first.subject))
+  assert.ok(render(loaded, view, icon).includes(visitActivities.beaHarvest.quiet))
+})
+
+test('the rules explain that only the neighbor you have already met is unlocked', async () => {
+  const { renderGuestBookPrototype: render } = await import('../src/guest-book-prototype.ts')
+  const farm = eligible(), view = new GuestBookView()
+  farm.neighbors.finn.completed = 0
+  assert.equal(view.current(farm).commands[0].enabled, true)
+  view.choose(farm, 'resident', 'finn')
+  assert.equal(view.current(farm).commands[0].enabled, false)
+  view.choose(farm, 'page', 'rules')
+  assert.match(render(farm, view, () => ''), /сначала устройте встречу с ним в Лавандовой гавани/)
+})
