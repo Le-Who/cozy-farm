@@ -156,6 +156,8 @@ export class GuestBookButtonSurface {
       if (part === 'page' && value === 'memories') button.textContent = `Наши встречи · ${screen.memories.length}/${visitActivityIds.length}`
     }
     text('selected-resident', visitName(screen.resident)); text('selected-activity', activity.title)
+    root.querySelector('[data-guest-picker="resident"]')!.setAttribute('aria-label', `Гость: ${visitName(screen.resident)}. Выбрать гостя`)
+    root.querySelector('[data-guest-picker="activity"]')!.setAttribute('aria-label', `Занятие: ${activity.title}. Выбрать занятие`)
     root.querySelector<HTMLElement>('[data-text="goal"]')!.hidden = !!screen.gate
     root.querySelector<HTMLElement>('[data-text="gate"]')!.hidden = !screen.gate
     text('goal', activity.goal); text('readiness', screen.readiness ?? ''); text('gate', screen.gate ?? ''); text('invitation-copy', activity.invitation)

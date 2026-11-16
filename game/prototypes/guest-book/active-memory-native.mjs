@@ -28,7 +28,7 @@ try {
   server = await createServer({ root: new URL('../../', import.meta.url).pathname, configFile: false, logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } })
   await server.listen(); const origin = `http://127.0.0.1:${server.httpServer.address().port}`
   browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium', headless: true, chromiumSandbox: true, ignoreDefaultArgs: ['--enable-unsafe-swiftshader', '--unsafely-disable-devtools-self-xss-warnings'] })
-  for (const viewport of [{ width: 568, height: 320 }, { width: 360, height: 640 }, { width: 1280, height: 800 }]) {
+  for (const viewport of [{ width: 568, height: 320 }, { width: 360, height: 640 }, { width: 1280, height: 800 }].filter(v => !process.env.GUEST_BOOK_QA_WIDTH || v.width === Number(process.env.GUEST_BOOK_QA_WIDTH))) {
     const context = await browser.newContext({ viewport }), run = { viewport, checks: [], errors: [], external: [], geometry: [] }; report.runs.push(run)
     await context.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : (run.external.push(route.request().url()), route.abort()))
     await context.addInitScript(({ initial, key }) => {
@@ -70,7 +70,7 @@ try {
       assert.equal(await page.locator('[data-focus="memories"]').evaluate(el=>document.activeElement===el),true)
       const heading=await page.locator('[data-focus="memories"]').boundingBox(),clip=await page.locator('.dialog-content').boundingBox()
       assert.ok(heading.y>=clip.y-1 && heading.y+heading.height<=clip.y+clip.height+1,'explicit Memories heading visible')
-      await measure('memories', ['[data-guest-choice="memory"][data-value="beaHarvest"]','[data-guest-back]'])
+      await measure('memories', ['[data-guest-choice="memory"][data-value="beaHarvest"]','[data-guest-choice="memory"][data-value="beaFlock"]','[data-guest-back]'])
       const detailBox=await page.locator('[data-memory-detail]').boundingBox()
       await page.mouse.move(detailBox.x+detailBox.width/2,detailBox.y+detailBox.height/2);await page.mouse.wheel(0,300);await page.waitForTimeout(200)
       await click('[data-guest-choice="memory"][data-value="beaFlock"]')

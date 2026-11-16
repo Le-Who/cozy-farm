@@ -73,3 +73,7 @@
   [data-guest-screen="invitation"]:has([data-invitation-preparation][open]) > [data-command-list] { grid-column: 1 / -1; grid-row: 4; }
   [data-guest-screen="invitation"]:has([data-invitation-preparation][open]) > nav { grid-row: 5; }
 }
+@media (max-height: 460px) and (orientation: landscape) {
+  /* Open choices replace their selected field, keeping all three 44px options in the short viewport. */
+  [data-invitation-options] { top: calc(100% - 44px); }
+}

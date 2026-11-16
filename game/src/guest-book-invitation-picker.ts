@@ -19,6 +19,7 @@ export class GuestBookInvitationPicker {
   }
   afterChoice(button: HTMLButtonElement, event: MouseEvent): void {
     const part = button.dataset.guestChoice
+    if (!event.defaultPrevented && part === 'page') this.set()
     if (event.defaultPrevented || !this.compact() || (part !== 'resident' && part !== 'activity')) return
     this.set()
     this.root.querySelector<HTMLButtonElement>(`[data-guest-picker="${part}"]`)?.focus({ preventScroll: true })
