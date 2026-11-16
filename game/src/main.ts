@@ -673,7 +673,13 @@ function status() {
     const count = counts[toolId]
     const badge = button.querySelector<HTMLElement>('.slot-count')!
     if (toolId === 'seeds') button.title = atHome && sowingPlan ? `Посев по плану: ${sowingPlan.name} (3)` : `Семена · ${cropDefinitions[farm.selectedSeed].name} (3)`
-    button.setAttribute('aria-pressed', String(toolId === activeTool))
+    if (toolId === 'basket' && atHome) {
+      button.removeAttribute('aria-pressed')
+      button.setAttribute('aria-haspopup', 'dialog')
+    } else {
+      button.setAttribute('aria-pressed', String(toolId === activeTool))
+      if (toolId === 'basket') button.removeAttribute('aria-haspopup')
+    }
     badge.hidden = atVillage || count === undefined
     badge.textContent = count === undefined ? '' : String(count)
   }
