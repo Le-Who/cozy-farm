@@ -1,0 +1,7 @@
+/* DEV candidate: known-treat details add a line. Keep the existing 44px notes control visible in short landscape. */
+@media (min-width: 461px) and (max-height: 480px) {
+  .farm-dialog[data-panel="hen-friendship"]:has(.hen-treats small + small),
+  .farm-dialog[data-panel="hen-friendship"]:has(.hen-treats small + small) .dialog-panel {
+    max-height: calc(100dvh - 16px);
+  }
+}

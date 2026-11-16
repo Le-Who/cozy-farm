@@ -283,6 +283,10 @@ import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoa
 const coopCompactDev = import.meta.env.DEV && new URLSearchParams(location.search).get('coopCompact') === '1'
   ? await import('./coop-compact-dev') : undefined
 
+// Local-only dense-state fit check; no production style changes.
+if (import.meta.env.DEV && new URLSearchParams(location.search).get('henDenseFit') === '1')
+  await import('./hen-friend-dense-fit.css')
+
 const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreLegacyFarm)
 const farm = await saveStore.load() ?? createFarm()
 let saveAvailable = !saveStore.blocked
@@ -345,9 +349,13 @@ let committedRestClose = false
 let celebratedFestival: FestivalTradition | undefined
 let celebrationReceipt: {effect?:string; coins:number} | undefined
 let treeSlot = 0
+const marketOrdersEntryDev = import.meta.env.DEV && new URLSearchParams(location.search).get('marketOrdersEntry') === '1'
 let marketTab: 'buy' | 'sell' | 'orders' | 'projects' = 'buy'
 let marketCategory:'seeds'|'trees'|'care'|'buildings'='seeds'
 let marketSellGroup:'all'|'harvest'|'kitchen'|'shore'='all'
+const marketSaleGridDev = import.meta.env.DEV && new URLSearchParams(location.search).get('marketSaleGrid') === '1'
+if (marketSaleGridDev) await import('./market-sale-grid-dev.css')
+
 let marketSaleQuery = ''
 let marketSaleFamily: string | undefined
 let selectedSale: (SaleTarget & { name: string; image?: string; trait?: Trait }) | undefined
@@ -1128,7 +1136,8 @@ function updateMarketSaleSearch() {
 function marketCards() {
   const balance = `<p class="coin-balance" aria-label="${quantity(farm.coins, 'монета')}">${icon('coin')} ${numberFormat.format(farm.coins)}</p>`
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
-  const stall = farm.village.built ? button(farm.island === 'village' ? 'Своя лавка' : 'В лавку в гавань', 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
+  const shopLabel = farm.island === 'village' ? 'Своя лавка' : marketOrdersEntryDev && marketTab === 'orders' ? 'Своя лавка в гавани' : 'В лавку в гавань'
+  const stall = farm.village.built ? button(shopLabel, 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
   const controls = `<div class="market-controls"><div class="market-header">${balance}${stall}</div>${tabs}</div>`
   if (marketTab === 'orders') return controls + marketOrders() + (isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : '')
   if (marketTab === 'projects') {
@@ -1140,13 +1149,13 @@ function marketCards() {
   }
   if (marketTab === 'sell') {
     const sale = getSale(farm)
-    return `${controls}
+    return `${marketSaleGridDev ? '<section data-market-sale-browser>' : ''}${controls}
       <div class="market-sale-groups">${panelTabs('market-sell-group',marketSellGroup,[['all','Всё'],['harvest','Урожай'],['kitchen','Кухня'],['shore','Берег']])}</div>
       <div class="market-sale-filters" data-family="${marketSellGroup==='harvest'}"><label class="market-sale-group-select">Группа / товар<select data-market-sale-group>${[['all','Всё'],['harvest','Весь урожай'],['kitchen','Кухня'],['shore','Берег']].map(([id,label])=>`<option value="${id}"${marketSellGroup===id&&(id!=='harvest'||!marketSaleFamily)?' selected':''}>${label}</option>`).join('')}<optgroup label="Урожай: товар и его варианты">${marketFamilyOptions(marketSellGroup==='harvest'?marketSaleFamily:undefined)}</optgroup></select></label>${marketSellGroup==='harvest'?`<label class="market-sale-family-select">Товар<select data-market-sale-family><option value="harvest"${!marketSaleFamily?' selected':''}>Весь урожай</option>${marketFamilyOptions(marketSaleFamily)}</select></label>`:''}<div class="market-sale-search"><label for="market-sale-query">Найти товар<input id="market-sale-query" data-market-sale-query type="search" maxlength="100" value="${escapeHtml(marketSaleQuery)}" placeholder="Название или особенность" aria-controls="market-sale-results" autocomplete="off"></label>${button('Очистить','market-sale-clear',Boolean(marketSaleQuery),{secondary:true})}</div></div>
       <p class="market-sale-search-status" role="status" aria-live="polite">${marketSaleSearchStatus()}</p>
       <div id="market-sale-results">${marketSaleResults()}</div>
       ${marketSellGroup==='all'?`<section class="market-total">${icon('tool-crate')}<div><strong>${sale.items ? `Вся корзина: ${quantity(sale.items, 'предмет')} · ${quantity(sale.coins, 'монета')}` : 'Корзина пуста'}</strong>${button('Продать всё', 'sell', sale.items > 0 && !salePresentation.place)}</div></section>`:''}
-      ${farm.culinary.recipes.length?nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}`
+      ${farm.culinary.recipes.length?nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}${marketSaleGridDev ? '</section>' : ''}`
   }
   const categories=`<nav class="market-category-icons" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}</button>`).join('')}</nav>`
   if(marketCategory==='seeds')return controls+categories+`<div class="market-seed-grid">${cropIds.map(crop=>{const definition=cropDefinitions[crop];return `<section>${icon('ui-seed-'+crop)}<strong>${definition.name}</strong><span>×${seedPackSize}</span>${button('Купить','buy-seeds',farm.coins>=definition.seedPrice,{crop,cost:{icon:'coin',amount:definition.seedPrice}})}</section>`}).join('')}</div>`
