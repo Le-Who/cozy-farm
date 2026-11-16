@@ -16,7 +16,7 @@ const guardSource = fs.readFileSync(new URL('../../src/action-click-guard.ts', i
 const results = [];
 function run(name, fn) { fn(); results.push({ name, pass: true }); }
 function host({ guarded = true, farm = fc.eligible() } = {}) {
-  const w = new JSDOM('<!doctype html><body><button id="outside">Вне книги</button><main id="app"><section id="book"></section></main></body>').window;
+  const w = new JSDOM('<!doctype html><body><button id="outside">Вне книги</button><main id="app"><button id="book-open" data-action="open-panel" data-value="neighbor-visits">Гостевая книга</button><section id="book"></section></main></body>').window;
   const app = w.document.querySelector('#app'), root = w.document.querySelector('#book');
   // Only transpilation for jsdom's Element realm. NO private-set additions.
   const ctx = { exports: {}, Element: w.Element };
@@ -103,6 +103,22 @@ run('the real guard opt-in blocks selection-to-invite trailing click; fresh gest
       assert.ok(h.farm.neighborVisits.active.observation);
     }
     assert.equal(h.state.storageWrites, 0); h.close();
+  }
+});
+run('the exact Home Guest Book entry owns the crossing gesture only in the opted-in capture guard', () => {
+  for (const guarded of [false, true]) {
+    const h = host({ guarded }), before = JSON.stringify(h.farm);
+    const entry = h.w.document.querySelector('#book-open');
+    h.click(entry, 100);
+    const crossing = h.click(h.select('[data-guest-command="visit-invite"]'), 180, 2);
+    assert.equal(crossing.defaultPrevented, guarded);
+    assert.equal(h.state.writes, guarded ? 0 : 1);
+    if (guarded) {
+      assert.equal(JSON.stringify(h.farm), before);
+      h.click(h.select('[data-guest-command="visit-invite"]'), 800);
+      assert.equal(h.state.writes, 1);
+    }
+    h.close();
   }
 });
 run('held Enter and Space retain selection/action ownership until keyup, including Back', () => {

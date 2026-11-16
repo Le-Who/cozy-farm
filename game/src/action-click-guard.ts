@@ -65,6 +65,9 @@ export function installActionClickGuard(root: HTMLElement, options: { guestBookB
   const guestBookButtons = options.guestBookButtons === true
   const isGuarded = (action: string | undefined) => isGuardedAction(action)
     || guestBookButtons && (action === 'guest-book-choice' || action === 'guest-book-back')
+  // The dev host can enter from Home. That exact entry must own its gesture too.
+  const isGuardedButton = (button: HTMLButtonElement) => isGuarded(button.dataset.action)
+    || guestBookButtons && button.dataset.action === 'open-panel' && button.dataset.value === 'neighbor-visits'
   const guard = new ActionClickGuard()
   const keys = new ActivationKeyGuard()
   root.addEventListener('click', event => {
@@ -74,14 +77,14 @@ export function installActionClickGuard(root: HTMLElement, options: { guestBookB
       return
     }
     const control = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null
-    if (control && !control.disabled && isGuarded(control.dataset.action)) guard.remember(event)
+    if (control && !control.disabled && isGuardedButton(control)) guard.remember(event)
   }, true)
   // A removed button may send keyup/repeat to the dialog, body or close button.
   // Listen on the document so release is always seen, not only inside the app.
   root.ownerDocument.addEventListener('keydown', event => {
     const target = event.target instanceof Element && root.contains(event.target) ? event.target : null
     const button = target?.closest<HTMLButtonElement>('button')
-    const guarded = !!target?.closest('[data-sale-quantity],[data-stock-quantity]') || !!button && !button.disabled && isGuarded(button.dataset.action)
+    const guarded = !!target?.closest('[data-sale-quantity],[data-stock-quantity]') || !!button && !button.disabled && isGuardedButton(button)
     if (keys.blocks(event, guarded)) {
       event.preventDefault()
       event.stopImmediatePropagation()

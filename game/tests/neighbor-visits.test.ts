@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createFarm, restoreCurrentFarm, endDay, sail, workBed, petChicken, introduceHenToVisitor, bakeWorkshop, pickFruit, getNeighborPlans, joinNeighborPlan, serveNeighborPlan, finishNeighborPlan } from '../src/farm.ts'
 import { inviteNeighborVisit, finishNeighborVisit, visitActivities, visitActivityIds } from '../src/neighbor-visits.ts'
+import { renderNeighborVisits, renderVisitRest } from '../src/neighbor-visits-ui.ts'
 import { restoreLegacyFarm } from '../src/farm-save-migration.ts'
 import { farmSaveKeys as keys, friendshipFarmSaveKeys as v5 } from '../src/farm-save-keys.ts'
 import { VersionedSave } from '../src/versioned-save.ts'
@@ -90,5 +91,82 @@ test('every guest arrives and leaves by safe routes; rest, travel and reduced mo
     assert.ok(stepHomeVisitor(actor,0,false));assert.deepEqual(actor.point,visitorLanding)
     inviteNeighborVisit(f,id);actor=syncHomeVisitor(actor,f)!;stepHomeVisitor(actor,0,true);assert.deepEqual(actor.point,visitActivities[id].point)
     endDay(f);assert.equal(syncHomeVisitor(actor,f),undefined);f.island='grove';assert.equal(syncHomeVisitor(actor,f),undefined)
+  }
+})
+
+
+test('first and repeat harvest copy follows the exact visit serial, preserving the first crop and reply after reload',()=>{
+  for(const activity of ['beaHarvest','finnGarden'] as const){
+    let f=ready();f.beds[0]={kind:'crop',crop:'carrot',growth:1,watered:false};f.beds[1]={kind:'crop',crop:'wheat',growth:2,watered:false}
+    assert.ok(inviteNeighborVisit(f,activity).ok)
+    const firstSerial=f.neighborVisits.serial
+    const firstHarvest=workBed(f,0)
+    assert.ok(firstHarvest.ok);assert.match(firstHarvest.message,/Воспоминание добавлено в гостевую книгу/)
+    const firstHtml=renderNeighborVisits(f,()=>''),firstActive=firstHtml.match(/<article class="home-visit-active"[\s\S]*?<\/article>/)![0]
+    assert.match(firstActive,/Воспоминание добавлено в книгу/);assert.doesNotMatch(firstActive,/Сегодня:/)
+    assert.match(renderVisitRest(f),/Воспоминание уже в гостевой книге/)
+    const firstFarewell=finishNeighborVisit(f,firstSerial,'quiet')
+    assert.ok(firstFarewell.ok);assert.match(firstFarewell.message,/Воспоминание осталось в гостевой книге/)
+    const first=structuredClone(f.neighborVisits.memories[0])
+    assert.equal(first.reply,'quiet')
+    assert.ok(inviteNeighborVisit(f,activity).ok)
+    const repeatSerial=f.neighborVisits.serial
+    assert.notEqual(repeatSerial,firstSerial);assert.equal(f.neighborVisits.active!.startedOn,first.day)
+    const ordinary=structuredClone(f);ordinary.neighborVisits.active=null
+    const repeatHarvest=workBed(f,1)
+    assert.ok(repeatHarvest.ok);assert.ok(workBed(ordinary,1).ok);assert.deepEqual(economy(f),economy(ordinary))
+    assert.match(repeatHarvest.message,/В гостевой книге осталась первая встреча за этим занятием/)
+    assert.doesNotMatch(repeatHarvest.message,/запомнил|Воспоминание добавлено/)
+    const today=structuredClone(f.neighborVisits.active!.observation!)
+    assert.notEqual(today.subject,first.subject)
+    assert.deepEqual(f.neighborVisits.memories,[first])
+    f=load(f);assert.ok(f);assert.deepEqual(f.neighborVisits.active!.observation,today)
+    const before=structuredClone(f),repeatHtml=renderNeighborVisits(f,()=>''),repeatActive=repeatHtml.match(/<article class="home-visit-active"[\s\S]*?<\/article>/)![0]
+    assert.ok(repeatActive.includes(`Сегодня: ${today.subject}`));assert.ok(!repeatActive.includes(first.subject))
+    assert.match(repeatActive,/В книге осталась ваша первая встреча за этим занятием/)
+    assert.doesNotMatch(repeatActive,/Воспоминание добавлено|Момент уже сохранён/)
+    assert.ok(!repeatActive.includes(visitActivities[activity].memory))
+    assert.ok(repeatActive.includes(`data-value="${repeatSerial}:curious"`))
+    assert.ok(repeatHtml.includes(first.subject));assert.ok(repeatHtml.includes(visitActivities[activity].quiet))
+    assert.match(renderVisitRest(f),/В гостевой книге останется первая встреча за этим занятием/)
+    assert.doesNotMatch(renderVisitRest(f),/Воспоминание уже/)
+    assert.deepEqual(f,before)
+    assert.equal(finishNeighborVisit(f,firstSerial,'curious').ok,false);assert.deepEqual(f,before)
+    assert.equal(finishNeighborVisit(f,repeatSerial,'invalid').ok,false);assert.deepEqual(f,before)
+    const farewell=finishNeighborVisit(f,repeatSerial,'curious')
+    assert.ok(farewell.ok);assert.match(farewell.message,/В гостевой книге осталась первая встреча за этим занятием/)
+    assert.doesNotMatch(farewell.message,/Воспоминание осталось/)
+    assert.deepEqual(f.neighborVisits.memories,[first]);assert.equal(f.neighborVisits.active,null)
+    const completed=structuredClone(f)
+    assert.equal(finishNeighborVisit(f,repeatSerial,'curious').ok,false);assert.deepEqual(f,completed)
+    const loaded=load(f);assert.ok(loaded);assert.deepEqual(loaded.neighborVisits.memories,[first])
+    const remembered=renderNeighborVisits(loaded,()=>'')
+    assert.ok(remembered.includes(first.subject));assert.ok(remembered.includes(visitActivities[activity].quiet))
+    assert.ok(!remembered.includes(today.subject));assert.ok(!remembered.includes(visitActivities[activity].curious))
+  }
+})
+
+test('unobserved repeat visits never claim a new memory in rest or farewell copy',()=>{
+  const f=ready();inviteNeighborVisit(f,'beaFlock');introduceHenToVisitor(f,0);finishNeighborVisit(f,f.neighborVisits.serial,'quiet')
+  const first=structuredClone(f.neighborVisits.memories)
+  inviteNeighborVisit(f,'beaFlock')
+  assert.match(renderVisitRest(f),/Пригласить снова можно в любой день/)
+  const farewell=finishNeighborVisit(f,f.neighborVisits.serial)
+  assert.ok(farewell.ok);assert.match(farewell.message,/Можно пригласить снова, когда будет удобно/)
+  assert.deepEqual(load(f).neighborVisits.memories,first)
+})
+
+
+test('repeat observations leave the first memory intact after a plain farewell, rest or travel',()=>{
+  for(const departure of ['farewell','rest','travel'] as const){
+    const f=ready();f.beds[0]={kind:'crop',crop:'carrot',growth:1,watered:false};f.beds[1]={kind:'crop',crop:'wheat',growth:2,watered:false}
+    inviteNeighborVisit(f,'beaHarvest');workBed(f,0);finishNeighborVisit(f,f.neighborVisits.serial,'quiet')
+    const first=structuredClone(f.neighborVisits.memories)
+    inviteNeighborVisit(f,'beaHarvest');workBed(f,1)
+    if(departure==='farewell')assert.match(finishNeighborVisit(f,f.neighborVisits.serial).message,/В гостевой книге осталась первая встреча за этим занятием/)
+    else if(departure==='rest')assert.ok(endDay(f).ok)
+    else assert.ok(sail(f,'grove').ok)
+    assert.equal(f.neighborVisits.active,null)
+    assert.deepEqual(load(f).neighborVisits.memories,first)
   }
 })

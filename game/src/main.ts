@@ -85,6 +85,8 @@ import { renderFishingPracticeEntry } from './fishing-practice-ui'
 import { canPracticeFishing, createFishingPractice } from './fishing-practice'
 import { getEggUnpackAction, unpackEggBasket, unpackEggCrate, getHarborWithdrawal, withdrawHarborSupplies } from './farm'
 import { installActionClickGuard } from './action-click-guard'
+import type { GuestBookSelection, GuestBookAction } from './guest-book-view'
+import type { GuestBookFocus } from './guest-book-action-adapter'
 import { exactSaleQuote, saleStock, stepSaleQuantity, type SaleTarget } from './exact-sale'
 import './exact-sale.css'
 import { getBedHarvestPreview } from './farm'
@@ -278,6 +280,11 @@ import { createHarbourControls } from './harbour-controls'
 import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
+
+// Strict local opt-in: Vite eliminates this import and the surface in production.
+const guestBookDevModule = import.meta.env.DEV && new URLSearchParams(location.search).get('guestBookButtons') === '1'
+  ? await import('./guest-book-button-surface') : undefined
+let guestBookSurface: InstanceType<NonNullable<typeof guestBookDevModule>['GuestBookButtonSurface']> | undefined
 
 const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreLegacyFarm)
 const farm = await saveStore.load() ?? createFarm()
@@ -1438,6 +1445,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  guestBook: GuestBookSelection | undefined; guestBookFocus: GuestBookFocus | undefined;
   recipeBook: RecipeBookView;
   ferryView: FerryPanelView | undefined;
   marketNextOpen: string[];
@@ -1462,13 +1470,14 @@ function focusKey(button: HTMLButtonElement) {
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
-  return {recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  return {guestBook:guestBookDevModule&&panel==='neighbor-visits'?guestBookSurface?.snapshot():undefined,guestBookFocus:guestBookDevModule&&panel==='neighbor-visits'&&focused?(focused.dataset.guestChoice?{part:focused.dataset.guestChoice,value:focused.dataset.value??''}:focused.dataset.commandKey?{part:'command',value:focused.dataset.commandKey}:undefined):undefined,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
   const previous=panelHistory.pop()
   if(!previous)return
   recipeBook.load(previous.recipeBook)
+  if (previous.guestBook && guestBookDevModule) guestBookSurface?.view.restore(previous.guestBook)
   journeyDetailsOpen=previous.journeyDetailsOpen
   journalDetailsOpen=previous.journalDetailsOpen
   selectedExpeditionPort=previous.expeditionPort; selectedExpeditionOffer=previous.expeditionOffer
@@ -1497,7 +1506,8 @@ function goBack() {
     if (!dialog.open || panel !== previous.panel || panelRenderVersion !== restoredVersion) return
     dialogContent.scrollTop=previous.scroll
     const target=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')).find(button=>focusKey(button)===previous.focus&&button.getClientRects().length>0)
-    if (previous.panel === 'recipes') recipeBook.restore(dialogContent,true)
+    if (previous.panel === 'neighbor-visits' && previous.guestBookFocus && guestBookDevModule) guestBookSurface?.render(previous.guestBookFocus)
+    else if (previous.panel === 'recipes') recipeBook.restore(dialogContent,true)
     else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
     else if (previous.panel === 'market' && marketTab === 'sell') {
       const search = dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]')
@@ -1665,6 +1675,7 @@ function drawPanel() {
   sceneBack.hidden=panelHistory.length===0||panel!=='fishing'&&panel!=='workshop'&&panel!=='cookery'&&panel!=='arrangement'
   sceneBack.setAttribute('aria-label',panelHistory.length?`Назад: ${panelTitles[panelHistory.at(-1)!.panel]}`:'Назад')
   const recipeBack = panel === 'recipes' && recipeBook.view.mode === 'detail' && recipeBookNarrow() && (recipeBook.view.fromIndex || panelHistory.length===0)
+  backButton.dataset.action = guestBookDevModule && panel === 'neighbor-visits' ? 'guest-book-back' : 'back'
   backButton.hidden=!recipeBack&&panelHistory.length===0
   backButton.textContent=recipeBack?'‹ К списку':'‹'
   backButton.dataset.recipeIndex=String(recipeBack)
@@ -1868,7 +1879,15 @@ function drawPanel() {
       break
     }
     case 'neighbor-visits':
-      dialogContent.innerHTML = renderNeighborVisits(farm, icon)
+      if (guestBookDevModule) {
+        if (!dialogContent.querySelector('[data-guest-surface]')) guestBookSurface = new guestBookDevModule.GuestBookButtonSurface({
+          enabled: true, root: dialogContent, view: guestBookSurface?.view,
+          farm: () => farm, active: () => panel === 'neighbor-visits' && dialog.open,
+          dispatch: command => command.action === 'close' ? closeCurrentPanel() : dispatchVisitCommand(command.action, command.value),
+        })
+        else guestBookSurface?.render()
+        updateGuestBookBack()
+      } else dialogContent.innerHTML = renderNeighborVisits(farm, icon)
       break
     case 'hen-friendship':
       dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable(), selectedFriendHen, icon)
@@ -2122,7 +2141,7 @@ function drawPanel() {
   if (focusedStorageChoice) dialogContent.querySelector<HTMLSelectElement>('[data-tree-storage-choice]')?.focus({preventScroll:true})
   if(panel==='market'&&salePresentation.place)updateSaleQuote()
   if (panel === 'recipes') recipeBook.restore(dialogContent,true)
-  if (focused && panel !== 'bay-freight' && panel !== 'recipes') {
+  if (focused && panel !== 'bay-freight' && panel !== 'recipes' && !(guestBookDevModule && panel === 'neighbor-visits')) {
     const replacement = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
       .find(candidate => focusKey(candidate) === focusKey(focused))
     const nextFocus = replacement ?? closeButton
@@ -2693,7 +2712,7 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
 
 // Scene handlers own material sounds. Fill in a quiet control cue only when the
 // completed gesture has produced neither a sound nor a transition of its own.
-installActionClickGuard(app)
+installActionClickGuard(app, { guestBookButtons: !!guestBookDevModule })
 app.addEventListener('click',event=>{
   if (!(event.target instanceof Element) || island.isCrossing()) return
   const control=event.target.closest<HTMLElement>('button,summary')
@@ -2726,6 +2745,7 @@ app.addEventListener('click', async (event) => {
   if (island.isCrossing()) return
   if (!(event.target instanceof Element)) return
   const control = event.target.closest<HTMLButtonElement>('button')
+  if (guestBookDevModule && guestBookSurface?.click(event)) { updateGuestBookBack(); return }
   if (!control || control.disabled) return
   if (control.dataset.panel) {
     if (control === taskCard && control.dataset.panel === 'market') marketTab = 'orders'
@@ -3342,7 +3362,8 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'travel-panel': if(value==='market') await visitPanelAt('home','market'); break
-    case 'back': if(!closeContextualSale()&&!returnToRecipeIndex())goBack(); break
+    case 'guest-book-back': if(guestBookDevModule&&!returnFromGuestBook(event)&&panelHistory.length)goBack(); break
+    case 'back': if(!returnFromGuestBook(event)&&!closeContextualSale()&&!returnToRecipeIndex())goBack(); break
     case 'open-panel': if(value&&value in panelTitles)openPanel(value as Panel);break
     case 'harbour-view': if (value && isHarbourView(value)) island.setHarbourView(value); break
     case 'field-view': toggleFieldView(); break
@@ -3469,36 +3490,9 @@ app.addEventListener('click', async (event) => {
       drawPanel()
       break
     }
-    case 'visit-book-home': void visitPanelAt('home','neighbor-visits'); break
-    case 'visit-invite':
-      if(panel==='neighbor-visits'&&dialog.open&&perform(()=>inviteNeighborVisit(farm,value),false,true)){
-        closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
-      }
+    case 'visit-book-home': case 'visit-invite': case 'visit-finish': case 'visit-reply': case 'visit-introduce-hen': case 'visit-do':
+      dispatchVisitCommand(action, value)
       break
-    case 'visit-finish': case 'visit-reply': {
-      if(panel!=='neighbor-visits'||!dialog.open)break
-      const parts=/^([1-9]\d{0,6})(?::(quiet|curious))?$/.exec(value??'')
-      if(!parts||action==='visit-reply'&&!parts[2]||action==='visit-finish'&&parts[2])break
-      if(perform(()=>finishNeighborVisit(farm,Number(parts[1]),parts[2]),false,true))closeDialog()
-      break
-    }
-    case 'visit-introduce-hen': {
-      if(panel!=='neighbor-visits'||!dialog.open)break
-      const parts=/^([1-9]\d{0,6}):([0-4])$/.exec(value??'')
-      if(!parts||farm.neighborVisits.active?.serial!==Number(parts[1]))break
-      perform(()=>introduceHenToVisitor(farm,Number(parts[2])),false,true)
-      break
-    }
-    case 'visit-do': {
-      if(panel!=='neighbor-visits'||!dialog.open||!farm.neighborVisits.active||String(farm.neighborVisits.active.serial)!==value)break
-      const kind=visitActivities[farm.neighborVisits.active.activity].kind
-      if(kind==='pastry'){workshopRecipe='pastry';openPanel('workshop');break}
-      const index=kind==='crop'?farm.beds.findIndex(b=>b.kind==='crop'&&getBedStage(b)==='ripe'):farm.trees.home.findIndex(t=>t&&t.fruitReady>0)
-      closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
-      if(index>=0)island.focusTarget({kind:kind==='crop'?'bed':'tree',index})
-      else notify(kind==='crop'?'Пока нет зрелого урожая. Можно пригласить гостя после созревания.':'Пока нет спелых плодов. Можно пригласить гостя позднее.')
-      break
-    }
     case 'hen-friend-select': {
       if (panel !== 'hen-friendship' || !dialog.open || farm.island !== 'home' || !/^[0-4]$/.test(value ?? '') || Number(value) >= farm.flockSize) break
       selectedFriendHen = Number(value)
@@ -3761,6 +3755,59 @@ app.addEventListener('click', async (event) => {
   }
 })
 
+// Both UI paths use these exact existing branches. The opt-in adapter never saves
+// or bypasses perform(), current panel, location, serial or reducer validation.
+function dispatchVisitCommand(action: Exclude<GuestBookAction, 'close'>, value: string | undefined) {
+  switch (action) {
+    case 'visit-book-home': void visitPanelAt('home','neighbor-visits'); break
+    case 'visit-invite':
+      if(panel==='neighbor-visits'&&dialog.open&&perform(()=>inviteNeighborVisit(farm,value),false,true)){
+        closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
+      }
+      break
+    case 'visit-finish': case 'visit-reply': {
+      if(panel!=='neighbor-visits'||!dialog.open)break
+      const parts=/^([1-9]\d{0,6})(?::(quiet|curious))?$/.exec(value??'')
+      if(!parts||action==='visit-reply'&&!parts[2]||action==='visit-finish'&&parts[2])break
+      if(perform(()=>finishNeighborVisit(farm,Number(parts[1]),parts[2]),false,true))closeDialog()
+      break
+    }
+    case 'visit-introduce-hen': {
+      if(panel!=='neighbor-visits'||!dialog.open)break
+      const parts=/^([1-9]\d{0,6}):([0-4])$/.exec(value??'')
+      if(!parts||farm.neighborVisits.active?.serial!==Number(parts[1]))break
+      perform(()=>introduceHenToVisitor(farm,Number(parts[2])),false,true)
+      break
+    }
+    case 'visit-do': {
+      if(panel!=='neighbor-visits'||!dialog.open||!farm.neighborVisits.active||String(farm.neighborVisits.active.serial)!==value)break
+      const kind=visitActivities[farm.neighborVisits.active.activity].kind
+      if(kind==='pastry'){workshopRecipe='pastry';openPanel('workshop');break}
+      const index=kind==='crop'?farm.beds.findIndex(b=>b.kind==='crop'&&getBedStage(b)==='ripe'):farm.trees.home.findIndex(t=>t&&t.fruitReady>0)
+      closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
+      if(index>=0)island.focusTarget({kind:kind==='crop'?'bed':'tree',index})
+      else notify(kind==='crop'?'Пока нет зрелого урожая. Можно пригласить гостя после созревания.':'Пока нет спелых плодов. Можно пригласить гостя позднее.')
+      break
+    }
+  }
+}
+function updateGuestBookBack() {
+  if (!guestBookDevModule || panel !== 'neighbor-visits') return
+  const nested = guestBookSurface?.snapshot().page !== 'visit'
+  backButton.hidden = !nested && panelHistory.length === 0
+  backButton.textContent = '‹'
+  const label = nested ? farm.neighborVisits.active ? 'К гостю' : 'К приглашениям'
+    : panelHistory.length ? `Назад: ${panelTitles[panelHistory.at(-1)!.panel]}` : 'Назад'
+  backButton.setAttribute('aria-label', label)
+  backButton.title = `${label} (Esc / Alt + ←)`
+}
+function returnFromGuestBook(event: Event): boolean {
+  if (!guestBookDevModule || panel !== 'neighbor-visits' || !dialog.open) return false
+  if (!guestBookSurface?.back(event)) return false
+  updateGuestBookBack()
+  return true
+}
+
 function closeCurrentPanel() {
   if (communityRequest && panel === 'arrangement') void resumeCommunityRequest()
   else closeDialog()
@@ -3768,6 +3815,7 @@ function closeCurrentPanel() {
 closeButton.addEventListener('click', closeCurrentPanel)
 function returnFromPanel(event: Event) {
   if (event.defaultPrevented) return
+  if(panel==='neighbor-visits'&&returnFromGuestBook(event))return
   if(closeContextualSale()){event.preventDefault();return}
   if(returnToRecipeIndex()){event.preventDefault();return}
   if (communityRequest && panel === 'arrangement') {
@@ -3786,7 +3834,7 @@ dialog.addEventListener('keydown', event => {
   if (event.repeat) event.preventDefault()
   else returnFromPanel(event)
 })
-dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&salePresentation.place){event.preventDefault();closeContextualSale();return}if(event.altKey&&event.key==='ArrowLeft'&&(panelHistory.length||panel==='recipes'&&recipeBook.view.mode==='detail'&&recipeBookNarrow())){event.preventDefault();if(!returnToRecipeIndex())goBack()}})
+dialog.addEventListener('keydown',event=>{if(event.defaultPrevented)return;if(event.altKey&&event.key==='ArrowLeft'&&returnFromGuestBook(event))return;if(event.altKey&&event.key==='ArrowLeft'&&salePresentation.place){event.preventDefault();closeContextualSale();return}if(event.altKey&&event.key==='ArrowLeft'&&(panelHistory.length||panel==='recipes'&&recipeBook.view.mode==='detail'&&recipeBookNarrow())){event.preventDefault();if(!returnToRecipeIndex())goBack()}})
 dialog.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !(event.target instanceof HTMLButtonElement)) return
   const selector = event.target.closest('.island-selector,.house-selector,.tree-selector,.panel-tabs,.market-category-icons,.recipe-family-choices,.recipe-fish-choices')

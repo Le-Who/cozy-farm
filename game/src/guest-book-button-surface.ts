@@ -80,7 +80,22 @@ export class GuestBookButtonSurface {
     if (!control || !this.host.root.contains(control)) return false
     // Owned but invalid specimens must not fall into an unrelated live branch.
     if (event.defaultPrevented || !this.host.active() || control.disabled || control.closest('[hidden],[inert]')) return true
-    this.adapter.click(event)
+    const document = control.ownerDocument
+    const ownedCommandFocus = control.hasAttribute('data-guest-command') && document.activeElement === control
+    let hostChoseFocus = false
+    const trackFocus = (focus: FocusEvent) => { if (focus.target !== control) hostChoseFocus = true }
+    if (ownedCommandFocus) document.addEventListener('focusin', trackFocus, true)
+    try { this.adapter.click(event) }
+    finally { if (ownedCommandFocus) document.removeEventListener('focusin', trackFocus, true) }
+    // Only this explicit, synchronous activation can hand off its hidden focus.
+    // Passive render, a closed host, or a host-selected destination keep ownership.
+    if (ownedCommandFocus && !hostChoseFocus && this.host.active() && this.host.root.contains(control)
+      && control.closest('[hidden],[inert]')
+      && (document.activeElement === control || document.activeElement === document.body)) {
+      const next = [...this.host.root.querySelectorAll<HTMLButtonElement>('button[data-guest-command]')]
+        .find(button => !button.disabled && !button.closest('[hidden],[inert]'))
+      next?.focus({ preventScroll: true })
+    }
     return true
   }
 
@@ -146,7 +161,8 @@ export class GuestBookButtonSurface {
     back.hidden = selection.page === 'visit'; back.textContent = farm.neighborVisits.active ? 'К гостю' : 'К приглашениям'
     if (!focus) return
     const choice = [...root.querySelectorAll<HTMLElement>('[data-guest-choice]')].find(button => button.dataset.guestChoice === focus.part && button.dataset.value === focus.value && !button.closest('[hidden]'))
-    const destination = choice ?? root.querySelector<HTMLElement>(`[data-focus="${screen.kind}"]`)
+    const command = focus.part === 'command' ? [...root.querySelectorAll<HTMLElement>('[data-command-key]')].find(button => button.dataset.commandKey === focus.value && !button.closest('[hidden]') && !button.hasAttribute('disabled')) : undefined
+    const destination = command ?? choice ?? root.querySelector<HTMLElement>(`[data-focus="${screen.kind}"]`)
     destination?.focus({ preventScroll: true })
   }
 }

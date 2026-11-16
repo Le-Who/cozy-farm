@@ -33,18 +33,27 @@ export function noteNeighborVisit(farm: FarmState, kind: VisitMoment, subject: s
   const visit=farm.neighborVisits.active
   if(farm.island!=='home'||!visit||visit.startedOn!==farm.day||visit.observation||visitActivities[visit.activity].kind!==kind)return ''
   visit.observation={subject,detail}
-  if(!farm.neighborVisits.memories.some(m=>m.activity===visit.activity))farm.neighborVisits.memories.push({activity:visit.activity,day:farm.day,serial:visit.serial,subject,detail,reply:null})
-  return ` ${visitName(visitActivities[visit.activity].resident)} запомнил${visitActivities[visit.activity].resident==='bea'?'а':''} этот момент. Загляните в гостевую книгу.`
+  const firstMemory=!farm.neighborVisits.memories.some(m=>m.activity===visit.activity)
+  if(firstMemory)farm.neighborVisits.memories.push({activity:visit.activity,day:farm.day,serial:visit.serial,subject,detail,reply:null})
+  const resident=visitActivities[visit.activity].resident,name=visitName(resident),ending=resident==='bea'?'а':''
+  return firstMemory
+    ? ` ${name} запомнил${ending} этот момент. Воспоминание добавлено в гостевую книгу.`
+    : ` ${name} разделил${ending} с вами этот момент. В гостевой книге осталась первая встреча за этим занятием.`
+}
+/** The book keeps the first visit per activity, not every later observation. */
+export function getActiveVisitMemory(farm: FarmState): VisitMemory|undefined {
+  const visit=farm.neighborVisits.active
+  return visit?farm.neighborVisits.memories.find(memory=>memory.serial===visit.serial&&memory.activity===visit.activity):undefined
 }
 export function finishNeighborVisit(farm: FarmState, serial: number, reply?: unknown): ActionResult {
   const visit=farm.neighborVisits.active
   if(farm.island!=='home'||!visit||visit.serial!==serial)return {ok:false,message:'Этот визит уже закончился.'}
   if(reply!==undefined&&(!visit.observation||(reply!=='quiet'&&reply!=='curious')))return {ok:false,message:'Сначала проведите время с гостем.'}
   const name=visitName(visitActivities[visit.activity].resident)
-  const memory=farm.neighborVisits.memories.find(m=>m.serial===visit.serial)
+  const memory=getActiveVisitMemory(farm)
   if(memory&&reply!==undefined)memory.reply=reply as 'quiet'|'curious'
   farm.neighborVisits.active=null
-  return {ok:true,message:`${name} возвращается в гавань. ${visit.observation?'Воспоминание осталось в гостевой книге.':'Можно пригласить снова, когда будет удобно.'}`}
+  return {ok:true,message:`${name} возвращается в гавань. ${visit.observation?memory?'Воспоминание осталось в гостевой книге.':'В гостевой книге осталась первая встреча за этим занятием.':'Можно пригласить снова, когда будет удобно.'}`}
 }
 const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v)
 const count=(v:unknown,max=1_000_000):v is number=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0&&v<=max
