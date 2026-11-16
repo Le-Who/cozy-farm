@@ -943,14 +943,14 @@ function recipeCards(recipes: readonly DishId[]) {
         <p class="recipe-value" title="Стоимость ингредиентов → цена блюда">${icon('tool-crate')} <span class="sr-only">Сырьё: </span>${rawValue} <span aria-hidden="true">→</span> ${icon('coin')} <span class="sr-only">Блюдо: </span><strong>${recipe.sellPrice}</strong></p></div></header>
       ${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>`}
       ${locked ? `<p class="recipe-reason">${action.label}</p>${button('Улучшения','upgrades',true,{secondary:true})}`
-        : farm.island !== destination ? button(destination === 'cape' ? 'На Цветочный мыс' : 'На кухню', 'sail', canSailTo(farm, destination), {value:destination}):button('Готовить', 'cook', action.available, { value: dish, context: recipe.name })}${dish==='orchardTart'?button('Выбрать фрукты','new-signature',true,{value:'tart',secondary:true}):''}</section>`
+        : farm.island !== destination ? button(destination === 'cape' ? 'На Цветочный мыс' : 'На кухню', 'sail', canSailTo(farm, destination), {value:destination}):button('Готовить', 'cook', action.available, { value: dish, context: recipe.name })}</section>`
   }).join('')}</div>`
 }
 
 function kitchenFamilies() {
   const labels = { tart: 'Тарты', preserves: 'Варенье', dishes: 'Блюда' } satisfies Record<KitchenGroup, string>
   const tabs = kitchenGroups.map(group => `<button type="button" class="dialog-button${kitchenGroup === group ? '' : ' secondary'}" data-action="kitchen-group" data-value="${group}" aria-pressed="${kitchenGroup === group}">${labels[group]}</button>`).join('')
-  const familyChoices = (group: KitchenGroup, selected: string, choices: readonly { id: string; image: string; name: string; short?:string }[]) => `<div class="recipe-family-choices kitchen-menu-choices" role="group" aria-label="${labels[group]}">${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}<span>${choice.short ?? choice.name}</span></button>`).join('')}</div>`
+  const familyChoices = (group: KitchenGroup, selected: string, choices: readonly { id: string; image: string; name: string; short?:string }[], extra = '') => `<div class="recipe-family-choices kitchen-menu-choices" role="group" aria-label="${labels[group]}">${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}<span>${choice.short ?? choice.name}</span></button>`).join('')}${extra}</div>`
   const otherDishes = dishIds.filter(dish => !isTartDish(dish) && dish !== 'appleJam' && dish !== 'orchardPreserves' && !dishDefinitions[dish].capeLevel && (dish !== 'honeyCake' || canSailTo(farm, 'cape')) && (!dishDefinitions[dish].specialization || hasFarmhouseSpecialization(farm, dishDefinitions[dish].specialization!)))
   const other = otherDishes.find(dish => dish === kitchenDish) ?? otherDishes[0]
   const choices = kitchenGroup === 'tart'
@@ -959,8 +959,8 @@ function kitchenFamilies() {
       { id: 'strawberryTart', image: dishIcons.strawberryTart, name: 'Клубничный тарт', short:'Клубника' },
       { id: 'blueberryTart', image: dishIcons.blueberryTart, name: 'Черничный тарт', short:'Черника' },
       { id: 'raspberryTart', image: dishIcons.raspberryTart, name: 'Малиновый тарт', short:'Малина' },
-      { id: 'mixed', image: 'ui-tart', name: 'Ягодный тарт: выбрать сочетание', short:'Своя смесь' }
-    ]) : kitchenGroup === 'preserves'
+      { id: 'mixed', image: 'ui-tart', name: 'Ягодный тарт: выбрать сочетание', short:'Смесь ягод' }
+    ], kitchenTart === 'orchardTart' ? button('Выбрать фрукты','new-signature',true,{value:'tart',secondary:true}) : '') : kitchenGroup === 'preserves'
       ? familyChoices('preserves', kitchenPreserves, [
         { id: 'appleJam', image: dishIcons.appleJam, name: 'Яблочное варенье', short:'Яблочное' },
         { id: 'orchardPreserves', image: dishIcons.orchardPreserves, name: 'Садовый конфитюр', short:'Конфитюр' },
