@@ -279,6 +279,10 @@ import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
 
+// Local-only presentation experiment; removed by production compilation.
+const coopCompactDev = import.meta.env.DEV && new URLSearchParams(location.search).get('coopCompact') === '1'
+  ? await import('./coop-compact-dev') : undefined
+
 const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreLegacyFarm)
 const farm = await saveStore.load() ?? createFarm()
 let saveAvailable = !saveStore.blocked
@@ -1879,6 +1883,7 @@ function drawPanel() {
     case 'coop':
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
       dialogContent.innerHTML = renderCoopPanel(farm, {icon,row,button,feedRow:flockFeedRow})
+      coopCompactDev?.enhanceCoopPanel(dialogContent, farm)
       break
     case 'rest':
       dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра"><header class="rest-morning"><div><strong>Сейчас · день ${farm.day}</strong><span>Утром · день ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}</span></div>${button('До утра', 'sleep', true, {value:farm.day})}</header><p class="rest-commit-note">Сон завершит этот день. Вернуться назад нельзя.</p>${renderShopRest(farm)}</section>

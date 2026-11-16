@@ -1,0 +1,29 @@
+/* Strict DEV query opt-in. Canonical actions are retained, not copied or rebound. */
+[data-coop-compact="true"] { gap: 10px; }
+[data-coop-compact="true"] .coop-primary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+[data-coop-compact="true"] .coop-primary > .dialog-row { display: flex; flex-direction: column; align-items: stretch; padding: 7px; gap: 6px; min-width: 0; }
+[data-coop-compact="true"] .coop-primary .dialog-icon { display: none; }
+[data-coop-compact="true"] .coop-primary .dialog-row-actions { max-width: none; margin-top: auto; }
+[data-coop-compact="true"] .coop-primary .dialog-button { width: 100%; min-height: 44px; margin: 0; }
+[data-coop-compact="true"] summary { cursor: pointer; min-height: 44px; padding: 5px; border-radius: 9px; font-size: 13px; line-height: 1.25; }
+[data-coop-compact="true"] summary:focus-visible { outline: 2px solid var(--plum); outline-offset: 1px; }
+[data-coop-compact="true"] .coop-compact-card-detail summary { display: flex; flex-direction: column; gap: 4px; list-style: none; }
+[data-coop-compact="true"] .coop-compact-card-detail summary strong::after { content: ' ⌄'; font-weight: 400; }
+[data-coop-compact="true"] .coop-compact-card-detail summary span { font-size: 12px; }
+[data-coop-compact="true"] .coop-compact-card-detail p { font-size: 13px; line-height: 1.35; margin: 8px 3px; }
+[data-coop-compact="true"] .coop-compact-secondary { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+[data-coop-compact="true"] .coop-compact-secondary > details { margin: 0; padding: 0; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper-light); }
+[data-coop-compact="true"] .coop-compact-secondary > details > summary { display: flex; align-items: center; padding: 7px 10px; font-weight: 700; color: var(--plum); }
+[data-coop-compact="true"] .coop-compact-secondary > details > summary::after { content: '⌄'; margin-left: auto; padding-left: 6px; }
+[data-coop-compact="true"] .coop-compact-secondary > details[open] { grid-column: 1 / -1; }
+[data-coop-compact="true"] .coop-compact-secondary > details > :not(summary) { padding: 7px; }
+@media (max-width: 420px) {
+  [data-coop-compact="true"] .coop-primary { grid-template-columns: 1fr; }
+  [data-coop-compact="true"] .coop-primary > .dialog-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(100px,40%); align-items: center; }
+}
+@media (max-height: 460px) and (orientation: landscape) {
+  .farm-dialog:has([data-coop-compact="true"]) { width: min(620px,calc(100vw - 16px)); max-width: calc(100vw - 16px); }
+  .farm-dialog:has([data-coop-compact="true"]) .dialog-panel { padding: 8px 12px; }
+  .farm-dialog:has([data-coop-compact="true"]) .dialog-header { min-height: 44px; padding-bottom: 4px; }
+  [data-coop-compact="true"] { gap: 7px; }
+}
