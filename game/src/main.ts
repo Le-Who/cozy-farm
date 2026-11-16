@@ -5,6 +5,7 @@ import { searchMarketSales } from './market-sale-search'
 import './market-sale-search.css'
 import { recipePlanningIngredient } from './recipe-planning'
 import {seedSavingQuote,saveCropSeeds} from './seed-saving'
+import {seedProductionFocus} from './seed-production-focus'
 import {renderSeedPicker} from './seed-picker-ui'
 import './seed-picker.css'
 import {seedChoice,chooseSeedForBed} from './seed-choice'
@@ -68,6 +69,7 @@ import './coop-panel.css'
 import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
 import './chicken-feed.css'
 import { henFriends, henFriendshipStage, renderHenFriendship, treatHen } from './hen-friendship'
+import { henCareResultFocus } from './hen-care-focus'
 import './hen-friendship.css'
 import './coop-preview.css'
 import { canConfirmRest } from './rest-preview'
@@ -122,6 +124,7 @@ import {applyIngredientFinishes} from './ingredient-finish'
 import './style.css'
 import './navigation.css'
 import './kitchen-neighbours.css'
+import './neighbor-house.css'
 import { ruPlural } from './ru'
 import { archiveCards } from './archive'
 import { getIslandJourneys } from './journey'
@@ -985,6 +988,15 @@ function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily)
   return fruits.length === 1 ? names[fruits[0]] : draft.base === 'tart' ? berry ? 'Ягодный тарт' : 'Фруктовый тарт' : berry ? 'Ягодное варенье' : 'Фруктовый конфитюр'
 }
 
+function marketOrderStockTile(item: StockItem) {
+  const stock = ingredientCount(farm, item), label = stockLabel(item)
+  const resource = item.kind === 'produce' || item.kind === 'fruit' ? item.item : item.kind === 'eggs' ? 'egg' : undefined
+  const specialStock = resource !== undefined && Object.values(farm.variants[resource] ?? {}).some(count => count > 0)
+  const name = stock < item.quantity && specialStock ? `${label.name} (обычный урожай)` : label.name
+  return requirementLink(`${icon(label.image)}<span class="order-item-name">${name}</span><strong class="order-item-needed">Нужно: ${item.quantity}</strong><small class="order-item-stock">В запасе: ${stock}</small>`,
+    {kind:'stock',item}, 'ingredient order-requirement', `${name}, нужно ${item.quantity}, в запасе ${stock}`, stock >= item.quantity)
+}
+
 let selectedMarketOrder: string | undefined
 function marketOrders() {
   const board = getMarketOrderBoard(farm, selectedMarketOrder)
@@ -994,9 +1006,9 @@ function marketOrders() {
   const detail = board.selected === 'harbor' ? `<p class="market-order-location">Причал рощи · можно вносить частями</p>${harborCard()}` : order
     ? `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
       <header class="order-header"><h2 id="order-${order.lane}">${order.name}</h2>
-        <span class="order-reward">${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></header>
-      ${order.status === 'delivered' ? `<p class="order-done">✓ Сегодня доставлено</p>${next ? renderNextMarketOrder(next,stockTile)+button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)}) : ''}`
-        : `<ul class="ingredients order-items">${order.items.map(stockTile).join('')}</ul>
+        <span class="order-reward"><small>Награда</small><span>${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></span></header>
+      ${order.status === 'delivered' ? `<p class="order-done">✓ Сегодня доставлено</p>${next ? renderNextMarketOrder(next,marketOrderStockTile)+button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)}) : ''}`
+        : `<ul class="ingredients order-items">${order.items.map(marketOrderStockTile).join('')}</ul>
           ${order.status === 'upgrade' ? button('Улучшить дом', 'upgrades', true, { secondary: true })
             : button('Доставить', 'deliver-order', order.status === 'ready', { value: order.lane, context: order.name })}`}
     </section>` : ''
@@ -1179,7 +1191,7 @@ function marketCards() {
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
   const stall = farm.village.built ? button(farm.island === 'village' ? 'Своя лавка' : 'В лавку в гавань', 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
   const controls = `<div class="market-controls"><div class="market-header">${balance}${stall}</div>${tabs}</div>`
-  if (marketTab === 'orders') return controls + marketOrders() + (isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : '')
+  if (marketTab === 'orders') return `<section data-market-orders-browser><div class="market-controls">${tabs}</div>${stall ? `<div class="market-orders-shop">${stall}</div>` : ''}${marketOrders()}${isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : ''}</section>`
   if (marketTab === 'projects') {
     const dockBuilt=isProjectComplete(farm,'dock')
     return controls + projectCard('fair') + `<ul class="dialog-list building-destinations">
@@ -1476,22 +1488,22 @@ function neighboursCard() {
   }).join('')}</nav>`
   const dinnerServed = getVillageMeal(farm, pastryShape).served
   const dinner = `<div class="harbour-next">${icon('ui-grilled-fish')}<div><strong>${dinnerServed ? 'Ужин завтра' : 'Общий ужин'}</strong>${homes < 2 ? `<small>До второго домика: ${farm.village.meals}/2 ужина</small>` : ''}</div>${dinnerServed ? '' : button('Накрыть стол', 'village-meal')}</div>`
-  return `${houseTabs}${villageSlot >= homes ? dinner : `
+  return `<section class="neighbor-house-page">${houseTabs}${villageSlot >= homes ? dinner : `
     <div class="resident-cards" data-occupied="${Boolean(resident)}">${residentIds.filter(id => resident ? id === resident : !farm.village.residents.includes(id)).map(id => {
       const def = residentDefinitions[id]
       const service = getResidentService(farm, id, pastryShape)
       const here = resident === id
       return `<section class="resident-card" data-present="${here}"><header class="resident-heading">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2></header>
         ${here ? '' : `<div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 изделия в день':'+1 рыба · крепче снасть'}</span></div>`}
-        ${here ? (id === 'bea' ? `<div class="resident-patterns">${pastryChoices()}</div><ul class="ingredients">${[{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }].map(item => stockTile(item as StockItem)).join('')}</ul>${button(farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?'Испечь ×4':'Испечь ×3', 'resident-service', service.available, { value: id })}`
+        <div class="resident-service">${here ? (id === 'bea' ? `<div class="resident-patterns"><div class="resident-pattern-heading"><h3>Форма выпечки</h3><small>✓ Освоено</small></div>${pastryChoices()}</div><ul class="ingredients">${[{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }].map(item => stockTile(item as StockItem)).join('')}</ul>${button(farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?'Испечь ×4':'Испечь ×3', 'resident-service', service.available, { value: id })}`
           : button(farm.village.scouting ? 'Маршрут готов · +1 рыба' : 'Разведать · +1 рыба', 'resident-service', service.available, { value: id }))
         : button('Пригласить', 'invite-resident', true, { value: id })}
         ${here&&!service.available?`<p class="dialog-status">${service.label}</p>${id==='bea'&&!farm.workshopPatterns.includes(pastryShape)?button(`Освоить: ${workshopDefinitions[pastryShape].name.toLowerCase()}`,'practice-pattern',true,{value:pastryShape}):''}`:''}
-        ${here ? dinner + nav(button(`Замысел: ${def.name}`, 'open-neighbor', true, { value: id, secondary: true })) + neighborHelpCard(farm,id) : ''}
+        </div>${here ? `<div class="resident-gatherings">${dinner}${nav(button(`Замысел: ${def.name}`, 'open-neighbor', true, { value: id, secondary: true }))}${neighborHelpCard(farm,id)}</div>` : ''}
       </section>`
     }).join('')}</div>`}
     ${villageSlot < homes && !resident ? dinner : ''}
-    ${nav(button('Кухня', 'kitchen'),button('Кондитерская', 'workshop', true, {secondary:true}))}`
+    <section class="resident-self-cook" aria-label="Приготовить самому"><h3>Приготовить самому</h3>${nav(button('Кухня', 'kitchen',true,{secondary:true}),button('Кондитерская', 'workshop', true, {secondary:true}))}</section></section>`
 }
 
 let selectedWarehouseRequest: StockItem | undefined
@@ -1734,7 +1746,7 @@ function drawPanel() {
   closeButton.title = panelHistory.length ? 'Закрыть все меню' : 'Закрыть меню (Esc)'
   const destinations = dialog.querySelector<HTMLElement>('.dialog-destinations')!
   const destinationHeader = dialog.querySelector<HTMLElement>('.dialog-header')!
-  const inlineMarket=panel==='market'&&(marketTab==='sell'||marketTab==='buy'&&marketCategory==='seeds')
+  const inlineMarket=panel==='market'&&(marketTab==='sell'||marketTab==='orders'||marketTab==='buy'&&marketCategory==='seeds')
   if(inlineMarket){
     if(destinations.nextElementSibling!==destinationHeader)destinationHeader.before(destinations)
   }else if(destinationHeader.nextElementSibling!==destinations)destinationHeader.after(destinations)
@@ -2197,7 +2209,7 @@ function drawPanel() {
   if (focused && panel !== 'bay-freight' && panel !== 'recipes') {
     const replacement = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
       .find(candidate => focusKey(candidate) === focusKey(focused))
-    const nextFocus = replacement ?? closeButton
+    const nextFocus = replacement ?? (panel === 'hen-friendship' ? henCareResultFocus(dialogContent, focused) : undefined) ?? closeButton
     nextFocus.focus({ preventScroll: true })
   }
 }
@@ -3502,8 +3514,16 @@ app.addEventListener('click', async (event) => {
       }
       break
     case 'save-crop-seeds':
-      if(dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&seedSavingQuote(farm,previewSeed)?.token===value)
-        perform(()=>saveCropSeeds(farm,value),false,true)
+      if(dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&seedSavingQuote(farm,previewSeed)?.token===value) {
+        const ownedFocus = panel==='seeds' && document.activeElement===control
+        const saved = perform(()=>saveCropSeeds(farm,value),false,true)
+        if(saved&&ownedFocus&&panel==='seeds'&&dialog.open) {
+          seedProductionFocus(dialogContent.querySelectorAll<HTMLButtonElement>('button'), {
+            crop: previewSeed, exchangeToken: seedSavingQuote(farm,previewSeed)?.token,
+            selectionToken: seedChoice(farm,previewSeed,seedPickerBed).token,
+          })?.focus({preventScroll:true})
+        }
+      }
       break
     case 'preview-seed':
       if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value&&cropIds.includes(value as CropId)) {

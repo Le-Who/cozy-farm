@@ -29,3 +29,12 @@
  .bay-shop-customer-purchases>li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px;padding-top:4px}
  .bay-shop-customer-purchases span{font-size:10px;text-align:right;max-width:200px}
 }
+
+/* The selected customer's two known facts, not a quote or a new sale action. */
+.bay-shop-customer-facts{display:grid;grid-template-columns:minmax(110px,.9fr) minmax(0,1.3fr);gap:12px;margin:6px 0 4px}
+.bay-shop-customer-facts>div{min-width:0}
+.bay-shop-customer-facts dt{min-height:2.4em;font-size:11px;line-height:1.2;color:#80684d}
+.bay-shop-customer-facts dd{margin:0;font-size:18px;line-height:1.2;font-weight:700;color:#705187}
+.bay-shop-customer-facts .bay-shop-customer-wish{font-size:16px;color:#594438}
+.bay-shop-customer-fact-note{display:block;font-size:10px;line-height:1.3;color:#80684d}
+.bay-shop-customer-facts>div:only-child{grid-column:1/-1}

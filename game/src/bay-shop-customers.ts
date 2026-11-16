@@ -28,8 +28,11 @@ export function renderBayShopCustomers(state:BayShopState, view:BayShopCustomerV
     <div class="bay-shop-customer-roster" role="group" aria-label="Выберите покупателя">${bayShopVisitors.map(customer=>`<button type="button" data-customer="${customer.id}" aria-pressed="${customer.id===person.id}" aria-controls="bay-shop-customer-card"><img src="/art/lavender/${customer.art==='guest'?'fair-guest':`ui-${customer.art}`}.webp" alt="" draggable="false"><strong>${customer.name}</strong></button>`).join('')}</div>
     <article class="bay-shop-customer-card" id="bay-shop-customer-card" aria-label="${person.name}">
       <header><h3>${person.name}</h3><span>Встречи: ${memory.visits} · покупки: ${total}</span></header>
-      <p class="bay-shop-customer-budget">${visitor?'Бюджет этого визита':'Базовый бюджет визита'}: <strong>${money(visitor?.budget??person.budget)}</strong><small>Не цена товара и не оценка качества.</small></p>
-      ${memory.visits?`<p class="bay-shop-customer-wish">Просит: «${person.wish}».</p>`:''}
+      <dl class="bay-shop-customer-facts">
+        <div><dt>${visitor?'Бюджет этого визита':'Базовый бюджет визита'}</dt><dd class="bay-shop-customer-budget">${money(visitor?.budget??person.budget)}</dd></div>
+        ${memory.visits?`<div><dt>Просит</dt><dd class="bay-shop-customer-wish">${person.wish}</dd></div>`:''}
+      </dl>
+      <small class="bay-shop-customer-fact-note">Не цена товара и не оценка качества.</small>
       ${purchases.length?`<ul class="bay-shop-customer-purchases" aria-label="Наблюдения после покупок">${purchases.map(([key,purchase])=>`<li data-customer-product="${escape(key)}"><strong data-user-text>${escape(productName(key))}</strong><span>Куплено: ${purchase.bought}${purchase.liked>0?` · Понравилось: ${purchase.liked}`:''}</span></li>`).join('')}</ul>`:`<p class="bay-shop-customer-unknown">${memory.visits?'Покупок пока нет. Любимые товары ещё неизвестны.':'Встреч ещё не было. Любимые товары ещё неизвестны.'}</p>`}
     </article>
     <button class="bay-shop-customer-help" type="button" data-customer-help aria-expanded="${view.explanation}" aria-controls="bay-shop-customer-explanation">${view.explanation?'Скрыть пояснение':'Как читать вкусы и бюджет'}</button>
