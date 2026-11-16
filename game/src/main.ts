@@ -280,6 +280,7 @@ import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
 import './market-sale-grid.css'
+import './market-buy-seeds.css'
 
 const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreLegacyFarm)
 const farm = await saveStore.load() ?? createFarm()
@@ -1198,8 +1199,11 @@ function marketCards() {
       ${farm.culinary.recipes.length?nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}</footer></section>`
   }
 
-  const categories=`<nav class="market-category-icons" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}</button>`).join('')}</nav>`
-  if(marketCategory==='seeds')return controls+categories+`<div class="market-seed-grid">${cropIds.map(crop=>{const definition=cropDefinitions[crop];return `<section>${icon('ui-seed-'+crop)}<strong>${definition.name}</strong><span>×${seedPackSize}</span>${button('Купить','buy-seeds',farm.coins>=definition.seedPrice,{crop,cost:{icon:'coin',amount:definition.seedPrice}})}</section>`}).join('')}</div>`
+  const categories=`<nav class="market-category-icons" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}${marketCategory==='seeds'?`<span>${category.name}</span>`:''}</button>`).join('')}</nav>`
+  if(marketCategory==='seeds')return `<section data-market-seed-browser><div class="market-controls">${tabs}</div>${categories}<div class="market-seed-grid">${cropIds.map(crop=>{
+    const definition=cropDefinitions[crop]
+    return `<section data-seed-pack="${crop}"><div class="market-seed-art">${icon('ui-seed-'+crop)}</div><div class="market-seed-copy"><h2>${definition.name}</h2><p>В пакете: ${seedPackSize} ${ruPlural(seedPackSize,['семя','семени','семян'])}</p><p class="market-seed-price" aria-label="${quantity(definition.seedPrice,'монета')} за пакет">${definition.seedPrice} ${icon('coin')} за пакет</p></div>${button('Купить пакет','buy-seeds',farm.coins>=definition.seedPrice,{crop,context:`${definition.name}, ${seedPackSize} семени за ${quantity(definition.seedPrice,'монета')}`})}</section>`
+  }).join('')}</div>${stall?`<footer class="market-seed-tools">${stall}</footer>`:''}</section>`
   if(marketCategory==='trees')return controls+categories+(!farm.trees.home.includes(null)?`<p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','orchard',true,{secondary:true}))}`:'')+`<ul class="dialog-list market-shop">${treeIds.map(tree=>{const definition=treeDefinitions[tree];return row('ui-tree-'+tree,definition.saplingName,quantity(definition.days,'ночь')+' до зрелости',button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,cost:{icon:'coin',amount:definition.saplingPrice}}))}).join('')}</ul>`
   if(marketCategory==='care')return controls+categories+`<ul class="dialog-list market-shop">${row('tool-feed','Корм для кур',quantity(feedBagSize,'порция'),button('Купить','buy-feed',farm.coins>=feedBagPrice,{cost:{icon:'coin',amount:feedBagPrice}}))}${row('tool-can','Большая лейка',`Объём: ${expandedWaterCapacity}`,button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{cost:farm.canUpgraded?undefined:{icon:'coin',amount:canUpgradePrice}}))}</ul>`
   return controls+categories+`<ul class="dialog-list market-shop">${buildingIds.map(building=>row('upgrade-'+building+'-card',buildingDefinitions[building].name,buildingDefinitions[building].benefit,button(farm.buildingLevels[building]>=2?'Посмотреть':'Улучшить',farm.buildingLevels[building]>=2?'upgrades':'upgrade-building',farm.buildingLevels[building]>=2||farm.coins>=buildingDefinitions[building].upgradePrice,{value:building,...(farm.buildingLevels[building]<2?{cost:{icon:'coin' as const,amount:buildingDefinitions[building].upgradePrice}}:{})}))).join('')}</ul>`+nav(button('Причал','visit-boat',true,{secondary:true}))
@@ -1730,7 +1734,7 @@ function drawPanel() {
   closeButton.title = panelHistory.length ? 'Закрыть все меню' : 'Закрыть меню (Esc)'
   const destinations = dialog.querySelector<HTMLElement>('.dialog-destinations')!
   const destinationHeader = dialog.querySelector<HTMLElement>('.dialog-header')!
-  const inlineMarket=panel==='market'&&marketTab==='sell'
+  const inlineMarket=panel==='market'&&(marketTab==='sell'||marketTab==='buy'&&marketCategory==='seeds')
   if(inlineMarket){
     if(destinations.nextElementSibling!==destinationHeader)destinationHeader.before(destinations)
   }else if(destinationHeader.nextElementSibling!==destinations)destinationHeader.after(destinations)
