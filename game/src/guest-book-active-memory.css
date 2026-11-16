@@ -1,0 +1,57 @@
+/* DEV-only retained Guest Book surface. No selectors touch the production book. */
+[data-guest-screen="active"],
+[data-guest-screen="memories"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+[data-guest-screen="active"] [data-screen="active"],
+[data-guest-screen="memories"] [data-screen="memories"] { min-width: 0; }
+[data-guest-screen="active"] h2,
+[data-guest-screen="memories"] h2 { margin: 0 0 8px; color: var(--plum); font-size: 19px; line-height: 1.2; }
+[data-active-detail], [data-memory-detail] { min-width: 0; padding: 10px; border: 1px solid var(--rule); border-radius: 14px; background: var(--paper-light); }
+[data-active-detail] { max-height: clamp(140px, calc(100dvh - 390px), 380px); overflow-y: auto; }
+[data-memory-detail] { max-height: clamp(128px, calc(100dvh - 470px), 320px); overflow-y: auto; }
+[data-active-detail] p, [data-memory-detail] p { margin: 0 0 8px; line-height: 1.35; }
+[data-active-detail] p:last-child, [data-memory-detail] p:last-child { margin-bottom: 0; }
+[data-active-detail] :empty, [data-memory-detail] :empty { display: none; }
+[data-memory-detail] h3 { margin: 0 0 4px; font-size: 17px; color: var(--plum); }
+[data-memory-detail] small, [data-memory-detail] strong { display: block; margin-bottom: 8px; }
+[data-memory-list] { display: grid; gap: 6px; margin-bottom: 8px; max-height: 150px; overflow-y: auto; }
+[data-guest-screen="active"] button,
+[data-guest-screen="memories"] button {
+  min-width: 44px; min-height: 44px; padding: 7px 10px;
+  border: 1px solid #d7ae79; border-radius: 12px;
+  background: linear-gradient(var(--paper-light), #fae6c6);
+  color: var(--ink); font-size: 14px; line-height: 1.2; font-weight: 700;
+}
+[data-guest-screen="active"] [data-command-list] { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; }
+[data-guest-screen="active"] [data-command-key="do"] { grid-column: 1 / -1; }
+[data-guest-screen="active"] [data-command-key]:not([data-command-key="close"]):not([data-command-key="finish"]),
+[data-guest-screen="memories"] [data-memory-list] [aria-pressed="true"] {
+  border-color: #926198; background: linear-gradient(#debee3, #cba4d7); color: #442344;
+}
+[data-guest-screen="active"] [data-command-list] button:disabled { background: #eddbc0; color: var(--muted); }
+[data-guest-screen="active"] > nav,
+[data-guest-screen="memories"] > nav { display: flex; gap: 6px; }
+[data-guest-screen="active"] > nav > button,
+[data-guest-screen="memories"] > nav > button { flex: 1; }
+@media (min-width: 500px) {
+  [data-guest-screen="memories"] [data-screen="memories"] { display: grid; grid-template-columns: minmax(130px,.9fr) minmax(0,1.5fr); gap: 8px; }
+  [data-guest-screen="memories"] h2 { grid-column: 1 / -1; }
+  [data-memory-list] { align-content: start; margin: 0; }
+}
+@media (max-height: 460px) and (min-width: 500px) {
+  [data-guest-screen="active"] { grid-template-columns: minmax(0,1fr) minmax(180px, .9fr); }
+  [data-guest-screen="active"] [data-screen="active"] { grid-column: 1; grid-row: 1; }
+  [data-guest-screen="active"] [data-command-list] { grid-column: 2; grid-row: 1; align-content: start; }
+  [data-guest-screen="active"] > nav { grid-column: 1 / -1; }
+  [data-guest-screen="active"] h2, [data-guest-screen="memories"] h2 { font-size: 16px; margin-bottom: 4px; }
+  [data-active-detail] { max-height: 116px; overflow-y: auto; }
+  [data-memory-detail], [data-memory-list] { max-height: 124px; overflow-y: auto; }
+  [data-active-detail], [data-memory-detail] { padding: 6px; font-size: 13px; }
+  [data-guest-screen="active"] button, [data-guest-screen="memories"] button { font-size: 13px; padding: 5px 7px; }
+}
+/* Memories never has commands; do not reserve a blank command row. */
+[data-guest-screen="memories"] > [data-command-list] { display: none; }

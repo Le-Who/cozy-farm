@@ -1,0 +1,75 @@
+/* Loaded only by the explicit DEV Guest Book entry. Never a global panel redesign. */
+.farm-dialog:has([data-guest-surface]) { width: min(620px, calc(100vw - 16px)); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+.farm-dialog:has([data-guest-surface]) .dialog-panel { padding: 12px 16px 14px; max-height: calc(100dvh - 16px); }
+.farm-dialog:has([data-guest-surface]) .dialog-emblem { display: none; }
+.farm-dialog:has([data-guest-surface]) .dialog-header { min-height: 44px; padding: 0 50px; margin-bottom: 10px; align-items: center; }
+.farm-dialog:has([data-guest-surface]) .dialog-title { background: none; border: 0; box-shadow: none; padding: 0; font-size: 24px; }
+.farm-dialog:has([data-guest-surface]) :is(.dialog-close,.dialog-back) { top: 0; bottom: auto; width: 44px; height: 44px; min-height: 44px; }
+.farm-dialog:has([data-guest-surface]) .dialog-content { margin: 0; padding: 3px; }
+[data-guest-surface] { font-size: 14px; line-height: 1.35; }
+[data-guest-surface] h2 { margin: 0 0 10px; font-size: 18px; }
+[data-guest-surface] h3 { margin: 0 0 6px; font-size: 14px; }
+[data-guest-surface] p { margin: 0 0 8px; }
+[data-guest-surface] button, [data-guest-surface] summary { box-sizing: border-box; min-width: 44px; min-height: 44px; border: 1px solid #c6a4b7; border-radius: 12px; padding: 6px 10px; background: #fffaec; color: #4e3e4c; font: inherit; line-height: 1.2; cursor: pointer; }
+[data-guest-surface] button[aria-pressed="true"] { background: #eadcf3; border: 2px solid #785783; color: #4e2b4a; font-weight: 700; }
+[data-guest-surface] button:disabled { cursor: default; opacity: .65; }
+[data-guest-surface] [data-command-list] { display: grid; gap: 6px; margin-top: 8px; }
+[data-guest-surface] [data-command-key="invite"] { background: #ded0ef; border: 2px solid #80658e; font-weight: 700; }
+[data-guest-surface] > nav { display: flex; gap: 6px; margin-top: 10px; }
+[data-guest-surface] > nav > button { flex: 1; }
+[data-invitation-choices] { display: grid; gap: 12px; }
+[data-invitation-options="resident"] { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+[data-invitation-options="activity"] > nav { display: grid; gap: 6px; }
+[data-invitation-choices] button { height: 44px; }
+[data-guest-picker] { display: none; }
+[data-invitation-overview] { margin-top: 10px; }
+[data-text="gate"] { color: #745025; }
+[data-invitation-preparation] { position: relative; }
+[data-invitation-preparation] > summary { width: fit-content; display: flex; align-items: center; gap: 6px; }
+[data-invitation-preparation] > summary::after { content: '⌄'; }
+[data-invitation-preparation] > div { padding: 10px 4px 0; }
+@media (min-width: 560px) and (min-height: 461px) {
+  [data-invitation-options="activity"] > nav { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-height: 460px) and (orientation: landscape) {
+  .farm-dialog:has([data-guest-surface]) .dialog-panel { padding: 8px 12px 10px; }
+  .farm-dialog:has([data-guest-surface]) .dialog-header { margin-bottom: 5px; }
+  .farm-dialog:has([data-guest-surface]) .dialog-title { font-size: 22px; }
+  [data-guest-surface][data-guest-screen="invitation"] { display: grid; grid-template-columns: minmax(0,1fr) 124px; gap: 6px; }
+  [data-guest-screen="invitation"] > [data-screen="invitation"] { display: contents; }
+  [data-screen="invitation"] > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  [data-invitation-choices] { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
+  [data-invitation-field] { position: relative; min-width: 0; }
+  [data-invitation-field] > h3 { margin-bottom: 3px; font-size: 12px; }
+  [data-guest-picker] { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left; }
+  [data-invitation-options] { position: absolute; z-index: 4; top: 100%; left: 0; right: 0; padding: 5px; background: #fff4df; border: 1px solid #c6a4b7; border-radius: 12px; box-shadow: 0 4px 12px #41333f40; }
+  [data-invitation-field]:not([data-expanded="true"]) > [data-invitation-options] { display: none; }
+  [data-invitation-options="resident"], [data-invitation-options="activity"] > nav { grid-template-columns: 1fr; gap: 4px; }
+  [data-invitation-options] button { width: 100%; }
+  [data-invitation-overview] { grid-column: 1 / -1; margin: 0; min-height: 19px; }
+  [data-invitation-overview] p { margin: 0; }
+  [data-invitation-preparation] { grid-column: 2; grid-row: 3; align-self: start; }
+  [data-invitation-preparation] > summary { width: 100%; height: 44px; justify-content: center; }
+  [data-invitation-preparation] > div { position: absolute; z-index: 5; right: 0; bottom: calc(100% + 6px); width: min(440px, calc(100vw - 60px)); max-height: 155px; overflow: auto; padding: 10px; background: #fff4df; border: 1px solid #c6a4b7; border-radius: 12px; box-shadow: 0 4px 12px #41333f40; }
+  [data-guest-screen="invitation"] > [data-command-list] { grid-column: 1; grid-row: 3; margin: 0; }
+  [data-guest-screen="invitation"] > [data-command-list] button { height: 44px; }
+  [data-guest-screen="invitation"] > nav { grid-column: 1 / -1; margin: 0; }
+  [data-guest-screen="invitation"] > nav button { height: 44px; }
+}
+@media (max-width: 559px) and (min-height: 461px) {
+  [data-screen="invitation"] > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  [data-invitation-choices] { gap: 8px; }
+  [data-invitation-field] > h3 { margin-bottom: 4px; }
+  [data-invitation-overview] { margin-top: 8px; }
+}
+/* Home/history and Close remain in the header; global destinations are redundant inside this focused book. */
+.farm-dialog:has([data-guest-surface]) .dialog-destinations { display: none; }
+[data-guest-surface][data-guest-screen="invitation"] button { height: 44px; padding: 5px 8px; line-height: 1.1; }
+@media (max-height: 460px) and (orientation: landscape) {
+  /* Optional details expand in normal flow, never behind the clipped panel header. */
+  [data-invitation-preparation][open] { grid-column: 1 / -1; grid-row: 3; }
+  [data-invitation-preparation][open] > summary { width: 124px; }
+  [data-invitation-preparation] > div { position: static; width: auto; max-height: none; overflow: visible; margin-top: 6px; box-shadow: none; }
+  [data-guest-screen="invitation"]:has([data-invitation-preparation][open]) > [data-command-list] { grid-column: 1 / -1; grid-row: 4; }
+  [data-guest-screen="invitation"]:has([data-invitation-preparation][open]) > nav { grid-row: 5; }
+}

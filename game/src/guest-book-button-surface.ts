@@ -1,3 +1,4 @@
+import { GuestBookInvitationPicker } from './guest-book-invitation-picker.ts'
 import type { FarmState } from './farm.ts'
 import { henFriends } from './hen-friendship.ts'
 import { GuestBookActionAdapter, type GuestBookFocus } from './guest-book-action-adapter.ts'
@@ -33,6 +34,7 @@ export class GuestBookButtonSurface {
   readonly view: GuestBookView
   private readonly host: Host
   private readonly adapter: GuestBookActionAdapter
+  private readonly picker: GuestBookInvitationPicker
 
   constructor(host: Host) {
     if (host.enabled !== true) throw new Error('Guest Book button surface requires explicit opt-in')
@@ -41,23 +43,39 @@ export class GuestBookButtonSurface {
     host.root.innerHTML = `<section data-guest-surface aria-label="Гостевая книга: кнопочный прототип">
       <section data-screen="invitation">
         <h2 data-focus="invitation" tabindex="-1">Кого пригласить</h2>
-        <nav aria-label="Кого пригласить">${(['bea', 'finn'] as const).map(id => choice('resident', id, visitName(id))).join('')}</nav>
-        <h3>Чем займёмся</h3>
-        ${(['bea', 'finn'] as const).map(id => `<nav data-activities="${id}" aria-label="Занятия: ${visitName(id)}">${visitActivityIds.filter(activity => visitActivities[activity].resident === id).map(activity => choice('activity', activity, visitActivities[activity].title)).join('')}</nav>`).join('')}
-        <h3 data-text="invitation-title"></h3><p data-text="goal"></p><p data-text="readiness"></p><p data-text="gate"></p>
-        <p>Бесплатно. Один гость; уйдёт после отдыха или поездки.</p><p data-text="invitation-copy"></p>
+        <div data-invitation-choices>
+          <div data-invitation-field="resident">
+            <h3>Гость</h3>
+            <button type="button" data-guest-picker="resident" data-action="guest-book-choice" aria-expanded="false" aria-label="Выбрать гостя" aria-controls="guest-resident-options"><span data-text="selected-resident"></span><span aria-hidden="true">⌄</span></button>
+            <nav id="guest-resident-options" data-invitation-options="resident" aria-label="Кого пригласить">${(['bea', 'finn'] as const).map(id => choice('resident', id, visitName(id))).join('')}</nav>
+          </div>
+          <div data-invitation-field="activity">
+            <h3>Занятие</h3>
+            <button type="button" data-guest-picker="activity" data-action="guest-book-choice" aria-expanded="false" aria-label="Выбрать занятие" aria-controls="guest-activity-options"><span data-text="selected-activity"></span><span aria-hidden="true">⌄</span></button>
+            <div id="guest-activity-options" data-invitation-options="activity">${(['bea', 'finn'] as const).map(id => `<nav data-activities="${id}" aria-label="Занятия: ${visitName(id)}">${visitActivityIds.filter(activity => visitActivities[activity].resident === id).map(activity => choice('activity', activity, visitActivities[activity].title)).join('')}</nav>`).join('')}</div>
+          </div>
+        </div>
+        <div data-invitation-overview><p data-text="goal"></p><p data-text="gate"></p></div>
+        <details data-invitation-preparation><summary>Подготовка</summary><div>
+          <p data-text="readiness"></p><p data-text="invitation-copy"></p>
+          <p>Бесплатно. Один гость; уйдёт после отдыха или поездки.</p>
+        </div></details>
       </section>
       <section data-screen="active" hidden>
-        <h2 data-focus="active" tabindex="-1">Сегодня в гостях</h2><h3 data-text="active-title"></h3>
+        <h2 data-focus="active" tabindex="-1" data-text="active-title"></h2>
+        <div data-active-detail tabindex="0" aria-label="Подробности визита">
         <p data-text="active-message"></p><p data-text="active-readiness"></p>
         <strong data-text="observation-subject"></strong><p data-text="observation-detail"></p><p data-text="observation-ledger"></p>
         <p data-text="hen-note"></p><p data-text="reply-quiet"></p><p data-text="reply-curious"></p>
+        </div>
       </section>
       <section data-screen="memories" hidden>
         <h2 data-focus="memories" tabindex="-1" data-text="memory-count"></h2>
-        <nav aria-label="Выберите встречу">${visitActivityIds.map(id => choice('memory', id, `${visitName(visitActivities[id].resident)} · ${visitActivities[id].title}`)).join('')}</nav>
+        <nav data-memory-list aria-label="Выберите встречу">${visitActivityIds.map(id => choice('memory', id, `${visitName(visitActivities[id].resident)} · ${visitActivities[id].title}`)).join('')}</nav>
+        <article data-memory-detail tabindex="0" aria-label="Воспоминание">
         <p data-text="memory-empty"></p><h3 data-text="memory-title"></h3><small data-text="memory-day"></small>
         <strong data-text="memory-subject"></strong><p data-text="memory-copy"></p><p data-text="memory-detail"></p><p data-text="memory-reply"></p>
+        </article>
       </section>
       <section data-screen="rules" hidden>
         <h2 data-focus="rules" tabindex="-1">О визитах</h2>
@@ -69,12 +87,14 @@ export class GuestBookButtonSurface {
         <button type="button" data-action="guest-book-back" data-guest-back hidden>К приглашениям</button>
       </nav>
     </section>`
+    this.picker = new GuestBookInvitationPicker(host.root)
     this.adapter = new GuestBookActionAdapter({ ...host, view: this.view, redraw: focus => this.render(focus) })
     this.render()
   }
 
   /** Use from the one existing delegated host handler, AFTER capture. */
   click(event: MouseEvent): boolean {
+    if (this.host.active() && this.picker.click(event)) return true
     const target = event.target as Element | null
     const control = target?.closest?.<HTMLButtonElement>('button[data-guest-command],button[data-guest-choice],button[data-guest-back]')
     if (!control || !this.host.root.contains(control)) return false
@@ -85,7 +105,7 @@ export class GuestBookButtonSurface {
     let hostChoseFocus = false
     const trackFocus = (focus: FocusEvent) => { if (focus.target !== control) hostChoseFocus = true }
     if (ownedCommandFocus) document.addEventListener('focusin', trackFocus, true)
-    try { this.adapter.click(event) }
+    try { this.adapter.click(event); this.picker.afterChoice(control, event) }
     finally { if (ownedCommandFocus) document.removeEventListener('focusin', trackFocus, true) }
     // Only this explicit, synchronous activation can hand off its hidden focus.
     // Passive render, a closed host, or a host-selected destination keep ownership.
@@ -95,6 +115,7 @@ export class GuestBookButtonSurface {
       const next = [...this.host.root.querySelectorAll<HTMLButtonElement>('button[data-guest-command]')]
         .find(button => !button.disabled && !button.closest('[hidden],[inert]'))
       next?.focus({ preventScroll: true })
+      next?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
     }
     return true
   }
@@ -102,6 +123,7 @@ export class GuestBookButtonSurface {
   /** Nested pages own Back first; root falls through to existing parent history. */
   back(event: Event): boolean {
     if (event.defaultPrevented || !this.host.active()) return false
+    if (this.picker.back(event)) return true
     if ('repeat' in event && event.repeat) { event.preventDefault(); return true }
     return this.adapter.back(event)
   }
@@ -117,6 +139,7 @@ export class GuestBookButtonSurface {
 
   render(focus?: GuestBookFocus): void {
     const root = this.host.root, farm = this.host.farm(), screen = this.view.current(farm), selection = this.view.snapshot()
+    root.querySelector<HTMLElement>('[data-guest-surface]')!.dataset.guestScreen = screen.kind
     const activity = visitActivities[screen.activity]
     const text = (key: string, value: string) => {
       const element = root.querySelector<HTMLElement>(`[data-text="${key}"]`)!
@@ -132,7 +155,9 @@ export class GuestBookButtonSurface {
       if (part === 'memory' && memory) button.textContent = `${visitName(visitActivities[memory.activity].resident)} · ${visitActivities[memory.activity].title} · День ${memory.day}`
       if (part === 'page' && value === 'memories') button.textContent = `Наши встречи · ${screen.memories.length}/${visitActivityIds.length}`
     }
-    text('invitation-title', `${visitName(screen.resident)} · ${activity.title}`)
+    text('selected-resident', visitName(screen.resident)); text('selected-activity', activity.title)
+    root.querySelector<HTMLElement>('[data-text="goal"]')!.hidden = !!screen.gate
+    root.querySelector<HTMLElement>('[data-text="gate"]')!.hidden = !screen.gate
     text('goal', activity.goal); text('readiness', screen.readiness ?? ''); text('gate', screen.gate ?? ''); text('invitation-copy', activity.invitation)
     const active = screen.active, observation = active?.observation
     const recorded = !!active && screen.memories.some(memory => memory.activity === active.activity && memory.serial === active.serial)
@@ -160,9 +185,13 @@ export class GuestBookButtonSurface {
     const back = root.querySelector<HTMLButtonElement>('[data-guest-back]')!
     back.hidden = selection.page === 'visit'; back.textContent = farm.neighborVisits.active ? 'К гостю' : 'К приглашениям'
     if (!focus) return
+    if (focus.part === 'memory') root.querySelector<HTMLElement>('[data-memory-detail]')!.scrollTop = 0
     const choice = [...root.querySelectorAll<HTMLElement>('[data-guest-choice]')].find(button => button.dataset.guestChoice === focus.part && button.dataset.value === focus.value && !button.closest('[hidden]'))
     const command = focus.part === 'command' ? [...root.querySelectorAll<HTMLElement>('[data-command-key]')].find(button => button.dataset.commandKey === focus.value && !button.closest('[hidden]') && !button.hasAttribute('disabled')) : undefined
     const destination = command ?? choice ?? root.querySelector<HTMLElement>(`[data-focus="${screen.kind}"]`)
+    this.picker.reveal(destination)
     destination?.focus({ preventScroll: true })
+    // Explicit navigation alone may reveal its target. Passive redraws return above.
+    if (screen.kind === 'active' || screen.kind === 'memories') destination?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
   }
 }

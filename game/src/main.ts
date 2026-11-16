@@ -283,7 +283,7 @@ import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoa
 
 // Strict local opt-in: Vite eliminates this import and the surface in production.
 const guestBookDevModule = import.meta.env.DEV && new URLSearchParams(location.search).get('guestBookButtons') === '1'
-  ? await import('./guest-book-button-surface') : undefined
+  ? await import('./guest-book-dev') : undefined
 let guestBookSurface: InstanceType<NonNullable<typeof guestBookDevModule>['GuestBookButtonSurface']> | undefined
 
 const saveStore = new VersionedSave(() => localStorage, farmSaveKeys, restoreCurrentFarm, createFarm, browserSaveLock(farmSaveKeys.lock), restoreLegacyFarm)
