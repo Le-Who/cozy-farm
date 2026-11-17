@@ -98,6 +98,78 @@ test('an earned missing-ingredient route returns from the warehouse to the exact
   assert.deepEqual(farm, expected); assert.equal(s.saves, 0, 'navigation never performs cooking or a transaction')
 })
 
+function coldWorkbench(steps: [string, ...unknown[]][]) {
+  const p = commissionPlayer(steps.map(([name, ...args]) => ({name, args})))
+  const s = screen(p.state)
+  // The existing route harness starts from a remembered menu. Use the actual cold defaults instead.
+  for (const name of ['kitchenGroup','kitchenTart','kitchenPreserves','kitchenDish','cookingFish']) {
+    const d = ast.statements.filter(ts.isVariableStatement).flatMap(n => [...n.declarationList.declarations])
+      .find(d => d.name.getText(ast) === name)!
+    s[name] = d.initializer ? runInNewContext(d.initializer.getText(ast), s) : undefined
+  }
+  s.closeDialog()
+  return { farm:p.state, s }
+}
+const jamDayOne: [string, ...unknown[]][] = [
+  ['workBed',3], ['sellMarketItem','produce:tomato',1], ['upgradeBuilding','farmhouse'], ['pickFruit',0],
+]
+const grillDayOne: [string, ...unknown[]][] = [
+  ['workBed',3], ['workBed',7], ['workBed',9], ['sellMarketItem','produce:tomato',3],
+  ['sellMarketItem','produce:pumpkin',2], ['sellMarketItem','produce:carrot',1], ['upgradeBuilding','farmhouse'],
+  ['buyBoat'], ['beginFishingTrip'], ['finishFishingTrip',1,[{kind:'fish',species:'perch',variant:'regular'}]],
+  ['sail','grove'], ['gatherSeaSalt'], ['sail','home'],
+]
+function visibleCard(s: ReturnType<typeof screen>, dish: F.DishId, enabled: boolean) {
+  assert.match(s.html, new RegExp('<h2>' + F.dishDefinitions[dish].name + '</h2>'))
+  const button = s.html.match(/<button\b[^>]*data-action="cook"[^>]*>/g) ?? []
+  assert.equal(button.length, 1)
+  assert.ok(button[0].includes('data-value="' + dish + '"'))
+  assert.equal(button[0].includes('disabled'), !enabled)
+}
+
+test('first ordinary Home workbench presents a sole ready dish without changing stocks, with honest defaults for none and ties', () => {
+  const cases: {steps:[string,...unknown[]][]; ready:F.DishId[]; shown:F.DishId; origin?:string}[] = [
+    {steps:grillDayOne,ready:['grilledFish'],shown:'grilledFish'},
+    {steps:jamDayOne,ready:['appleJam'],shown:'appleJam',origin:'rest'},
+    {steps:[['pickFruit',0],['collectEggs'],['workBed',4]],ready:['orchardTart'],shown:'orchardTart'},
+    {steps:[],ready:[],shown:'orchardTart'},
+    {steps:[...grillDayOne,['pickFruit',0]],ready:['grilledFish','appleJam'],shown:'orchardTart'},
+  ]
+  for (const {steps, ready, shown, origin} of cases) {
+    const {farm,s} = coldWorkbench(steps), before = structuredClone(farm)
+    assert.equal(farm.day,1)
+    assert.deepEqual(F.dishIds.filter(id=>F.getCookAction(farm,id).available),ready)
+    if (origin) { s.panel=origin; s.dialog.open=true }
+    s.openPanel('kitchen')
+    visibleCard(s,shown,ready.includes(shown))
+    assert.deepEqual(s.visits,['kitchen']); assert.equal(s.saves,0); assert.deepEqual(farm,before)
+  }
+})
+
+test('explicit fish, source entry, and a deliberately chosen family survive a different sole ready recipe', async () => {
+  const steps: [string,...unknown[]][] = [...jamDayOne,['beginFishingTrip'],['finishFishingTrip',1,1]]
+  const {farm,s} = coldWorkbench(steps), before = structuredClone(farm)
+  assert.deepEqual(F.dishIds.filter(id=>F.getCookAction(farm,id).available),['appleJam'])
+  s.panel='inventory'; s.dialog.open=true
+  await s.chooseFish('perch'); grill(s.html,'perch'); visibleCard(s,'grilledFish',false)
+  s.goBack(); assert.equal(s.panel,'inventory')
+  // A contextual return to the workbench is not the initial Home recommendation.
+  s.panel='cookery'; s.openPanel('kitchen'); visibleCard(s,'orchardTart',false)
+  // Exercise the actual tab and family choice handlers, not just their field values.
+  function choose(action:string,value:string,family?:string) {
+    let branch:ts.CaseClause|undefined
+    const find=(n:ts.Node)=>{if(ts.isCaseClause(n)&&n.expression.getText(ast)===`'${action}'`)branch=n; ts.forEachChild(n,find)}
+    find(ast); assert.ok(branch)
+    Object.assign(s,{value,control:{dataset:{family}}})
+    runInNewContext(ts.transpileModule(`switch ('${action}') { ${branch.getText(ast)} }`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,s)
+  }
+  choose('kitchen-group','preserves'); choose('kitchen-group','tart'); choose('recipe-family','blueberryTart','tart')
+  visibleCard(s,'blueberryTart',false)
+  s.openPanel('inventory'); s.goBack(); visibleCard(s,'blueberryTart',false)
+  s.closeDialog(); s.openPanel('kitchen'); visibleCard(s,'blueberryTart',false)
+  assert.equal(s.saves,0); assert.deepEqual(farm,before)
+})
+
 test('invalid or no-longer-owned fish cannot redirect or cross an island from a stale inventory row', async () => {
   for (const id of [undefined, 'unknown', 'seaBass']) {
     const farm = ordinary(), before = structuredClone(farm), s = screen(farm)

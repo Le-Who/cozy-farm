@@ -398,7 +398,8 @@ let expandedRepeatId:string|undefined
 let cookingMode:'dish'|'signature'='dish'
 const kitchenGroups = ['tart', 'preserves', 'dishes'] as const
 type KitchenGroup = typeof kitchenGroups[number]
-let kitchenGroup: KitchenGroup = 'tart'
+// Unset until a workbench opens; explicit selections and Back retain their own group.
+let kitchenGroup: KitchenGroup | undefined
 let kitchenDish: DishId = 'grilledFish'
 let honeyKitchenDish: HoneyKitchenRecipe = 'honeyBiscuits'
 type KitchenTart = 'orchardTart' | 'strawberryTart' | 'blueberryTart' | 'raspberryTart' | 'mixed'
@@ -1571,7 +1572,7 @@ type PanelVisit = {
   workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; cookingFish: FishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
   signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;expandedRepeatId:string|undefined;cookingMode:'dish'|'signature';
   communityOrderId:string;communityResident:ResidentId;requestedFood:FoodOfferId|undefined;
-  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenGroup;kitchenDish:DishId;honeyKitchenDish:HoneyKitchenRecipe;signatureFamily:SignatureFamily;
+  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenGroup|undefined;kitchenDish:DishId;honeyKitchenDish:HoneyKitchenRecipe;signatureFamily:SignatureFamily;
 }
 const panelHistory: PanelVisit[] = []
 // Identity ties this shortcut to its exact Market visit, never another Orchard entry.
@@ -2328,6 +2329,20 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
   if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
   else if (next === 'kitchen' && remember && next !== panel && farm.fish[cookingFish] === 0) cookingFish = getGrillFish(farm)
+  if (next === 'kitchen' && kitchenGroup === undefined) {
+    kitchenGroup = 'tart'
+    const ordinaryHomeEntry = farm.island === 'home' && remember && next !== panel && !entry && !recipeTarget
+      && (!dialog.open || panel === 'rest' || panel === 'guide' || panel === 'boat' || panel === 'upgrades')
+    if (ordinaryHomeEntry && !getCookAction(farm, 'orchardTart').available) {
+      const ready = dishIds.filter(dish => getCookAction(farm, dish, cookingFish).available)
+      if (ready.length === 1) {
+        const dish = ready[0]
+        if (isTartDish(dish)) kitchenTart = dish
+        else if (dish === 'appleJam' || dish === 'orchardPreserves') { kitchenGroup = 'preserves'; kitchenPreserves = dish }
+        else { kitchenGroup = 'dishes'; kitchenDish = dish }
+      }
+    }
+  }
   if (next === 'recipes') {
     if (recipeTarget) recipeBook.select(farm,recipeTarget)
     else if (remember && next !== panel) recipeBook.view.mode='index'
