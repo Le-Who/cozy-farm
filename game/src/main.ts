@@ -1163,9 +1163,9 @@ function marketInlineCard(item: ReturnType<typeof goods>[number]) {
     <span class="market-inline-art" aria-hidden="true">${itemIcon(item.image,item.trait)}</span>
     <div class="market-inline-copy"><h2 class="market-inline-name">${escapeHtml(item.name)}</h2><p class="market-inline-stock">В запасе: ${item.count}</p><p class="market-inline-price">${item.price} ${icon('coin')} за штуку</p></div>
     <div class="market-inline-footer"><div class="market-inline-stepper" role="group" aria-label="Количество: ${escapeHtml(item.name)}">
-      <button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button>
+      <span class="market-step-limit" tabindex="-1" role="group" aria-label="Минимум: 1"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button></span>
       <input data-inline-quantity type="number" min="1" max="${item.count}" step="1" inputmode="numeric" value="${escapeHtml(view.raw)}" aria-label="Количество: ${escapeHtml(item.name)}" aria-describedby="${id}"${receipt||view.pending?' disabled':''}>
-      <button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="more" aria-label="Увеличить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity>=item.count?' disabled':''}>+</button>
+      <span class="market-step-limit" tabindex="-1" role="group" aria-label="Максимум: ${item.count}"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="more" aria-label="Увеличить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity>=item.count?' disabled':''}>+</button></span>
     </div><button type="button" class="market-inline-sell" aria-label="${escapeHtml(receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)}" data-action="${receipt?'inline-sale-again':'inline-sale-confirm'}" data-value="${escapeHtml(item.key)}"${view.pending||!receipt&&!quote.valid?' disabled':''}>${receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`}</button></div>
     <p class="market-inline-status" id="${id}" role="status">${receipt?`Продано: ${receipt.quantity} · ${quantity(receipt.total,'монета')}. Осталось: ${receipt.remaining}.`:quote.valid?'':`Введите целое число от 1 до ${item.count}.`}</p>
   </li>`
@@ -3652,7 +3652,8 @@ app.addEventListener('click', async (event) => {
       const keyboardStep = event.detail === 0 && document.activeElement === control
       if(context&&(direction==='less'||direction==='more')&&marketInlineSales.step(context.item.key,context.token,direction,context.item.count,context.item.price)){
         updateInlineSaleCard(context.card)
-        if (keyboardStep && control.disabled) context.card.querySelector<HTMLInputElement>('[data-inline-quantity]')?.focus({preventScroll:true})
+        // Keep the same tab position without arming Enter-to-sell or the opposite step.
+        if (keyboardStep && control.disabled) control.closest<HTMLElement>('.market-step-limit')?.focus({preventScroll:true})
       }
       break
     }

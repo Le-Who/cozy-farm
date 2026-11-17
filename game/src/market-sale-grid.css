@@ -41,6 +41,7 @@
 .market-inline-price .icon {width:23px;height:23px}
 .market-inline-footer {display:flex;grid-column:1/-1;gap:12px;align-items:center}
 .market-inline-stepper {display:grid;grid-template-columns:44px 50px 44px;flex:none;border:1px solid #bca085;border-radius:10px;overflow:hidden;background:#fffaf0}
+.market-step-limit {display:grid}
 .market-inline-stepper :is(button,input) {box-sizing:border-box;width:100%;min-width:0;height:44px;min-height:44px;padding:0;border:0;border-radius:0;background:transparent;text-align:center;color:#53314b;font:700 21px Georgia,serif;box-shadow:none}
 .market-inline-stepper input {border-inline:1px solid #c6aa90;appearance:textfield;-moz-appearance:textfield}
 .market-inline-stepper input::-webkit-inner-spin-button,.market-inline-stepper input::-webkit-outer-spin-button {appearance:none;margin:0}
@@ -50,7 +51,7 @@
 .market-inline-sell .icon {width:24px;height:24px}
 .market-inline-sell:disabled {opacity:.55;cursor:default}
 .market-inline-status {grid-column:1/-1;margin:0;min-height:18px;font-size:12px;line-height:1.2;color:var(--moss)}
-.market-inline-card :is(button,input):focus-visible {outline:3px solid #805789;outline-offset:-3px}
+.market-inline-card :is(button,input,.market-step-limit):focus-visible {outline:3px solid #805789;outline-offset:-3px}
 .market-inline-tools {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;flex:none;padding-top:8px;border-top:1px solid #d5baa0}
 [data-market-sale-browser] .market-total {display:flex;align-items:center;gap:12px;margin:0;padding:0;font-size:13px;border:0;background:none;box-shadow:none}
 [data-market-sale-browser] .market-total .dialog-button,.market-inline-tools>.dialog-button {margin:0;min-height:44px;font-size:14px}
