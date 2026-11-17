@@ -1,4 +1,5 @@
-import { cropDefinitions, cropIds, seedPackSize, type CropId, type FarmState } from './farm.ts'
+import { cropDefinitions, cropIds, getMarketOrders, seedPackSize, type CropId, type FarmState } from './farm.ts'
+import { recipePlanningGuide } from './recipe-planning.ts'
 import { gardenSeedQuote, type GardenSeedScope } from './garden-seed-basket.ts'
 import { ruCount } from './ru.ts'
 import { activeGardenPlan, gardenPlanPreview, saveGardenPlan, snapshotGarden, type GardenPlan } from './garden-plans.ts'
@@ -43,6 +44,19 @@ export function renderGardenMode(farm: FarmState) {
   const plan = activeGardenPlan(farm)
   return plan && farm.island === 'home' ? `<p class="garden-mode-note"><strong>Посев по плану: ${escape(plan.name)}</strong><br>Выбор другой культуры вручную выключит этот режим. Покупка семян сама по себе план не меняет.</p>` : ''
 }
+/** A shared ordinary-harvest need, never a reservation or a future delivery forecast. */
+function sharedHarvest(farm: FarmState, plan: GardenPlan) {
+  const recipe = recipePlanningGuide(farm)
+  const order = getMarketOrders(farm).find(order => order.lane === 'pantry' && (order.status === 'ready' || order.status === 'waiting'))
+  if (!recipe || !order) return
+  for (const crop of cropIds) {
+    if (!plan.crops.includes(crop)) continue
+    const recipeNeed = recipe.items.reduce((n, item) => n + (item.kind === 'produce' && item.item === crop ? item.quantity : 0), 0)
+    const orderNeed = order.items.reduce((n, item) => n + (item.kind === 'produce' && item.item === crop ? item.quantity : 0), 0)
+    const needed = recipeNeed + orderNeed, stock = farm.produce[crop]
+    if (recipeNeed && orderNeed && stock < needed) return {crop, stock, needed, recipeNeed, orderNeed, orderName: order.name}
+  }
+}
 export function renderGardenPlans(farm: FarmState, editor: GardenPlanEditor, icon: (key: string) => string) {
   if (farm.island !== 'home') return '<p>Свои планы огорода доступны на Родном острове.</p>'
   const book = farm.gardenPlans, page = book.pages[editor.slot], plan = editor.draft ?? page
@@ -59,7 +73,9 @@ export function renderGardenPlans(farm: FarmState, editor: GardenPlanEditor, ico
     const state = b.status === 'matching' ? b.ripe ? 'Совпало · Созрело' : 'Уже растёт' : b.status === 'occupied' ? `Занято: ${b.current.kind === 'crop' ? cropDefinitions[b.current.crop].name.toLowerCase() : ''}` : b.status === 'free' ? 'Без указания' : b.status === 'till' ? 'Сначала вскопать' : b.status === 'seeds' ? 'Нет семян' : 'Можно сеять'
     return `<button type="button" class="garden-bed" data-state="${b.status}" data-action="${editor.draft ? 'garden-paint' : 'garden-bed'}" data-value="${b.index}" aria-label="Грядка ${b.index + 1}: ${cropName}. ${editor.draft ? `Нарисовать: ${editor.brush ? cropDefinitions[editor.brush].name : 'вручную'}` : state}"><small>${b.index + 1}</small>${icon(b.crop ? `ui-seed-${b.crop}` : 'tool-hoe')}<strong>${cropName}</strong>${editor.draft ? '' : `<span>${state}</span>`}</button>`
   }).join('')}</div>`
-  const supply = `<details class="garden-supplies"><summary>Семена для свободных грядок${preview.missingCoins ? ` · Докупить на ${preview.missingCoins} монет` : ' · Всё есть'}</summary><p>Покупок и резервирования нет. Занятые другой культурой места не включены в закупку. Цена за пакет из ${seedPackSize} семян.</p><ul>${preview.supplies.map(s => `<li><strong>${cropDefinitions[s.crop].name}</strong>: свободных мест ${s.empty}, семян ${s.stock}${s.missing ? `, не хватает ${s.missing} · пакетов ${s.packs} за ${s.packs * s.price} монет` : ''}. Рост: ${s.nights} ${s.nights === 1 ? 'ночь' : 'ночи'}.</li>`).join('')}</ul><div class="dialog-actions">${button('Собрать список семян','garden-shop')}${button('Посмотреть рынок','travel-panel','market')}</div></details>`
+  const shared = editor.draft ? undefined : sharedHarvest(farm, plan)
+  const sharedNote = shared ? `<small class="garden-shared-harvest"><span aria-hidden="true">Урожай · На рецепт и заказ: ${shared.stock} из ${shared.needed}</span><span class="sr-only">${cropDefinitions[shared.crop].name}: обычного урожая ${shared.stock} из ${shared.needed}. ${escape(shared.orderName)}: ${shared.orderNeed}; выбранный рецепт кухни: ${shared.recipeNeed}.</span></small>` : ''
+  const supply = `<details class="garden-supplies"><summary>Семена для свободных грядок${preview.missingCoins ? ` · Докупить на ${preview.missingCoins} монет` : ' · Всё есть'}</summary><p>Покупок и резервирования нет. Занятые другой культурой места не включены в закупку. Цена за пакет из ${seedPackSize} семян.</p><ul>${preview.supplies.map(s => `<li><strong>${cropDefinitions[s.crop].name}</strong>: свободных мест ${s.empty}, семян ${s.stock}${s.missing ? `, не хватает ${s.missing} · пакетов ${s.packs} за ${s.packs * s.price} монет` : ''}. Рост: ${s.nights} ${s.nights === 1 ? 'ночь' : 'ночи'}.${s.crop === shared?.crop ? ` ${sharedNote}` : ''}</li>`).join('')}</ul><div class="dialog-actions">${button('Собрать список семян','garden-shop')}${button('Посмотреть рынок','travel-panel','market')}</div></details>`
   if (editor.draft) {
     const stale = book.revision !== editor.revision
     return `<section class="garden-plans">${tabs}<p class="garden-mode-note">Редактируется только запись. Сохранение изменённого активного плана выключит посев по нему.</p><label class="garden-name">Название<input data-garden-name maxlength="36" value="${escape(editor.draft.name)}" autocomplete="off"></label>
