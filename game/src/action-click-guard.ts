@@ -33,6 +33,7 @@ const guardedActions = new Set([
   'show-requirement', 'warehouse-supply', 'warehouse-supply-withdraw', 'recipe-repeat-home', 'recipe-warehouse-withdraw',
   'return-nursery-tree', 'supper-signature', 'share-meal', 'serve-guest',
   'sell-item', 'sell-signature', 'sale-again', 'confirm-sale', 'sell', 'make-signature', 'batch-signature',
+  'inline-sale-confirm', 'inline-sale-again',
   'rest-intent-request', 'rest-close-shop', 'shop-stock-select', 'shop-stock-confirm', 'freight-withdraw',
   'neighbor-repeat-food', 'neighbor-shelf-food', 'neighbor-stored-food', 'request-repeat-exact', 'choose-neighbor-food',
   'transplant-source', 'transplant-destination', 'transplant-reset',
@@ -77,7 +78,7 @@ export function installActionClickGuard(root: HTMLElement) {
   root.ownerDocument.addEventListener('keydown', event => {
     const target = event.target instanceof Element && root.contains(event.target) ? event.target : null
     const button = target?.closest<HTMLButtonElement>('button')
-    const guarded = !!target?.closest('[data-sale-quantity],[data-stock-quantity]') || !!button && !button.disabled && isGuardedAction(button.dataset.action)
+    const guarded = !!target?.closest('[data-sale-quantity],[data-stock-quantity],[data-inline-quantity]') || !!button && !button.disabled && isGuardedAction(button.dataset.action)
     if (keys.blocks(event, guarded)) {
       event.preventDefault()
       event.stopImmediatePropagation()
