@@ -1,0 +1,36 @@
+/* Direct existing service choices, never another disclosure or scroll region. */
+.coop-panel[data-coop-services] > .coop-care > .dialog-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.coop-panel[data-coop-services] > .coop-care > .dialog-list > .dialog-row {
+  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 8px;
+}
+.coop-panel[data-coop-services] > .coop-care .dialog-icon { grid-column: 1; grid-row: 1; width: 32px; height: 32px; }
+.coop-panel[data-coop-services] > .coop-care .dialog-icon .icon { width: 32px; height: 32px; }
+.coop-panel[data-coop-services] > .coop-care .dialog-row-copy { grid-column: 2; grid-row: 1; font-size: 14px; }
+.coop-panel[data-coop-services] > .coop-care .dialog-row-copy small { font-size: 12px; }
+.coop-panel[data-coop-services] > .coop-care .dialog-row-actions { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+.coop-panel[data-coop-services] > .coop-care .dialog-row-actions .dialog-button {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+  padding: 7px;
+  white-space: normal;
+  line-height: 1.2;
+  font-size: 13px;
+}
+@media (min-width: 900px) and (min-height: 600px) {
+  .farm-dialog:has([data-coop-services]) { width: min(820px, calc(100vw - 16px)); }
+  .coop-panel[data-coop-services] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .coop-panel[data-coop-services] > .coop-primary { grid-column: 1; grid-row: 1; }
+  .coop-panel[data-coop-services] > .coop-care { grid-column: 2; grid-row: 1 / 3; align-self: start; }
+  .coop-panel[data-coop-services] > .coop-forecast { grid-column: 1; grid-row: 2; }
+  .coop-panel[data-coop-services] > .coop-packing,
+  .coop-panel[data-coop-services] > .hen-grid { grid-column: 1 / -1; }
+}

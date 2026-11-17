@@ -14,8 +14,21 @@ test('all ten crops, berries included, remain browsable without mutation and one
  for(const crop of cropIds){assert.match(html,new RegExp(`data-value="${crop}"`));assert.ok(html.includes(cropDefinitions[crop].name))}
  assert.equal((html.match(/aria-pressed="true"/g)??[]).length,1)
  assert.ok(html.indexOf('data-action="choose-seed"')<html.indexOf('class="seed-picker-grid"'))
- assert.match(html,/Сеять морковь/);assert.match(html,/Посев выполняется отдельно на грядке/)
+ assert.match(html,/Выбрать морковь/);assert.match(html,/Посев выполняется отдельно на грядке/)
  assert.ok(html.includes(seedChoice(f,'carrot').token))
+})
+test('ordinary selection from the tool or a bed never consumes seed; the next bed action does',()=>{
+ for(const bed of [undefined,13]){
+  const f=createFarm(),before=structuredClone(f),choice=seedChoice(f,'cabbage',bed)
+  const html=renderSeedPicker(f,'cabbage',bed,art)
+  assert.match(html,/data-action="choose-seed"[^>]*>Выбрать капусту<\/button>/)
+  assert.ok(html.includes(choice.token))
+  assert.ok(chooseSeedForBed(f,'cabbage',bed,choice.token).ok)
+  assert.deepEqual(f,{...before,selectedSeed:'cabbage'})
+  assert.ok(workBed(f,bed??13,0).ok)
+  assert.equal(f.seeds.cabbage,before.seeds.cabbage-1)
+  assert.deepEqual(f.beds[bed??13],{kind:'crop',crop:'cabbage',growth:0,watered:false})
+ }
 })
 test('empty packet offers its actual purchase, without disabling browsing or claiming planting',()=>{
  const f=createFarm();f.seeds.blueberry=0;f.coins=0
@@ -30,7 +43,7 @@ test('planned return and explicit manual replacement keep existing guards and wo
  assert.ok(saveGardenPlan(f,0,{name:'Хлеб',crops},0).ok);assert.ok(followGardenPlan(f,0,1).ok)
  const before=structuredClone(f)
  assert.match(renderSeedPicker(f,'wheat',13,art),/К грядке по плану/)
- assert.match(renderSeedPicker(f,'cabbage',13,art),/Сеять капусту вручную/)
+ assert.match(renderSeedPicker(f,'cabbage',13,art),/Выбрать капусту вручную/)
  assert.match(renderSeedPicker(f,'cabbage',13,art),/выключит посев по плану/)
  assert.deepEqual(f,before)
  assert.ok(chooseSeedForBed(f,'wheat',13,seedChoice(f,'wheat',13).token).ok);assert.deepEqual(f,before)

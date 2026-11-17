@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm'
 import { test } from 'node:test'
 import ts from 'typescript'
 import * as F from '../src/farm.ts'
+import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
 import { getBerryNurserySource } from '../src/berry-nursery.ts'
 import { getRequirementHint } from '../src/requirement-guidance.ts'
 import { getLocalWarehouseSupply, warehouseConfirmationValue, warehouseConfirmation, withdrawWarehouseSupply } from '../src/warehouse-guidance.ts'
@@ -30,7 +31,7 @@ function screen(farm: F.FarmState, group = 'preserves') {
     ...F, farm, getBerryNurserySource, icon: (name: string) => `<img data-icon="${name}" alt="">`, fishImage: (id: string) => id,
     numberFormat: new Intl.NumberFormat('ru-RU'), requirementLinks: new Map(), pastryIcons: {},
     kitchenGroups: ['tart','preserves','dishes'], kitchenGroup: group, kitchenTart: 'orchardTart', kitchenPreserves: 'appleJam', kitchenDish: 'honeyCake', cookingFish: 'seaBass',
-    panel: 'inventory', panelHistory: [], inventoryGroup: 'shore', marketTab: 'sell', marketCategory: 'trees', selectedWarehouseRequest: undefined,
+    panel: 'inventory', panelHistory: [], marketSaleBrowse: new MarketSaleBrowseMemory(), inventoryGroup: 'shore', marketTab: 'sell', marketCategory: 'trees', selectedWarehouseRequest: undefined,
     salePresentation: { place: undefined }, island: { isCrossing: () => false, setViewMode: noop, setCoveFocus: noop, crossIsland: async (fn: () => unknown) => fn() },
     dialog: { open: true, showModal: noop, querySelectorAll: () => [] }, dialogContent: { scrollTop: 19, querySelectorAll: () => [], querySelector: () => null },
     transplantSelection: { reset: noop }, berryNurserySelection: { reset: noop }, berryRenewalSelection: { reset: noop }, gardenEditor: { reset: noop }, recipeSurplusSelection: { reset: noop },

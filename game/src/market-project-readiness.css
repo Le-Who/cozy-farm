@@ -1,0 +1,7 @@
+/* Meaning labels in the existing fair card only; no new browser or actions. */
+.farm-dialog[data-panel=market][data-market-tab=projects] .market-fair-readiness .project-fair-reward{display:grid;justify-items:end;gap:2px}
+.farm-dialog[data-panel=market][data-market-tab=projects] .market-fair-readiness .project-fair-reward>small{font-size:12px;font-weight:normal;color:var(--muted);line-height:1.2}
+.farm-dialog[data-panel=market][data-market-tab=projects] .market-fair-readiness .project-fair-reward>span{display:flex;align-items:center;gap:4px}
+.farm-dialog[data-panel=market][data-market-tab=projects] .market-fair-readiness .project-fair-count{font-size:13px;line-height:1.25}
+.farm-dialog[data-panel=market][data-market-tab=projects] .market-fair-readiness .project-fair-contribution{font-size:12px;line-height:1.25;color:var(--muted)}
+.farm-dialog[data-panel=market][data-market-tab=projects] .market-fair-readiness .project-fair-contribution.is-available{color:var(--moss);font-weight:700}
