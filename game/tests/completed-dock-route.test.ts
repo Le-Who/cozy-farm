@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import ts from 'typescript'
 import * as F from '../src/farm.ts'
 import { ruPlural } from '../src/ru.ts'
+import { projectContributionCopy, projectLevelCopy, projectRewardLabel } from '../src/project-readiness-copy.ts'
 import { getBerryNurserySource } from '../src/berry-nursery.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 
@@ -32,7 +33,7 @@ const noop=()=>{}
 function view(farm: F.FarmState, allowTravel=true) {
   const sourceButton={dataset:{action:'project-dock'},getClientRects:()=>[{}],focus:()=>{state.focused='project-dock'}}
   const state:Record<string,any>={
-    ...F,farm,ruPlural,getBerryNurserySource,numberFormat:new Intl.NumberFormat('ru-RU'),requirementLinks:new Map(),
+    ...F,farm,ruPlural,getBerryNurserySource,projectContributionCopy,projectLevelCopy,projectRewardLabel,numberFormat:new Intl.NumberFormat('ru-RU'),requirementLinks:new Map(),
     icon:(name:string)=>`<img data-icon="${name}" alt="">`,itemIcon:(name:string)=>`<img data-icon="${name}" alt="">`,
     canSailTo:(f:F.FarmState,d:F.IslandId)=>allowTravel&&F.canSailTo(f,d),
     panel:'market',marketTab:'projects',panelHistory:[],panelRenderVersion:0,

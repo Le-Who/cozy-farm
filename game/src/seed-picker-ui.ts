@@ -8,12 +8,12 @@ type SeedPickerArt = {
   icon: (name: string) => string
   button: (label: string, action: string, enabled: boolean, options: { value?: string; crop?: CropId; cost?: { icon: 'coin'; amount: number } }) => string
 }
-const sowNames: Record<CropId, string> = { carrot:'морковь', cabbage:'капусту', beetroot:'свёклу', tomato:'помидор', pumpkin:'тыкву', wheat:'пшеницу', leafyGreens:'зелень', strawberry:'клубнику', blueberry:'чернику', raspberry:'малину' }
+const cropChoiceNames: Record<CropId, string> = { carrot:'морковь', cabbage:'капусту', beetroot:'свёклу', tomato:'помидор', pumpkin:'тыкву', wheat:'пшеницу', leafyGreens:'зелень', strawberry:'клубнику', blueberry:'чернику', raspberry:'малину' }
 
 /** Browsing and the prominent action retain the existing separate selection contract. */
 export function renderSeedPicker(farm: FarmState, previewSeed: CropId, bed: number | undefined, art: SeedPickerArt, mode = '', navigation = '') {
   const seed = cropDefinitions[previewSeed], choice = seedChoice(farm, previewSeed, bed)
-  const label = choice.planned ? choice.label : `Сеять ${sowNames[previewSeed]}${activeGardenPlan(farm) ? ' вручную' : ''}`
+  const label = choice.planned ? choice.label : `Выбрать ${cropChoiceNames[previewSeed]}${activeGardenPlan(farm) ? ' вручную' : ''}`
   return `<section class="seed-picker" aria-label="Выбор культуры">
     <section class="seed-picker-current" aria-label="Выбранная культура: ${seed.name}">${art.icon(previewSeed)}<div class="seed-picker-current-copy"><h2>${seed.name}</h2><p>${ruCount(seed.days, 'ночь', 'ночи', 'ночей')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p></div>
       <div class="seed-picker-primary">${choice.available ? art.button(label, 'choose-seed', true, {value:choice.token}) : art.button(`Купить ×${seedPackSize}`, 'buy-seeds', farm.coins >= seed.seedPrice, {crop:previewSeed, cost:{icon:'coin',amount:seed.seedPrice}})}</div>

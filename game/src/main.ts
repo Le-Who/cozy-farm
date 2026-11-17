@@ -1,3 +1,5 @@
+import { projectContributionCopy, projectLevelCopy, projectRewardLabel } from './project-readiness-copy'
+import './market-project-readiness.css'
 import { MarketInlineSales } from './market-inline-sale'
 import { MarketSaleBrowseMemory } from './market-sale-browse'
 import { marketSaleFamilies } from './market-sale-family'
@@ -66,6 +68,8 @@ import './apiary-preview.css'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopCapacityWarning } from './coop-preview'
 import { renderCoopPanel } from './coop-panel'
+import { groupCoopServices } from './coop-services'
+import './coop-services.css'
 import './coop-panel.css'
 import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
 import './chicken-feed.css'
@@ -125,6 +129,8 @@ import {applyIngredientFinishes} from './ingredient-finish'
 import './style.css'
 import './navigation.css'
 import './kitchen-neighbours.css'
+import { chooseHoneyKitchenRecipe, renderHoneyKitchenMenu, type HoneyKitchenRecipe } from './honey-kitchen-menu'
+import './honey-kitchen-menu.css'
 import './neighbor-house.css'
 import { ruPlural } from './ru'
 import { archiveCards } from './archive'
@@ -390,6 +396,7 @@ const kitchenGroups = ['tart', 'preserves', 'dishes'] as const
 type KitchenGroup = typeof kitchenGroups[number]
 let kitchenGroup: KitchenGroup = 'tart'
 let kitchenDish: DishId = 'grilledFish'
+let honeyKitchenDish: HoneyKitchenRecipe = 'honeyBiscuits'
 type KitchenTart = 'orchardTart' | 'strawberryTart' | 'blueberryTart' | 'raspberryTart' | 'mixed'
 type KitchenPreserves = 'appleJam' | 'orchardPreserves' | 'custom'
 type SignatureFamily = 'berries' | 'preserves' | undefined
@@ -1019,9 +1026,13 @@ function marketOrders() {
     <details class="market-orders-timing"><summary>Когда появится следующий заказ</summary><p>После доставки следующий заказ появится после отдыха дома. Несданные заказы не сгорают от сна.</p></details>`
 }
 
-function deliveryItems(items: ReturnType<typeof getProject>['items']) {
+function deliveryItems(items: ReturnType<typeof getProject>['items'], explicit = false) {
   return items.map(({ item, delivered, available }) => {
     const { name, image } = stockLabel(item)
+    if (explicit) {
+      const copy = projectContributionCopy({ item, delivered, available })
+      return requirementLink(`${icon(image)}<span>${name}</span><strong class="project-fair-count">${copy.delivered}</strong><span class="project-fair-contribution${available ? ' is-available' : ''}">${copy.available}</span>`, available >= item.quantity-delivered ? {kind:'delivery'} : {kind:'stock',item:{...item,quantity:item.quantity-delivered}}, 'ingredient', `${name}, ${copy.delivered}, ${copy.available}`, delivered === item.quantity)
+    }
     return requirementLink(`${icon(image)}<span>${name}</span>
       <strong><span class="sr-only">Доставлено </span>${delivered}/${item.quantity}</strong>
       ${available ? `<span class="project-available">+${available}<span class="sr-only"> в наличии</span></span>` : ''}`, available >= item.quantity-delivered ? {kind:'delivery'} : {kind:'stock',item:{...item,quantity:item.quantity-delivered}}, 'ingredient', name, delivered === item.quantity)
@@ -1057,10 +1068,12 @@ function projectCard(id: ProjectId) {
   const requirements = fair && project.status === 'locked'
     ? buildingIds.map((building) => {
       const ready = farm.buildingLevels[building] >= 2
-      return requirementLink(`${icon(`upgrade-${building}-card`)}<span>${buildingDefinitions[building].name}</span><strong>${Math.min(2, farm.buildingLevels[building])}/2</strong>`, {kind:'building',building}, 'ingredient', buildingDefinitions[building].name, ready)
+      const level = projectLevelCopy(farm.buildingLevels[building])
+      return requirementLink(`${icon(`upgrade-${building}-card`)}<span>${buildingDefinitions[building].name}</span><strong>${level}</strong>`, {kind:'building',building}, 'ingredient', `${buildingDefinitions[building].name}, ${level}`, ready)
     }).join('')
-    : deliveryItems(project.items)
-  const reward = `<span class="order-reward">${icon('coin')} ${project.reward}<span class="sr-only"> ${ruPlural(project.reward, ['монета','монеты','монет'])}</span></span>`
+    : deliveryItems(project.items, fair)
+  const reward = fair ? `<span class="order-reward project-fair-reward"><small>${projectRewardLabel(project.status)}</small><span>${icon('coin')} ${project.reward}<span class="sr-only"> ${ruPlural(project.reward, ['монета','монеты','монет'])}</span></span></span>`
+    : `<span class="order-reward">${icon('coin')} ${project.reward}<span class="sr-only"> ${ruPlural(project.reward, ['монета','монеты','монет'])}</span></span>`
   const away=farm.island!==(fair?'home':'grove')
   const benefit = fair
     ? (complete ? 'Кондитерская открыта. Урожай на рынке стоит на 1 монету дороже.' : 'Откроет кондитерскую и прибавит 1 монету к цене урожая на рынке.')
@@ -1072,7 +1085,7 @@ function projectCard(id: ProjectId) {
     : project.status === 'locked' && fair
       ? button('Улучшения', 'upgrades', true, { secondary: true })
       : button('Внести припасы', 'deliver-project', project.status === 'ready', { value: id, context: project.name })
-  return `<section class="market-order project-card" aria-labelledby="${fair ? 'project-fair' : 'dialog-title'}">
+  return `<section class="market-order project-card${fair ? ' market-fair-readiness' : ''}" aria-labelledby="${fair ? 'project-fair' : 'dialog-title'}">
     ${fair ? `<header class="order-header"><h2 id="project-fair">${project.name}</h2>${reward}</header>` : ''}
     <p class="project-benefit">${complete ? '<b>✓ Построено</b> · ' : ''}${benefit}</p>
     ${complete ? '' : `<ul class="ingredients project-items">${requirements}</ul>`}
@@ -1553,7 +1566,7 @@ type PanelVisit = {
   workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; cookingFish: FishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
   signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;expandedRepeatId:string|undefined;cookingMode:'dish'|'signature';
   communityOrderId:string;communityResident:ResidentId;requestedFood:FoodOfferId|undefined;
-  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenGroup;kitchenDish:DishId;signatureFamily:SignatureFamily;
+  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenGroup;kitchenDish:DishId;honeyKitchenDish:HoneyKitchenRecipe;signatureFamily:SignatureFamily;
 }
 const panelHistory: PanelVisit[] = []
 let panelRenderVersion = 0
@@ -1565,7 +1578,7 @@ function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
   return {recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
-    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
+    irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,honeyKitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
   const previous=panelHistory.pop()
@@ -1584,7 +1597,7 @@ function goBack() {
   seedPickerBed=previous.seedPickerBed
   signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;expandedRepeatId=previous.expandedRepeatId;cookingMode=previous.cookingMode
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
-  kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;signatureFamily=previous.signatureFamily
+  kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;honeyKitchenDish=previous.honeyKitchenDish;signatureFamily=previous.signatureFamily
   openPanel(previous.panel,false,farm.island,'page.fold')
   restoreFerryPanelView(dialogContent,previous.ferryView)
   if(previous.panel==='festival') {
@@ -1949,7 +1962,7 @@ function drawPanel() {
       break
     }
     case 'honey-kitchen': {
-      dialogContent.innerHTML = recipeCards(capeDishIds)
+      dialogContent.innerHTML = renderHoneyKitchenMenu(honeyKitchenDish, dish => icon(dishIcons[dish]), recipeCards)
       break
     }
     case 'recipes':
@@ -1994,6 +2007,7 @@ function drawPanel() {
     case 'coop':
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
       dialogContent.innerHTML = renderCoopPanel(farm, {icon,row,button,feedRow:flockFeedRow})
+      groupCoopServices(dialogContent)
       break
     case 'rest':
       dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра"><header class="rest-morning"><div><strong>Сейчас · день ${farm.day}</strong><span>Утром · день ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}</span></div>${button('До утра', 'sleep', true, {value:farm.day})}</header><p class="rest-commit-note">Сон завершит этот день. Вернуться назад нельзя.</p>${renderShopRest(farm)}</section>
@@ -3300,6 +3314,11 @@ app.addEventListener('click', async (event) => {
       break
     case 'resume-community': await resumeCommunityRequest(control === communityResume ? 'recipe' : 'request'); break
     case 'intent-own-recipe': signatureBase = 'tart'; signatureSlots = [null, null]; signatureSlot = 0; signatureRepeatId = undefined; signatureFamily = undefined; openPanel('signature'); break
+    case 'honey-kitchen-recipe': {
+      const dish = chooseHoneyKitchenRecipe(value, {panel,open:dialog.open,island:farm.island,capeLevel:farm.capeLevel})
+      if (dish !== undefined) { honeyKitchenDish = dish; drawPanel(); dialogContent.scrollTop = 0 }
+      break
+    }
     case 'kitchen-group': {
       const group = kitchenGroups.find(group => group === value)
       if (group !== undefined) { kitchenGroup = group; drawPanel(); dialogContent.scrollTop = 0 }

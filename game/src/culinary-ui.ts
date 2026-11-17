@@ -96,7 +96,13 @@ export function recipeBookSearchStatus(farm:FarmState,view:RecipeBookView):strin
 }
 export function recipeBookResults(farm:FarmState,art:Icons,view:RecipeBookView):string {
   const recipes=visibleBookRecipes(farm,view),selectedId=selectedBookId(farm,view)
-  return `${recipes.map(recipe=>`<div class="recipe-book-row" data-selected="${recipe.id===selectedId}"><button type="button" class="recipe-book-select" data-action="select-recipe" data-value="${recipe.id}" aria-pressed="${recipe.id===selectedId}"><span class="recipe-book-thumb">${signatureResultPicture(recipe,art)}</span><span><strong>${escapeRecipeText(recipe.name)}</strong><small>С собой ${farm.culinary.stock[recipe.id]??0}</small></span><span aria-hidden="true">›</span></button>${control(recipe.favorite?'★':'☆','favorite-signature',recipe.id,true,`aria-label="${recipe.favorite?'Убрать из избранного':'В избранное'} ${escapeRecipeText(recipe.name)}" aria-pressed="${recipe.favorite}"`)}</div>`).join('')}${!recipes.length&&view.query?.trim()?'<p class="recipe-book-search-empty">По этому названию рецептов нет. Измените запрос или очистите поиск.</p>':''}`
+  const traits=(recipe:SignatureRecipe)=>[...new Set(recipe.ingredients.filter(part=>part.trait).map(ingredientName))].join(' · ')
+  const traitHint=(recipe:SignatureRecipe)=>{
+    const label=traits(recipe)
+    return label&&farm.culinary.recipes.some(other=>other.name===recipe.name&&traits(other)!==label)
+      ? `<small class="recipe-book-traits">${escapeRecipeText(label)}</small>` : ''
+  }
+  return `${recipes.map(recipe=>`<div class="recipe-book-row" data-selected="${recipe.id===selectedId}"><button type="button" class="recipe-book-select" data-action="select-recipe" data-value="${recipe.id}" aria-pressed="${recipe.id===selectedId}"><span class="recipe-book-thumb">${signatureResultPicture(recipe,art)}</span><span><strong>${escapeRecipeText(recipe.name)}</strong>${traitHint(recipe)}<small>С собой ${farm.culinary.stock[recipe.id]??0}</small></span><span aria-hidden="true">›</span></button>${control(recipe.favorite?'★':'☆','favorite-signature',recipe.id,true,`aria-label="${recipe.favorite?'Убрать из избранного':'В избранное'} ${escapeRecipeText(recipe.name)}" aria-pressed="${recipe.favorite}"`)}</div>`).join('')}${!recipes.length&&view.query?.trim()?'<p class="recipe-book-search-empty">По этому названию рецептов нет. Измените запрос или очистите поиск.</p>':''}`
 }
 
 export function signatureBook(farm:FarmState,art:Icons,state:RecipeBookView|string={}):string {
