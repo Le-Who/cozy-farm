@@ -1791,9 +1791,17 @@ function confirmExactSale(focusReceipt = false) {
 }
 
 
+let disposeCoopServices: (() => void) | undefined
+function stopCoopServices() {
+  const dispose = disposeCoopServices
+  disposeCoopServices = undefined
+  dispose?.()
+}
+
 function drawPanel() {
   if (!panel || harbourScene) return
   if (panel === 'fishing' && fishingGame || panel === 'workshop' && workshopGame || panel === 'cookery' && cookeryGame || panel === 'arrangement' && arrangementGame) return
+  stopCoopServices()
   if (panel === 'recipes') { recipeBook.capture(dialogContent); recipeBook.reconcile(farm) }
   const guideGardenOpen = panel === 'guide' && (dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false)
   panelRenderVersion++
@@ -2029,7 +2037,7 @@ function drawPanel() {
     case 'coop':
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
       dialogContent.innerHTML = renderCoopPanel(farm, {icon,row,button,feedRow:flockFeedRow})
-      groupCoopServices(dialogContent)
+      disposeCoopServices = groupCoopServices(dialogContent)
       break
     case 'rest':
       dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра"><header class="rest-morning"><div><strong>Сейчас · день ${farm.day}</strong><span>Утром · день ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}</span></div>${button('До утра', 'sleep', true, {value:farm.day})}</header><p class="rest-commit-note">Сон завершит этот день. Вернуться назад нельзя.</p>${renderShopRest(farm)}</section>
@@ -4074,6 +4082,7 @@ dialog.addEventListener('close', () => {
   const quietRestClose = committedRestClose
   committedRestClose = false
   if (!dialog.open) {
+    stopCoopServices()
     salePresentation.reset()
     transplantSelection.reset()
   berryNurserySelection.reset(); berryRenewalSelection.reset(); recipeSurplusSelection.reset()
