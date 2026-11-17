@@ -201,7 +201,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     sun.shadow.dispose();sun.shadow.map=null;sun.shadow.mapPass=null
     resources.forEach(resource=>resource.dispose());surface.invalidateGraphics()
     renderer?.dispose();renderer=null
-    bakeButton.disabled=true;toolButtons.forEach(button=>{button.disabled=true})
+    bakeButton.disabled=handButton.disabled=true;toolButtons.forEach(button=>{button.disabled=true})
     status.hidden=false;status.textContent='Изображение приостановлено. Тесто сохранено.'
   },{signal})
   canvas.addEventListener('webglcontextrestored',()=>{
@@ -722,7 +722,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   },{signal}))
   toolButtons.filter(button=>button!==handButton).forEach(button => button.addEventListener('click', () => { tool(button.dataset.tool as Tool);if(handMenu.dataset.compact==='true')closeHandMenu();updateCue() }, { signal }))
   hotspots.filter(button=>button.dataset.prop==='bowl'||button.dataset.prop==='spoon').forEach(button=>button.addEventListener('click',()=>{if(stage==='ingredients'||stage==='mixing'){mix(.1);view.focus({preventScroll:true})}},{signal}))
-  handButton.addEventListener('click',()=>{if(stage!=='working')return;if(hand.down)release(undefined,true);if(!handMenu.hidden){closeHandMenu();updateCue();return}handMenuExpanded=true;handMenu.hidden=false;handButton.setAttribute('aria-expanded','true');positionHandMenu();updateCue()},{signal})
+  handButton.addEventListener('click',()=>{if(contextLost||cutPending||stage!=='working')return;if(hand.down)release(undefined,true);if(!handMenu.hidden){closeHandMenu();updateCue();return}handMenuExpanded=true;handMenu.hidden=false;handButton.setAttribute('aria-expanded','true');positionHandMenu();updateCue()},{signal})
   handMenu.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{view.focus({preventScroll:true})},{signal}))
   const raycaster = new THREE.Raycaster()
   const down=new THREE.Vector3(0,-1,0)
@@ -863,7 +863,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   view.addEventListener('lostpointercapture', () => release(undefined, true), { signal })
   window.addEventListener('blur', () => release(undefined, true), { signal })
   root.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { event.preventDefault();if(!handMenu.hidden)closeHandMenu(true);else close();return }
+    if (event.key === 'Escape') { event.preventDefault();if(event.repeat)return;if(!handMenu.hidden)closeHandMenu(true);else close();return }
     if(contextLost||cutPending)return
     if (event.target instanceof HTMLButtonElement) return
     if ((stage === 'mixing' || stage === 'ingredients') && (event.key === ' ' || event.key.startsWith('Arrow'))) {
