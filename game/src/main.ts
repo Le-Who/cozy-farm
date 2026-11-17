@@ -437,13 +437,13 @@ try {
 } catch { /* A stale menu selection never prevents loading the farm. */ }
 const requirementLinks = new Map<string, Requirement>()
 
-function requirementLink(content: string, requirement: Requirement, className: string, name: string, ready = false) {
+function requirementLink(content: string, requirement: Requirement, className: string, name: string, ready = false, description = '') {
   if (ready) return `<li class="${className}" data-ready="true">${content}</li>`
   const key = String(requirementLinks.size)
   requirementLinks.set(key, requirement)
   const nursery = requirement.kind === 'stock' && getBerryNurserySource(farm, requirement.item) !== undefined
     ? `<button class="nursery-preserve" type="button" data-action="berry-nursery-ingredient" data-value="${key}" aria-label="Сохранить разновидность: ${name}">Сохранить разновидность</button>` : ''
-  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}" aria-label="Где найти: ${name}">${content}</button>${nursery}</li>`
+  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}" aria-label="Где найти: ${name}"${description ? ` aria-describedby="requirement-source-${key}"` : ''}>${content}${description ? `<small id="requirement-source-${key}">${escapeHtml(description)}</small>` : ''}</button>${nursery}</li>`
 }
 const islandNames = { home: 'Родной остров', grove: 'Солёная роща', cape: 'Цветочный мыс', village: 'Лавандовая гавань' }
 
@@ -931,14 +931,15 @@ function stockLabel(item: StockItem): { name: string; image: string } {
   }
 }
 
-function stockTile(item: StockItem) {
+function stockTile(item: StockItem) { return stockTileWithSource(item) }
+function stockTileWithSource(item: StockItem, source = '') {
   const stock = ingredientCount(farm, item)
   const label = stockLabel(item)
   const resource = item.kind === 'produce' || item.kind === 'fruit' ? item.item : item.kind === 'eggs' ? 'egg' : undefined
   const specialStock = resource !== undefined && Object.values(farm.variants[resource] ?? {}).some(count => count > 0)
   const name = stock < item.quantity && specialStock ? `${label.name} (обычный урожай)` : label.name
   const image = label.image
-  return requirementLink(`${icon(image)}<span>${name}</span><strong>${stock}/${item.quantity}</strong>`, {kind:'stock',item}, 'ingredient', `${name}, ${stock} из ${item.quantity}`, stock >= item.quantity)
+  return requirementLink(`${icon(image)}<span>${name}</span><strong>${stock}/${item.quantity}</strong>`, {kind:'stock',item}, 'ingredient', `${name}, ${stock} из ${item.quantity}`, stock >= item.quantity, source)
 }
 
 function recipeDestination(dish: DishId) {
@@ -955,10 +956,14 @@ function recipeCards(recipes: readonly DishId[]) {
     const rawValue = ingredients.reduce((sum,item)=>sum+item.quantity*unitPrice(item,farm),0)
     const fishChoices = dish === 'grilledFish' ? `<div class="recipe-fish-choices" role="group" aria-label="Рыба для гриля">${fishIds.map(id=>`<button type="button" data-action="grill-fish" data-value="${id}" aria-pressed="${cookingFish===id}" aria-label="${fishDefinitions[id].name}, в наличии ${farm.fish[id]}" title="${fishDefinitions[id].name}">${icon(fishImage(id))}<span>×${farm.fish[id]}</span></button>`).join('')}</div>` : ''
     const locked = recipe.capeLevel ? farm.capeLevel < recipe.capeLevel : farm.buildingLevels.farmhouse < recipe.requiredLevel || !!recipe.specialization && !hasFarmhouseSpecialization(farm, recipe.specialization)
+    const missing = !locked && dish === 'grilledFish' && farm.island === 'home' ? ingredients.filter(item => ingredientCount(farm,item) < item.quantity) : []
+    const salt = missing.length === 1 && missing[0].kind === 'seaSalt' ? missing[0] : undefined
+    const route = salt && getRequirementHint(farm, {kind:'stock',item:salt}).action
+    const source = route?.target === 'warehouse-supply' ? 'На местном складе' : route?.target === 'sail' && route.value === 'grove' ? 'Плыть в Солёную рощу' : ''
     return `<section class="recipe${locked ? ' recipe-locked' : ''}">
       <header class="recipe-summary">${icon(dishIcons[dish], 'recipe-art')}<div><h2>${recipe.name}</h2>
         <p class="recipe-value" title="Стоимость ингредиентов → цена блюда">${icon('tool-crate')} <span class="sr-only">Сырьё: </span>${rawValue} <span aria-hidden="true">→</span> ${icon('coin')} <span class="sr-only">Блюдо: </span><strong>${recipe.sellPrice}</strong></p></div></header>
-      ${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>`}
+      ${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(item => item === salt && source ? stockTileWithSource(item,source) : stockTile(item)).join('')}</ul>`}
       ${locked ? `<p class="recipe-reason">${action.label}</p>${button('Улучшения','upgrades',true,{secondary:true})}`
         : farm.island !== destination ? button(destination === 'cape' ? 'На Цветочный мыс' : 'На кухню', 'sail', canSailTo(farm, destination), {value:destination}):button('Готовить', 'cook', action.available, { value: dish, context: recipe.name })}</section>`
   }).join('')}</div>`
