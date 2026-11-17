@@ -52,8 +52,8 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
   function layout() {
     const rect = view.getBoundingClientRect(); width = Math.max(1, rect.width); height = Math.max(1, rect.height)
     root.dataset.portrait = String(width / height < .85); root.dataset.compact = String(height < 480)
-    view.style.setProperty('--assembly-room', `url("${base}art/lavender/${width / height < .85 ? 'assembly/room-portrait' : 'cookery/room'}.webp")`)
     const nextRoom = base + 'art/lavender/' + (width / height < .85 ? 'assembly/room-portrait.webp' : 'cookery/room.webp')
+    view.style.setProperty('--assembly-room', `url("${new URL(nextRoom, document.baseURI).href}")`)
     if (room.getAttribute('src') !== nextRoom) room.src = nextRoom
     renderer.setSize(width, height, false)
     // Fit the complete physical workspace in usable CSS pixels, preserving object proportions.
