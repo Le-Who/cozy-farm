@@ -1,9 +1,10 @@
 import { berryCropIds, canRenewBerryBed, cropDefinitions, getBedHarvestPreview, getBerryRenewalPreview, variantLabel, type FarmState } from './farm.ts'
+import { getClimate } from './climate.ts'
 import { gardenCell } from './garden-spatial.ts'
 import { ruCount } from './ru.ts'
 
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]!))
-const button = (label: string, action: string, value = '', enabled = true) => `<button type="button" class="dialog-button secondary" data-action="${action}" data-value="${escape(value)}"${enabled ? '' : ' disabled'}>${label}</button>`
+const button = (label: string, action: string, value = '', enabled = true) => `<button type="button" class="dialog-button${action === 'berry-renewal-confirm' ? '' : ' secondary'}" data-action="${action}" data-value="${escape(value)}"${enabled ? '' : ' disabled'}>${label}</button>`
 
 /** A detached confirmation, never a saved mode or a reservation. */
 export class BerryRenewalSelection {
@@ -30,11 +31,16 @@ export function renderBerryRenewal(farm: FarmState, selection: BerryRenewalSelec
     const ordinary = getBedHarvestPreview(farm, quote.index)!
     return `<section class="bed-transplant berry-nursery"><h2 class="transplant-step" tabindex="-1">Грядка ${quote.index + 1} · Сохранить посадку?</h2>
       <div class="nursery-plant">${icon(quote.crop)}<strong>${cropDefinitions[quote.crop].name}</strong></div>
-      <p><strong>Бережный сбор: ${yieldLabel(quote)}.</strong> Та же посадка останется на этой грядке и начнёт новый цикл роста.</p>
-      <p>Обычный сбор на поле: ${yieldLabel(ordinary)}. После него грядка освобождается.</p>
-      <p>До следующего созревания: ${ruCount(quote.nights, 'ночь', 'ночи', 'ночей')} обычного роста. ${quote.retainsWater ? 'Чернике нужен один полив на новый цикл.' : 'Поливайте перед каждой ночью роста.'} В дождь новый цикл уже полит.</p>
-      <p>${quote.trait ? 'Особенность сохраняется: её получит одна ягода каждого урожая этой посадки.' : 'Посадка остаётся обычной, пока погода не подарит ей особенность.'} Семена не нужны, место остаётся занятым. Активный план огорода не меняется.</p>
-      ${quote.picnicBonus ? '<p class="dialog-status">В показанный урожай уже включена одна дополнительная обычная ягода от пикника. Этот бонус расходуется один раз, как при обычном сборе.</p>' : ''}
+      <dl class="berry-renewal-outcomes" aria-label="Два способа сбора">
+        <div><dt>Бережный сбор:</dt><dd><strong>${yieldLabel(quote)}</strong></dd><dd>Куст остаётся и начинает новый рост.</dd></div>
+        <div><dt>Обычный сбор на поле:</dt><dd><strong>${yieldLabel(ordinary)}</strong></dd><dd>Куст убирается, грядка свободна.</dd></div>
+      </dl>
+      <ul class="berry-renewal-facts" aria-label="После бережного сбора">
+        <li>До созревания: ${ruCount(quote.nights, 'ночь', 'ночи', 'ночей')} обычного роста. ${quote.retainsWater ? 'Чернике нужен один полив на новый цикл.' : 'Поливайте перед каждой ночью роста.'}${getClimate(farm.day).weather === 'rain' ? ' Новый цикл начнётся политым дождём.' : ''}</li>
+        <li>${quote.trait ? 'Особенность сохраняется: одна особая ягода в каждом урожае.' : 'Куст остаётся обычным; погода может дать ему особенность.'}</li>
+        <li>Семена не нужны. Грядка занята; активный план огорода не меняется.</li>
+        ${quote.picnicBonus ? '<li>В обоих вариантах уже учтена +1 обычная ягода от пикника. Этот бонус расходуется один раз при сборе.</li>' : ''}
+      </ul>
       <div class="dialog-actions">${button(`Бережно собрать ×${quote.total}`, 'berry-renewal-confirm', quote.token)}${button('К посадке без сбора', 'berry-renewal-bed', String(quote.index))}${button('Отменить выбор', 'berry-renewal-reset')}</div></section>`
   }
   const readyCount = farm.beds.filter((_, index) => canRenewBerryBed(farm, index)).length

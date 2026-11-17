@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs'
 import {createFarm,getBerryRenewalPreview,harvestBerryAndKeep,getBerryPropagation,restoreCurrentFarm} from '../src/farm.ts'
 import {BerryRenewalSelection,renderBerryRenewal} from '../src/berry-renewal-ui.ts'
 import {BerryNurserySelection,renderBerryNursery} from '../src/berry-nursery.ts'
+const visibleText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 const icon=()=>''
 function ready(){const f=createFarm();f.beds[0]={kind:'crop',crop:'blueberry',growth:3,watered:false,trait:'dew'};f.beds[2]={kind:'tilled'};return f}
 const enabled=(html:string,action:string)=>[...html.matchAll(new RegExp(`<button[^>]*data-action="${action}"[^>]*>`,'g'))].filter(x=>!x[0].includes(' disabled')).length
@@ -42,8 +43,8 @@ test('exact rare and picnic yields remain in separate protected reviews; neither
  const before=structuredClone(f),r=new BerryRenewalSelection(),n=new BerryNurserySelection()
  assert.ok(r.choose(f,0));assert.ok(n.choose(f,0));assert.ok(n.destination(f,2))
  const rh=renderBerryRenewal(f,r,icon),nh=renderBerryNursery(f,n,icon)
- assert.match(rh,/Бережный сбор: Черника ×1 \(обычные\) \+ Росистая черника ×1/)
- assert.match(rh,/Обычный сбор на поле: Черника ×3 \(обычные\) \+ Росистая черника ×1/)
+ assert.match(visibleText(rh),/Бережный сбор: Черника ×1 \(обычные\) \+ Росистая черника ×1/)
+ assert.match(visibleText(rh),/Обычный сбор на поле: Черника ×3 \(обычные\) \+ Росистая черника ×1/)
  assert.match(rh,/Бережно собрать ×2/);assert.match(rh,/Этот бонус расходуется один раз/)
  assert.match(nh,/Готовый урожай сейчас не получите/);assert.match(nh,/Возраст обеих посадок начнётся с нуля/)
  assert.match(nh,/Грядка 1 → две молодые посадки на грядках 1 и 3/)

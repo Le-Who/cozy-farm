@@ -88,3 +88,13 @@
 
 /* Cancelling a review returns visible focus even after touch/pointer activation. */
 .berry-renewal-focus:focus { outline:3px solid #5a3b78; outline-offset:1px; border-radius:7px; }
+
+/* The two berry outcomes are information, not competing action controls. */
+.berry-renewal-outcomes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:10px 0; }
+.berry-renewal-outcomes>div { min-width:0; padding:10px 12px; border:1px solid var(--rule); border-radius:12px; background:var(--paper-light); }
+.berry-renewal-outcomes dt { margin:0 0 5px; color:var(--plum); font-size:15px; font-weight:700; }
+.berry-renewal-outcomes dd { margin:0 0 5px; font-size:14px; line-height:1.35; overflow-wrap:anywhere; }
+.berry-renewal-outcomes dd:last-child { margin-bottom:0; }
+.berry-renewal-facts { list-style:none; margin:10px 0; padding:9px 12px; border-radius:12px; background:var(--paper-deep); font-size:13px; line-height:1.4; }
+.berry-renewal-facts li+li { margin-top:4px; }
+@media(max-width:520px) { .berry-renewal-outcomes { grid-template-columns:1fr; } }
