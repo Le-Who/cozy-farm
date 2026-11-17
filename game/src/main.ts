@@ -1132,6 +1132,14 @@ function irrigationRows() {
 function marketFamilyOptions(selected: string | undefined) {
   return marketSaleFamilies(goods(),selected).map(family=>`<option value="family:${family.id}"${selected===family.id?' selected':''}>${escapeHtml(family.label)} · ${family.rows} ${ruPlural(family.rows,['вид','вида','видов'])}</option>`).join('')
 }
+function marketSellView() {
+  return { island: farm.island, group: marketSellGroup, family: marketSaleFamily, query: marketSaleQuery }
+}
+function rememberClosedMarketSell() {
+  if (!dialog.open || panel !== 'market' || marketTab !== 'sell' || salePresentation.place) return
+  const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+  if (grid) marketSaleBrowse.rememberClosed(marketSellView(), grid.scrollTop)
+}
 function selectMarketSaleGroup(group: typeof marketSellGroup) {
   if (panel !== 'market' || marketTab !== 'sell' || !dialog.open) return false
   closeContextualSale(false)
@@ -2337,6 +2345,8 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next === 'honey-kitchen' && farm.capeLevel < 3) return
   if(next==='cove'&&farm.island!=='grove')return
   if ((next === 'transplant' || next === 'garden-plans' || next === 'recipe-surplus') && farm.island !== 'home') return
+  const reopenScroll = !dialog.open && remember && next === 'market' && marketTab === 'sell'
+    ? marketSaleBrowse.takeClosed(marketSellView()) : undefined
   if (!dialog.open) marketSaleBrowse.reset()
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
   if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
@@ -2391,6 +2401,12 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   drawPanel()
   dialogContent.scrollTop = 0
   if (!dialog.open) dialog.showModal()
+  if (reopenScroll !== undefined) {
+    // The new grid has geometry now. A synchronous assignment clamps to its range
+    // and cannot race a later search, Back, or another panel opening.
+    const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+    if (grid) grid.scrollTop = reopenScroll
+  }
   if (next === 'bay-freight' && ferryArrival.take(farm.freight.expeditions.active,dialog.open)) presentFerryArrival(dialogContent)
   updateCommunityReturn()
   const sceneEntry = next === 'bay-shop' ? dialogContent.querySelector<HTMLElement>('.bay-shop-close')
@@ -2432,6 +2448,7 @@ function returnToRecipeIndex() {
 }
 
 function closeDialog() {
+  rememberClosedMarketSell()
   salePresentation.reset()
   gardenEditor.reset()
   transplantSelection.reset()
@@ -4079,7 +4096,7 @@ function returnFromPanel(event: Event) {
   } else if (panelHistory.length) {
     event.preventDefault()
     goBack()
-  }
+  } else if (event.type === 'cancel') rememberClosedMarketSell()
 }
 dialog.addEventListener('cancel', returnFromPanel)
 dialog.addEventListener('keydown', event => {

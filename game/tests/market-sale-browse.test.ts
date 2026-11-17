@@ -42,3 +42,24 @@ test('remembered positions are detached from callers and never include inventory
  returned.scroll=0
  assert.equal(browse.change('shore','harvest',start).scroll,67)
 })
+const view = {island:'home', group:'harvest' as const, family:'produce:carrot', query:'радуж'}
+test('a closed Sell grid resumes once and only for the exact island, group, family and search', () => {
+  const memory = new MarketSaleBrowseMemory()
+  for (const change of [{query:'морковь'},{group:'all' as const},{family:undefined},{island:'grove'}]) {
+    memory.rememberClosed(view,436)
+    assert.equal(memory.takeClosed({...view,...change}),undefined)
+    assert.equal(memory.takeClosed(view),undefined,'a mismatch consumes the old position')
+  }
+  memory.rememberClosed(view,436)
+  assert.equal(memory.takeClosed({...view}),436)
+  assert.equal(memory.takeClosed(view),undefined)
+})
+test('fresh unrelated navigation or explicit reset drops closed position without changing live group memory semantics',()=> {
+  const memory=new MarketSaleBrowseMemory()
+  memory.change('harvest','shore',{family:view.family,scroll:212})
+  memory.rememberClosed(view,436)
+  assert.deepEqual(memory.change('shore','harvest',{family:undefined,scroll:70}),{family:view.family,scroll:212})
+  memory.reset()
+  assert.equal(memory.takeClosed(view),undefined)
+  assert.deepEqual(memory.change('shore','harvest',{family:undefined,scroll:0}),{family:undefined,scroll:0})
+})
