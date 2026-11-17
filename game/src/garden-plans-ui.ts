@@ -43,7 +43,7 @@ const gardenModeGuidance = 'Выбор другой культуры вручн�
 const occupiedBedsGuidance = 'Занятые растения остаются на месте. Соберите их, когда созреют, или сохраните пересадкой. План не ускоряет рост и не выполняет работу за вас.'
 export function renderGardenMode(farm: FarmState, compactGuidance = false) {
   const plan = activeGardenPlan(farm)
-  return plan && farm.island === 'home' ? `<p class="garden-mode-note"><strong>Посев по плану: ${escape(plan.name)}</strong>${compactGuidance ? `<span class="garden-plan-guidance-compact"><br>${gardenModeGuidance}</span>` : `<br>${gardenModeGuidance}`}</p>` : ''
+  return plan && farm.island === 'home' ? `<p class="garden-mode-note"><strong>Посев по плану: ${escape(plan.name)}</strong>${compactGuidance ? '<span class="garden-plan-guidance-compact">' : ''}<br>${gardenModeGuidance}${compactGuidance ? '</span>' : ''}</p>` : ''
 }
 export function renderGardenPlans(farm: FarmState, editor: GardenPlanEditor, icon: (key: string) => string) {
   if (farm.island !== 'home') return '<p>Свои планы огорода доступны на Родном острове.</p>'

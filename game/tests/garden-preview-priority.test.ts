@@ -72,3 +72,13 @@ test('shared seed-picker mode text and empty, draft and seed-review markup keep 
   assert.match(shopping,/Покупка не сеет, не освобождает грядки и не меняет выбранный режим посева/)
   assert.deepEqual(farm,before)
 })
+
+test('the real Russian source audit accepts both guidance markup branches without exceptions',async()=>{
+  const {auditRussianSource}=await import('../scripts/audit-russian.mjs')
+  const source=readFileSync(new URL('../src/garden-plans-ui.ts',import.meta.url),'utf8')
+  assert.deepEqual(await auditRussianSource(source,'src/garden-plans-ui.ts'),[])
+  const {farm}=fixture()
+  const guidance='Выбор другой культуры вручную выключит этот режим. Покупка семян сама по себе план не меняет.'
+  assert.equal(renderGardenMode(farm),`<p class="garden-mode-note"><strong>Посев по плану: Хлебный огород</strong><br>${guidance}</p>`)
+  assert.equal(renderGardenMode(farm,true),`<p class="garden-mode-note"><strong>Посев по плану: Хлебный огород</strong><span class="garden-plan-guidance-compact"><br>${guidance}</span></p>`)
+})
