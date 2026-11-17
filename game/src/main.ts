@@ -37,7 +37,7 @@ import { renderShopCommissions } from './shop-commissions-ui'
 import { ShopAssortmentChoice } from './shop-assortment-choice'
 import { ShopCommissionView } from './shop-commission-view'
 import './shop-commissions.css'
-import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommissionLine } from './shop-commissions'
+import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommissionLine, getShopCommissionOffers } from './shop-commissions'
 import { getFestivalShoreRoute } from './festival-shore-route.ts'
 import { rememberRecipeDraft, resumeRecipeDraft, resetRecipeDraft } from './recipe-draft'
 import { canReturnToDailyIntent, renderIntentDeadline, renderSelectedIntentRest, selectedDailyIntent } from './intent-deadline'
@@ -1681,7 +1681,12 @@ function openShopScene(host:HTMLElement) {
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
     onOpenFreight:()=>openPanel('bay-freight'),
-    onOpenCommissions:()=>openPanel('shop-commissions'),
+    commissionCustomers:()=>getShopCommissionOffers(farm).map(offer=>offer.customer),
+    onOpenCommissions:customer=>{
+      if(customer&&shopCommissionView.current(farm).customer!==customer)shopCommissionView.choose(farm,'customer',customer)
+      openPanel('shop-commissions')
+      if(customer)dialogContent.querySelector<HTMLSelectElement>('[data-commission-view="customer"]')?.focus({preventScroll:true})
+    },
     onOpenMusic:()=>openPanel('bay-music'),
     onGoRest:()=>{void visitPanelAt('home','rest')},
     performanceBonus:()=>Number(farm.concertDay === farm.day),
