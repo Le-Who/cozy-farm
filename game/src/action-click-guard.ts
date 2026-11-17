@@ -78,7 +78,7 @@ export function installActionClickGuard(root: HTMLElement) {
   root.ownerDocument.addEventListener('keydown', event => {
     const target = event.target instanceof Element && root.contains(event.target) ? event.target : null
     const button = target?.closest<HTMLButtonElement>('button')
-    const guarded = !!target?.closest('[data-sale-quantity],[data-stock-quantity],[data-inline-quantity]') || !!button && !button.disabled && isGuardedAction(button.dataset.action)
+    const guarded = !!target?.closest('[data-sale-quantity],[data-stock-quantity],[data-inline-quantity]') || !!button && !button.disabled && (isGuardedAction(button.dataset.action) || button.matches('.workshop-bake'))
     if (keys.blocks(event, guarded)) {
       event.preventDefault()
       event.stopImmediatePropagation()
