@@ -25,6 +25,7 @@
 .market-seed-copy {min-width:0}
 .market-seed-copy h2 {font:700 23px/1.15 Georgia,serif;margin:0 0 10px;color:#4b2646;overflow-wrap:anywhere}
 .market-seed-copy p {font:17px/1.25 Georgia,serif;color:#513247;margin:6px 0}
+.market-seed-stock {overflow-wrap:anywhere}
 .market-seed-price {display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .market-seed-price .icon {width:24px;height:24px}
 [data-market-seed-browser] .market-seed-grid .dialog-button {grid-column:1/-1;justify-self:end;min-width:170px;width:auto;min-height:46px;margin:0;padding:7px 20px;border:1px solid #9c5543;border-radius:12px;background:linear-gradient(#d78363,#b96047);box-shadow:inset 0 1px #ffcfab88,0 2px 0 #974d3833;color:#fffaf0;font:700 18px Georgia,serif}
@@ -70,7 +71,7 @@
  .farm-dialog:has([data-market-seed-browser]) .dialog-content {overflow:auto}
  [data-market-seed-browser] {height:auto;min-height:100%}
  [data-market-seed-browser] .market-seed-grid {flex:none;grid-template-columns:minmax(0,1fr);height:190px;min-height:190px}
- [data-market-seed-browser] .market-seed-grid>section {grid-template-columns:100px minmax(0,1fr);grid-template-rows:86px auto;padding:8px;gap:6px 10px}
+ [data-market-seed-browser] .market-seed-grid>section {grid-template-columns:100px minmax(0,1fr);grid-template-rows:minmax(86px,auto) auto;padding:8px;gap:6px 10px}
  .market-seed-art,.market-seed-art>.icon {height:86px}
  .market-seed-copy h2 {margin-bottom:6px}
 }
