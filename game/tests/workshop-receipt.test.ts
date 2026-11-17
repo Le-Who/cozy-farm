@@ -23,6 +23,9 @@ const tickStatements=tick.body!.statements
 const clockEnd=tickStatements.findIndex(n=>n.getText(workshop).startsWith('setBaySoundContact('))
 assert.ok(clockEnd>0)
 const frameClock=tickStatements.slice(0,clockEnd).map(n=>n.getText(workshop)).join('\n')
+const focusListeners:ts.CallExpression[]=[]
+function collectFocusListeners(n:ts.Node){if(ts.isCallExpression(n)&&n.expression.getText(workshop)==='document.addEventListener')focusListeners.push(n);ts.forEachChild(n,collectFocusListeners)}
+collectFocusListeners(workshop)
 const close=find(workshop,n=>ts.isVariableDeclaration(n)&&n.name.getText(workshop)==='close')
 const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
 function earned(bread=false){
@@ -35,8 +38,9 @@ function earned(bread=false){
  return farm
 }
 function handoff(farm:farmApi.FarmState,recipe:'bread'|'pastry',shape:farmApi.WorkshopShape){
- const saved:farmApi.FarmState[]=[],handlers:Record<string,()=>void>={},announcements:string[]=[]
- let options:any,returns=0,now=1000
+ const saved:farmApi.FarmState[]=[],handlers:Record<string,(event:{detail:number})=>void>={},announcements:string[]=[]
+ let options:any,returns=0,now=1000,focusCalls=0
+ const focusHandlers=new Map<string,Function>(),body={},document={body,activeElement:body,hasFocus:()=>true,addEventListener:(type:string,handler:Function)=>focusHandlers.set(type,handler)}
  const sounds:string[]=[],baked:number[]=[],risen:number[]=[]
  const mainState:any={farm,workshopRecipe:recipe,pastryShape:shape,panel:'workshop',workshopGame:undefined,...farmApi,
   dialogContent:{innerHTML:'',querySelector(){return {}}},createWorkshop(_host:unknown,value:any){options=value;return {destroy(){}}},
@@ -44,12 +48,12 @@ function handoff(farm:farmApi.FarmState,recipe:'bread'|'pastry',shape:farmApi.Wo
  runInNewContext(js(`switch('workshop'){${panelCase.getText(main)}}`),mainState)
  assert.ok(options,'earned stock opens actual workshop callback')
  const element=()=>({disabled:false,hidden:false,textContent:'',innerHTML:'',dataset:{},setAttribute(){}})
- const state:any={options,dishDefinitions:farmApi.dishDefinitions,stage:'working',chosenShape:shape,shapeNames:{round:'Круглая булочка',long:'Батон',folded:'Слойка'},destroyed:false,committed:false,contextLost:false,cutPending:false,assetsReady:true,work:.2,mixed:1,selected:0,activeTool:'knead',hand:{down:false},handMenuExpanded:false,
-  root:{dataset:{},setAttribute(){}},shapeButtons:[],toolButtons:[],hotspots:[],resultLabel:element(),handButton:element(),handMenu:element(),modeTitle:element(),hint:element(),bakeButton:{...element(),addEventListener(id:string,fn:()=>void){handlers[id]=fn}},signal:new AbortController().signal,
+ const state:any={document,bakeKeyboardFocus:false,options,dishDefinitions:farmApi.dishDefinitions,stage:'working',chosenShape:shape,shapeNames:{round:'Круглая булочка',long:'Батон',folded:'Слойка'},destroyed:false,committed:false,contextLost:false,cutPending:false,assetsReady:true,work:.2,mixed:1,selected:0,activeTool:'knead',hand:{down:false},handMenuExpanded:false,
+  root:{dataset:{},setAttribute(){}},shapeButtons:[],toolButtons:[],hotspots:[],resultLabel:element(),handButton:element(),handMenu:element(),modeTitle:element(),hint:element(),bakeButton:{...element(),addEventListener(id:string,fn:(event:{detail:number})=>void){handlers[id]=fn},focus(){focusCalls++;document.activeElement=state.bakeButton}},signal:new AbortController().signal,
   pieces:[{mass:1,dirty:true,offset:new Float32Array(1),velocity:new Float32Array(1),mesh:{geometry:{}}}],
   performance:{now:()=>now},lastTime:now,elapsed:0,bakeStartedAt:0,workshopToolGuide,updateSpriteBoxes(){},rebuildMixSurface(){},positionHandMenu(){},updateCue(){},fitBakeLabel(){},surface:{setCrustRoughness(){},setBaked(amount:number){baked.push(amount)}},prepareDoughBaking(){return {}},recognize(){return shape},release(){},playBaySound(id:string){sounds.push(id)},announce(v:string){announcements.push(v)},mix(){},bakeElapsed:0,delta:0,ovenLight:{intensity:0},THREE:{MathUtils:{smoothstep:(n:number)=>n}},riseDough(_geometry:unknown,_baking:unknown,amount:number){risen.push(amount)}}
- runInNewContext(js(`${update.getText(workshop)}; const ${close.getText(workshop)}; ${bake.getText(workshop)}; function advance(now){${frameClock};${finished.getText(workshop)}}`),state)
- return {state,options,saved,announcements,sounds,baked,risen,elapseWithoutFrame:(seconds:number)=>{now+=seconds*1000},frameAt:(milliseconds:number)=>{now=1000+milliseconds;state.advance(now)},click:()=>{if(!state.destroyed)handlers.click()},advance:(seconds:number)=>{now+=seconds*1000;state.advance(now)},back:()=>options.onCancel(),returns:()=>returns}
+ runInNewContext(js(`${update.getText(workshop)}; const ${close.getText(workshop)}; ${bake.getText(workshop)};${focusListeners.map(n=>n.getText(workshop)).join(';')}; function advance(now){${frameClock};${finished.getText(workshop)}}`),state)
+ return {state,options,saved,announcements,sounds,baked,risen,focusCalls:()=>focusCalls,input:(type:string,event:any={})=>focusHandlers.get(type)?.(event),elapseWithoutFrame:(seconds:number)=>{now+=seconds*1000},frameAt:(milliseconds:number)=>{now=1000+milliseconds;state.advance(now)},click:(detail=1)=>{if(!state.destroyed){handlers.click({detail});if(state.bakeButton.disabled&&document.activeElement===state.bakeButton)document.activeElement=body}},advance:(seconds:number)=>{now+=seconds*1000;state.advance(now)},back:()=>options.onCancel(),returns:()=>returns}
 }
 
 test('bread receipt names the actual granted dish for every chosen sculptural form',()=>{
@@ -139,4 +143,40 @@ test('short visibility gaps keep the remaining presentation time and first post-
  h.click();h.advance(1.499);assert.equal(h.state.stage,'baking')
  h.advance(.4);assert.equal(h.state.stage,'finished');assert.deepEqual(h.sounds,['cook.oven-in','cook.oven-out'])
  h.advance(100);assert.deepEqual(h.sounds,['cook.oven-in','cook.oven-out']);assert.deepEqual(farm,settled);assert.equal(h.saved.length,1)
+})
+
+
+test('keyboard-started Bake restores Done once after the disabled control loses focus',()=>{
+ const farm=earned(true),h=handoff(farm,'bread','long');h.state.document.activeElement=h.state.bakeButton;h.click(0)
+ assert.equal(h.state.document.activeElement,h.state.document.body);assert.equal(h.focusCalls(),0)
+ h.advance(3.999);assert.equal(h.focusCalls(),0);h.advance(.001)
+ assert.equal(h.state.document.activeElement,h.state.bakeButton);assert.equal(h.focusCalls(),1);assert.equal(h.state.bakeButton.disabled,false)
+ h.advance(20);assert.equal(h.focusCalls(),1);assert.equal(h.saved.length,1)
+ assert.match(h.announcements.at(-1)!,/Выпечка готова/)
+})
+
+test('pointer or unfocused programmatic Bake never claims completion focus',()=>{
+ for(const detail of [0,1]){
+  const h=handoff(earned(true),'bread','long');if(detail===1)h.state.document.activeElement=h.state.bakeButton
+  h.click(detail);h.advance(4);assert.equal(h.focusCalls(),0);assert.equal(h.state.document.activeElement,h.state.document.body)
+ }
+})
+
+test('later pointer, fresh keyboard or focused-control intent cancels automatic Done focus',()=>{
+ for(const action of ['pointer','key','focus']){
+  const h=handoff(earned(true),'bread','long');h.state.document.activeElement=h.state.bakeButton;h.click(0)
+  if(action==='pointer')h.input('pointerdown')
+  if(action==='key')h.input('keydown',{repeat:false,key:'Tab'})
+  if(action==='focus'){const target={};h.state.document.activeElement=target;h.input('focusin',{target});h.state.document.activeElement=h.state.document.body}
+  h.advance(4);assert.equal(h.focusCalls(),0,action);assert.equal(h.state.document.activeElement,h.state.document.body)
+ }
+})
+
+test('holding the initiating key does not cancel focus return; disposal or context loss does',()=>{
+ const h=handoff(earned(true),'bread','long');h.state.document.activeElement=h.state.bakeButton;h.click(0);h.input('keydown',{repeat:true,key:'Enter'});h.advance(4);assert.equal(h.focusCalls(),1)
+ for(const outcome of ['cancel','contextLost','background']){
+  const h=handoff(earned(true),'bread','long');h.state.document.activeElement=h.state.bakeButton;h.click(0)
+  if(outcome==='cancel')h.back();else if(outcome==='contextLost')h.state.contextLost=true;else h.state.document.hasFocus=()=>false
+  h.advance(4);assert.equal(h.focusCalls(),0,outcome);assert.equal(h.saved.length,1)
+ }
 })

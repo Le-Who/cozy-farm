@@ -114,6 +114,10 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   function closeHandMenu(restore=false){handMenuExpanded=false;handMenu.hidden=true;handButton.setAttribute('aria-expanded','false');if(restore)handButton.focus({preventScroll:true})}
   let stage: Stage = 'ingredients', activeTool: Tool = 'knead'
   let work = 0, mixed = 0, stirring = 0, selected = 0, frame = 0, elapsed = 0, bakeElapsed = 0, bakeStartedAt = 0
+  let bakeKeyboardFocus = false
+  document.addEventListener('pointerdown', () => { bakeKeyboardFocus = false }, { capture: true, signal })
+  document.addEventListener('keydown', event => { if (stage === 'baking' && !event.repeat) bakeKeyboardFocus = false }, { capture: true, signal })
+  document.addEventListener('focusin', event => { if (stage === 'baking' && event.target !== document.body && event.target !== bakeButton) bakeKeyboardFocus = false }, { capture: true, signal })
   let transfer=0
   const transferOrigin=new THREE.Vector3()
   let destroyed = false, committed = false, contextLost = false, assetsReady = false, propsReady=false, backgroundReady=false, layoutChanging=false
@@ -890,16 +894,17 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       if (action) { event.preventDefault(); tool(action, true) }
     }
   }, { signal })
-  bakeButton.addEventListener('click', () => {
+  bakeButton.addEventListener('click', event => {
     if(contextLost||cutPending)return
     if (stage === 'ingredients' || stage === 'mixing') { mix(.115); return }
     if (stage === 'finished') { close(); return }
     if (stage !== 'working' || committed) return
+    bakeKeyboardFocus = event.detail === 0 && document.activeElement === bakeButton
     stage = 'baking'; bakeButton.disabled = true; updateState()
     let accepted: boolean | void
     try { accepted = options.onBake(chosenShape) } catch { accepted = false }
     if (accepted === false) {
-      stage = 'working'; updateState()
+      bakeKeyboardFocus = false; stage = 'working'; updateState()
       hint.textContent = 'Принесите 2 пшеницы и 1 яйцо, затем попробуйте испечь снова.'
       announce('Тесто сохранено на доске. Для выпечки нужны 2 пшеницы и 1 яйцо.'); return
     }
@@ -975,6 +980,9 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
         bakeButton.disabled = contextLost; bakeButton.innerHTML = '<span>Готово</span>'
         fitBakeLabel()
         announce('Выпечка готова и добавлена в запасы фермы.')
+        // Disabling Bake blurs a keyboard user; do not override any later focus intent.
+        if (bakeKeyboardFocus && !bakeButton.disabled && document.hasFocus() && document.activeElement === document.body) bakeButton.focus({ preventScroll: true })
+        bakeKeyboardFocus = false
       }
     }
     pieces.forEach(piece=>{
