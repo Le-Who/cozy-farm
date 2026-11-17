@@ -57,5 +57,13 @@ export function restoreFerryPanelView(host: HTMLElement, view: FerryPanelView | 
   const picker = 'action' in focus && (focus.action === 'expedition-offer' || focus.action === 'expedition-pair');
   const fallback = picker ? offers?.querySelector<HTMLElement>('summary') ?? undefined : undefined;
   const close = panel.querySelector<HTMLElement>('.bay-freight-close') ?? undefined;
-  (canFocus(target) ? target : canFocus(fallback) ? fallback : canFocus(close) ? close : undefined)?.focus({ preventScroll: true });
+  const next = canFocus(target) ? target : canFocus(fallback) ? fallback : canFocus(close) ? close : undefined;
+  next?.focus({ preventScroll: true });
+  // A changed cargo card may leave the retained picker position clipping its focused choice.
+  // Preserve ordinary scroll restoration; reveal only that choice when it no longer fits.
+  const area = picker && next === target ? panel.querySelector<HTMLElement>('.expedition-card-scroll') : undefined;
+  if (area && next) {
+    const frame = area.getBoundingClientRect(), control = next.getBoundingClientRect();
+    if (control.top < frame.top || control.bottom > frame.bottom) next.scrollIntoView({ block: 'nearest' });
+  }
 }
