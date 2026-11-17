@@ -4,7 +4,7 @@ import { bayShopPurchaseReaction } from './bay-shop-speech'
 import { ruCount } from './ru'
 import {
   advanceBayShop, bayShopPhaseDuration, bayShopVisitors, removeBayShopStock, setBayShopOpen,
-  setBayShopPrice, syncBayShopProducts, type BayShopProduct, type BayShopState, type BayShopStock,
+  setBayShopPrice, syncBayShopProducts, type BayShopProduct, type BayShopState, type BayShopStock, type BayShopVisitorId,
 } from './bay-shop-model.ts';
 import './bay-shop.css';
 import { BayShopCustomerView, renderBayShopCustomers } from './bay-shop-customers';
@@ -23,7 +23,8 @@ export type BayShopOptions = {
   onChange(): void;
   onClose(): void;
   onOpenFreight?(): void;
-  onOpenCommissions?(): void;
+  commissionCustomers?(): readonly BayShopVisitorId[];
+  onOpenCommissions?(customer?: BayShopVisitorId): void;
   onOpenMusic?(): void;
   onGoRest?(): void;
   renderProduct?(product: BayShopProduct, className: string): string;
@@ -42,10 +43,12 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   const state = options.state;
   const customerView = new BayShopCustomerView();
   if (options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
+  let savedShopState = JSON.stringify(state);
+  function saveChanges() { options.onChange(); savedShopState = JSON.stringify(state); }
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
   let pending: { id: string; identity: string; quantity: string } | undefined;
   let tab: 'stock' | 'journal' = 'stock', notice = '', noticeTimer = 0, destroyed = false, frame = 0, lastTime = performance.now();
-  let lastPhase = '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
+  let lastPhase = !state.open && !state.visitor ? 'idle' : '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const art = (product: BayShopProduct, cls = '') => options.renderProduct?.(product, cls)
     ?? `<img class="${cls}" src="${escape(product.image)}" alt="" draggable="false">`;
@@ -83,11 +86,15 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
         return `<button type="button" class="bay-shop-product" data-user-text data-stock="${escape(product.id)}" data-action="shop-stock-select" aria-label="Выбрать товар: ${escape(product.name)}. В запасе: ${product.quantity}"><span class="bay-shop-product-art">${art(product)}</span><span data-user-text>${escape(product.name)}</span><small>×${product.quantity}</small>${product.signature ? '<em title="Мой рецепт" aria-label="Мой рецепт">♥</em>' : ''}</button>`;
       }).join('') : `<div class="bay-shop-stock-empty"><p>Привезите продукты или испеките булочки.</p>${options.onOpenFreight ? '<button type="button" data-freight>К парому</button>' : ''}</div>`}</div>`;
   }
+  function commissionCustomer() {
+    return tab === 'journal' ? bayShopVisitors.find(person => person.id === customerView.selected && options.commissionCustomers?.().includes(person.id)) : undefined;
+  }
   function render(): void {
     if (destroyed) return;
+    const commission = commissionCustomer();
     const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
     const priceDraft = active instanceof HTMLInputElement && active.hasAttribute('data-price') ? active.value : undefined;
-    const focusAttribute = active ? ['data-customer', 'data-customer-help', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next'].find(key => active.hasAttribute(key)) : undefined;
+    const focusAttribute = active ? ['data-customer', 'data-customer-help', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
     const focusValue = focusAttribute ? active!.getAttribute(focusAttribute)! : '';
     const scroll = host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
     rendering = true;
@@ -98,7 +105,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
           <span class="bay-shop-shelf-product">${slot && slot.quantity > 0 ? art(slot.product) : `<span class="bay-shop-shelf-empty">${slot ? 'Продано' : '+'}</span>`}</span>${slot ? `<span class="bay-shop-shelf-label">${money(slot.price)} <span aria-hidden="true">●</span><small>×${slot.quantity}</small></span>` : ''}</button>`).join('')}</div>
         <div class="bay-shop-visitor" aria-hidden="true"><span class="bay-shop-contact-shadow"></span><span class="bay-shop-person"></span><span class="bay-shop-purchase"></span></div>
       </div><div class="bay-shop-speech" data-user-text role="status" aria-live="polite"></div></div>
-      <div class="bay-shop-desk"><nav class="bay-shop-tabs" aria-label="Управление лавкой"><button type="button" data-tab="stock" aria-pressed="${tab === 'stock'}">Прилавок</button><button type="button" data-tab="journal" aria-pressed="${tab === 'journal'}">Покупатели</button>${options.onOpenCommissions ? '<button type="button" data-commissions>Заказы</button>' : ''}${options.performanceBonus?.() ? '<span title="Сегодня ещё два гостя из сада">+2 гостя ♫</span>' : ''}</nav>
+      <div class="bay-shop-desk"><nav class="bay-shop-tabs" aria-label="Управление лавкой"><button type="button" data-tab="stock" aria-pressed="${tab === 'stock'}">Прилавок</button><button type="button" data-tab="journal" aria-pressed="${tab === 'journal'}">Покупатели</button>${options.onOpenCommissions ? `<button type="button" data-commissions>Заказы${commission ? ` · ${commission.name}` : ''}</button>` : ''}${options.performanceBonus?.() ? '<span title="Сегодня ещё два гостя из сада">+2 гостя ♫</span>' : ''}</nav>
       <section class="bay-shop-day" aria-label="Гости сегодня" ${pending ? 'hidden' : ''}><div><p class="bay-shop-day-count"></p><p class="bay-shop-day-detail" role="status" aria-live="polite"></p></div><button type="button" data-shop-next hidden></button></section>
       <p class="bay-shop-notice" role="status">${escape(notice)}</p><div class="bay-shop-desk-content">${tab === 'stock' ? stockControls() : renderBayShopCustomers(state, customerView, options.catalog)}</div></div>
       </section>`;
@@ -168,7 +175,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       lastVisitor = key;
     }
   }
-  function changed(): void { options.onChange(); render(); }
+  function changed(): void { saveChanges(); render(); }
   function click(event: Event): void {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
     if (!button || !host.contains(button) || button.disabled) return;
@@ -182,7 +189,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       if (next === 'music') options.onOpenMusic?.(); else if (next === 'rest') options.onGoRest?.();
       return;
     }
-    if (button.hasAttribute('data-commissions')) { options.onOpenCommissions?.(); return; }
+    if (button.hasAttribute('data-commissions')) { options.onOpenCommissions?.(commissionCustomer()?.id); return; }
     if (button.hasAttribute('data-close')) { options.onClose(); return; }
     if (button.hasAttribute('data-freight')) { options.onOpenFreight?.(); return; }
     if (button.hasAttribute('data-open')) {
@@ -252,7 +259,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       playBaySound('menu.blocked',.8); notice = 'Укажите целую цену от 1 до 10 000 монет.';
       input.value = String(state.slots[selected]?.price ?? 1);
     } else {
-      notice = 'Цена сохранена'; options.onChange();
+      notice = 'Цена сохранена'; saveChanges();
       const slot = state.slots[selected]!, shelf = host.querySelector<HTMLElement>(`[data-slot="${selected}"]`);
       shelf?.setAttribute('aria-label', `Место ${selected + 1}: ${slot.product.name}, остаток ${slot.quantity}, цена ${slot.price} монет`);
       const quote = host.querySelector<HTMLElement>('[data-shelf-quote]');
@@ -272,8 +279,8 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       const sales = advanceBayShop(state, elapsed, options.performanceBonus?.() ?? 0);
       for (const sale of sales) options.onEarn(sale.price);
       const phase = state.visitor ? `${state.visitor.serial}:${state.visitor.phase}` : 'idle';
-      if (sales.length) { options.onChange(); render(); savedAt = now; }
-      else if (phase !== lastPhase || now - savedAt > 5000 && state.visitor) { options.onChange(); savedAt = now; }
+      if (sales.length) { saveChanges(); render(); savedAt = now; }
+      else if (phase !== lastPhase || now - savedAt > 5000 && state.visitor) { saveChanges(); savedAt = now; }
       if (phase !== lastPhase) { paintDayGuidance(); if(tab === 'journal' && !sales.length) render(); }
       lastPhase = phase; paintVisitor();
     }
@@ -284,6 +291,6 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   render(); frame = requestAnimationFrame(tick);
   return {
     refresh: render,
-    destroy() { if (destroyed) return; destroyed = true; clearTimeout(noticeTimer); cancelAnimationFrame(frame); resizeObserver.disconnect(); host.removeEventListener('input', quantityInput); host.removeEventListener('submit', submitStock); host.removeEventListener('click', click); host.removeEventListener('change', change); host.removeEventListener('focusout', change); options.onChange(); host.innerHTML = ''; },
+    destroy() { if (destroyed) return; destroyed = true; clearTimeout(noticeTimer); cancelAnimationFrame(frame); resizeObserver.disconnect(); host.removeEventListener('input', quantityInput); host.removeEventListener('submit', submitStock); host.removeEventListener('click', click); host.removeEventListener('change', change); host.removeEventListener('focusout', change); if (state.open || state.visitor || JSON.stringify(state) !== savedShopState) saveChanges(); host.innerHTML = ''; },
   };
 }

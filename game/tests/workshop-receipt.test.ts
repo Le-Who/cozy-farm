@@ -16,7 +16,13 @@ function find(file:ts.SourceFile,predicate:(node:ts.Node)=>boolean){let found:ts
 const panelCase=find(main,n=>ts.isCaseClause(n)&&n.expression.getText(main)==="'workshop'"&&n.getText(main).includes('createWorkshop'))
 const update=find(workshop,n=>ts.isFunctionDeclaration(n)&&n.name?.text==='updateState')
 const bake=find(workshop,n=>ts.isCallExpression(n)&&n.expression.getText(workshop)==='bakeButton.addEventListener')
-const finished=find(workshop,n=>ts.isIfStatement(n)&&n.expression.getText(workshop)==="stage === 'baking'"&&n.getText(workshop).includes('bakeElapsed += delta'))
+const finished=find(workshop,n=>ts.isIfStatement(n)&&n.expression.getText(workshop)==="stage === 'baking'"&&n.getText(workshop).includes('surface.setBaked'))
+const tick=find(workshop,n=>ts.isFunctionDeclaration(n)&&n.name?.text==='tick') as ts.FunctionDeclaration
+// Run the actual frame clock and completion block, not an uncapped test-only delta.
+const tickStatements=tick.body!.statements
+const clockEnd=tickStatements.findIndex(n=>n.getText(workshop).startsWith('setBaySoundContact('))
+assert.ok(clockEnd>0)
+const frameClock=tickStatements.slice(0,clockEnd).map(n=>n.getText(workshop)).join('\n')
 const close=find(workshop,n=>ts.isVariableDeclaration(n)&&n.name.getText(workshop)==='close')
 const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
 function earned(bread=false){
@@ -30,7 +36,8 @@ function earned(bread=false){
 }
 function handoff(farm:farmApi.FarmState,recipe:'bread'|'pastry',shape:farmApi.WorkshopShape){
  const saved:farmApi.FarmState[]=[],handlers:Record<string,()=>void>={},announcements:string[]=[]
- let options:any,returns=0
+ let options:any,returns=0,now=1000
+ const sounds:string[]=[],baked:number[]=[],risen:number[]=[]
  const mainState:any={farm,workshopRecipe:recipe,pastryShape:shape,panel:'workshop',workshopGame:undefined,...farmApi,
   dialogContent:{innerHTML:'',querySelector(){return {}}},createWorkshop(_host:unknown,value:any){options=value;return {destroy(){}}},
   leaveScene(){returns++;state.destroyed=true},perform(action:()=>farmApi.ActionResult){const result=action();if(result.ok)saved.push(structuredClone(farm));return result.ok}}
@@ -40,9 +47,9 @@ function handoff(farm:farmApi.FarmState,recipe:'bread'|'pastry',shape:farmApi.Wo
  const state:any={options,dishDefinitions:farmApi.dishDefinitions,stage:'working',chosenShape:shape,shapeNames:{round:'Круглая булочка',long:'Батон',folded:'Слойка'},destroyed:false,committed:false,contextLost:false,cutPending:false,assetsReady:true,work:.2,mixed:1,selected:0,activeTool:'knead',hand:{down:false},handMenuExpanded:false,
   root:{dataset:{},setAttribute(){}},shapeButtons:[],toolButtons:[],hotspots:[],resultLabel:element(),handButton:element(),handMenu:element(),modeTitle:element(),hint:element(),bakeButton:{...element(),addEventListener(id:string,fn:()=>void){handlers[id]=fn}},signal:new AbortController().signal,
   pieces:[{mass:1,dirty:true,offset:new Float32Array(1),velocity:new Float32Array(1),mesh:{geometry:{}}}],
-  workshopToolGuide,updateSpriteBoxes(){},rebuildMixSurface(){},positionHandMenu(){},updateCue(){},fitBakeLabel(){},surface:{setCrustRoughness(){},setBaked(){}},prepareDoughBaking(){return {}},recognize(){return shape},release(){},playBaySound(){},announce(v:string){announcements.push(v)},mix(){},bakeElapsed:0,delta:0,ovenLight:{intensity:0},THREE:{MathUtils:{smoothstep:(n:number)=>n}},riseDough(){}}
- runInNewContext(js(`${update.getText(workshop)}; const ${close.getText(workshop)}; ${bake.getText(workshop)}; function advance(deltaValue){delta=deltaValue;${finished.getText(workshop)}}`),state)
- return {state,options,saved,announcements,click:()=>{if(!state.destroyed)handlers.click()},advance:(seconds:number)=>state.advance(seconds),back:()=>options.onCancel(),returns:()=>returns}
+  performance:{now:()=>now},lastTime:now,elapsed:0,bakeStartedAt:0,workshopToolGuide,updateSpriteBoxes(){},rebuildMixSurface(){},positionHandMenu(){},updateCue(){},fitBakeLabel(){},surface:{setCrustRoughness(){},setBaked(amount:number){baked.push(amount)}},prepareDoughBaking(){return {}},recognize(){return shape},release(){},playBaySound(id:string){sounds.push(id)},announce(v:string){announcements.push(v)},mix(){},bakeElapsed:0,delta:0,ovenLight:{intensity:0},THREE:{MathUtils:{smoothstep:(n:number)=>n}},riseDough(_geometry:unknown,_baking:unknown,amount:number){risen.push(amount)}}
+ runInNewContext(js(`${update.getText(workshop)}; const ${close.getText(workshop)}; ${bake.getText(workshop)}; function advance(now){${frameClock};${finished.getText(workshop)}}`),state)
+ return {state,options,saved,announcements,sounds,baked,risen,elapseWithoutFrame:(seconds:number)=>{now+=seconds*1000},frameAt:(milliseconds:number)=>{now=1000+milliseconds;state.advance(now)},click:()=>{if(!state.destroyed)handlers.click()},advance:(seconds:number)=>{now+=seconds*1000;state.advance(now)},back:()=>options.onCancel(),returns:()=>returns}
 }
 
 test('bread receipt names the actual granted dish for every chosen sculptural form',()=>{
@@ -86,4 +93,50 @@ test('closing an unbaked scene, pending cut, lost context and denied payment nev
   assert.deepEqual(farm,before);assert.equal(h.saved.length,0);assert.equal(h.state.committed,false)
   if(guard==='short-stock')assert.equal(h.state.stage,'working')
  }
+})
+
+
+test('four-second presentation finishes at normal and throttled frame rates, without uncapping physics',()=>{
+ for(const step of [1000/60,100,1000]){
+  const farm=earned(true),h=handoff(farm,'bread','long');h.click();const settled=structuredClone(farm)
+  for(let t=step;t<3999;t+=step){h.frameAt(t);assert.equal(h.state.stage,'baking')}
+  h.frameAt(4000);assert.equal(h.state.stage,'finished',`${step}ms frames must finish at four wall-clock seconds`)
+  assert.ok(h.state.elapsed<=Math.ceil(4000/step)*.035+1e-8,'physics delta remains capped at 35ms')
+  assert.equal(h.baked.at(-1),1);assert.equal(h.risen.at(-1),1);assert.ok(Math.abs(h.state.ovenLight.intensity)<1e-8)
+  h.frameAt(12000);assert.equal(h.saved.length,1);assert.deepEqual(farm,settled)
+  assert.deepEqual(h.sounds,['cook.oven-in','cook.oven-out'])
+ }
+})
+
+test('baking starts at the accepted click, not a stale previous frame or time spent mixing',()=>{
+ const farm=earned(true),h=handoff(farm,'bread','long')
+ h.elapseWithoutFrame(20);h.click();h.advance(0);assert.equal(h.state.stage,'baking');assert.equal(h.state.bakeElapsed,0)
+ h.advance(3.999);assert.equal(h.state.stage,'baking');h.advance(.001);assert.equal(h.state.stage,'finished')
+})
+
+test('a hidden or suspended frame gap catches up the paid receipt once on resume',()=>{
+ const farm=earned(true),h=handoff(farm,'bread','long');h.click();h.advance(.5)
+ const settled=structuredClone(farm),physics=h.state.elapsed
+ h.elapseWithoutFrame(60);assert.equal(h.state.stage,'baking');assert.deepEqual(farm,settled)
+ h.advance(0);assert.equal(h.state.stage,'finished');assert.ok(h.state.elapsed-physics<=.035+1e-8)
+ assert.equal(h.baked.at(-1),1);assert.equal(h.risen.at(-1),1)
+ h.advance(60);assert.deepEqual(farm,settled);assert.equal(h.saved.length,1)
+ assert.deepEqual(h.sounds,['cook.oven-in','cook.oven-out'])
+})
+
+test('closing a paid presentation retires its clock; reopening does not consume or grant again',()=>{
+ const farm=earned(true),h=handoff(farm,'bread','long');h.click();h.advance(.25);const settled=structuredClone(farm)
+ h.back();h.advance(60);assert.equal(h.state.stage,'baking');assert.deepEqual(h.sounds,['cook.oven-in']);assert.deepEqual(farm,settled)
+ const reopened=handoff(farm,'bread','long');reopened.advance(60);assert.equal(reopened.state.stage,'working');assert.equal(reopened.saved.length,0)
+ reopened.back();assert.deepEqual(farm,settled);assert.equal(h.saved.length,1)
+})
+
+
+test('short visibility gaps keep the remaining presentation time and first post-deadline frame finishes once',()=>{
+ const farm=earned(true),h=handoff(farm,'bread','long');h.click();h.advance(.5);const settled=structuredClone(farm)
+ h.elapseWithoutFrame(2);assert.equal(h.state.stage,'baking');assert.equal(h.saved.length,1)
+ h.advance(0);assert.equal(h.state.stage,'baking');assert.equal(h.state.bakeElapsed,2.5)
+ h.click();h.advance(1.499);assert.equal(h.state.stage,'baking')
+ h.advance(.4);assert.equal(h.state.stage,'finished');assert.deepEqual(h.sounds,['cook.oven-in','cook.oven-out'])
+ h.advance(100);assert.deepEqual(h.sounds,['cook.oven-in','cook.oven-out']);assert.deepEqual(farm,settled);assert.equal(h.saved.length,1)
 })

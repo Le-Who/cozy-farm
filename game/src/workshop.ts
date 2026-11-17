@@ -113,7 +113,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   let handMenuExpanded=true
   function closeHandMenu(restore=false){handMenuExpanded=false;handMenu.hidden=true;handButton.setAttribute('aria-expanded','false');if(restore)handButton.focus({preventScroll:true})}
   let stage: Stage = 'ingredients', activeTool: Tool = 'knead'
-  let work = 0, mixed = 0, stirring = 0, selected = 0, frame = 0, elapsed = 0, bakeElapsed = 0
+  let work = 0, mixed = 0, stirring = 0, selected = 0, frame = 0, elapsed = 0, bakeElapsed = 0, bakeStartedAt = 0
   let transfer=0
   const transferOrigin=new THREE.Vector3()
   let destroyed = false, committed = false, contextLost = false, assetsReady = false, propsReady=false, backgroundReady=false, layoutChanging=false
@@ -903,7 +903,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       hint.textContent = 'Принесите 2 пшеницы и 1 яйцо, затем попробуйте испечь снова.'
       announce('Тесто сохранено на доске. Для выпечки нужны 2 пшеницы и 1 яйцо.'); return
     }
-    committed = true; playBaySound('cook.oven-in'); release(undefined, true)
+    committed = true; bakeStartedAt = performance.now(); playBaySound('cook.oven-in'); release(undefined, true)
     surface.setCrustRoughness(chosenShape==='long'?.65:chosenShape==='round'?.48:.42)
     pieces.forEach(piece=>{piece.dirty=false;piece.offset.fill(0);piece.velocity.fill(0);piece.baking=prepareDoughBaking(piece.mesh.geometry,recognize(piece))})
     bakeButton.innerHTML = '<span>Выпекаем…</span>';fitBakeLabel()
@@ -964,7 +964,8 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       }
       positions.needsUpdate=true;colors.needsUpdate=true;mixGeometry.computeVertexNormals()
     }    if (stage === 'baking') {
-      bakeElapsed += delta
+      // This is a paid receipt animation, not a physics simulation. Catch up on resume.
+      bakeElapsed = Math.max(0, (now - bakeStartedAt) / 1000)
       const amount = Math.min(1, bakeElapsed / 4)
       surface.setBaked(THREE.MathUtils.smoothstep(amount,.18,1))
       ovenLight.intensity = Math.sin(amount * Math.PI) * 4
