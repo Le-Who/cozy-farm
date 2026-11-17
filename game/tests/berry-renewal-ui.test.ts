@@ -4,6 +4,7 @@ import { berryCropIds, canRenewBerryBed, createFarm, cropDefinitions, cropIds, g
 import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus, berrySeedPreview, revealBerrySeedPreview } from '../src/berry-renewal-ui.ts'
 import { isGuardedAction, ActionClickGuard, ActivationKeyGuard } from '../src/action-click-guard.ts'
 
+const visibleText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 function garden() {
   const farm = createFarm()
   farm.beds[0] = { kind: 'crop', crop: 'blueberry', growth: 3, watered: false, trait: 'dew' }
@@ -20,8 +21,8 @@ test('berry garden explains both choices and keeps selection, preview and cancel
   assert.equal(selection.choose(farm, 2), false); assert.equal(selection.choose(farm, 99), false)
   assert.equal(selection.choose(farm, 0), true)
   const html = renderBerryRenewal(farm, selection, () => '')
-  assert.match(html, /Бережный сбор: Росистая черника ×1/)
-  assert.match(html, /Обычный сбор на поле: Черника ×2 \(обычные\) \+ Росистая черника ×1/)
+  assert.match(visibleText(html), /Бережный сбор: Росистая черника ×1/)
+  assert.match(visibleText(html), /Обычный сбор на поле: Черника ×2 \(обычные\) \+ Росистая черника ×1/)
   assert.match(html, /3 ночи/); assert.match(html, /один полив на новый цикл/)
   assert.match(html, /data-action="berry-renewal-confirm"/); assert.match(html, /&quot;crop&quot;/)
   assert.deepEqual(farm, before); selection.reset(); assert.deepEqual(farm, before)
