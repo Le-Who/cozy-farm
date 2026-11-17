@@ -39,9 +39,11 @@ export function gardenPlanToken(value: string | undefined) {
   const match = /^(0|[1-9]\d{0,6}):(none|[0-3])$/.exec(value ?? '')
   return match ? { revision: Number(match[1]), slot: match[2] === 'none' ? null : Number(match[2]) } : undefined
 }
-export function renderGardenMode(farm: FarmState) {
+const gardenModeGuidance = 'Выбор другой культуры вручную выключит этот режим. Покупка семян сама по себе план не меняет.'
+const occupiedBedsGuidance = 'Занятые растения остаются на месте. Соберите их, когда созреют, или сохраните пересадкой. План не ускоряет рост и не выполняет работу за вас.'
+export function renderGardenMode(farm: FarmState, compactGuidance = false) {
   const plan = activeGardenPlan(farm)
-  return plan && farm.island === 'home' ? `<p class="garden-mode-note"><strong>Посев по плану: ${escape(plan.name)}</strong><br>Выбор другой культуры вручную выключит этот режим. Покупка семян сама по себе план не меняет.</p>` : ''
+  return plan && farm.island === 'home' ? `<p class="garden-mode-note"><strong>Посев по плану: ${escape(plan.name)}</strong>${compactGuidance ? '<span class="garden-plan-guidance-compact">' : ''}<br>${gardenModeGuidance}${compactGuidance ? '</span>' : ''}</p>` : ''
 }
 export function renderGardenPlans(farm: FarmState, editor: GardenPlanEditor, icon: (key: string) => string) {
   if (farm.island !== 'home') return '<p>Свои планы огорода доступны на Родном острове.</p>'
@@ -49,7 +51,8 @@ export function renderGardenPlans(farm: FarmState, editor: GardenPlanEditor, ico
   const token = `${book.revision}:${editor.slot}`
   const tabs = `<nav class="garden-pages" aria-label="Четыре личных плана">${book.pages.map((p, i) => `<button type="button" data-action="garden-slot" data-value="${i}" aria-pressed="${editor.slot === i}"${editor.draft ? ' disabled' : ''}><small>План ${i + 1}${book.active === i ? ' · Сеем' : ''}</small><strong>${escape(p?.name ?? 'Новая запись')}</strong></button>`).join('')}</nav>`
   const intro = '<p>Придумайте огород для кухни, ягодный уголок или любимый набор. Это только записи: растения, семена и монеты не меняются.</p>'
-  const mode = renderGardenMode(farm) + (book.active !== null ? button('Вернуться к ручному посеву', 'garden-follow', `${book.revision}:none`) : '')
+  const manualMode = book.active !== null ? button('Вернуться к ручному посеву', 'garden-follow', `${book.revision}:none`) : ''
+  const mode = renderGardenMode(farm) + manualMode
   if (!plan) return `<section class="garden-plans">${intro}${tabs}${mode}<p>Начните с пустой раскладки или скопируйте культуры, которые уже растут. Для каждой грядки можно выбрать свою культуру.</p><div class="dialog-actions">${button('Нарисовать план','garden-edit')}${button('Скопировать огород','garden-copy')}</div></section>`
   if (editor.shopping && !editor.draft) return renderGardenSeedBasket(farm, editor.slot, editor.shopping)
   const preview = gardenPlanPreview(farm, plan)
@@ -67,9 +70,10 @@ export function renderGardenPlans(farm: FarmState, editor: GardenPlanEditor, ico
       <div class="dialog-actions">${button('Сохранить план','garden-save','',!stale)}${button('Отменить изменения','garden-cancel')}</div>${grid}
       <div class="garden-brushes" role="group" aria-label="Что нарисовать">${[...cropIds, null].map(c => `<button type="button" data-action="garden-brush" data-value="${c ?? 'none'}" aria-pressed="${editor.brush === c}">${icon(c ? `ui-seed-${c}` : 'tool-hoe')}<span>${c ? cropDefinitions[c].name : 'Вручную'}</span></button>`).join('')}</div>${cells}<p>«Вручную» оставляет обычный выбор семян на этой грядке.</p></section>`
   }
-  return `<section class="garden-plans">${tabs}${mode}<h2>${escape(plan.name)}</h2><p>Совпало: ${preview.matching}/${preview.planned} · Свободно: ${preview.empty} · Занято другой культурой: ${preview.waiting}.</p><p>Занятые растения остаются на месте. Соберите их, когда созреют, или сохраните пересадкой. План не ускоряет рост и не выполняет работу за вас.</p>
-    <div class="dialog-actions">${button(book.active === editor.slot ? 'Сеем по этому плану' : 'Сеять по плану','garden-follow',token,book.active !== editor.slot)}${button('Изменить запись','garden-edit')}${button('Пересадить культуру','open-panel','transplant')}</div>${grid}${cells}${supply}
-    ${editor.deleting === token ? `<p>Удалить только запись «${escape(plan.name)}»? Посадки останутся. Если план активен, включится ручной посев.</p><div class="dialog-actions">${button('Да, удалить запись','garden-remove',token)}${button('Оставить запись','garden-cancel')}</div>` : button('Удалить запись','garden-delete',token)}</section>`
+  const desktopGuidance = `<div class="garden-plan-guidance-desktop">${activeGardenPlan(farm) ? `<p>${gardenModeGuidance}</p>` : ''}<p>${occupiedBedsGuidance}</p></div>`
+  return `<section class="garden-plans garden-plan-preview"><div class="garden-plan-controls">${tabs}${renderGardenMode(farm,true)}${manualMode}<h2>${escape(plan.name)}</h2><p>Совпало: ${preview.matching}/${preview.planned} · Свободно: ${preview.empty} · Занято другой культурой: ${preview.waiting}.</p><p class="garden-plan-guidance-compact">${occupiedBedsGuidance}</p>
+    <div class="dialog-actions">${button(book.active === editor.slot ? 'Сеем по этому плану' : 'Сеять по плану','garden-follow',token,book.active !== editor.slot)}${button('Изменить запись','garden-edit')}${button('Пересадить культуру','open-panel','transplant')}</div>${desktopGuidance}</div><div class="garden-plan-board">${grid}${cells}${supply}</div>
+    <div class="garden-plan-footer">${editor.deleting === token ? `<p>Удалить только запись «${escape(plan.name)}»? Посадки останутся. Если план активен, включится ручной посев.</p><div class="dialog-actions">${button('Да, удалить запись','garden-remove',token)}${button('Оставить запись','garden-cancel')}</div>` : button('Удалить запись','garden-delete',token)}</div></section>`
 }
 
 /** Existing notebook components, with a separate priced review before a real purchase. */
