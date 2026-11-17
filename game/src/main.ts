@@ -10,6 +10,7 @@ import { recipePlanningIngredient } from './recipe-planning'
 import {seedSavingQuote,saveCropSeeds} from './seed-saving'
 import {seedProductionFocus} from './seed-production-focus'
 import {renderSeedPicker} from './seed-picker-ui'
+import {revealSeedPickerFocus} from './seed-picker-focus'
 import './seed-picker.css'
 import {seedChoice,chooseSeedForBed} from './seed-choice'
 import {planBedWork,isCurrentBedWork,bedWorkKind} from './bed-work-intent'
@@ -4117,6 +4118,15 @@ app.addEventListener('change',event=>{
     }
   }
   if((input instanceof HTMLInputElement||input instanceof HTMLTextAreaElement)&&input.dataset.recipeName)perform(()=>nameSignature(farm,input.dataset.recipeName!,input.value),false,true)
+})
+dialogContent.addEventListener('focusin', event => {
+  const target = event.target
+  if (!(target instanceof HTMLButtonElement) || !target.matches('.seed-picker-tile:focus-visible')) return
+  // Check after native Tab scrolling or drawPanel's replacement-focus restoration.
+  requestAnimationFrame(() => {
+    if (dialog.open && panel === 'inventory' && bagTab === 'seeds')
+      revealSeedPickerFocus(dialogContent, target)
+  })
 })
 // Native focus scrolling may reveal only a text caret in a nested short viewport.
 // Reveal the whole compact row once on focus so its exact quantity and action stay together.
