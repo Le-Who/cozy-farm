@@ -437,13 +437,13 @@ try {
 } catch { /* A stale menu selection never prevents loading the farm. */ }
 const requirementLinks = new Map<string, Requirement>()
 
-function requirementLink(content: string, requirement: Requirement, className: string, name: string, ready = false) {
+function requirementLink(content: string, requirement: Requirement, className: string, name: string, ready = false, description = '') {
   if (ready) return `<li class="${className}" data-ready="true">${content}</li>`
   const key = String(requirementLinks.size)
   requirementLinks.set(key, requirement)
   const nursery = requirement.kind === 'stock' && getBerryNurserySource(farm, requirement.item) !== undefined
     ? `<button class="nursery-preserve" type="button" data-action="berry-nursery-ingredient" data-value="${key}" aria-label="Сохранить разновидность: ${name}">Сохранить разновидность</button>` : ''
-  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}" aria-label="Где найти: ${name}">${content}</button>${nursery}</li>`
+  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}" aria-label="Где найти: ${name}"${description ? ` aria-describedby="requirement-source-${key}"` : ''}>${content}${description ? `<small id="requirement-source-${key}">${escapeHtml(description)}</small>` : ''}</button>${nursery}</li>`
 }
 const islandNames = { home: 'Родной остров', grove: 'Солёная роща', cape: 'Цветочный мыс', village: 'Лавандовая гавань' }
 
@@ -931,14 +931,15 @@ function stockLabel(item: StockItem): { name: string; image: string } {
   }
 }
 
-function stockTile(item: StockItem) {
+function stockTile(item: StockItem) { return stockTileWithSource(item) }
+function stockTileWithSource(item: StockItem, source = '') {
   const stock = ingredientCount(farm, item)
   const label = stockLabel(item)
   const resource = item.kind === 'produce' || item.kind === 'fruit' ? item.item : item.kind === 'eggs' ? 'egg' : undefined
   const specialStock = resource !== undefined && Object.values(farm.variants[resource] ?? {}).some(count => count > 0)
   const name = stock < item.quantity && specialStock ? `${label.name} (обычный урожай)` : label.name
   const image = label.image
-  return requirementLink(`${icon(image)}<span>${name}</span><strong>${stock}/${item.quantity}</strong>`, {kind:'stock',item}, 'ingredient', `${name}, ${stock} из ${item.quantity}`, stock >= item.quantity)
+  return requirementLink(`${icon(image)}<span>${name}</span><strong>${stock}/${item.quantity}</strong>`, {kind:'stock',item}, 'ingredient', `${name}, ${stock} из ${item.quantity}`, stock >= item.quantity, source)
 }
 
 function recipeDestination(dish: DishId) {
@@ -955,10 +956,14 @@ function recipeCards(recipes: readonly DishId[]) {
     const rawValue = ingredients.reduce((sum,item)=>sum+item.quantity*unitPrice(item,farm),0)
     const fishChoices = dish === 'grilledFish' ? `<div class="recipe-fish-choices" role="group" aria-label="Рыба для гриля">${fishIds.map(id=>`<button type="button" data-action="grill-fish" data-value="${id}" aria-pressed="${cookingFish===id}" aria-label="${fishDefinitions[id].name}, в наличии ${farm.fish[id]}" title="${fishDefinitions[id].name}">${icon(fishImage(id))}<span>×${farm.fish[id]}</span></button>`).join('')}</div>` : ''
     const locked = recipe.capeLevel ? farm.capeLevel < recipe.capeLevel : farm.buildingLevels.farmhouse < recipe.requiredLevel || !!recipe.specialization && !hasFarmhouseSpecialization(farm, recipe.specialization)
+    const missing = !locked && dish === 'grilledFish' && farm.island === 'home' ? ingredients.filter(item => ingredientCount(farm,item) < item.quantity) : []
+    const salt = missing.length === 1 && missing[0].kind === 'seaSalt' ? missing[0] : undefined
+    const route = salt && getRequirementHint(farm, {kind:'stock',item:salt}).action
+    const source = route?.target === 'warehouse-supply' ? 'На местном складе' : route?.target === 'sail' && route.value === 'grove' ? 'Плыть в Солёную рощу' : ''
     return `<section class="recipe${locked ? ' recipe-locked' : ''}">
       <header class="recipe-summary">${icon(dishIcons[dish], 'recipe-art')}<div><h2>${recipe.name}</h2>
         <p class="recipe-value" title="Стоимость ингредиентов → цена блюда">${icon('tool-crate')} <span class="sr-only">Сырьё: </span>${rawValue} <span aria-hidden="true">→</span> ${icon('coin')} <span class="sr-only">Блюдо: </span><strong>${recipe.sellPrice}</strong></p></div></header>
-      ${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>`}
+      ${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(item => item === salt && source ? stockTileWithSource(item,source) : stockTile(item)).join('')}</ul>`}
       ${locked ? `<p class="recipe-reason">${action.label}</p>${button('Улучшения','upgrades',true,{secondary:true})}`
         : farm.island !== destination ? button(destination === 'cape' ? 'На Цветочный мыс' : 'На кухню', 'sail', canSailTo(farm, destination), {value:destination}):button('Готовить', 'cook', action.available, { value: dish, context: recipe.name })}</section>`
   }).join('')}</div>`
@@ -1163,9 +1168,9 @@ function marketInlineCard(item: ReturnType<typeof goods>[number]) {
     <span class="market-inline-art" aria-hidden="true">${itemIcon(item.image,item.trait)}</span>
     <div class="market-inline-copy"><h2 class="market-inline-name">${escapeHtml(item.name)}</h2><p class="market-inline-stock">В запасе: ${item.count}</p><p class="market-inline-price">${item.price} ${icon('coin')} за штуку</p></div>
     <div class="market-inline-footer"><div class="market-inline-stepper" role="group" aria-label="Количество: ${escapeHtml(item.name)}">
-      <button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button>
+      <span class="market-step-limit" tabindex="-1" role="group" aria-label="Минимум: 1"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button></span>
       <input data-inline-quantity type="number" min="1" max="${item.count}" step="1" inputmode="numeric" value="${escapeHtml(view.raw)}" aria-label="Количество: ${escapeHtml(item.name)}" aria-describedby="${id}"${receipt||view.pending?' disabled':''}>
-      <button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="more" aria-label="Увеличить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity>=item.count?' disabled':''}>+</button>
+      <span class="market-step-limit" tabindex="-1" role="group" aria-label="Максимум: ${item.count}"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="more" aria-label="Увеличить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity>=item.count?' disabled':''}>+</button></span>
     </div><button type="button" class="market-inline-sell" aria-label="${escapeHtml(receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)}" data-action="${receipt?'inline-sale-again':'inline-sale-confirm'}" data-value="${escapeHtml(item.key)}"${view.pending||!receipt&&!quote.valid?' disabled':''}>${receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`}</button></div>
     <p class="market-inline-status" id="${id}" role="status">${receipt?`Продано: ${receipt.quantity} · ${quantity(receipt.total,'монета')}. Осталось: ${receipt.remaining}.`:quote.valid?'':`Введите целое число от 1 до ${item.count}.`}</p>
   </li>`
@@ -1561,6 +1566,7 @@ type PanelVisit = {
   ferryView: FerryPanelView | undefined;
   marketNextOpen: string[];
   guideGardenOpen: boolean;
+  gardenSupplies: {slot: number; revision: number; open: boolean} | undefined;
   warehouseRequest: StockItem | undefined;
   expeditionPort: ExpeditionPort; expeditionOffer: string;
   warehouse: typeof selectedWarehouse; freightPlanOpen: boolean; journeyDetailsOpen: boolean; journalDetailsOpen: boolean;
@@ -1591,7 +1597,8 @@ function focusKey(button: HTMLButtonElement) {
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
-  return {guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  const supplies = panel === 'garden-plans' ? dialogContent.querySelector<HTMLDetailsElement>('.garden-supplies') : null
+  return {gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,honeyKitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
@@ -1616,6 +1623,11 @@ function goBack() {
   restoreFerryPanelView(dialogContent,previous.ferryView)
   const gardenGroup = dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')
   if (gardenGroup) gardenGroup.open = previous.guideGardenOpen
+  const supplies = previous.panel === 'garden-plans' ? previous.gardenSupplies : undefined
+  if (supplies && supplies.slot === gardenEditor.slot && supplies.revision === farm.gardenPlans.revision) {
+    const disclosure = dialogContent.querySelector<HTMLDetailsElement>('.garden-supplies')
+    if (disclosure) disclosure.open = supplies.open
+  }
   if(previous.panel==='festival') {
     const source=[...dialogContent.querySelectorAll<HTMLButtonElement>('[data-action="festival-source"]')].find(button=>focusKey(button)===previous.focus)
     const alternatives=source?.closest<HTMLDetailsElement>('details.festival-alternatives')
@@ -3650,7 +3662,12 @@ app.addEventListener('click', async (event) => {
     case 'sell': if(salePresentation.place)break;if(perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('trade.receive'); break
     case 'inline-sale-step': {
       const context=inlineSaleContext(control), direction=control.dataset.step
-      if(context&&(direction==='less'||direction==='more')&&marketInlineSales.step(context.item.key,context.token,direction,context.item.count,context.item.price))updateInlineSaleCard(context.card)
+      const keyboardStep = event.detail === 0 && document.activeElement === control
+      if(context&&(direction==='less'||direction==='more')&&marketInlineSales.step(context.item.key,context.token,direction,context.item.count,context.item.price)){
+        updateInlineSaleCard(context.card)
+        // Keep the same tab position without arming Enter-to-sell or the opposite step.
+        if (keyboardStep && control.disabled) control.closest<HTMLElement>('.market-step-limit')?.focus({preventScroll:true})
+      }
       break
     }
     case 'inline-sale-confirm': if(event.detail<=1)confirmInlineSale(control); break
