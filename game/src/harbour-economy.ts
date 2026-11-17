@@ -47,7 +47,9 @@ export function receiveFerryExpedition(farm: FarmState) {
   }
   if (manifest.kind === 'trade') noteFestivalDelivery(farm.festivals, manifest.incoming.reduce((sum,item)=>sum+item.quantity,0))
   farm.coins += manifest.earnCoins
-  return { ok: true, message: manifest.kind === 'explore' ? 'Новый порт открыт. Выберите его на карте.' : 'Груз и выручка в ваших припасах. У порта появились новые запасы.' }
+  const received = manifest.earnCoins > 0
+    ? manifest.incoming.length ? 'Груз и выручка получены.' : 'Выручка получена.' : 'Груз получен.'
+  return { ok: true, message: manifest.kind === 'explore' ? 'Новый порт открыт. Выберите его на карте.' : `${received} Можно выбрать следующий рейс.` }
 }
 
 function amount(farm: FarmState, id: string): number {

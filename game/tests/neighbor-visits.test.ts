@@ -1,11 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
 import { createFarm, restoreCurrentFarm, endDay, sail, workBed, petChicken, introduceHenToVisitor, bakeWorkshop, pickFruit, getNeighborPlans, joinNeighborPlan, serveNeighborPlan, finishNeighborPlan } from '../src/farm.ts'
 import { inviteNeighborVisit, finishNeighborVisit, visitActivities, visitActivityIds } from '../src/neighbor-visits.ts'
 import { renderNeighborVisits, renderVisitRest } from '../src/neighbor-visits-ui.ts'
 import { restoreLegacyFarm } from '../src/farm-save-migration.ts'
 import { farmSaveKeys as keys, friendshipFarmSaveKeys as v5 } from '../src/farm-save-keys.ts'
 import { VersionedSave } from '../src/versioned-save.ts'
+import { getBedStage } from '../src/farm.ts'
 function ready(){
   const f=createFarm();f.day=5;f.boatOwned=true;f.buildingLevels.farmhouse=2
   f.projects.fair={'dishes:appleJam':1,eggBaskets:1,'produce:carrot':4,'produce:wheat':3}
@@ -21,6 +25,35 @@ function ready(){
 }
 const load=(f:ReturnType<typeof createFarm>)=>restoreCurrentFarm(JSON.parse(JSON.stringify(f)))!
 const economy=(f:ReturnType<typeof createFarm>)=>{const copy=structuredClone(f) as any;delete copy.neighborVisits;return copy}
+
+test('active harvest visit does not offer a ripe-bed target when none exists',()=>{
+  for(const activity of ['beaHarvest','finnGarden'] as const){
+    const f=ready();f.beds=f.beds.map(()=>({kind:'empty'}));f.beds[0]={kind:'crop',crop:'carrot',growth:0,watered:false}
+    assert.ok(inviteNeighborVisit(f,activity).ok);const before=structuredClone(f)
+    const html=renderNeighborVisits(f,()=>''),target=html.match(/<button[^>]*data-action="visit-do"[^>]*>[\s\S]*?<\/button>/)![0]
+    assert.match(target,/disabled/);assert.match(target,/Нет зрелых грядок/)
+    assert.match(html,/Побыть на ферме/);assert.match(html,/Завершить визит/);assert.deepEqual(f,before)
+    f.beds[0]={kind:'crop',crop:'carrot',growth:1,watered:false}
+    const available=renderNeighborVisits(f,()=>'').match(/<button[^>]*data-action="visit-do"[^>]*>[\s\S]*?<\/button>/)![0]
+    assert.doesNotMatch(available,/disabled/);assert.match(available,/К зрелой грядке/)
+  }
+})
+
+test('stale harvest target keeps the guest book open; ready target still focuses without harvesting',()=>{
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const branch=main.slice(main.indexOf("    case 'visit-do': {"),main.indexOf("    case 'hen-friend-select':"))
+  for(const activity of ['beaHarvest','finnGarden'] as const){
+    const f=ready();f.beds=f.beds.map(()=>({kind:'empty'}));assert.ok(inviteNeighborVisit(f,activity).ok)
+    const before=structuredClone(f),calls:string[]=[],notices:string[]=[],focus:unknown[]=[]
+    const state={farm:f,visitActivities,getBedStage,panel:'neighbor-visits',dialog:{open:true},value:String(f.neighborVisits.serial),
+      closeDialog:()=>calls.push('close'),fieldViewButton:{getAttribute:()=> 'false'},toggleFieldView:()=>calls.push('toggle'),
+      island:{focusTarget:(target:unknown)=>focus.push(target)},notify:(message:string)=>notices.push(message),drawPanel:()=>calls.push('redraw')}
+    const dispatch=()=>runInNewContext(stripTypeScriptTypes(`switch('visit-do'){${branch}}`),state)
+    dispatch();assert.deepEqual(calls,['redraw']);assert.deepEqual(focus,[]);assert.equal(notices.length,1);assert.match(notices[0],/Зрелых грядок пока нет/);assert.deepEqual(f,before)
+    f.beds[2]={kind:'crop',crop:'carrot',growth:1,watered:false};const ripe=structuredClone(f);calls.length=0
+    dispatch();assert.deepEqual(calls,['close']);assert.deepEqual(JSON.parse(JSON.stringify(focus)),[{kind:'bed',index:2}]);assert.deepEqual(f,ripe)
+  }
+})
 test('earned invitation is free, one guest only, invalid and repeated starts are atomic',()=>{
   assert.equal(inviteNeighborVisit(createFarm(),'beaFlock').ok,false)
   const f=ready(),before=economy(f)

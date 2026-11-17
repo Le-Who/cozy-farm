@@ -23,7 +23,7 @@ test('tree products expose canonical price, maturity and stock with one original
 test('full Home orchard retains exact storage guidance and does not falsely block buying into stock',()=>{
  const farm=createFarm();assert.ok(buyAndPlantTree(farm,1,'apple').ok);assert.ok(buyAndPlantTree(farm,2,'apple').ok);const before=structuredClone(farm),{html,actions}=render(farm)
  assert.ok(html.includes('Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.'))
- assert.equal(actions.filter(a=>a.action==='orchard').length,1);assert.equal(actions.find(a=>a.action==='orchard')?.label,'Освободить место')
+ assert.equal(actions.filter(a=>a.action==='market-orchard-space').length,1);assert.equal(actions.find(a=>a.action==='market-orchard-space')?.label,'Освободить место')
  assert.equal(actions.find(a=>a.options.value==='apple')?.enabled,true);assert.equal(actions.find(a=>a.options.value==='pear')?.enabled,false);assert.deepEqual(farm,before)
  assert.ok(buySapling(farm,'apple').ok);assert.deepEqual(farm.trees,before.trees);assert.deepEqual(farm.treeNursery,before.treeNursery);assert.equal(farm.coins,0);assert.equal(farm.saplings.apple,before.saplings.apple+1);assert.deepEqual(restoreCurrentFarm(structuredClone(farm)),farm)
 })

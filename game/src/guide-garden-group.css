@@ -1,0 +1,11 @@
+/* Home's garden destinations are one optional group; shared navigation stays unchanged. */
+.farm-dialog[data-panel="guide"] .guide-garden-group{margin-top:10px;border:1px solid #dec094;border-radius:12px;background:#fff8e8}
+.guide-garden-group>summary{display:flex;align-items:center;gap:8px;min-height:44px;box-sizing:border-box;padding:5px 9px;color:var(--plum);cursor:pointer;list-style:none}
+.guide-garden-group>summary::-webkit-details-marker{display:none}
+.guide-garden-group>summary .icon{width:31px;height:31px;object-fit:contain}
+.guide-garden-group>summary::after{content:'+';margin-left:auto;font-size:23px;line-height:1}
+.guide-garden-group[open]>summary::after{content:'−'}
+.guide-garden-group>summary:focus-visible{outline:3px solid #80559a;outline-offset:-2px;border-radius:11px}
+.guide-garden-group>.explore-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 7px 7px}
+.guide-garden-group .explore-tile{min-width:0}
+.guide-garden-group .explore-tile strong{min-width:0;overflow-wrap:anywhere}
