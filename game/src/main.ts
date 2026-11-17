@@ -862,7 +862,7 @@ function inventoryStockRow(listing: ReturnType<typeof goods>[number]): string {
     return identified(row(image,name,`×${count}`,button(farm.island==='home'?`Распаковать · +${action.eggs}`:'Распаковать дома',kind==='basket'?'unpack-egg-basket':'unpack-egg-crate',action.available,{secondary:true}),trait))
   }
   if(item.kind!=='fish')return identified(row(image,name,`×${count}`,'',trait))
-  return identified(row(image,name,`×${count} · ${fishSource(item.item)}`,button('На гриль','fish-kitchen',true,{value:item.item})+button(`Продать 1 · ${price}`,farm.island==='home'?'sell-item':'fish-market',true,{value:key,secondary:true})))
+  return identified(row(image,name,`×${count} · ${fishSource(item.item)}`,button('На гриль','fish-kitchen',true,{value:item.item})+button(`Продать 1${farm.island==='home'?'':' дома'} · ${price}`,farm.island==='home'?'sell-item':'fish-market',true,{value:key,secondary:true})))
 }
 
 function inventorySupplies() {
@@ -3497,10 +3497,20 @@ app.addEventListener('click', async (event) => {
       if(farm.island==='home')openPanel('kitchen',true,farm.island,'page.unfold',undefined,{grillFish:id})
       break
     }
-    case 'fish-market':
-      marketTab='sell';marketSellGroup='shore'
-      if(farm.island!=='home'){closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))}
-      openPanel('market');break
+    case 'fish-market': {
+      if(panel!=='inventory'||!dialog.open)break
+      const id=fishIds.find(id=>`fish:${id}`===value)
+      if(!id||farm.fish[id]<1)break
+      if(farm.island!=='home'){
+        if(!canSailTo(farm,'home'))break
+        closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))
+        if((farm.island as (typeof islandIds)[number])!=='home')break
+        // Keep a Home Supplies return target for the existing quote's Cancel/Back.
+        openPanel('inventory',false)
+      }
+      beginExactSale({kind:'market',key:`fish:${id}`})
+      break
+    }
     case 'cove-shells':closeDialog();island.focusTarget({kind:'shell',index:[0,1,2].find(index=>!farm.shellsCollectedToday.includes(index))??0});break
     case 'warehouse-supply': {
       selectedWarehouseRequest=warehouseRequest(value)
