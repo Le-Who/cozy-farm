@@ -19,8 +19,8 @@ test('the existing seed detail can show an honest tradeoff, including pumpkins t
   const {renderSeedSaving}=await import('../src/seed-saving.ts')
   const farm=createFarm();assert.ok(workBed(farm,7,0).ok)
   const before=structuredClone(farm),html=renderSeedSaving(farm,'pumpkin')
-  assert.match(html,/Цена: тыква ×1 · обычный урожай/)
-  assert.match(html,/В припасах: 2 → 1/);assert.match(html,/Семян: 1 → 4/)
+  assert.match(html,/Только обычный урожай: тыква ×1/)
+  assert.match(html,/После обмена: урожай ×1/);assert.match(html,/семена ×4/)
   assert.match(html,/Продажа продукта: 9 монет/);assert.match(html,/пакет на рынке: 8 монет/)
   assert.match(html,/data-action="save-crop-seeds"/)
   assert.match(renderSeedSaving(farm,'carrot'),/Продажа продукта: 2 монеты; такой же пакет на рынке: 4 монеты/)
@@ -126,4 +126,35 @@ test('fair prices remain honest and entry plus spending own double-click and hel
   mouse.remember(click);assert.ok(mouse.blocks({...click,detail:2,timeStamp:200}))
   const key=new ActivationKeyGuard();assert.equal(key.blocks({key:'Enter',repeat:false},true),false)
   assert.equal(key.blocks({key:'Enter',repeat:true},false),true)
+})
+
+
+test('seed-saving describes the one ordinary product exchange without repeating sow instructions', async()=>{
+  const {renderSeedSaving}=await import('../src/seed-saving.ts')
+  const farm=createFarm();assert.ok(workBed(farm,9,0).ok)
+  const before=structuredClone(farm),q=seedSavingQuote(farm,'carrot')!,html=renderSeedSaving(farm,'carrot')
+  assert.match(html,/<h3>Семена из урожая<\/h3>/)
+  assert.match(html,/Только обычный урожай: морковь ×1/)
+  assert.match(html,/>Обменять урожай на 3 семени<\/button>/)
+  assert.match(html,/После обмена: урожай ×2 · семена ×6/)
+  assert.ok(html.includes(`data-value="${q.token}"`))
+  assert.doesNotMatch(html,/Посев выбирается отдельно|Необычные продукты останутся у вас|→/)
+  assert.deepEqual(farm,before)
+})
+
+test('seed-saving unavailable views show no fictitious stock loss, seed gain or unsafe total', async()=>{
+  const {renderSeedSaving}=await import('../src/seed-saving.ts')
+  for(const reason of ['missing','seeds','work']){
+    const farm=createFarm();farm.variants.carrot={star:2}
+    if(reason!=='missing')assert.ok(workBed(farm,9,0).ok)
+    if(reason==='seeds')farm.seeds.carrot=Number.MAX_SAFE_INTEGER
+    if(reason==='work')farm.workToday=Number.MAX_SAFE_INTEGER
+    const before=structuredClone(farm),q=seedSavingQuote(farm,'carrot')!,html=renderSeedSaving(farm,'carrot')
+    assert.equal(q.available,false);assert.match(html,/data-action="save-crop-seeds"[^>]* disabled/)
+    assert.doesNotMatch(html,/→|После обмена|9007199254740994/)
+    assert.match(html,reason==='missing'?/Обычного урожая пока нет/:/Обмен сейчас недоступен/)
+    assert.match(html,/<summary>Сравнить с покупкой<\/summary>/)
+    assert.ok(html.includes(`data-value="${q.token}"`))
+    assert.equal(saveCropSeeds(farm,q.token).ok,false);assert.deepEqual(farm,before)
+  }
 })
