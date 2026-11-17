@@ -128,6 +128,7 @@ import './harbour-life.css'
 import {applyIngredientFinishes} from './ingredient-finish'
 import './style.css'
 import './navigation.css'
+import './guide-garden-group.css'
 import './kitchen-neighbours.css'
 import { chooseHoneyKitchenRecipe, renderHoneyKitchenMenu, type HoneyKitchenRecipe } from './honey-kitchen-menu'
 import './honey-kitchen-menu.css'
@@ -140,6 +141,8 @@ import { getDiscoveryJournal } from './discovery-journal'
 import { getFruitSource, nurseryFruitDetail } from './orchard-guidance'
 import {TreeStorageChoice,storedTreeChoiceLabel,revealTreeStorageReturn} from './tree-storage-choice'
 import './tree-storage-choice.css'
+import { orchardMarketReturnIndex } from './orchard-market-return'
+import './orchard-market-return.css'
 import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
@@ -1258,7 +1261,7 @@ function marketCards() {
     const definition=cropDefinitions[crop]
     return `<section data-seed-pack="${crop}"><div class="market-seed-art">${icon('ui-seed-'+crop)}</div><div class="market-seed-copy"><h2>${definition.name}</h2><p>В пакете: ${seedPackSize} ${ruPlural(seedPackSize,['семя','семени','семян'])}</p><p class="market-seed-price" aria-label="${quantity(definition.seedPrice,'монета')} за пакет">${definition.seedPrice} ${icon('coin')} за пакет</p></div>${button('Купить пакет','buy-seeds',farm.coins>=definition.seedPrice,{crop,context:`${definition.name}, ${seedPackSize} семени за ${quantity(definition.seedPrice,'монета')}`})}</section>`
   }).join('')}</div>${stall?`<footer class="market-seed-tools">${stall}</footer>`:''}</section>`
-  if(marketCategory==='trees')return `<section data-market-tree-browser><div class="market-controls">${tabs}</div>${categories}${!farm.trees.home.includes(null)?`<div class="market-tree-space"><p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','orchard',true,{secondary:true}))}</div>`:''}<div class="market-tree-grid">${treeIds.map(tree=>{
+  if(marketCategory==='trees')return `<section data-market-tree-browser><div class="market-controls">${tabs}</div>${categories}${!farm.trees.home.includes(null)?`<div class="market-tree-space"><p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','market-orchard-space',true,{secondary:true}))}</div>`:''}<div class="market-tree-grid">${treeIds.map(tree=>{
     const definition=treeDefinitions[tree]
     return `<section data-tree-product="${tree}"><div class="market-tree-art">${icon('ui-tree-'+tree)}</div><div class="market-tree-copy"><h2>${definition.saplingName}</h2><p>${quantity(definition.days,'ночь')} до зрелости</p><p>В запасе: ${farm.saplings[tree]}</p><p class="market-tree-price" aria-label="${quantity(definition.saplingPrice,'монета')} за саженец">${definition.saplingPrice} ${icon('coin')} за саженец</p></div>${button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,context:definition.saplingName})}</section>`
   }).join('')}</div>${stall?`<footer class="market-tree-tools">${stall}</footer>`:''}</section>`
@@ -1556,6 +1559,7 @@ type PanelVisit = {
   recipeBook: RecipeBookView;
   ferryView: FerryPanelView | undefined;
   marketNextOpen: string[];
+  guideGardenOpen: boolean;
   warehouseRequest: StockItem | undefined;
   expeditionPort: ExpeditionPort; expeditionOffer: string;
   warehouse: typeof selectedWarehouse; freightPlanOpen: boolean; journeyDetailsOpen: boolean; journalDetailsOpen: boolean;
@@ -1569,6 +1573,15 @@ type PanelVisit = {
   kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenGroup;kitchenDish:DishId;honeyKitchenDish:HoneyKitchenRecipe;signatureFamily:SignatureFamily;
 }
 const panelHistory: PanelVisit[] = []
+// Identity ties this shortcut to its exact Market visit, never another Orchard entry.
+let marketTreeSpaceVisit: PanelVisit | undefined
+function marketTreeReturnIndex() {
+  return orchardMarketReturnIndex(panelHistory, marketTreeSpaceVisit, panel, farm.island)
+}
+function marketTreeContinuation() {
+  if (marketTreeReturnIndex() < 0 || !farm.trees.home.includes(null)) return ''
+  return `<section class="orchard-market-return"><p>Место для нового дерева свободно.</p>${button('К саженцам','market-trees-return')}</section>`
+}
 let panelRenderVersion = 0
 function focusKey(button: HTMLButtonElement) {
   const controls = Object.entries(button.dataset).filter(([key])=> !['selected','active','ready'].includes(key))
@@ -1577,7 +1590,7 @@ function focusKey(button: HTMLButtonElement) {
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
-  return {recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  return {guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,honeyKitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack() {
@@ -1600,6 +1613,8 @@ function goBack() {
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;honeyKitchenDish=previous.honeyKitchenDish;signatureFamily=previous.signatureFamily
   openPanel(previous.panel,false,farm.island,'page.fold')
   restoreFerryPanelView(dialogContent,previous.ferryView)
+  const gardenGroup = dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')
+  if (gardenGroup) gardenGroup.open = previous.guideGardenOpen
   if(previous.panel==='festival') {
     const source=[...dialogContent.querySelectorAll<HTMLButtonElement>('[data-action="festival-source"]')].find(button=>focusKey(button)===previous.focus)
     const alternatives=source?.closest<HTMLDetailsElement>('details.festival-alternatives')
@@ -1774,6 +1789,7 @@ function drawPanel() {
   if (!panel || harbourScene) return
   if (panel === 'fishing' && fishingGame || panel === 'workshop' && workshopGame || panel === 'cookery' && cookeryGame || panel === 'arrangement' && arrangementGame) return
   if (panel === 'recipes') { recipeBook.capture(dialogContent); recipeBook.reconcile(farm) }
+  const guideGardenOpen = panel === 'guide' && (dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false)
   panelRenderVersion++
   requirementLinks.clear()
   const sceneBack=dialog.querySelector<HTMLButtonElement>('.scene-back')!
@@ -2044,15 +2060,16 @@ function drawPanel() {
       break
     case 'guide': {
       const home = farm.island === 'home', village = farm.island === 'village'
-      const places: string[] = []
+      const places: string[] = [], garden: string[] = []
       const tile = (name: string, image: string, value: Panel, action = 'open-panel') =>
         `<button class="explore-tile" type="button" data-action="${action}" data-value="${value}">${icon(image)}<strong>${name}</strong></button>`
-      if (home || farm.island === 'grove') places.push(tile('Сад','ui-tree-apple','orchard'),tile('Рыбалка','tool-rod','fishing'))
+      if (farm.island === 'grove') places.push(tile('Сад','ui-tree-apple','orchard'),tile('Рыбалка','tool-rod','fishing'))
       if (home) {
-        places.push(tile('Свои планы огорода','field','garden-plans'),tile('Пересадка культур','tool-seeds','transplant'),tile('Размножить ягодный куст','ui-seed-blueberry','berry-nursery'),tile('Свой ягодник','ui-seed-strawberry','berry-renewal'),tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'))
+        places.push(tile('Дом','upgrade-farmhouse-card','rest'),tile('Курятник','tool-hen','coop'),tile('Рынок','ui-market','market'),tile('Улучшения','hammer','upgrades'),tile('Рыбалка','tool-rod','fishing'))
+        garden.push(tile('Сад','ui-tree-apple','orchard'),tile('Свои планы огорода','field','garden-plans'),tile('Пересадка культур','tool-seeds','transplant'),tile('Размножить ягодный куст','ui-seed-blueberry','berry-nursery'),tile('Свой ягодник','ui-seed-strawberry','berry-renewal'))
         if (isProjectComplete(farm,'fair')) places.push(tile('Гость ярмарки','ui-market','guest'),tile('Просьбы соседей','ui-bea','intents'))
       }
-      if (village) places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'),tile('Общий ужин','ui-grilled-fish','village-meal'))
+      if (village) places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'),tile(getVillageMeal(farm, pastryShape).served ? 'Ужин завтра' : 'Общий ужин','ui-grilled-fish','village-meal'))
       if (farm.island === 'cape') {
         places.push(tile('Пасека','ui-honey','hive'))
         if (farm.capeLevel >= 3) places.push(tile('Медовая кухня','ui-honey-biscuits','honey-kitchen'))
@@ -2070,6 +2087,7 @@ function drawPanel() {
         ...(!village && farm.village.built ? [tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music')] : []),
       ]
       dialogContent.innerHTML = `<section class="explore-section"><h2>${islandNames[farm.island]}</h2><div class="explore-grid">${places.join('')}</div></section>
+        ${garden.length ? `<details class="guide-garden-group" data-guide-garden${guideGardenOpen ? ' open' : ''}><summary>${icon('field')}<strong>Огород и сад</strong></summary><div class="explore-grid">${garden.join('')}</div></details>` : ''}
         ${away.length ? `<section class="explore-section"><h2>На других островах</h2><div class="explore-grid">${away.join('')}</div></section>` : ''}
         <div class="explore-personal">${tile('Дневник','star','journal')}${tile('Запасы','ui-bag','inventory')}${home || village ? tile('Мои рецепты','ui-signature-bright','recipes') : ''}${button('Настройки','open-panel',true,{value:'settings',secondary:true})}</div>`
       break
@@ -2166,7 +2184,7 @@ function drawPanel() {
         ? button('Кухня','kitchen',true,{secondary:true}) + (isProjectComplete(farm,'fair') ? button('Просьбы соседей','open-panel',true,{value:'intents',secondary:true}) : '')
         : farm.island === 'grove' ? button('Живая заводь','open-panel',true,{value:'cove',secondary:true}) + (getHarborOrder(farm) ? button('Заказ гавани','visit-harbor',true,{secondary:true}) : '')
         : farm.island === 'cape' ? button(farm.capeLevel>=3?'Медовая кухня':'Пасека','open-panel',true,{value:farm.capeLevel>=3?'honey-kitchen':'hive',secondary:true})
-        : button('Соседи','open-village',true,{secondary:true}) + button('Общий ужин','village-meal',true,{secondary:true})
+        : button('Соседи','open-village',true,{secondary:true}) + button(getVillageMeal(farm, pastryShape).served ? 'Ужин завтра' : 'Общий ужин','village-meal',true,{secondary:true})
       dialogContent.innerHTML = `<nav class="island-selector" aria-label="Острова">${selectors}</nav>
         <article class="journey-card" data-island="${destination.id}" data-unlocked="${destination.unlocked}">
           <div class="journey-overview">
@@ -2191,7 +2209,7 @@ function drawPanel() {
       break
     case 'orchard':
       if (farm.island !== 'home' && farm.island !== 'grove') break
-      dialogContent.innerHTML = `<p class="dialog-intro">В саду деревья растут и дают новые плоды после отдыха. Уберите дерево на хранение, чтобы бесплатно освободить место; потом его можно вернуть.</p>
+      dialogContent.innerHTML = marketTreeContinuation()+`<p class="dialog-intro">В саду деревья растут и дают новые плоды после отдыха. Уберите дерево на хранение, чтобы бесплатно освободить место; потом его можно вернуть.</p>
         <ul class="dialog-list">${farm.trees[farm.island].map((_, index) => treeRow(index)).join('')}</ul>${nurseryCard()}`
       break
     case 'tree': {
@@ -2207,7 +2225,7 @@ function drawPanel() {
           <p class="dialog-intro">Хранение бесплатно освободит это место. Возраст, готовые плоды и особенность сохранятся; рост и новые плоды будут на паузе.</p>
           ${nav(button('Убрать дерево на хранение','store-tree',true,{value:treeSlot,secondary:true}))}`
       }else{
-        dialogContent.innerHTML=treeSelector()+nurseryCard(treeSlot)+`<div class="sapling-options">${treeIds.map(tree=>{
+        dialogContent.innerHTML=treeSelector()+marketTreeContinuation()+nurseryCard(treeSlot)+`<div class="sapling-options">${treeIds.map(tree=>{
           const definition=treeDefinitions[tree],owned=farm.saplings[tree]>0
           return `<article class="sapling-option">${icon(`ui-tree-${tree}`)}<h2>${definition.treeName}</h2><span>До зрелости: ${quantity(definition.days, 'ночь')}</span>${button(owned?'Посадить':'Купить и посадить','buy-plant-tree',owned||farm.coins>=definition.saplingPrice,{value:tree,context:`${definition.treeName}`,cost:owned?undefined:{icon:'coin',amount:definition.saplingPrice}})}</article>`
         }).join('')}</div>`
@@ -2388,6 +2406,7 @@ function closeDialog() {
   stopArrangement()
   panel = undefined
   panelHistory.length=0
+  marketTreeSpaceVisit=undefined
   if (dialog.open) dialog.close()
   updateCommunityReturn()
 }
@@ -3792,6 +3811,26 @@ app.addEventListener('click', async (event) => {
     case 'pet': activateTarget({ kind: 'hen', index: Number(value) }); break
     case 'gather-salt': activateTarget({ kind: 'salt' }); break
     case 'guide': openPanel('guide'); break
+    case 'market-orchard-space': {
+      if (panel !== 'market' || !dialog.open || marketTab !== 'buy' || marketCategory !== 'trees' || farm.island !== 'home' || farm.trees.home.includes(null)) break
+      marketTreeSpaceVisit = rememberPanel()
+      // The space button disappears once a slot is free. Return to the named category,
+      // not an arbitrary purchase or a no-longer-present control.
+      const category = dialogContent.querySelector<HTMLButtonElement>('[data-action="market-category"][data-value="trees"]')
+      marketTreeSpaceVisit.focus = category ? focusKey(category) : undefined
+      marketTreeSpaceVisit.scroll = 0
+      panelHistory.push(marketTreeSpaceVisit)
+      openPanel('orchard', false)
+      break
+    }
+    case 'market-trees-return': {
+      const index = marketTreeReturnIndex()
+      if (!dialog.open || index < 0 || !farm.trees.home.includes(null)) break
+      panelHistory.length = index + 1
+      marketTreeSpaceVisit = undefined
+      goBack()
+      break
+    }
     case 'orchard':
       if (value) treeStorageChoice.choose(farm,value)
       openPanel('orchard')
@@ -3886,8 +3925,14 @@ app.addEventListener('click', async (event) => {
     case 'store-tree': {
       if (panel === 'tree' && Number(value) === treeSlot && perform(() => storeTree(farm, treeSlot))) {
         dialogContent.scrollTop = 0
-        dialogContent.querySelector<HTMLButtonElement>('[data-action="return-nursery-tree"]')?.focus({ preventScroll: true })
-        revealTreeStorageReturn(dialogContent)
+        const continuation = dialogContent.querySelector<HTMLButtonElement>('[data-action="market-trees-return"]')
+        if (continuation) {
+          continuation.focus({ preventScroll: true })
+          continuation.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        } else {
+          dialogContent.querySelector<HTMLButtonElement>('[data-action="return-nursery-tree"]')?.focus({ preventScroll: true })
+          revealTreeStorageReturn(dialogContent)
+        }
       }
       break
     }
@@ -3989,6 +4034,11 @@ dialogContent.addEventListener('toggle',event=>{
     else if(expandedRepeatId===details.dataset.repeatGuide)expandedRepeatId=undefined
   }
   const detail=event.target
+  if(detail instanceof HTMLDetailsElement && detail.hasAttribute('data-guide-garden') && panel==='guide' && detail.open){
+    const summary=detail.querySelector('summary')
+    // Reveal a group the player just opened, never overwrite a restored Back position.
+    if(summary===document.activeElement && detail.getBoundingClientRect().bottom>dialogContent.getBoundingClientRect().bottom)summary?.scrollIntoView({block:'start'})
+  }
   if(detail instanceof HTMLDetailsElement && detail.classList.contains('journey-details')) journeyDetailsOpen=detail.open
   if(detail instanceof HTMLDetailsElement && detail.classList.contains('discovery-roadmap')) journalDetailsOpen=detail.open
 },true)

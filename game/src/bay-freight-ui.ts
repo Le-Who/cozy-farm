@@ -75,6 +75,8 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const manifest: ExpeditionManifest = active ?? quote;
   const orderIds = expeditionOfferIds(manifest.id), combined = orderIds.length === 2;
   const port = manifest.port, phase = active?.phase ?? 'planning', exploring = manifest.kind === 'explore';
+  const claimLabel = exploring ? 'Открыть новый порт' : manifest.earnCoins > 0
+    ? manifest.incoming.length ? 'Получить груз и выручку' : 'Получить выручку' : 'Получить груз';
   const stockId = manifest.incoming[0]?.id ?? primaryStock[port];
   const demandItem = manifest.outgoing[0]?.id, demand = portDemand(world,port,demandItem);
   const demandText = !demandItem ? 'Запасы на продажу' : demand === 'shortage' ? demandNeeds[demandItem] ?? demandLabels.shortage : demandLabels[demand];
@@ -162,7 +164,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
         }).join('')}</div></details>` : ''}
           ${world.last && !active ? `<h4 class="expedition-receipt" tabindex="-1">${world.last.explored ? 'Новый порт на карте' : 'Прошлый груз получен'} · ${esc(expeditionPortNames[world.last.port])} · день ${world.last.day}${receiptExchange}</h4>` : ''}
         </div>
-        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь. Игровое утро начинается после сна. Настоящий таймер не идёт.</small>` : phase === 'ready' ? `${button(exploring ? 'Открыть новый порт' : 'Получить груз и выручку', 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения и потери груза.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
+        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь. Игровое утро начинается после сна. Настоящий таймер не идёт.</small>` : phase === 'ready' ? `${button(claimLabel, 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения и потери груза.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
       </div>
     </div>
   </section>`;
