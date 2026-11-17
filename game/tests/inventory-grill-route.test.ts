@@ -136,3 +136,17 @@ test('the existing seed preview entry stays scoped and ordinary kitchen opening 
   s.openPanel('kitchen'); assert.match(s.html, /<h2>Яблочное варенье<\/h2>/)
   assert.deepEqual(farm, before); assert.equal(s.saves, 0)
 })
+
+test('ordinary kitchen entry offers the first earned Home perch rather than sending a ready cook for sea bass', () => {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const farm = commissionPlayer(opening.slice(0, 35)).state, s = screen(farm, 'dishes')
+  assert.equal(farm.day, 4); assert.equal(F.getGrillFish(farm), 'seaBass')
+  s.kitchenDish = 'grilledFish'; s.closeDialog()
+  assert.ok(F.catchFish(farm, true).ok); assert.ok(F.sail(farm, 'grove').ok)
+  assert.ok(F.gatherSeaSalt(farm).ok); assert.ok(F.sail(farm, 'home').ok)
+  const ready = structuredClone(farm)
+  s.openPanel('kitchen'); grill(s.html, 'perch')
+  assert.ok(s.html.includes('<span>Окунь</span><strong>1/1</strong>'))
+  assert.match(s.html, /data-value="grilledFish"\s+aria-label="Готовить, Рыба на гриле"\s*>Готовить/)
+  assert.ok(!farm.bayDiscoveries.includes('seaBass')); assert.deepEqual(farm, ready); assert.equal(s.saves, 0)
+})
