@@ -32,10 +32,12 @@ const stale = (): ActionResult => ({ ok: false, message: 'План измени�
 export function saveGardenPlan(farm: FarmState, slot: number, draft: unknown, revision: number): ActionResult {
   if (!mayEdit(farm, revision)) return stale()
   if (!isSlot(slot) || !record(draft) || !validName(draft.name) || !validCrops(draft.crops)) return { ok: false, message: 'Дайте плану короткое имя и выберите хотя бы одну культуру.' }
+  const previous = farm.gardenPlans.pages[slot]
+  const layoutChanged = !previous || draft.crops.some((crop, index) => crop !== previous.crops[index])
   farm.gardenPlans.pages[slot] = { name: draft.name, crops: [...draft.crops] }
   farm.gardenPlans.revision++
   // Editing a plan cannot silently change a sowing instruction already in progress.
-  if (farm.gardenPlans.active === slot) farm.gardenPlans.active = null
+  if (farm.gardenPlans.active === slot && layoutChanged) farm.gardenPlans.active = null
   return { ok: true, message: `План «${draft.name}» сохранён. Посадки, семена и монеты не изменились.` }
 }
 export function followGardenPlan(farm: FarmState, slot: number | null, revision: number): ActionResult {
