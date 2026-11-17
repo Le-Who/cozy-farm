@@ -3030,9 +3030,19 @@ app.addEventListener('click', async (event) => {
     case 'commission-accept':
       if(panel==='shop-commissions'&&dialog.open&&perform(()=>acceptShopCommission(farm,value),false,true)){dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('.commission-current')?.focus({preventScroll:true})}
       break
-    case 'commission-deliver':
-      if(panel==='shop-commissions'&&dialog.open&&perform(()=>deliverShopCommission(farm,value),false,true))playBaySound('harbour.crate',.65)
+    case 'commission-deliver': {
+      const keyboardDelivery = event.detail === 0 && document.activeElement === control
+      if(panel==='shop-commissions'&&dialog.open&&perform(()=>deliverShopCommission(farm,value),false,true)) {
+        playBaySound('harbour.crate',.65)
+        // The completed line removes its button; announce the result, never activate the claim.
+        if(keyboardDelivery && getShopCommissionLine(farm,value)?.remaining===0) {
+          const line = Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-commission-line]')).find(item=>item.dataset.commissionLine===value)
+          const result = dialogContent.querySelector<HTMLElement>('.commission-ready') ?? line?.querySelector<HTMLElement>('.commission-line-ready')
+          if(result) { result.tabIndex=-1; result.focus({preventScroll:true}); result.scrollIntoView({block:'nearest'}) }
+        }
+      }
       break
+    }
     case 'commission-cancel':
       if(panel==='shop-commissions'&&dialog.open&&perform(()=>cancelShopCommission(farm,value),false,true)){dialogContent.scrollTop=0;dialogContent.querySelector<HTMLSelectElement>('[data-commission-view]')?.focus({preventScroll:true})}
       break
