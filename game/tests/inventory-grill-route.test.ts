@@ -6,13 +6,14 @@ import ts from 'typescript'
 import * as F from '../src/farm.ts'
 import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
 import { getBerryNurserySource } from '../src/berry-nursery.ts'
+import { transferBayGoods } from '../src/harbour-economy.ts'
 import { getRequirementHint } from '../src/requirement-guidance.ts'
 import { getLocalWarehouseSupply, warehouseConfirmationValue, warehouseConfirmation, withdrawWarehouseSupply } from '../src/warehouse-guidance.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true)
-const names = ['button','nav','stockLabel','stockTile','requirementLink','recipeDestination','recipeCards','kitchenFamilies','openPanel','goBack','focusKey']
+const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','recipeCards','kitchenFamilies','openPanel','goBack','focusKey']
 const definitions = names.map(name => {
   const node = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)
   assert.ok(node, name); return node.getText(ast)
@@ -28,7 +29,7 @@ const code = ts.transpileModule(`${icons.getText(ast)}\n${definitions.join('\n')
 const noop = () => {}
 function screen(farm: F.FarmState, group = 'preserves') {
   const state: Record<string, any> = {
-    ...F, farm, getBerryNurserySource, icon: (name: string) => `<img data-icon="${name}" alt="">`, fishImage: (id: string) => id,
+    ...F, farm, getBerryNurserySource, getRequirementHint, escapeHtml: (text: string) => text, icon: (name: string) => `<img data-icon="${name}" alt="">`, fishImage: (id: string) => id,
     numberFormat: new Intl.NumberFormat('ru-RU'), requirementLinks: new Map(), pastryIcons: {},
     kitchenGroups: ['tart','preserves','dishes'], kitchenGroup: group, kitchenTart: 'orchardTart', kitchenPreserves: 'appleJam', kitchenDish: 'honeyCake', cookingFish: 'seaBass',
     panel: 'inventory', panelHistory: [], marketSaleBrowse: new MarketSaleBrowseMemory(), inventoryGroup: 'shore', marketTab: 'sell', marketCategory: 'trees', selectedWarehouseRequest: undefined,
@@ -149,4 +150,31 @@ test('ordinary kitchen entry offers the first earned Home perch rather than send
   assert.ok(s.html.includes('<span>Окунь</span><strong>1/1</strong>'))
   assert.match(s.html, /data-value="grilledFish"\s+aria-label="Готовить, Рыба на гриле"\s*>Готовить/)
   assert.ok(!farm.bayDiscoveries.includes('seaBass')); assert.deepEqual(farm, ready); assert.equal(s.saves, 0)
+})
+
+test('only the sole missing grill salt previews its real local or sailing route, before opening it', () => {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const farm = commissionPlayer(opening.slice(0,35)).state, s = screen(farm, 'dishes')
+  assert.ok(F.catchFish(farm,true).ok); s.kitchenDish = 'grilledFish'
+  function inspect(caption?: string) {
+    const before = structuredClone(farm); s.requirementLinks.clear(); s.closeDialog(); s.openPanel('kitchen')
+    const tiles: string[] = s.html.match(/<li\b[^>]*>[\s\S]*?<\/li>/g) ?? []
+    const slot = tiles.find(tile => tile.includes('<span>Морская соль</span>'))!
+    assert.ok(slot); assert.deepEqual(farm,before); assert.equal(s.saves,0)
+    if (!caption) { assert.doesNotMatch(slot, /<small|aria-describedby/); return }
+    const link = slot.match(/data-action="show-requirement" data-value="(\d+)" aria-label="Где найти: Морская соль, 0 из 1" aria-describedby="([^"]+)"/)
+    assert.ok(link, 'same salt button and accessible name, with an in-tile source description')
+    assert.ok(slot.includes(`<small id="${link[2]}">${caption}</small></button>`))
+    assert.deepEqual({...s.requirementLinks.get(link[1]).item},{kind:'seaSalt',quantity:1})
+    assert.equal(tiles.filter(tile=>tile.includes('aria-describedby')).length,1)
+    assert.doesNotMatch(s.html, /aria-label="Готовить, Рыба на гриле"\s*>Готовить/)
+  }
+  inspect('Плыть в Солёную рощу')
+  assert.ok(F.sail(farm,'grove').ok); assert.ok(F.gatherSeaSalt(farm).ok); assert.ok(F.sail(farm,'home').ok)
+  inspect(); assert.match(s.html, /aria-label="Готовить, Рыба на гриле"\s*>Готовить/)
+  assert.ok(transferBayGoods(farm,'deposit','home','seaSalt',2).ok); inspect('На местном складе')
+  assert.ok(F.sellMarketItem(farm,'fish:perch',1).ok); inspect() // two short, despite salt in the local warehouse.
+  assert.ok(F.catchFish(farm,true).ok)
+  assert.ok(transferBayGoods(farm,'withdraw','home','seaSalt',2).ok); assert.ok(F.sellMarketItem(farm,'seaSalt',2).ok)
+  inspect() // today's quota is exhausted; the real next action is rest, not travel.
 })
