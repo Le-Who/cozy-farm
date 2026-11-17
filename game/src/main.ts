@@ -3558,7 +3558,12 @@ app.addEventListener('click', async (event) => {
       break
     case 'deliver-order': {
       const lane = orderLanes.find((id) => id === value)
-      if (lane) perform(() => deliverMarketOrder(farm, lane), false, farm.progress.sell > 0)
+      if (lane && perform(() => deliverMarketOrder(farm, lane), false, farm.progress.sell > 0)
+        && panel === 'market' && dialog.open && marketTab === 'orders') {
+        const detail = dialogContent.querySelector<HTMLElement>('.market-order-detail')
+        detail?.focus({preventScroll:true})
+        detail?.querySelector<HTMLElement>('.order-done')?.scrollIntoView({block:'nearest'})
+      }
       break
     }
     case 'project-boat': openPanel('boat',true,'grove');break
