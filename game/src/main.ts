@@ -2334,6 +2334,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (!dialog.open) marketSaleBrowse.reset()
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
   if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
+  else if (next === 'kitchen' && remember && next !== panel && farm.fish[cookingFish] === 0) cookingFish = getGrillFish(farm)
   if (next === 'recipes') {
     if (recipeTarget) recipeBook.select(farm,recipeTarget)
     else if (remember && next !== panel) recipeBook.view.mode='index'
