@@ -4028,7 +4028,7 @@ app.addEventListener('click', async (event) => {
 })
 
 function closeCurrentPanel() {
-  if (communityRequest && panel === 'arrangement') void resumeCommunityRequest()
+  if (communityRequest && panel === 'arrangement' && arrangementRequest?.kind === 'neighbor') void resumeCommunityRequest()
   else closeDialog()
 }
 closeButton.addEventListener('click', closeCurrentPanel)
@@ -4036,7 +4036,7 @@ function returnFromPanel(event: Event) {
   if (event.defaultPrevented) return
   if(closeContextualSale()){event.preventDefault();return}
   if(returnToRecipeIndex()){event.preventDefault();return}
-  if (communityRequest && panel === 'arrangement') {
+  if (communityRequest && panel === 'arrangement' && arrangementRequest?.kind === 'neighbor') {
     event.preventDefault()
     void resumeCommunityRequest()
   } else if (panelHistory.length) {
