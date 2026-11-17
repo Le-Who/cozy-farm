@@ -42,7 +42,7 @@ export function renderChickenFeedMixes(farm: FarmState, icon: (name: string) => 
       const mix = getChickenFeedMix(farm, recipe)
       const ingredient = (name: string, image: string, stock: number, remaining: number) => `<li data-missing="${stock < 1}">${icon(image)}<span><strong>${name} ×1</strong><small>${stock < 1 ? 'Нет в запасе' : `Есть ${stock} → ${remaining}`}</small></span></li>`
       const missing = [mix.wheat < 1 ? 'пшеница' : '', mix.extraCount < 1 ? mix.extraName.toLowerCase() : ''].filter(Boolean).join(' и ')
-      return `<article class="feed-choice-card" aria-label="${mix.name}"><h2>${recipe === 'garden' ? 'Огородная' : 'Садовая'}</h2>
+      return `<article class="feed-choice-card" data-feed-shortage="${mix.room && !mix.available}" aria-label="${mix.name}"><h2>${recipe === 'garden' ? 'Огородная' : 'Садовая'}</h2>
         <ul class="feed-choice-cost" aria-label="Расход обычных продуктов">${ingredient('Пшеница', 'wheat', mix.wheat, mix.remainingWheat)}${ingredient(mix.extraName, mix.extra, mix.extraCount, mix.remainingExtra)}</ul>
         <div class="feed-choice-result"><strong>${ruCount(mix.portions, 'порция', 'порции', 'порций')}</strong><span>${!mix.room ? 'Нет места для новой смеси' : !mix.available ? `Нужны: ${missing}` : `Запас: ${farm.feed} → ${mix.total}`}</span></div>
         <button type="button" class="dialog-button" data-action="mix-chicken-feed" data-value="${recipe}" aria-label="${mix.name}: смешать ${ruCount(mix.portions, 'порцию', 'порции', 'порций')}"${mix.available ? '' : ' disabled'}>Смешать</button></article>`
