@@ -3966,7 +3966,11 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'store-tree': {
-      if (panel === 'tree' && Number(value) === treeSlot && perform(() => storeTree(farm, treeSlot))) {
+      if (panel === 'tree' && Number(value) === treeSlot && perform(() => {
+        const result = storeTree(farm, treeSlot)
+        if (result.ok) treeStorageChoice.choose(farm, String(farm.treeNurserySerial))
+        return result
+      })) {
         dialogContent.scrollTop = 0
         const continuation = dialogContent.querySelector<HTMLButtonElement>('[data-action="market-trees-return"]')
         if (continuation) {
