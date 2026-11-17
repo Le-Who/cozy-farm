@@ -3649,7 +3649,11 @@ app.addEventListener('click', async (event) => {
     case 'sell': if(salePresentation.place)break;if(perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('trade.receive'); break
     case 'inline-sale-step': {
       const context=inlineSaleContext(control), direction=control.dataset.step
-      if(context&&(direction==='less'||direction==='more')&&marketInlineSales.step(context.item.key,context.token,direction,context.item.count,context.item.price))updateInlineSaleCard(context.card)
+      const keyboardStep = event.detail === 0 && document.activeElement === control
+      if(context&&(direction==='less'||direction==='more')&&marketInlineSales.step(context.item.key,context.token,direction,context.item.count,context.item.price)){
+        updateInlineSaleCard(context.card)
+        if (keyboardStep && control.disabled) context.card.querySelector<HTMLInputElement>('[data-inline-quantity]')?.focus({preventScroll:true})
+      }
       break
     }
     case 'inline-sale-confirm': if(event.detail<=1)confirmInlineSale(control); break
