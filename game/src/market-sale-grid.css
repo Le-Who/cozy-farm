@@ -29,7 +29,7 @@
 .market-inline-family select {min-height:44px;max-width:100%;padding:5px 12px;border:1px solid #bfa184;border-radius:10px;background:#fff8eb;color:var(--plum);font:inherit}
 [data-market-sale-browser] .market-sale-search-status {flex:none;font-size:13px;color:var(--muted);margin:-4px 0 0}
 [data-market-sale-browser] #market-sale-results {flex:1;min-height:120px;overflow:auto;overscroll-behavior:contain;padding:3px}
-.market-inline-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0;padding:0;list-style:none}
+.market-inline-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:14px;margin:0;padding:0;list-style:none}
 .market-inline-card {display:grid;grid-template-columns:136px minmax(0,1fr);grid-template-rows:minmax(116px,auto) auto 18px;gap:8px 10px;align-items:center;min-width:0;padding:14px 14px 10px;border:1px solid #bd9d7f;border-radius:17px;background:linear-gradient(130deg,#fffaf0,#f8e9d6);box-shadow:inset 0 1px #fff9ed,0 2px 1px #ad795726}
 .market-inline-art {display:grid;place-items:center;width:136px;height:116px;overflow:visible}
 .market-inline-art>.icon,.market-inline-art>.variant-art {width:128px;height:116px;object-fit:contain}
@@ -57,7 +57,6 @@
 .market-inline-tools .dialog-nav {margin:0}
 @media(max-width:1000px){
  .farm-dialog:has([data-market-sale-browser]){width:calc(100vw - 24px)}
- .market-inline-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .market-inline-card{grid-template-columns:116px minmax(0,1fr)}
  .market-inline-art{width:116px}.market-inline-art>.icon,.market-inline-art>.variant-art{width:112px}
  .market-inline-name{font-size:21px}.market-inline-sell{font-size:16px}

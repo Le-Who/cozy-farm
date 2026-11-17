@@ -3541,8 +3541,11 @@ app.addEventListener('click', async (event) => {
       break
     case 'market-order-select':
       if (panel === 'market' && dialog.open && marketTab === 'orders' && getMarketOrderBoard(farm).choices.some(order => order.id === value)) {
+        const pickerScroll = dialogContent.querySelector<HTMLElement>('.market-order-picker')?.scrollTop ?? 0
         selectedMarketOrder = value
         drawPanel()
+        const picker = dialogContent.querySelector<HTMLElement>('.market-order-picker')
+        if (picker) picker.scrollTop = pickerScroll
         const detail = dialogContent.querySelector<HTMLElement>('.market-order-detail')
         detail?.focus({preventScroll:true})
         detail?.scrollIntoView({block:'nearest'})
