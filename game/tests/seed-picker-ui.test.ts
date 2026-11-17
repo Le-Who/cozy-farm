@@ -51,8 +51,8 @@ test('planned return and explicit manual replacement keep existing guards and wo
 test('seed exchange names exact ordinary cost, preserves rare stock and never sows or selects',()=>{
  const f=createFarm();assert.ok(workBed(f,9,0).ok);f.variants.carrot={star:2};f.discoveries.carrot!.star=true
  const before=structuredClone(f),html=renderSeedPicker(f,'carrot',undefined,art)
- assert.match(html,/Получить 3 семени/);assert.match(html,/Цена: морковь ×1 · обычный урожай/)
- assert.match(html,/Необычные продукты останутся у вас/);assert.match(html,/В припасах: 3 → 2. Семян: 3 → 6/)
+ assert.match(html,/Обменять урожай на 3 семени/);assert.match(html,/Только обычный урожай: морковь ×1/)
+ assert.match(html,/После обмена: урожай ×2 · семена ×6/);assert.doesNotMatch(html,/Посев выбирается отдельно/)
  assert.match(html,/<summary>Сравнить с покупкой<\/summary>/)
  assert.deepEqual(f,before)
  assert.ok(saveCropSeeds(f,seedSavingQuote(f,'carrot')!.token).ok)

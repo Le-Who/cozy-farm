@@ -4047,7 +4047,9 @@ dialog.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !(event.target instanceof HTMLButtonElement)) return
   const selector = event.target.closest('.island-selector,.house-selector,.tree-selector,.panel-tabs,.market-category-icons,.recipe-family-choices,.recipe-fish-choices')
   if (!selector || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
-  const choices = [...selector.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]
+  const choiceSelector = selector.classList.contains('recipe-family-choices')
+    ? 'button[data-action="recipe-family"]:not(:disabled)' : 'button:not(:disabled)'
+  const choices = [...selector.querySelectorAll<HTMLButtonElement>(choiceSelector)]
     .filter(choice => choice.getClientRects().length > 0)
   const index = choices.indexOf(event.target)
   if (index < 0) return
