@@ -74,7 +74,7 @@ import './coop-services.css'
 import './coop-panel.css'
 import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
 import './chicken-feed.css'
-import { henFriends, henFriendshipStage, renderHenFriendship, treatHen } from './hen-friendship'
+import { henFriends, henFriendshipStage, refreshHenWalkChoice, renderHenFriendship, treatHen } from './hen-friendship'
 import { henCareResultFocus } from './hen-care-focus'
 import './hen-friendship.css'
 import './coop-preview.css'
@@ -2632,7 +2632,9 @@ const island = createIsland(canvas, {
     if (fieldHintCache?.key !== key) fieldHintCache = { key, value: readFieldHintBands() }
     return fieldHintCache.value
   },
-  henWalkChanged: () => { if (dialog.open && panel === 'hen-friendship') drawPanel() },
+  henWalkChanged: () => {
+    if (dialog.open && panel === 'hen-friendship') refreshHenWalkChoice(dialogContent, farm, island.henWalkStatus(), island.henWalkAvailable())
+  },
   harbourViewChanged: (view, traveling) => harbourControls?.select(view, traveling),
   moveHen(index, point) {
     perform(() => moveFarmHen(farm, index, point), false, true)

@@ -1604,7 +1604,7 @@ export function createIsland(
       let walkingPoint: Point | undefined;
       if (companion?.id === index && !held && state) {
         const walk = companion;
-        const finished = viewMode === 'world' && stepHenCompanion(walk, nativeHenPoint(farmer), nativeHenPoint(hen), state.buildingLevels, dt, moment / 1000, motion.matches);
+        const finished = (viewMode === 'world' || (viewMode === 'dialog' && walk.returning)) && stepHenCompanion(walk, nativeHenPoint(farmer), nativeHenPoint(hen), state.buildingLevels, dt, moment / 1000, motion.matches);
         walkingPoint = scenePoint(walk.point.x, walk.point.y);
         if (finished) clearHenCompanion(false);
       }
