@@ -24,6 +24,7 @@ const spring = (value: number) => ({ value, velocity: 0 })
 /** Inventory belongs to the caller. Every visible contact and retained garnish belongs to this scene. */
 export function createFishCookery(host: HTMLElement, options: CookeryOptions): { destroy(): void } {
   const model = createFishModel(), abort = new AbortController(), signal = abort.signal
+  let recovery: AbortController | undefined
   prepareBaySoundScene(['cook.salt','cook.fish-sizzle','cook.fish-contact','cook.fish-turn','cook.garnish','cook.fish-plate','cook.finish'], signal)
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL, artBase = `${base}art/lavender/fish-cookery/`
@@ -104,7 +105,7 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
       void pending.catch(() => decodedArt.delete(url))
     }
     const source = await pending
-    if (destroyed) return
+    if (destroyed || signal.aborted) return
     const art = {...source, texture:texture(source.image)}; assets.set(name,art); return art
   }
 
@@ -370,7 +371,17 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
   }
   async function init(){
     try{
-      await Promise.all(['fish-raw','fish-grilled','pan','plate','board','salt','spatula','carrot-0','carrot-1','carrot-2'].map(load));if(destroyed)return
+      await Promise.all(['fish-raw','fish-grilled','pan','plate','board','salt','spatula','carrot-0','carrot-1','carrot-2'].map(load))
+    }catch{
+      if(destroyed || signal.aborted)return
+      abort.abort(); resizeObserver.disconnect(); cancelAnimationFrame(frame)
+      root.style.removeProperty('width'); root.style.removeProperty('height')
+      recovery = new AbortController()
+      showCookeryRecovery(root, { returnLabel: options.returnLabel ?? 'На кухню', onCancel: cancel, signal: recovery.signal }, 'art')
+      return
+    }
+    if(destroyed)return
+    try{
       const raw=assets.get('fish-raw')!;fishWidth=Math.min(4.3,2.7/(raw.height/raw.width*1.32))
       board=prop('board',6.3,.12);pan=prop('pan',6.8,.25,.18);plate=prop('plate',5.9,.12)
       makeFish();salt=body(prop('salt',1.6,.12),new THREE.Vector3(-5.65,.3,2.9));salt.mesh.geometry.rotateX(.85);register(salt,'salt')
@@ -380,7 +391,7 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
     }catch{if(!destroyed){status.hidden=false;status.textContent='Не удалось открыть кухню. Вернитесь и попробуйте снова.'}}
   }
   resize();frame=requestAnimationFrame(animate);void init()
-  return {destroy(){if(destroyed)return;destroyed=true;cancelAnimationFrame(frame);abort.abort();resizeObserver.disconnect();physics?.destroy();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();renderer.dispose();root.remove();previousFocus?.focus({preventScroll:true})}}
+  return {destroy(){if(destroyed)return;destroyed=true;cancelAnimationFrame(frame);abort.abort();recovery?.abort();resizeObserver.disconnect();physics?.destroy();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();renderer.dispose();root.remove();previousFocus?.focus({preventScroll:true})}}
 }
 
 

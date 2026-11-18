@@ -42,10 +42,28 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
   }
   const cancel = () => { if (!destroyed) options.onCancel() }
   const back = root.querySelector<HTMLButtonElement>('.arrangement-close')!
-  back.addEventListener('click', cancel, { signal })
-  try { renderer = makeRenderer(); view.prepend(renderer.domElement) } catch {
+  // The contextual exit also works after the scene listeners have been stopped.
+  back.addEventListener('click', cancel)
+  let resize: ResizeObserver | undefined
+  const contacts = new Map<string, THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>>()
+  function stopScene() {
+    if (signal.aborted) return
+    abort.abort(); loaded = false; cancelAnimationFrame(animation); resize?.disconnect()
+    physics?.dispose(); props?.dispose()
+    for (const contact of contacts.values()) { contact.material.dispose(); contact.geometry.dispose() }
+    contacts.clear(); scene.clear(); physics = undefined; props = undefined
+    renderer?.dispose(); selectionGeometry.dispose(); selectionMaterial.dispose()
+  }
+  function destroy() {
+    if (destroyed) return
+    destroyed = true; stopScene(); back.removeEventListener('click', cancel); root.remove()
+    if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus({ preventScroll: true })
+  }
+  function showUnavailable() {
+    stopScene()
     const activity = { table: 'сервировку стола', basket: 'сбор корзинки для пикника', eggs: 'упаковку корзины яиц', crate: 'упаковку ящика яиц' }[options.mode]
     status.textContent = `Не удалось начать ${activity}.`
+    status.hidden = false
     status.className = 'dialog-status'
     status.id = 'arrangement-start-error'
     back.className = 'dialog-button'
@@ -56,17 +74,22 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     root.dataset.unavailable = 'true'
     root.replaceChildren(status, back)
     back.focus({ preventScroll: true })
-    return { destroy() { destroyed = true; abort.abort(); selectionGeometry.dispose(); selectionMaterial.dispose(); root.remove() } }
+  }
+  try { renderer = makeRenderer(); view.prepend(renderer.domElement) } catch {
+    showUnavailable()
+    return { destroy }
   }
   function wake() {
     if (!animation && !destroyed && loaded && !lost && !document.hidden) animation = requestAnimationFrame(frame)
   }
+  let roomRevision = 0
   function layout() {
+    if (signal.aborted) return
     const rect = view.getBoundingClientRect(); width = Math.max(1, rect.width); height = Math.max(1, rect.height)
     root.dataset.portrait = String(width / height < .85); root.dataset.compact = String(height < 480)
     const nextRoom = base + 'art/lavender/' + (width / height < .85 ? 'assembly/room-portrait.webp' : 'cookery/room.webp')
     view.style.setProperty('--assembly-room', `url("${new URL(nextRoom, document.baseURI).href}")`)
-    if (room.getAttribute('src') !== nextRoom) room.src = nextRoom
+    if (room.getAttribute('src') !== nextRoom) { roomRevision++; room.src = nextRoom }
     renderer.setSize(width, height, false)
     // Fit the complete physical workspace in usable CSS pixels, preserving object proportions.
     const aspect = width / height
@@ -159,7 +182,6 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
   }, { signal })
   const checklist = root.querySelector<HTMLUListElement>('.arrangement-checklist')!
   const badges = new Map<string, HTMLLIElement>()
-  const contacts = new Map<string, THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>>()
   const facing = new THREE.Quaternion(), parentRotation = new THREE.Quaternion()
   const eggAxis = new THREE.Vector3(), viewRotation = new THREE.Quaternion()
   function faceCamera(node: THREE.Object3D) {
@@ -167,7 +189,7 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     node.parent.getWorldQuaternion(parentRotation)
     node.quaternion.copy(facing.copy(parentRotation).invert().multiply(camera.quaternion))
   }
-  const resize = new ResizeObserver(layout); resize.observe(view); layout()
+  resize = new ResizeObserver(layout); resize.observe(view); layout()
   renderer.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); lost = true; release(); finish.disabled = true; status.textContent = 'Возвращаем стол…'; status.hidden = false }, { signal })
   renderer.domElement.addEventListener('webglcontextrestored', () => { lost = false; renderer.resetState(); layout(); status.hidden = loaded; finish.disabled = false }, { signal })
   for (const name of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture', 'wheel', 'keydown', 'focusin', 'focusout']) {
@@ -211,16 +233,19 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     if (destroyed) { physical.dispose(); return }
     physics = physical
     while (!destroyed) {
-      const source = room.src
+      const revision = roomRevision
       try { await room.decode() }
-      catch (error) { if (room.src === source) throw error }
-      if (room.src === source) break
+      catch (error) { if (roomRevision === revision) throw error }
+      if (roomRevision === revision) break
     }
     if (destroyed) return
     loaded = true; status.hidden = true; view.focus({ preventScroll: true }); wake()
-  }).catch(() => { if (!destroyed) { status.textContent = 'Не удалось накрыть стол. Вернитесь и попробуйте снова.'; status.hidden = false } })
+  }).catch(error => {
+    if (destroyed || signal.aborted || error instanceof DOMException && error.name === 'AbortError') return
+    showUnavailable()
+  })
   function frame(time: number) {
-    if (destroyed) return
+    if (signal.aborted) return
     animation = 0
     const dt = previousTime ? Math.min(.05, (time - previousTime) / 1000) : 1 / 60; previousTime = time
     if (!document.hidden && !lost) {
@@ -281,7 +306,5 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
       else previousTime = 0
     }
   }
-  return { destroy() {
-    if (destroyed) return; destroyed = true; cancelAnimationFrame(animation); abort.abort(); resize.disconnect(); physics?.dispose(); for (const contact of contacts.values()) { contact.material.dispose(); contact.geometry.dispose() }; props?.dispose(); renderer.dispose(); selectionGeometry.dispose(); selectionMaterial.dispose(); root.remove(); if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus({ preventScroll: true })
-  } }
+  return { destroy }
 }

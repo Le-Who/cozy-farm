@@ -93,7 +93,10 @@ for (const mode of Object.keys(modeInstructions) as Mode[]) test(`${mode}: descr
 test('renderer startup failure leaves one focused return for the actual activity, including warm entry', () => {
   const startup = source.match(/try \{ renderer = makeRenderer\(\); view.prepend\(renderer.domElement\) \} catch \{[\s\S]*?\n  \}/)?.[0]
   assert.ok(startup)
-  const code = ts.transpileModule(`function mount(){${startup}}; mount()`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+  const unavailable = source.match(/  function showUnavailable\(\) \{[\s\S]*?\n  \}/)?.[0]
+  assert.ok(unavailable)
+  const code = ts.transpileModule(`function mount(){${unavailable}
+${startup}}; mount()`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
   const main = readFileSync(new URL('../src/main.ts', import.meta.url),'utf8')
   const warmSelector = main.match(/next === 'arrangement' \? dialogContent.querySelector<HTMLElement>\('([^']+)'\)/)?.[1]
   assert.ok(warmSelector?.includes('.arrangement-view') && warmSelector.includes('[data-arrangement-return]'))
@@ -104,11 +107,38 @@ test('renderer startup failure leaves one focused return for the actual activity
     const back = {className:'arrangement-close',textContent:'×',dataset:{} as Record<string,string>,attrs:new Map([['aria-label','Вернуться']]),
       setAttribute(k:string,v:string){this.attrs.set(k,v)},removeAttribute(k:string){this.attrs.delete(k)},focus(){focused=true}}
     const root = {dataset:{},children:[{},back,{disabled:true}] as unknown[],replaceChildren(...els:unknown[]){this.children=els}}
-    runInNewContext(code,{root,back,status,packing,options:{mode},makeRenderer(){throw Error('injected startup failure')}})
+    runInNewContext(code,{root,back,status,packing,options:{mode},stopScene(){},destroy(){},makeRenderer(){throw Error('injected startup failure')}})
     assert.deepEqual(root.children,[status,back]);assert.equal(focused,true)
     assert.equal(back.textContent,packing?'В курятник':'К встрече')
     assert.equal(status.textContent,`Не удалось начать ${activity}.`);assert.ok(status.id)
     assert.equal(back.attrs.get('aria-describedby'),status.id);assert.equal(back.attrs.has('aria-label'),false)
     assert.equal(back.dataset.arrangementReturn,'')
+  }
+})
+
+test('only a current, terminal arrangement startup failure enters recovery', async () => {
+  const start = source.indexOf('  Promise.resolve(createArrangementProps('), end = source.indexOf('  function frame(time:', start)
+  assert.ok(start >= 0 && end > start)
+  const startup = ts.transpileModule(source.slice(start,end), {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+  for (const why of ['room','physics','resize','rotateBack','destroy','abort','healthy'] as const) {
+    let failures = 0, wakes = 0, attempts = 0
+    const room = {src:'landscape',async decode(){
+      attempts++
+      if ((why === 'resize' || why === 'rotateBack') && attempts === 1) {
+        state.roomRevision += why === 'resize' ? 1 : 2; this.src=why === 'resize' ? 'portrait' : 'landscape'
+        throw new DOMException('superseded room','EncodingError')
+      }
+      if (why === 'destroy') { state.destroyed=true; state.signal=AbortSignal.abort(); throw Error('late rejection') }
+      if (why === 'abort') throw new DOMException('cancelled','AbortError')
+      if (why === 'room') throw new DOMException('corrupt current room','EncodingError')
+    }}
+    const state = {room, roomRevision:1, options:{mode:'crate'}, loaded:false, destroyed:false, signal:new AbortController().signal,
+      props:undefined, physics:undefined, scene:{add(){}}, status:{hidden:false,textContent:''},
+      view:{focus(){}}, wake(){wakes++}, DOMException, showUnavailable(){failures++},
+      createArrangementProps:async()=>({pieces:[],target:{}}), createArrangementPhysics:async()=>{if(why==='physics')throw Error('physics failed');return {}} }
+    await runInNewContext(startup,state)
+    assert.equal(failures,Number(why==='room'||why==='physics'),why)
+    assert.equal(state.loaded,why==='resize'||why==='rotateBack'||why==='healthy',why)
+    assert.equal(wakes,Number(state.loaded));assert.equal(attempts,why==='resize'||why==='rotateBack'?2:why==='physics'?0:1)
   }
 })
