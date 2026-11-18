@@ -4,8 +4,8 @@ import './save-recovery.css'
 
 type RecoverySource = { readonly issue: SaveIssue | undefined; readonly raw: string | null | undefined; readonly blocked: boolean; readonly recoveryOrigin?: RecoveryOrigin }
 
-/** Recovery never clears or rewrites the original save. */
-export function mountSaveRecovery(source: RecoverySource) {
+/** Only the farm’s guarded writer may retry a recoverable write. Protected sessions never write. */
+export function mountSaveRecovery(source: RecoverySource, saveCurrent: () => Promise<boolean>) {
   const notice = document.createElement('button')
   notice.type = 'button'
   notice.className = 'save-recovery-notice'
@@ -13,16 +13,21 @@ export function mountSaveRecovery(source: RecoverySource) {
   dialog.className = 'save-recovery-dialog'
   dialog.setAttribute('aria-labelledby','save-recovery-title')
   dialog.setAttribute('aria-describedby','save-recovery-detail')
-  dialog.innerHTML = `<h1 id="save-recovery-title">Сохранение под защитой</h1>
+  dialog.innerHTML = `<h1 id="save-recovery-title" aria-live="polite" aria-atomic="true">Сохранение под защитой</h1>
     <p id="save-recovery-detail"></p>
-    <p class="save-recovery-warning">Можно продолжить временно. Новый прогресс может исчезнуть после закрытия или перезагрузки страницы.</p>
+    <p class="save-recovery-warning" id="save-recovery-warning">Можно продолжить временно. Новый прогресс может исчезнуть после закрытия или перезагрузки страницы.</p>
     <div class="save-recovery-actions">
+      <button type="button" class="dialog-button" data-recovery="save" hidden>Сохранить ещё раз</button>
       <button type="button" class="dialog-button" data-recovery="download">Скачать исходное сохранение</button>
-      <button type="button" class="dialog-button secondary" data-recovery="retry">Повторить загрузку</button>
+      <button type="button" class="dialog-button secondary" data-recovery="retry" aria-describedby="save-recovery-warning">Перезагрузить без сохранения</button>
       <button type="button" class="dialog-button secondary" data-recovery="continue">Продолжить без сохранения</button>
     </div>`
   const title = dialog.querySelector<HTMLElement>('h1')!
   const detail = dialog.querySelector<HTMLElement>('#save-recovery-detail')!
+  const warning = dialog.querySelector<HTMLElement>('.save-recovery-warning')!
+  const save = dialog.querySelector<HTMLButtonElement>('[data-recovery="save"]')!
+  const writableFailure = () => source.issue === 'write-failed' && !source.blocked
+  let saving = false
   const download = dialog.querySelector<HTMLButtonElement>('[data-recovery="download"]')!
   const retry = dialog.querySelector<HTMLButtonElement>('[data-recovery="retry"]')!
   const resume = dialog.querySelector<HTMLButtonElement>('[data-recovery="continue"]')!
@@ -30,9 +35,18 @@ export function mountSaveRecovery(source: RecoverySource) {
   const update = () => {
     notice.hidden = !source.issue
     notice.textContent = source.blocked ? 'Сохранение защищено · Подробнее' : 'Прогресс не сохранён · Подробнее'
-    title.textContent = source.blocked ? 'Сохранение под защитой' : 'Прогресс не сохранён'
+    const writable = writableFailure()
+    const heading = !source.issue ? 'Прогресс сохранён' : source.blocked ? 'Сохранение под защитой' : saving ? 'Сохраняем прогресс…' : 'Прогресс не сохранён'
+    if (title.textContent !== heading) title.textContent = heading
+    save.hidden = !writable
+    save.setAttribute('aria-disabled', String(saving))
+    retry.hidden = !source.blocked || !source.issue
+    download.hidden = !source.issue
+    download.className = writable ? 'dialog-button secondary' : 'dialog-button'
+    resume.textContent = source.blocked ? 'Продолжить без сохранения' : 'Продолжить игру'
+    warning.hidden = detail.hidden = !source.issue
     detail.textContent = source.issue === 'write-failed' && source.blocked
-      ? 'Браузер не смог завершить перенос сохранения. Исходные данные сохранены. Освободите место или разрешите хранение данных сайта и нажмите «Повторить загрузку». Действия во временной игре не запишутся автоматически.'
+      ? 'Браузер не смог завершить перенос сохранения. Исходные данные сохранены. Освободите место или разрешите хранение данных сайта и перезагрузите страницу. Действия во временной игре не запишутся автоматически.'
       : source.issue === 'missing-primary'
       ? 'Запись новой версии отсутствует после завершённого переноса. Старый прогресс не будет загружен поверх нового. Скачайте исходный снимок для восстановления; автоматического сброса нет.'
       : source.issue === 'migration-invalid'
@@ -57,7 +71,7 @@ export function mountSaveRecovery(source: RecoverySource) {
   const show = () => {
     update()
     if (!dialog.open) dialog.showModal()
-    ;(download.disabled ? retry : download).focus()
+    ;(writableFailure() ? save : !source.issue ? resume : download.disabled ? retry : download).focus()
   }
   // Modal keyboard input must not trigger the farm's global shortcuts behind it.
   dialog.addEventListener('keydown',event => event.stopPropagation())
@@ -74,7 +88,17 @@ export function mountSaveRecovery(source: RecoverySource) {
     link.remove()
     window.setTimeout(() => URL.revokeObjectURL(url),1000)
   })
-  retry.addEventListener('click',() => location.reload())
+  save.addEventListener('click',async () => {
+    if (saving || !writableFailure()) return
+    saving = true
+    update()
+    try { await saveCurrent() } finally {
+      saving = false
+      update()
+      if (dialog.open && !source.issue && (document.activeElement === save || document.activeElement === document.body)) resume.focus()
+    }
+  })
+  retry.addEventListener('click',() => { if (source.issue && source.blocked) location.reload() })
   resume.addEventListener('click',() => dialog.close())
   document.body.append(notice,dialog)
   update()

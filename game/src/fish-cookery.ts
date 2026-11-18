@@ -304,9 +304,14 @@ export function createFishCookery(host: HTMLElement, options: CookeryOptions): {
   function complete(){if(model.stage==='finished'){options.onCancel();return}if(completeFish(model,()=>{const result:CookeryResult={family:'grilledFish',fishSpecies:species,fruit:[],steps:[...model.steps],baking:{method:'grill',finish:'golden',seconds:model.seconds},garnish:model.garnish.map(p=>({ingredientId:'carrot',x:p.x,y:p.y,angle:p.angle}))};return options.onComplete(result)}))playBaySound('cook.finish');sync()}
   close.addEventListener('click',cancel,{signal});finish.addEventListener('click',complete,{signal})
   view.addEventListener('keydown',e=>{
-    if(!loaded)return
+    if(e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey)return
+    // Nested buttons own their native activation; a held Enter must not activate the next action.
+    if(e.repeat&&(e.target===close||e.target===finish)&&(e.code==='Enter'||e.code==='Space')){e.preventDefault();return}
+    if(e.target!==view||!loaded)return
     const keys=['Escape','Enter','Space','KeyF','KeyS','KeyT','KeyC','KeyQ','KeyE','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];if(!keys.includes(e.code))return
-    e.preventDefault();keyboard=true;cursorElement.hidden=false
+    e.preventDefault()
+    if(e.repeat&&!e.code.startsWith('Arrow')&&e.code!=='KeyQ'&&e.code!=='KeyE')return
+    keyboard=true;cursorElement.hidden=false
     if(e.code==='Escape'){cancel();return}if(e.code==='Enter'){complete();return}
     const choose=(kind:Held['kind'],b:Body,id=0)=>{release();cursor.set(b.x.value,.42,b.z.value);take(kind,b,id)}
     if(e.code==='KeyF')choose('fish',fish)

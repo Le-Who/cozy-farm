@@ -305,14 +305,17 @@ let saveRecovery: ReturnType<typeof mountSaveRecovery> | undefined
 let pendingSaves = 0
 function saveFarm() {
   pendingSaves++
-  void saveStore.save(farm).then(saved => {
+  return saveStore.save(farm).then(saved => {
     pendingSaves--
+    const changed = saveAvailable !== saved
     saveAvailable = saved
+    if (changed && panel === 'settings' && dialog.open) drawPanel()
     saveRecovery?.update()
+    return saved
   })
 }
 window.addEventListener('beforeunload', event => {
-  if (pendingSaves > 0) { event.preventDefault(); event.returnValue = '' }
+  if (pendingSaves > 0 || !saveStore.blocked && saveStore.issue === 'write-failed') { event.preventDefault(); event.returnValue = '' }
 })
 
 function iconUrl(name: string) {
@@ -4338,7 +4341,7 @@ window.addEventListener('keydown', (event) => {
   }
 })
 
-saveRecovery = mountSaveRecovery(saveStore)
+saveRecovery = mountSaveRecovery(saveStore, saveFarm)
 if (saveStore.issue) saveRecovery.show()
 
 refresh()

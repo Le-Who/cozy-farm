@@ -64,3 +64,38 @@ test('completion commits one successful batch, allows false retry, and cancellat
   assert.equal(cancelFish(m),false)
   const cancelled=seasoned();assert.equal(cancelFish(cancelled),true);assert.equal(completeFish(cancelled,()=>{commits++;return true}),false);assert.equal(commits,2)
 })
+
+test('grill keyboard shortcuts belong to the focused worktop, not to the controls inside it', async () => {
+  // Run the registered production listener without requiring a GPU or browser driver.
+  const { readFileSync } = await import('node:fs')
+  const { runInNewContext } = await import('node:vm')
+  const { default: ts } = await import('typescript')
+  const source = ts.createSourceFile('fish-cookery.ts', readFileSync(new URL('../src/fish-cookery.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true)
+  let listener: string | undefined
+  function visit(n: import('typescript').Node) {
+    if (ts.isCallExpression(n) && n.expression.getText(source) === 'view.addEventListener' && n.arguments[0]?.getText(source) === "'keydown'") listener = n.arguments[1].getText(source)
+    else ts.forEachChild(n, visit)
+  }
+  visit(source)
+  assert.ok(listener)
+  const view = {}, close = {}, finish = {}, field = {}
+  let finishes = 0, returns = 0, releases = 0
+  const scope = { view, close, finish, loaded: true, keyboard: false, cursorElement: { hidden: true }, cursor: { x: 0 }, held: {}, move() {},
+    complete() { finishes++ }, cancel() { returns++ }, release() { releases++ } }
+  const onKey = runInNewContext(ts.transpileModule('('+listener+')', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, scope)
+  function key(target: object, code: string, repeat = false) {
+    const e = Object.assign(new Event('keydown', { cancelable: true }), { code, repeat })
+    Object.defineProperty(e, 'target', { value: target })
+    onKey(e)
+    return e.defaultPrevented
+  }
+  for (const control of [close, finish, field]) {
+    for (const code of ['Enter', 'Space', 'ArrowRight']) assert.equal(key(control, code), false, 'leave fresh keys to their focused control')
+  }
+  for (const button of [close, finish]) for (const code of ['Enter','Space']) assert.equal(key(button, code, true), true, 'held activation must not click again')
+  assert.equal(key(field, 'Enter', true), false)
+  for (const code of ['Enter','Space','Escape','KeyS']) assert.equal(key(view, code, true), true)
+  assert.deepEqual([finishes, returns, releases, scope.cursor.x], [0, 0, 0, 0])
+  for (const code of ['ArrowRight','ArrowRight','Space','Enter','Escape']) assert.equal(key(view, code, code === 'ArrowRight'), true)
+  assert.deepEqual([finishes, returns, releases, scope.cursor.x], [1, 1, 1, .36])
+})
