@@ -5,6 +5,7 @@ import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { createFarm, petChicken, endDay, restoreCurrentFarm, getCoopMorning, incubateEgg } from '../src/farm.ts'
 import { renderHenFriendship, treatHen, henFriends } from '../src/hen-friendship.ts'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 import { isGuardedAction } from '../src/action-click-guard.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
@@ -101,4 +102,37 @@ test('a genuinely hatched fifth hen is independently selectable with her own act
   assert.equal(selection.redraws,1);assert.match(view,/<h2>Пуговка<\/h2>/)
   assert.match(view,/data-action="pet" data-value="4"/);assert.match(view,/data-action="hen-treat" data-value="4:apple"/)
   assert.deepEqual(farm,before)
+})
+
+test('only an actionable, still unknown favorite moves the selected hen’s clue ahead of the treats', () => {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const p = commissionPlayer(opening.slice(0, 39))
+  p.act('specializeFacility', 'hatchery'); p.act('pickFruit', 0); p.act('incubateEgg')
+  p.night(); p.night()
+  assert.equal(p.state.flockSize, 5); assert.equal(p.state.day, 6)
+  const page = (id: number) => renderHenFriendship(p.state, null, true, select(p.state, String(id)).selectedFriendHen)
+  function checkUnknown(id: number, upfront: boolean) {
+    const before = structuredClone(p.state), html = page(id), hint = henFriends[id].hint
+    const split = html.indexOf('<details class="hen-friend-notes">'), card = html.slice(0, split), notes = html.slice(split)
+    assert.ok(split > 0); assert.equal(html.split(hint).length - 1, 1)
+    assert.equal(card.includes(hint), upfront); assert.equal(notes.includes(hint), !upfront)
+    if (upfront) {
+      assert.ok(card.indexOf('Угостить · 1 продукт') < card.indexOf(hint))
+      assert.ok(card.indexOf(hint) < card.indexOf('data-action="hen-treat"'))
+    }
+    assert.doesNotMatch(card, /<small>Любимое<\/small>/); assert.deepEqual(p.state, before)
+  }
+  checkUnknown(2, true); checkUnknown(4, true)
+  const carrots = p.state.produce.carrot, apples = p.state.fruit.apple
+  assert.ok(treatHen(p.state, 4, 'carrot').ok); assert.equal(p.state.produce.carrot, carrots - 1)
+  checkUnknown(4, false); p.night(); checkUnknown(4, true)
+  assert.ok(treatHen(p.state, 4, 'apple').ok); assert.equal(p.state.fruit.apple, apples - 1)
+  for (let day = 0; day < 2; day++) {
+    assert.ok(!page(4).includes(henFriends[4].hint)); assert.match(page(4), /<small>Любимое<\/small>/)
+    assert.ok(page(4).split('<details class="hen-friend-notes">')[1].includes(henFriends[4].memories[0]))
+    if (!day) p.night()
+  }
+  p.act('sellMarketItem', 'produce:carrot', p.state.produce.carrot)
+  p.act('sellMarketItem', 'fruit:apple', p.state.fruit.apple)
+  checkUnknown(2, false)
 })

@@ -79,6 +79,8 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
   const hen = henFriends[id], bond = farm.henFriendship.hens[id]
   const petted = farm.pettedChickens.includes(id), known = bond.tasted.includes(hen.favorite)
   const complete = bond.points === maxHenFriendship && known
+  const choices = henTreatIds.map(treat => ({ treat, option: getHenTreat(farm, id, treat) }))
+  const hintAtChoice = !known && choices.some(({ option }) => option.available)
   const walking = walk?.id === id
   const walkReason = walking ? walk.returning ? 'Возвращается на своё место.' : 'Идёт с вами.'
     : !canWalkWithHen(farm, id) ? 'С 3 шагов дружбы.'
@@ -94,14 +96,14 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
         <button type="button" class="dialog-button" data-action="pet" data-value="${id}"${petted ? ' disabled' : ''}>${petted ? 'Сегодня поглажена' : `Погладить${bond.points < maxHenFriendship ? ' · +1' : ''}`}</button>
         <div class="hen-walk-choice"><button type="button" class="dialog-button secondary" data-action="${walking ? 'hen-walk-return' : 'hen-walk-start'}" data-value="${id}"${walking ? walk.returning ? ' disabled' : '' : canWalkWithHen(farm, id) && !walk && sceneAvailable ? '' : ' disabled'}>${walking ? walk.returning ? 'Возвращается' : 'Закончить прогулку' : 'Погулять вместе'}</button><small>${walkReason}</small></div>
       </div>
-      <div class="hen-friend-treats"><h3>Угостить · 1 продукт</h3>
-        ${complete ? '<p class="hen-treat-status">Вы хорошо знаете друг друга. Угощения больше не нужны.</p>' : `<div class="hen-treats">${henTreatIds.map(treat => {
-          const option = getHenTreat(farm, id, treat)
+      <div class="hen-friend-treats"><h3 id="hen-treat-heading">Угостить · 1 продукт</h3>
+        ${hintAtChoice ? `<p id="hen-treat-hint" class="hen-treat-status">${hen.hint}</p>` : ''}
+        ${complete ? '<p class="hen-treat-status">Вы хорошо знаете друг друга. Угощения больше не нужны.</p>' : `<div class="hen-treats" role="group" aria-labelledby="hen-treat-heading"${hintAtChoice ? ' aria-describedby="hen-treat-hint"' : ''}>${choices.map(({ treat, option }) => {
           return `<button type="button" class="dialog-button secondary" data-action="hen-treat" data-value="${id}:${treat}" aria-label="Угостить: ${henTreatNames[treat]} ×1 · в запасе ${option.stock}${option.known ? treat === hen.favorite ? ' · любимое' : ' · пробовала' : ''}"${option.available ? '' : ' disabled'}>${icon(treat)}<strong>${henTreatNames[treat]} ×1</strong><small>В запасе ${option.stock}</small>${option.known ? `<small>${treat === hen.favorite ? 'Любимое' : 'Пробовала'}</small>` : ''}</button>`
         }).join('')}</div><p class="hen-treat-status">${bond.treatedOn === farm.day ? 'Сегодня уже угощали · снова после отдыха.' : 'Один раз в день · не заменяет корм.'}</p>`}
       </div>
     </article>
-    <details class="hen-friend-notes"><summary>Характер и правила</summary><div><p><strong>${hen.name}.</strong> ${hen.character} ${known ? `Любимое угощение: ${henTreatNames[hen.favorite].toLowerCase()}.` : hen.hint}</p>
+    <details class="hen-friend-notes"><summary>Характер и правила</summary><div><p><strong>${hen.name}.</strong> ${hen.character}${known ? ` Любимое угощение: ${henTreatNames[hen.favorite].toLowerCase()}.` : hintAtChoice ? '' : ` ${hen.hint}`}</p>
       <ol class="hen-memories">${hen.memories.slice(0, Math.floor(bond.points / 3)).map(memory => `<li>${memory}</li>`).join('')}${bond.points < maxHenFriendship ? `<li class="hen-memory-locked">Новая заметка при ${(Math.floor(bond.points / 3) + 1) * 3} шагах дружбы</li>` : ''}</ol>
       <p>Поглаживание даёт 1 шаг дружбы в день, угощение — ещё 1, любимое — 2. Каждые 3 шага открывают новую заметку. Пропуски не отнимают дружбу.</p>
       <p>Угощения необязательны: подружиться можно одними поглаживаниями. Они не заменяют корм, не добавляют яиц и расходуют только обычный урожай.</p>

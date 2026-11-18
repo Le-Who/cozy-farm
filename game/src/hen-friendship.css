@@ -21,6 +21,7 @@
 .hen-treats .dialog-button{display:flex;flex-direction:column;align-items:center;justify-content:start;gap:5px;padding:7px 3px}
 .hen-treats .icon{width:44px;height:44px;object-fit:contain}.hen-treats strong{font-size:12px}.hen-treats small{display:block;font-size:11px;font-weight:normal}
 .hen-treat-status{font-size:12px;line-height:1.35;color:var(--muted);margin:9px 0 0}
+#hen-treat-hint{margin:0 0 5px}
 .hen-friend-notes{margin-top:10px;border:1px solid var(--rule);border-radius:12px;background:var(--paper-light)}
 .hen-friend-notes>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;box-sizing:border-box;padding:8px 12px;cursor:pointer;color:var(--plum);font-size:13px;line-height:1.2;font-weight:700;list-style:none}
 .hen-friend-notes>summary::-webkit-details-marker{display:none}.hen-friend-notes>summary:after{content:'+';font-size:20px}.hen-friend-notes[open]>summary:after{content:'−'}
