@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict'
 import {test} from 'node:test'
+import {readFileSync} from 'node:fs'
+import {stripTypeScriptTypes} from 'node:module'
+import {runInNewContext} from 'node:vm'
+import {createFarm, getBedAction, getWaterCapacity, refillWater, workBed, upgradeBuilding, facilitySpecializations} from '../src/farm.ts'
 import {compactFieldHintRooms, fieldHintOverlaps} from '../src/field-hint.ts'
 
 const view={width:568,height:320},field={left:134,right:434}
@@ -39,4 +43,23 @@ test('only painted-control collisions count, not empty HUD-wrapper space',()=>{
   assert.equal(fieldHintOverlaps({x:294.93,y:30.75,width:200.3,height:30},controls),true)
   assert.equal(fieldHintOverlaps({x:294.93,y:169.66,width:200.3,height:30},controls),false)
   assert.equal(fieldHintOverlaps({x:67.45,y:80,width:200.3,height:30},controls),false)
+})
+
+test('the well hint follows the real watering can and leaves irrigation destinations intact',()=>{
+  const farm=createFarm()
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const part=(from:string,to:string)=>main.slice(main.indexOf(from),main.indexOf(to,main.indexOf(from)))
+  const code=stripTypeScriptTypes(part('const locationLabels =','function updateFieldContext(')
+    + 'const controls={'+part('  inspect(target) {','  activate: activateTarget')+'};controls.inspect({kind:"well"})')
+  const inspect=()=>runInNewContext(code,{farm,getWaterCapacity,branchDefinitions:facilitySpecializations.well,updateFieldContext(){}})
+  const full='Колодец · Лейка полна', refill='Колодец · Набрать воды'
+  assert.equal(farm.water,6); assert.equal(inspect(),full); assert.equal(refillWater(farm).ok,false)
+  const dryBed=farm.beds.findIndex((_,i)=>getBedAction(farm,i).kind==='water')
+  assert.ok(workBed(farm,dryBed).ok); assert.equal(farm.water,5); assert.equal(inspect(),refill)
+  assert.ok(refillWater(farm).ok); assert.equal(farm.water,6); assert.equal(inspect(),full)
+  assert.ok(upgradeBuilding(farm,'well').ok); assert.equal(farm.water,getWaterCapacity(farm)); assert.equal(inspect(),'Поливной колодец')
+  for(const branch of ['rain','pipes'] as const){
+    farm.wellSpecialization=branch
+    assert.equal(inspect(),facilitySpecializations.well[branch].name)
+  }
 })

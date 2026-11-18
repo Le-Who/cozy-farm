@@ -2641,6 +2641,7 @@ const island = createIsland(canvas, {
       if ((kind === 'farmhouse' || kind === 'coop' || kind === 'well') && farm.buildingLevels[kind] >= 2) {
         return upgradedLocationLabels[kind]
       }
+      if (kind === 'well' && farm.water === getWaterCapacity(farm)) return 'Колодец · Лейка полна'
       if(kind==='bay-music'||kind==='bay-shop'||kind==='bay-freight')return panelTitles[kind]
       return locationLabels[kind]
     }
