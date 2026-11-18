@@ -17,6 +17,14 @@ test('all ten crops, berries included, remain browsable without mutation and one
  assert.match(html,/Выбрать морковь/);assert.match(html,/Посев выполняется отдельно на грядке/)
  assert.ok(html.includes(seedChoice(f,'carrot').token))
 })
+test('the named preview region follows browsing without claiming the active seed changed',()=>{
+ const f=createFarm(),before=structuredClone(f)
+ for(const crop of [...cropIds.filter(id=>id!==f.selectedSeed),f.selectedSeed]){
+  const html=renderSeedPicker(f,crop,undefined,art)
+  assert.equal(html.match(/<section class="seed-picker-current" aria-label="([^"]+)">/)?.[1],`Просмотр: ${cropDefinitions[crop].name}`)
+ }
+ assert.deepEqual(f,before)
+})
 test('ordinary selection from the tool or a bed never consumes seed; the next bed action does',()=>{
  for(const bed of [undefined,13]){
   const f=createFarm(),before=structuredClone(f),choice=seedChoice(f,'cabbage',bed)

@@ -15,7 +15,7 @@ export function renderSeedPicker(farm: FarmState, previewSeed: CropId, bed: numb
   const seed = cropDefinitions[previewSeed], choice = seedChoice(farm, previewSeed, bed)
   const label = choice.planned ? choice.label : `Выбрать ${cropChoiceNames[previewSeed]}${activeGardenPlan(farm) ? ' вручную' : ''}`
   return `<section class="seed-picker" aria-label="Выбор культуры">
-    <section class="seed-picker-current" aria-label="Выбранная культура: ${seed.name}">${art.icon(previewSeed)}<div class="seed-picker-current-copy"><h2>${seed.name}</h2><p>${ruCount(seed.days, 'ночь', 'ночи', 'ночей')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p></div>
+    <section class="seed-picker-current" aria-label="Просмотр: ${seed.name}">${art.icon(previewSeed)}<div class="seed-picker-current-copy"><h2>${seed.name}</h2><p>${ruCount(seed.days, 'ночь', 'ночи', 'ночей')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p></div>
       <div class="seed-picker-primary">${choice.available ? art.button(label, 'choose-seed', true, {value:choice.token}) : art.button(`Купить ×${seedPackSize}`, 'buy-seeds', farm.coins >= seed.seedPrice, {crop:previewSeed, cost:{icon:'coin',amount:seed.seedPrice}})}</div>
       <p class="seed-picker-contract">${choice.available ? choice.detail : 'Покупка пополнит запас. Выбор и посев — отдельно.'}</p>
     </section>
