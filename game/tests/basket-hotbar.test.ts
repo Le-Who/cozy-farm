@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import * as farmApi from '../src/farm.ts'
+import { basketHotbarIcons, basketHotbarLabels } from '../src/basket-hotbar.ts'
 import * as bedIntent from '../src/bed-work-intent.ts'
 import { bedWorkSound } from '../src/farm-sounds.ts'
 import { earlyFerryFarm } from './fixtures/early-ferry.ts'
@@ -12,7 +13,7 @@ import { communityReturnFixture } from './fixtures/community-return.ts'
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const islandSource = readFileSync(new URL('../src/island.ts', import.meta.url), 'utf8')
 const js = (code: string) => stripTypeScriptTypes(code)
-const tools = runInNewContext(js(main.slice(main.indexOf('const tools = ['), main.indexOf('type Tool =')) + '; tools'))
+const tools = runInNewContext(js(main.slice(main.indexOf('const tools = ['), main.indexOf('type Tool =')) + '; tools'), { basketHotbarLabels, farm:{island:'home'} })
 const hotbar = main.slice(main.indexOf('function useHotbar('), main.indexOf('function highlightControl('))
 const activation = main.slice(main.indexOf('function activateTarget('), main.indexOf('function useHotbar('))
 const statusLoop = main.slice(main.indexOf('  for (const button of hotbarButtons) {'), main.indexOf('  updateFieldContext(contextBed)'))
@@ -48,13 +49,14 @@ for (const key of [false,true]) test(`basket ${key?'keyboard 5':'button'} has it
 })
 
 test('accessible basket label and title name the actual destination on all islands', async () => {
-  // Same dictionary supplied to the real status loop; import occurs after red baseline is recorded.
-  const {basketHotbarLabels}=await import('../src/basket-hotbar.ts')
-  for(const [at,label] of Object.entries({home:'Запасы',grove:'Сад',cape:'Пасека',village:'Кондитерская'})){
+  for(const [at,label] of Object.entries({home:'Припасы фермы',grove:'Сад',cape:'Пасека',village:'Кондитерская'})){
     const attrs:Record<string,string>={},image={getAttribute:()=>'',src:''},badge:any={}
     const button:any={dataset:{tool:'basket'},setAttribute:(key:string,value:string)=>{attrs[key]=value},removeAttribute:(key:string)=>{delete attrs[key]},querySelector:(selector:string)=>selector==='.slot-icon img'?image:badge}
-    runInNewContext(js(statusLoop),{farm:{island:at},atHome:at==='home',tools,hotbarButtons:[button],activeTool:'basket',counts:{basket:3},iconUrl:(id:string)=>id,basketHotbarLabels})
+    runInNewContext(js(statusLoop),{farm:{island:at},atHome:at==='home',tools,hotbarButtons:[button],activeTool:'basket',counts:{basket:3},iconUrl:(id:string)=>id,basketHotbarIcons,basketHotbarLabels})
     assert.equal(attrs['aria-label'],label);assert.equal(button.title,`${label} (5)`)
+    assert.equal(image.src, at==='home'?'pack':at==='village'?'ui-handmade-round':'tool-crate')
+    assert.equal(badge.textContent,'3')
+    assert.equal(badge.hidden,at==='village')
     assert.equal(button.hidden,false);assert.equal(button.disabled,false)
   }
 })
@@ -88,14 +90,13 @@ test('existing pointer, Enter/Space and compact contextual harvesting still acti
 
 
 test('home inventory shortcut is a dialog button, never a harvest toggle; other controls and islands stay unchanged', async () => {
-  const {basketHotbarLabels}=await import('../src/basket-hotbar.ts')
   for (const island of ['home','grove','cape','village']) for (const activeTool of ['seeds','basket','hoe']) {
     const states=tools.map(({id}: {id:string})=>{
       const attrs:Record<string,string>={'aria-haspopup':'dialog'},image={getAttribute:()=>'',src:''},badge:any={}
       const button:any={dataset:{tool:id},setAttribute:(key:string,value:string)=>{attrs[key]=value},removeAttribute:(key:string)=>{delete attrs[key]},querySelector:(selector:string)=>selector==='.slot-icon img'?image:badge}
       return {button,attrs}
     })
-    runInNewContext(js(statusLoop),{farm:{island,selectedSeed:'carrot'},atHome:island==='home',sowingPlan:undefined,cropDefinitions:farmApi.cropDefinitions,tools,hotbarButtons:states.map(s=>s.button),activeTool,counts:{basket:3},iconUrl:(id:string)=>id,basketHotbarLabels})
+    runInNewContext(js(statusLoop),{farm:{island,selectedSeed:'carrot'},atHome:island==='home',sowingPlan:undefined,cropDefinitions:farmApi.cropDefinitions,tools,hotbarButtons:states.map(s=>s.button),activeTool,counts:{basket:3},iconUrl:(id:string)=>id,basketHotbarIcons,basketHotbarLabels})
     for(const {button,attrs} of states){
       const shortcut=button.dataset.tool==='basket'&&island==='home'
       assert.equal(attrs['aria-pressed'],shortcut?undefined:String(button.dataset.tool===activeTool))

@@ -14,7 +14,7 @@ import {revealSeedPickerFocus} from './seed-picker-focus'
 import './seed-picker.css'
 import {seedChoice,chooseSeedForBed} from './seed-choice'
 import {planBedWork,isCurrentBedWork,bedWorkKind} from './bed-work-intent'
-import { basketHotbarLabels } from './basket-hotbar'
+import { basketHotbarIcons, basketHotbarLabels } from './basket-hotbar'
 import { renderHarvestStocks } from './inventory-harvest'
 import './inventory-supplies.css'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
@@ -337,7 +337,7 @@ const tools = [
   { id: 'water', label: 'Лейка', image: 'can', key: '2' },
   { id: 'seeds', label: 'Семена', image: 'seeds', key: '3' },
   { id: 'feed', label: 'Корм для кур', image: 'feed', key: '4' },
-  { id: 'basket', label: 'Корзина урожая', image: 'crate', key: '5' },
+  { id: 'basket', label: basketHotbarLabels[farm.island], image: 'crate', key: '5' },
   { id: 'coop', label: 'Курятник', image: 'hen', key: '6' },
   { id: 'rod', label: 'Удочка', image: 'rod', key: '7' },
   { id: 'boat', label: 'Лодка', image: 'boat', key: '8' },
@@ -505,7 +505,7 @@ app.innerHTML = `
       </div>
       <div class="hotbar" role="group" aria-label="Инструменты">
         ${tools.map(({ id, label, image, key }) => `<button class="hotbar-slot" type="button" data-tool="${id}" aria-label="${label}" aria-describedby="slot-count-${id}" title="${label} (${key})" aria-pressed="false" aria-keyshortcuts="${key}">
-          <span class="slot-icon">${icon(`tool-${image}`)}</span><kbd class="slot-key" aria-hidden="true">${key}</kbd><span class="slot-count" id="slot-count-${id}" hidden></span>
+          <span class="slot-icon">${icon(id === 'basket' ? basketHotbarIcons[farm.island] : `tool-${image}`)}</span><kbd class="slot-key" aria-hidden="true">${key}</kbd><span class="slot-count" id="slot-count-${id}" hidden></span>
         </button>`).join('')}
       </div>
     </div>
@@ -688,7 +688,7 @@ function status() {
     button.setAttribute('aria-label', label)
     button.title = `${label} (${definition.key})`
     const image = button.querySelector<HTMLImageElement>('.slot-icon img')!
-    const source = iconUrl(atVillage && toolId === 'basket' ? 'ui-handmade-round' : atVillage && toolId === 'coop' ? 'ui-bea' : `tool-${definition.image}`)
+    const source = iconUrl(toolId === 'basket' ? basketHotbarIcons[farm.island] : atVillage && toolId === 'coop' ? 'ui-bea' : `tool-${definition.image}`)
     if (image.getAttribute('src') !== source) image.src = source
     button.disabled = farm.island === 'cape' && toolId === 'rod'
     const count = counts[toolId]
