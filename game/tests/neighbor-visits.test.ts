@@ -203,3 +203,27 @@ test('repeat observations leave the first memory intact after a plain farewell, 
     assert.deepEqual(load(f).neighborVisits.memories,first)
   }
 })
+
+test('the visible first-visit receipt is not duplicated in history until farewell; other serials remain',()=>{
+  const f=ready(),book=()=>renderNeighborVisits(f,()=>'')
+  const history=(html:string)=>html.split('<h2>Наши домашние встречи</h2>')[1]??''
+  assert.match(history(book()),/Здесь останутся первые встречи/)
+  for(const [i,id] of (['finnGarden','beaFlock','beaHarvest'] as const).entries()){
+    assert.ok(inviteNeighborVisit(f,id).ok)
+    if(id==='beaFlock')assert.ok(introduceHenToVisitor(f,0).ok)
+    else{f.beds[i]={kind:'crop',crop:'carrot',growth:1,watered:false};assert.ok(workBed(f,i).ok)}
+    const {serial}=f.neighborVisits.active!,entry=visitActivities[id],before=structuredClone(f)
+    const html=book(),past=history(html)
+    assert.deepEqual(f,before)
+    assert.equal(html.split(entry.memory).length-1,1)
+    assert.ok(!past.includes(entry.memory));assert.doesNotMatch(html,/Здесь останутся первые встречи/)
+    if(i===0)assert.doesNotMatch(html,/<h2>Наши домашние встречи<\/h2>/)
+    for(const prior of f.neighborVisits.memories.slice(0,-1))assert.ok(past.includes(visitActivities[prior.activity].memory))
+    for(const reply of ['quiet','curious'])assert.ok(html.includes(`data-action="visit-reply" data-value="${serial}:${reply}"`))
+    assert.ok(html.includes(`data-action="visit-finish" data-value="${serial}"`))
+    assert.ok(finishNeighborVisit(f,serial,'quiet').ok)
+    const after=history(book());assert.ok(after.includes(entry.memory));assert.ok(after.includes(entry.quiet))
+    assert.deepEqual(f.neighborVisits.memories.map(m=>m.serial),before.neighborVisits.memories.map(m=>m.serial))
+  }
+  assert.deepEqual(load(f),f)
+})
