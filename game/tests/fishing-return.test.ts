@@ -2,8 +2,40 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { beginFishingTrip, cancelFishingTrip, endDay, finishFishingTrip, getFishAction, getFishingTripConfig, restoreFarm, sail } from '../src/farm.ts'
 import { fishingReturnFixture } from './fixtures/fishing-return.ts'
+import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
+import * as F from '../src/farm.ts'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 
 const reload = (farm: ReturnType<typeof fishingReturnFixture>) => restoreFarm(JSON.parse(JSON.stringify(farm)))!
+
+test('Finn promises hook space and visibly confirms preparation when his cottage closes', () => {
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8')) as {name:string;args:unknown[]}[]
+  const p=commissionPlayer(opening.slice(0,opening.findIndex(step=>step.name==='inviteResident'&&step.args[0]==='finn')))
+  const code=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  function section(start:string,end:string){const a=code.indexOf(start),b=code.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return code.slice(a,b)}
+  const cottage=stripTypeScriptTypes(section('function neighboursCard()', 'let selectedWarehouseRequest')+';neighboursCard()')
+  const read=()=>runInNewContext(cottage,{...F,farm:p.state,villageSlot:1,pastryShape:'round',icon:()=>'',nav:(...parts:string[])=>parts.join(''),neighborHelpCard:()=>'',button:(label:string)=>label}) as string
+  assert.match(read(),/\+1 место на крючке · крепче снасть/)
+  p.act('inviteResident','finn',1);assert.match(read(),/Разведать · \+1 место на крючке/)
+  const before=structuredClone(p.state.fish),quota=structuredClone(p.state.fishCaughtToday),coins=p.state.coins
+  const dialog={open:true,close(){this.open=false}}
+  let screenReaderOnly=true
+  const toast={dataset:{},textContent:'',hidden:true,classList:{toggle(_:string,on:boolean){screenReaderOnly=on}}}
+  const script=section('function notify(', 'function currentTask(')+section('function perform(', '\n}')+'\n}'+
+    "\nswitch ('resident-service'){"+section("case 'resident-service':","case 'buy-boat':")+'}'
+  runInNewContext(stripTypeScriptTypes(script),{...F,farm:p.state,value:'finn',pastryShape:'round',dialog,toast,toastTimer:0,
+    window:{setTimeout(){},clearTimeout(){}},saveFarm(){},refresh(){}})
+  assert.equal(dialog.open,false);assert.equal(toast.hidden,false);assert.equal(screenReaderOnly,false)
+  assert.match(toast.textContent,/Следующий крючок вместит ещё одну рыбу/)
+  assert.match(read(),/Маршрут готов · \+1 место на крючке/)
+  assert.deepEqual(p.state.fish,before);assert.deepEqual(p.state.fishCaughtToday,quota);assert.equal(p.state.coins,coins)
+  p.visit('grove');p.reload();assert.equal(p.state.village.scouting,true)
+  const trip=beginFishingTrip(p.state);assert.equal(trip.config?.capacity,3);assert.equal(trip.config?.resilience,4)
+  assert.equal(p.state.village.scouting,false);assert.ok(finishFishingTrip(p.state,trip.token!,[]).ok)
+  assert.deepEqual(p.state.fish,before);assert.deepEqual(p.state.fishCaughtToday,quota)
+})
 
 test('viewing prepared fishing repeatedly and reloading never consumes its picnic or Finn help', () => {
   const farm = fishingReturnFixture(), before = structuredClone(farm)
