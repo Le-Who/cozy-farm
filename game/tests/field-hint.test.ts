@@ -108,3 +108,27 @@ test('the field card and the canvas announce the existing seed picker before it 
   assert.ok(saveGardenPlan(farm,0,{name:'Свёкла',crops:beds},farm.gardenPlans.revision).ok);assert.ok(followGardenPlan(farm,0,farm.gardenPlans.revision).ok)
   assert.deepEqual(hints(0),['Целина · Выбрать семена · По плану','Выбрать семена','work-context',false])
 })
+
+test('the watering can suggests a plant only while a bed actually needs water',()=>{
+  const farm=createFarm()
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const action=stripTypeScriptTypes(main.slice(main.indexOf('function useHotbar('),main.indexOf('function highlightControl('))+";useHotbar('water')")
+  const targets=()=>farm.beds.map((_,i)=>i).filter(i=>getBedAction(farm,i).kind==='water')
+  const actions:string[]=[],ctx={farm,getBedAction,activeTool:'hoe',status(){},canvas:{focus:()=>actions.push('canvas')},
+    notify:(text:string)=>actions.push(text),activateTarget:(target:{kind:string})=>actions.push(target.kind)}
+  const choose=()=>{
+    const before=structuredClone(farm);actions.length=0;runInNewContext(action,ctx)
+    assert.equal(ctx.activeTool,'water');assert.deepEqual(farm,before);return actions.slice()
+  }
+  const wet=['canvas','Выберите растение, которому нужна вода.'],empty=['canvas','Наберите воду в колодце.']
+  const initial=targets();assert.equal(initial.length,6);assert.deepEqual(choose(),wet)
+  for(const i of initial)assert.ok(workBed(farm,i).ok)
+  assert.equal(farm.water,0);assert.deepEqual(choose(),empty)
+  assert.ok(refillWater(farm).ok);assert.equal(farm.water,6);assert.deepEqual(targets(),[])
+  assert.deepEqual(choose(),['canvas','Сейчас поливать нечего.'])
+  const bed=farm.beds.findIndex((_,i)=>getBedAction(farm,i).kind==='plant' && getBedAction(farm,i).available)
+  assert.ok(bed>=0);assert.ok(workBed(farm,bed).ok);assert.deepEqual(targets(),[bed])
+  assert.deepEqual(choose(),wet);assert.ok(workBed(farm,bed).ok)
+  assert.equal(farm.day,1);assert.equal(farm.water,5);assert.deepEqual(choose(),['canvas','Сейчас поливать нечего.'])
+  assert.ok(upgradeBuilding(farm,'well').ok);assert.deepEqual(choose(),['well'])
+})

@@ -282,3 +282,26 @@ test('Finn points only to ripe fruit in the home garden; an obsolete route leave
   assert.ok(pickFruit(f,2).ok);assert.ok(f.neighborVisits.active?.observation);assert.equal(button(),undefined)
   assert.deepEqual(dispatch(),{calls:[],notices:[]});assert.deepEqual(load(f),f)
 })
+
+test('first earned harbor arrival leads to an available cottage, then the settled resident’s meeting, not a fruitless trip home', async()=>{
+  const {commissionPlayer}=await import('./fixtures/commission-player.ts')
+  const steps=JSON.parse(readFileSync(new URL('./fixtures/market-order-selection-commands.json',import.meta.url),'utf8')) as {name:string;args:unknown[]}[]
+  const first=steps.findIndex(s=>s.name==='sail'&&s.args[0]==='village');assert.ok(first>=0)
+  const p=commissionPlayer(steps.slice(0,first+1)),view=()=>{
+    const before=structuredClone(p.state),html=renderNeighborVisits(p.state,()=>'');assert.deepEqual(p.state,before);return html
+  }
+  const invites=(html:string)=>html.match(/<button[^>]*data-action="visit-invite"[^>]*>/g)??[]
+  const locked=view();assert.equal(p.state.day,8);assert.deepEqual(p.state.village.residents,[null,null])
+  assert.doesNotMatch(locked,/Теперь соседи могут прийти к вам/);assert.equal(invites(locked).length,6);assert.ok(invites(locked).every(b=>b.includes(' disabled')))
+  assert.match(locked,/data-action="visit-cottage" data-value="0">Выбрать соседа для домика/);assert.match(locked,/data-action="visit-book-home"/)
+  p.act('inviteResident','bea',0);const settled=view();assert.match(settled,/data-action="open-neighbor" data-value="bea"/);assert.doesNotMatch(settled,/data-action="visit-cottage"/)
+  assert.ok(invites(settled).every(b=>b.includes(' disabled')))
+  for(const step of steps.slice(first+2,-1))p.act(step.name,...step.args)
+  assert.equal(p.state.island,'home');assert.equal(p.state.neighbors.bea.completed,1)
+  const unlocked=view();assert.equal(invites(unlocked).filter(b=>!b.includes(' disabled')).length,3)
+  assert.doesNotMatch(unlocked,/data-action="(?:visit-cottage|open-neighbor|visit-book-home)"/)
+  assert.ok(inviteNeighborVisit(p.state,'beaFlock').ok);assert.ok(introduceHenToVisitor(p.state,0).ok)
+  assert.ok(finishNeighborVisit(p.state,p.state.neighborVisits.serial,'quiet').ok)
+  assert.match(view(),/data-value="beaFlock">Позвать снова/);assert.ok(inviteNeighborVisit(p.state,'beaFlock').ok)
+  assert.equal(p.state.neighborVisits.memories.length,1)
+})

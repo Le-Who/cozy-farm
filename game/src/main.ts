@@ -2875,7 +2875,9 @@ function useHotbar(tool: Tool) {
         break
       }
       canvas.focus({ preventScroll: true })
-      notify(farm.water ? 'Выберите растение, которому нужна вода.' : 'Наберите воду в колодце.')
+      notify(!farm.water ? 'Наберите воду в колодце.'
+        : farm.beds.some((_, index) => getBedAction(farm, index).kind === 'water')
+          ? 'Выберите растение, которому нужна вода.' : 'Сейчас поливать нечего.')
       break
     case 'seeds':
       openPanel('seeds')

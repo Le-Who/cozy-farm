@@ -123,7 +123,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const received = settled ? receiptCargo(settled.incoming, settled.earnCoins) : '';
   const receiptExchange = !settled ? '' : world.last!.explored ? gave ? ` · отдали: ${gave}` : ''
     : ` · ${gave || 'без затрат'} → ${received || 'без обратного груза'}`;
-  const status = phase === 'sailing' ? `Вернётся утром дня ${active!.returnsOn}` : phase === 'ready' ? 'Паром вернулся. Груз вас дождётся.' : `${discovery || restock ? `Выбран рейс «${manifest.name}». ` : ''}${quote.available ? 'После отправки вернётся следующим игровым утром' : ''}`;
+  const status = active ? `${phase === 'ready' ? 'Вернулся' : 'Вернётся'} утром дня ${active.returnsOn}` : `${discovery || restock ? `Выбран рейс «${manifest.name}». ` : ''}${quote.available ? 'После отправки вернётся следующим игровым утром' : ''}`;
   return `<section class="bay-freight" data-expedition-phase="${phase}" data-combined="${combined}" aria-label="Торговые экспедиции">
     <header class="bay-freight-heading">${button('‹', 'back', '', 'class="bay-freight-back" aria-label="Назад"')}<h2>Паром «Ласточка»</h2><span class="expedition-balance">${ctx.icon('coin')} ${ctx.coins ?? 0}</span>${button('×', 'close', '', 'class="bay-freight-close" aria-label="Закрыть паром"')}</header>
     <div class="bay-freight-workspace">
@@ -144,7 +144,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
           <span class="expedition-home">Дом</span>
           ${expeditionPorts.map((place, index) => button(`<span class="expedition-map-symbol" data-known="${world.discovered.includes(place)}">${world.discovered.includes(place) ? '' : '?'}</span><strong class="expedition-map-long">${esc(world.discovered.includes(place) ? expeditionPortNames[place] : index === 1 ? 'Неизвестный маяк' : 'Неизвестный берег')}</strong><strong class="expedition-map-short">${place === 'mill' ? 'Посад' : place === 'salt' ? 'Маяк' : world.discovered.includes(place) ? 'Сады' : 'Берег'}</strong>`, 'expedition-port', place, `aria-label="${esc(world.discovered.includes(place) ? expeditionPortNames[place] : place === 'salt' ? 'Неизвестный маяк' : 'Неизвестный берег')}" class="expedition-map-port" style="--port-x:${[36,62,87][index]}%" aria-pressed="${port === place}" ${active ? 'disabled' : ''}`)).join('')}
         </nav>
-        <p class="expedition-map-hint">${phase === 'sailing' ? 'Продолжайте заниматься фермой. Рейс завершится после отдыха в доме.' : 'Знакомый порт для торговли. Неизвестный берег для открытия.'}</p>
+        ${!active ? '<p class="expedition-map-hint">Знакомый порт для торговли. Неизвестный берег для открытия.</p>' : ''}
 
       </div>
       <div class="expedition-desk">
@@ -153,7 +153,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
           <h3>${combined ? 'Два заказа в одном рейсе' : esc(manifest.name)}</h3>
           ${combined ? `<section class="expedition-selection" aria-label="Выбранные заказы"><ol>${manifest.name.split(' + ').map(name => `<li>${esc(name)}</li>`).join('')}</ol>${!active ? button('Оставить только первый заказ','expedition-offer',orderIds[0]) : ''}</section>` : ''}
           <p class="expedition-destination">⌖ ${esc(displayPort)}</p>
-          ${!exploring ? `<div class="expedition-market-status"><span data-demand="${demand}">${demandText}</span><span>${picture(stockId, ctx)} ${expeditionStock(world, port, stockId)} в порту${active ? ' · ваш груз отложен' : ''}</span></div>` : ''}
+          ${!exploring ? `<div class="expedition-market-status"><span data-demand="${demand}">${demandText}</span><span>${picture(stockId, ctx)} ${expeditionStock(world, port, stockId)} в порту${phase === 'sailing' ? ' · ваш груз отложен' : ''}</span></div>` : ''}
           <div class="expedition-cargo-card"><h4>${active ? 'Отправили' : 'Отправим'}</h4>${cargo(manifest.outgoing, true)}${manifest.payCoins ? `<div class="expedition-cargo-item expedition-money">${ctx.icon('coin')}<span><strong>${manifest.payCoins} монет</strong><small>${active ? 'Уже оплачено' : `Останется ${Math.max(0,(ctx.coins ?? 0)-manifest.payCoins)}`}</small></span></div>` : ''}${!manifest.outgoing.length && !manifest.payCoins ? '<p>Пустой трюм</p>' : ''}</div>
           <div class="expedition-cargo-arrow" aria-hidden="true">↓</div>
           <div class="expedition-cargo-card expedition-return"><h4>${phase === 'ready' ? 'Привёз' : 'Привезёт'}</h4><div class="expedition-return-row">${cargo(manifest.incoming, false)}${manifest.earnCoins ? `<div class="expedition-cargo-item expedition-money">${ctx.icon('coin')}<strong>${manifest.earnCoins} монет</strong></div>` : ''}</div>${exploring ? `<div class="expedition-discovery">${ctx.icon('island')}<strong>${phase === 'ready' ? esc(expeditionPortNames[port]) : 'Новый торговый порт'}</strong></div>` : ''}</div>
@@ -165,7 +165,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
         }).join('')}</div></details>` : ''}
           ${world.last && !active ? `<h4 class="expedition-receipt" tabindex="-1">${world.last.explored ? 'Новый порт на карте' : 'Прошлый груз получен'} · ${esc(expeditionPortNames[world.last.port])} · день ${world.last.day}${receiptExchange}</h4>` : ''}
         </div>
-        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь. Игровое утро начинается после сна. Настоящий таймер не идёт.</small>` : phase === 'ready' ? `${button(claimLabel, 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения и потери груза.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
+        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь.</small>` : phase === 'ready' ? `${button(claimLabel, 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения.</small>` : `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}</footer>
       </div>
     </div>
   </section>`;

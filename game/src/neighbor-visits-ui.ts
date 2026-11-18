@@ -32,12 +32,18 @@ export function renderNeighborVisits(farm:FarmState,icon:(key:string)=>string){
     <p class="home-visit-note">После отдыха или поездки гость уйдёт, а записи в книге останутся.</p>
     <div class="dialog-actions">${button('Побыть на ферме','close')}${button(active.observation?'Попрощаться':'Завершить визит','visit-finish',String(active.serial))}</div></article>`:''
   const history=archived.length?`<div class="home-visit-memories">${archived.map(m=>{const a=visitActivities[m.activity];return `<article><header>${icon(`ui-${a.resident}`)}<div><h3>${a.title}</h3><small>${visitName(a.resident)} · День ${m.day}</small></div></header><strong>${escape(m.subject)}</strong><p>${a.memory}</p><p>${escape(m.detail)}</p>${m.reply?`<p class="home-visit-note">${a[m.reply]}</p>`:''}</article>`}).join('')}</div>`:memories.length?'':'<p>Здесь останутся первые встречи: урожай, выпечка и знакомства с вашими курочками. Можно собирать их в любом порядке.</p>'
-  const introduction=`<p>Теперь соседи могут прийти к вам. Приглашения открываются после первой общей встречи в Лавандовой гавани. За визит не нужно платить или отдавать угощение.</p>
+  const settled=farm.village.residents.filter(id=>id!==null)
+  const canHostAtHome=settled.some(id=>farm.neighbors[id].completed>0)
+  const localStep=!active&&farm.island==='village'&&farm.village.built&&!canHostAtHome
+    ? settled.length ? button(settled[0]==='bea'?'К встрече с Беа':'К встрече с Финном','open-neighbor',settled[0])
+      : button('Выбрать соседа для домика','visit-cottage','0') : ''
+  const home=farm.island==='home'?'':button(canHostAtHome?'Вернуться домой к приглашениям':'Вернуться домой','visit-book-home')
+  const introduction=`<p>Приглашения открываются после первой общей встречи в Лавандовой гавани. За визит не нужно платить или отдавать угощение.</p>${localStep}
     <p class="home-visit-note">Один гость за раз. Он уйдёт после отдыха или поездки, а воспоминания останутся. Повторные визиты не дают монет, урожая или очков дружбы.</p>`
-  return `<section class="home-visits">${active?present:introduction}${farm.island!=='home'?button('Вернуться домой к приглашениям','visit-book-home'):''}
-    ${!active?`<div class="home-visit-invitations">${(['bea','finn'] as const).map(resident=>`<article><header>${icon(`ui-${resident}`)}<h2>${visitName(resident)}</h2></header>${!canInviteNeighbor(farm,resident)?`<p>${farm.island!=='home'?'Приглашайте соседей с Родного острова.':!farm.village.residents.includes(resident)?'Сначала пригласите этого соседа поселиться в гавани.':'Сначала устройте с этим соседом общую встречу в гавани.'}</p>`:''}
+  return `<section class="home-visits">${active?present:introduction}${localStep?'':home}
+    ${!active?`<div class="home-visit-invitations">${(['bea','finn'] as const).map(resident=>`<article><header>${icon(`ui-${resident}`)}<h2>${visitName(resident)}</h2></header>${!canInviteNeighbor(farm,resident)?`<p>${!farm.village.residents.includes(resident)?'Сначала пригласите этого соседа поселиться в гавани.':!farm.neighbors[resident].completed?'Сначала устройте с этим соседом общую встречу в гавани.':'Приглашайте соседей с Родного острова.'}</p>`:''}
       ${visitActivityIds.filter(id=>visitActivities[id].resident===resident).map(id=>`<div class="home-visit-choice"><h3>${visitActivities[id].title}</h3><p>${visitActivities[id].goal}</p><small>${readiness(farm,id)}</small>${button(memories.some(m=>m.activity===id)?'Позвать снова':'Пригласить','visit-invite',id,canInviteNeighbor(farm,resident))}</div>`).join('')}</article>`).join('')}</div>`:''}
-    ${history?`<h2>Наши домашние встречи</h2>${history}`:''}</section>`
+    ${history?`<h2>Наши домашние встречи</h2>${history}`:''}${localStep?home:''}</section>`
 }
 export function renderVisitRest(farm:FarmState){
   const visit=farm.neighborVisits.active
