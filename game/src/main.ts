@@ -2117,7 +2117,10 @@ function drawPanel() {
         garden.push(tile('Сад','ui-tree-apple','orchard'),tile('Свои планы огорода','field','garden-plans'),tile('Пересадка культур','tool-seeds','transplant'),tile('Размножить ягодный куст','ui-seed-blueberry','berry-nursery'),tile('Свой ягодник','ui-seed-strawberry','berry-renewal'))
         if (isProjectComplete(farm,'fair')) places.push(tile('Гость ярмарки','ui-market','guest'),tile('Просьбы соседей','ui-bea','intents'))
       }
-      if (village) places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'),tile(getVillageMeal(farm, pastryShape).served ? 'Ужин завтра' : 'Общий ужин','ui-grilled-fish','village-meal'))
+      if (village) {
+        places.push(tile('Своя лавка','bay/pavilion','bay-shop'),tile('Музыкальный сад','bay/music-harp','bay-music'),tile('Соседи','ui-bea','village'))
+        if (!getVillageMeal(farm, pastryShape).served) places.push(tile('Общий ужин','ui-grilled-fish','village-meal'))
+      }
       if (farm.island === 'cape') {
         places.push(tile('Пасека','ui-honey','hive'))
         if (farm.capeLevel >= 3) places.push(tile('Медовая кухня','ui-honey-biscuits','honey-kitchen'))

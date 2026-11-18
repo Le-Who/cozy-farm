@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
-import { createFarm, getVillageMeal } from '../src/farm.ts'
+import { createFarm, getVillageMeal, isProjectComplete, type FarmState } from '../src/farm.ts'
+import { hasShoal } from '../src/shoal.ts'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
 const branch=main.slice(main.indexOf("    case 'guide': {"),main.indexOf("    case 'workshop': {"))
 const names={home:'Родной остров',grove:'Солёная роща',cape:'Цветочный мыс',village:'Лавандовая гавань'}
@@ -11,8 +13,11 @@ const garden=['Сад|orchard','Свои планы огорода|garden-plans'
 function render(island:keyof typeof names,flags:{fair:boolean;boat:boolean;built:boolean;festival:boolean;shoal:boolean;cape:number},open=false){
  const farm=createFarm();farm.island=island;farm.boatOwned=flags.boat;farm.village.built=flags.built;farm.capeLevel=flags.cape
  if(flags.festival)farm.festivals.active={tradition:'harvest',edition:0,stage:0,startedOn:farm.day,readyOn:farm.day,performanceBaseline:0,materialValue:0,cargoDelivered:0,activity:{harvest:false,bake:false,fish:false,shore:false},delivered:{}}
+ return renderFarm(farm, ()=>flags.fair, ()=>flags.shoal, open)
+}
+function renderFarm(farm:FarmState, fair=()=>isProjectComplete(farm,'fair'), shoal=()=>hasShoal(farm), open=false){
  const before=structuredClone(farm),dialogContent={innerHTML:''}
- const ctx={farm,getVillageMeal,pastryShape:'round',dialogContent,guideGardenOpen:open,islandNames:names,isProjectComplete:()=>flags.fair,hasShoal:()=>flags.shoal,icon:()=>'',button:(name:string,action:string,enabled:boolean,{value}:any)=>`<button data-action="${action}" data-value="${value}">${name}</button>`}
+ const ctx={farm,getVillageMeal,pastryShape:'round',dialogContent,guideGardenOpen:open,islandNames:names,isProjectComplete:fair,hasShoal:shoal,icon:()=>'',button:(name:string,action:string,enabled:boolean,{value}:any)=>`<button data-action="${action}" data-value="${value}">${name}</button>`}
  runInNewContext(stripTypeScriptTypes(`function draw(){switch('guide'){${branch}}};draw()`),ctx)
  assert.deepEqual(farm,before)
  return dialogContent.innerHTML
@@ -45,4 +50,19 @@ test('one initially collapsed garden group retains full current labels and can r
  const content=closed.match(/<details[^>]*data-guide-garden>[\s\S]*?<\/details>/)![0]
  assert.equal(routes(content).length,5);assert.match(content,/Размножить ягодный куст/);assert.doesNotMatch(content,/Ягодный питомник/)
  assert.match(main,/gardenGroup\.open = previous\.guideGardenOpen/)
+})
+
+test('the village map offers supper until served and restores the route only the next day', () => {
+ const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8')) as {name:string;args:unknown[]}[]
+ const index=opening.reduce((last,step,i)=>step.name==='serveVillageMeal'?i:last,-1)
+ assert.ok(index>=0)
+ const p=commissionPlayer(opening.slice(0,index))
+ const supper='open-panel||village-meal', market='travel-panel|Рынок дома|market'
+ const before=routes(renderFarm(p.state))
+ assert.equal(p.state.island,'village');assert.ok(getVillageMeal(p.state).available)
+ assert.ok(before.includes(supper));assert.ok(before.includes(market))
+ p.act('serveVillageMeal','round')
+ assert.deepEqual(routes(renderFarm(p.state)),before.filter(route=>route!==supper))
+ p.night();p.visit('village')
+ assert.deepEqual(routes(renderFarm(p.state)),before)
 })
