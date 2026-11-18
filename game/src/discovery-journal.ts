@@ -1,4 +1,5 @@
 import { buildingIds, getGoal, isProjectComplete, type FarmState } from './farm.ts';
+import { visitActivities, visitName } from './neighbor-visits.ts';
 import { festivalDefinitions, festivalTraditions } from './bay-festival.ts';
 
 export type DiscoveryChapter = {
@@ -14,7 +15,7 @@ export type DiscoveryJournal = {
   next?: DiscoveryChapter;
   completed: number;
   tip: string;
-  activities: { label: string; detail: string; icon: string; panel: string }[];
+  activities: { label: string; detail: string; icon: string; panel: string; visit?: number }[];
 };
 
 /** Read-only landmarks, not a second quest ledger. Spending goods never undoes an opening. */
@@ -48,7 +49,10 @@ export function getDiscoveryJournal(farm: FarmState): DiscoveryJournal {
   if (harbour) {
     activities.push({ label: 'Гостевая книга', detail: 'Приглашайте знакомых соседей на свою ферму.', icon: 'ui-bea', panel: 'neighbor-visits' });
     activities.push({ label: 'Своя лавка', detail: 'Товары, цены и вкусы постоянных гостей.', icon: 'bay/pavilion', panel: 'bay-shop' });
-    activities.push({ label: 'Музыкальный сад', detail: 'Своя мелодия и концерт для бухты.', icon: 'bay/music-harp', panel: 'bay-music' });
+    const guest = farm.island === 'home' ? farm.neighborVisits.active : null;
+    activities.push({ label: farm.island === 'village' ? 'Музыкальный сад' : 'Плыть в музыкальный сад',
+      detail: guest ? `${visitName(visitActivities[guest.activity].resident)} вернётся в гавань, если отплыть.` : 'Своя мелодия и концерт для бухты.',
+      icon: 'bay/music-harp', panel: 'bay-music', visit: guest?.serial });
     activities.push({ label: 'Праздники гавани', detail: traditions.length ? 'Новые праздники и следующие встречи.' : festivalDefinitions.lights.name, icon: 'festivals/lights', panel: 'festival' });
   }
   return {

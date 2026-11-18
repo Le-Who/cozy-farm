@@ -24,7 +24,11 @@
 .discovery-roadmap .icon { width:30px; height:32px; }
 .discovery-roadmap small { color:var(--muted); font-size:12px; }
 .discovery-activities { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; padding-top:12px; }
-.discovery-activities button { display:grid; grid-template-columns:34px minmax(0,1fr); gap:5px 8px; align-items:center; min-height:72px; padding:9px; border:1px solid var(--rule); border-radius:12px; background:var(--paper-light); text-align:start; }
+.discovery-activities > button, .journal-visit-crossing summary { display:grid; grid-template-columns:34px minmax(0,1fr); gap:5px 8px; align-items:center; min-height:72px; padding:9px; border:1px solid var(--rule); border-radius:12px; background:var(--paper-light); text-align:start; }
+.journal-visit-crossing summary { cursor:pointer; }
+.journal-visit-crossing summary strong::after { content:" ▾"; }
+.journal-visit-crossing > div { display:flex; flex-wrap:wrap; gap:6px; padding-top:5px; }
+.journal-visit-crossing button { min-height:44px; padding:6px 9px; }
 .discovery-activities .icon { width:34px; height:36px; }
 .discovery-activities strong { font-size:14px; line-height:1.2; color:var(--plum); }
 .discovery-activities small { grid-column:1/-1; font-size:12px; line-height:1.3; color:var(--muted); }

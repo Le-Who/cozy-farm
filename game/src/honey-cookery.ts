@@ -203,6 +203,11 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   function fruitSource(id: number): HoneyPoint { const r = parts.get('fruit-dish')!.rect; return { x: r.x + r.width * (.27 + id % 3 * .22), y: r.y + r.height * (.46 + Math.floor(id / 3) * .13) } }
   function updateCursor() { cursorElement.hidden = !keyboard; cursorElement.style.left = `${cursor.x}px`; cursorElement.style.top = `${cursor.y}px` }
   function positionRotation() { const object = fruitParts.get(selected), placed = model.fruit.find(value => value.id === selected); rotate.hidden = !object || !placed || (incorporated.get(selected)??0)>.3 || ['finished', 'committing', 'cancelled'].includes(model.stage); if (!rotate.hidden && object) { rotate.style.left = `${Math.max(4, Math.min(width - 48, object.rect.x + object.rect.width - 5))}px`; rotate.style.top = `${Math.max(70, Math.min(height - 100, object.rect.y - 30))}px` } }
+  let previousBrushHint = ''
+  function brushReleaseHint() {
+    if (model.pending !== 'settling' || model.stage !== 'glaze' || model.tool !== 'honey' || (family !== 'honeyCake' && family !== 'honeyBiscuits')) return ''
+    return keyboard ? 'Нажмите пробел, чтобы отпустить кисть' : 'Отпустите кисть'
+  }
   function sync() {
     if (destroyed) return
     root.dataset.stage = model.stage
@@ -212,7 +217,15 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     if (model.stage === 'cut') messages.cut = knifeTransport && held
       ? 'Отпустите нож, затем проведите по груше'
       : `Проведите по груше от края до края · ${model.cuts.size}/2`;
-    const message=messages[model.stage]??'';if(hint.textContent!==message)hint.textContent=message; if (model.stage !== previousStage) { announce(model.stage === 'ready' ? 'Блюдо готово. Можно завершить приготовление.' : hint.textContent); if(previousStage==='baking')playBaySound('cook.oven-out'); previousStage = model.stage; updateFoodState(); layout() }
+    if (family === 'honeyCake' || family === 'honeyBiscuits') {
+      previousBrushHint = brushReleaseHint()
+      if (previousBrushHint) {
+        messages.glaze = previousBrushHint
+        if (hint.textContent !== previousBrushHint) announce(previousBrushHint)
+      }
+    }
+    const message=messages[model.stage]??'';if(hint.textContent!==message)hint.textContent=message
+    if (model.stage !== previousStage) { announce(model.stage === 'ready' ? 'Блюдо готово. Можно завершить приготовление.' : hint.textContent); if(previousStage==='baking')playBaySound('cook.oven-out'); previousStage = model.stage; updateFoodState(); layout() }
     const value = Math.round(honeyProgress(model) * 100); previousProgress=value; progress.setAttribute('aria-valuenow', String(value)); fill.style.width = `${value}%`; progress.hidden = ['ready', 'finished'].includes(model.stage)
     if(family==='windParfait'){previousCreamUi=Math.round(parfaitTransfer.load*10);root.dataset.creamLoad=parfaitTransfer.load.toFixed(3);root.dataset.custard=model.parfaitCustard.toFixed(3);root.dataset.honey=model.parfaitHoney.toFixed(3)}
     finish.hidden = !['bake-ready', 'ready', 'finished'].includes(model.stage); finish.disabled = lost || !loaded || model.stage !== 'finished' && (!!held || !physicalQuiet)
@@ -456,7 +469,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
 
 
     }
-    if (model.stage !== previousStage || Math.round(honeyProgress(model)*100)!==previousProgress ||family==='windParfait'&&Math.round(parfaitTransfer.load*10)!==previousCreamUi|| finish.disabled !== (lost || !loaded || model.stage !== 'finished' && (!!held || !physicalQuiet))) sync()
+    if (model.stage !== previousStage || brushReleaseHint() !== previousBrushHint || Math.round(honeyProgress(model)*100)!==previousProgress ||family==='windParfait'&&Math.round(parfaitTransfer.load*10)!==previousCreamUi|| finish.disabled !== (lost || !loaded || model.stage !== 'finished' && (!!held || !physicalQuiet))) sync()
   }
   function smoothBake() { const p=Math.max(0,Math.min(1,model.baked/2.4));return p*p*(3-2*p) }
   function animate(now: number) {

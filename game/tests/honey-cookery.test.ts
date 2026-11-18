@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
-import { honeyProgress,syncHoneyCoating,HONEY_PEAR_EACH_HALF,depositParfaitCustard,depositParfaitHoney } from '../src/honey-cookery-model.ts'
+import { honeyCoverageTargets,honeyProgress,syncHoneyCoating,HONEY_PEAR_EACH_HALF,depositParfaitCustard,depositParfaitHoney } from '../src/honey-cookery-model.ts'
 import {createParfaitTransfer} from '../src/parfait-transfer.ts'
 import { advanceHoneyBake, beginHoneyStroke, cancelHoney, completeHoney, createHoneyModel, createHoneyFilm, depositHoneyPiece, measuredHoneyCoverage, reportHoneyCoating, endHoneyStroke, honeyBiscuitCenters, moveHoneyStroke, placeHoneyFruit, recordHoneyKnife, workHoneyPiece, settleHoney, startHoneyBake, type HoneyModel } from '../src/honey-cookery-model.ts'
 
@@ -255,4 +255,42 @@ test('leaving the cake breaks the score path exactly where the painted stroke br
   assert.equal(model.travel,0,'off-cake travel never becomes brush work')
   for(let i=0;i<3;i++){frame(right);frame(left)}
   assert.ok(model.coverage.has(0),'an actual continuous stroke across the middle still counts')
+})
+
+test('full brush coverage asks for release only when it will actually advance the recipe',()=>{
+  const src=ts.createSourceFile('honey-cookery.ts',readFileSync(new URL('../src/honey-cookery.ts',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true)
+  const methods:string[]=[]
+  function visit(n:ts.Node){if(ts.isFunctionDeclaration(n)&&['sync','brushReleaseHint'].includes(n.name?.text??''))methods.push(n.getText(src));else ts.forEachChild(n,visit)}
+  visit(src)
+  const js=ts.transpileModule(methods.join('\n')+'\nsync()', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+  for(const family of ['honeyBiscuits','honeyCake'] as const){
+    const model=createHoneyModel(family),announced:string[]=[]
+    if(family==='honeyCake'){
+      beginHoneyStroke(model,'spoon',{x:.6,y:0})
+      for(let i=1;i<=160;i++)moveHoneyStroke(model,{x:.6*Math.cos(i*.1),y:.6*Math.sin(i*.1)})
+    }else{
+      beginHoneyStroke(model,'hand',{x:0,y:0})
+      for(let i=0;i<10;i++)workHoneyPiece(model,i%2,.3,.05,.95)
+    }
+    endHoneyStroke(model);assert.ok(startHoneyBake(model));advanceHoneyBake(model,2.4)
+    beginHoneyStroke(model,'honey',{x:0,y:0})
+    const point=(k:number)=>k===0?{x:.5,y:.5}:{x:.5+.32*Math.cos((k-1)*Math.PI/4),y:.5+.32*Math.sin((k-1)*Math.PI/4)}
+    if(family==='honeyBiscuits'){
+      for(let i=0;i<4;i++)for(let k=0;k<9;k++)depositHoneyPiece(model,i,point(k),point(k),1)
+    }else{
+      for(const p of honeyCoverageTargets(family,'glaze')){beginHoneyStroke(model,'honey',p);moveHoneyStroke(model,p,1)}
+    }
+    const hint={textContent:''},caption={textContent:''}
+    const scope={family,model,honeyProgress,keyboard:false,previousBrushHint:'',previousProgress:-1,held:{tool:'honey'},previousStage:'glaze',destroyed:false,loaded:true,lost:false,physicalQuiet:false,
+      root:{dataset:{}},pourControl:{},fill:{style:{}},progress:{setAttribute(){}},finish:{querySelector:()=>caption},hint,positionRotation(){},updateFoodState(){},layout(){},announce:(s:string)=>announced.push(s)}
+    const sync=()=>runInNewContext(js,scope)
+    assert.equal(honeyProgress(model),1);assert.equal(model.pending,null,'distributed dabs are not a travelling stroke');sync()
+    assert.equal(hint.textContent,'Смажьте выпечку мёдом')
+    for(let i=0;i<6;i++){if(family==='honeyBiscuits')depositHoneyPiece(model,0,point(1),point(5),1);else moveHoneyStroke(model,{x:i%2?.7:-.7,y:0})}
+    assert.equal(model.pending,'settling');sync();sync()
+    assert.equal(hint.textContent,'Отпустите кисть');assert.deepEqual(announced,['Отпустите кисть'])
+    scope.keyboard=true;sync();sync()
+    assert.match(hint.textContent,/пробел/);assert.deepEqual(announced,['Отпустите кисть',hint.textContent])
+    endHoneyStroke(model);sync();assert.equal(model.stage,'settling');assert.equal(hint.textContent,'')
+  }
 })

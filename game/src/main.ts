@@ -2123,7 +2123,11 @@ function drawPanel() {
         ${journal.next ? `<section class="discovery-next"><strong>Впереди: ${journal.next.title.toLowerCase()}</strong><p>${journal.next.detail}</p></section>` : ''}
         <details class="discovery-roadmap"${journalDetailsOpen ? ' open' : ''}><summary>Все открытия бухты</summary><ol>${journal.chapters.map(chapter => `<li data-current="${chapter.id === journal.current?.id}" data-complete="${chapter.complete}">${icon(chapter.icon)}<strong>${chapter.title}</strong><small>${chapter.complete ? 'Открыто' : chapter.id === journal.current?.id ? 'Сейчас' : 'Впереди'}</small></li>`).join('')}</ol></details>
         ${groveActivities ? `<ul class="dialog-list">${groveActivities}</ul>` : ''}
-        ${journal.activities.length ? `<nav class="discovery-activities" aria-label="Другие занятия">${journal.activities.map(activity => `<button type="button" data-action="open-panel" data-value="${activity.panel}">${icon(activity.icon)}<strong>${activity.label}</strong><small>${activity.detail}</small></button>`).join('')}</nav>` : ''}`
+        ${journal.activities.length ? `<nav class="discovery-activities" aria-label="Другие занятия">${journal.activities.map(activity => {
+          const card = `${icon(activity.icon)}<strong>${activity.label}</strong><small>${activity.detail}</small>`
+          if (activity.visit !== undefined) return `<details class="journal-visit-crossing"><summary>${card}</summary><div><button type="button" data-action="journal-stay">Остаться на ферме</button><button type="button" data-action="journal-music" data-value="bay-music" data-visit="${activity.visit}">Плыть в гавань</button></div></details>`
+          return `<button type="button" data-action="${activity.panel === 'bay-music' ? 'journal-music' : 'open-panel'}" data-value="${activity.panel}">${card}</button>`
+        }).join('')}</nav>` : ''}`
       break
     }
     case 'settings':
@@ -3671,6 +3675,20 @@ app.addEventListener('click', async (event) => {
     }
     case 'travel-panel': if(value==='market') await visitPanelAt('home','market'); break
     case 'back': if(!closeContextualSale()&&!returnToRecipeIndex())goBack(event.detail===0); break
+    case 'journal-stay': {
+      const crossing = control.closest<HTMLDetailsElement>('details.journal-visit-crossing[open]')
+      if (panel !== 'journal' || !dialog.open || !crossing || !dialogContent.contains(crossing)) break
+      crossing.open = false
+      crossing.querySelector('summary')?.focus({preventScroll:true})
+      break
+    }
+    case 'journal-music': {
+      if (panel !== 'journal' || !dialog.open || !dialogContent.contains(control) || !farm.village.built) break
+      const guest = farm.island === 'home' ? farm.neighborVisits.active : null
+      if (control.dataset.visit !== guest?.serial.toString() || guest && !control.closest('details[open]')) break
+      await visitPanelAt('village','bay-music')
+      break
+    }
     case 'open-panel': if(value&&value in panelTitles)openPanel(value as Panel);break
     case 'harbour-view': if (value && isHarbourView(value)) island.setHarbourView(value); break
     case 'field-view': toggleFieldView(); break
