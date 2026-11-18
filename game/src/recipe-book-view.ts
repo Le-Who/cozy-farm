@@ -77,11 +77,17 @@ export class RecipeBookNavigation {
   }
   snapshot(root: HTMLElement): RecipeBookView { this.capture(root); return structuredClone(this.view) }
   load(view: RecipeBookView) { this.view=structuredClone(view) }
-  restore(root: HTMLElement, focus=false) {
+  restore(root: HTMLElement, focus=false, suppliedRecipe?: string) {
     const index=root.querySelector<HTMLElement>('.recipe-book-index'),detail=root.querySelector<HTMLElement>('.recipe-book-detail')
     if(index)index.scrollTop=this.view.indexScroll??0
     if(detail)detail.scrollTop=this.view.detailScroll??0
     if(focus){
+      // Returning from the last missing ingredient: continue this recipe, not a new one.
+      const repeat = suppliedRecipe && this.view.selectedId===suppliedRecipe
+        ? detail?.querySelector<HTMLButtonElement>('[data-action="make-signature"]:not(:disabled)') : null
+      if (repeat && repeat.dataset.value===suppliedRecipe && repeat.getClientRects().length) {
+        repeat.focus({preventScroll:true});repeat.scrollIntoView({block:'nearest'});return
+      }
       const search = this.view.mode === 'index' && this.view.query ? root.querySelector<HTMLElement>('[data-recipe-query]') : null
       const target=[...root.querySelectorAll<HTMLElement>(focusable)].find(element=>focusId(element)===this.view.focus&&element.getClientRects().length>0)
         ?? (search?.getClientRects().length ? search : undefined)

@@ -3,7 +3,8 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 import { createServer } from 'vite'
-import { createFarm, completeSignature } from '../src/farm.ts'
+import { transferBayGoods } from '../src/harbour-economy.ts'
+import { createFarm, completeSignature, getSignatureAction, sellMarketItem } from '../src/farm.ts'
 
 function bookFarm() {
   const farm = createFarm()
@@ -115,4 +116,41 @@ test('the first saved dish can be served from its book page with the ordinary fi
     assert.equal(p.state.fish.perch, 0); assert.equal(p.state.culinary.stock[id], 0); assert.equal(p.state.coins, before.coins)
     assert.match(supper(), /disabled/); assert.match(supper(), /уже состоялся/)
   } finally {await server.close()}
+})
+
+
+test('returning after the final warehouse ingredient offers only the selected saved repeat',async()=>{
+  const {RecipeBookNavigation}=await import('../src/recipe-book-view.ts')
+  const {getLocalWarehouseSupply,withdrawWarehouseSupply}=await import('../src/warehouse-guidance.ts')
+  const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try {
+    const {signatureBook}=await server.ssrLoadModule('/src/culinary-ui.ts')
+    const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+    const p=commissionPlayer(opening);p.fruit('apple',4);p.visit('home')
+    const id=p.act('completeSignature',{base:'preserves',ingredients:[{id:'apple',quantity:2}]},
+      {family:'preserves',processing:'silky',fruit:[],steps:['mix','pour']}).recipeId!
+    const apples=p.state.fruit.apple
+    assert.ok(apples>=2)
+    for(const n of [0,1,2]){
+      const farm=structuredClone(p.state),recipe=farm.culinary.recipes[0]
+      if(n===1)assert.ok(sellMarketItem(farm,'fruit:apple',apples-1).ok)
+      assert.ok(transferBayGoods(farm,'deposit','home','apple',farm.fruit.apple).ok)
+      const [item]=getSignatureAction(farm,recipe).items
+      if(n)assert.ok(withdrawWarehouseSupply(farm,item,getLocalWarehouseSupply(farm,item)).ok)
+      const nav=new RecipeBookNavigation();assert.ok(nav.select(farm,id));const before=structuredClone(farm)
+      const html:string=signatureBook(farm,art,nav.view)
+      const action=html.match(/<button[^>]*data-action="make-signature"[^>]*>/)?.[0]
+      assert.ok(action?.includes(`data-value="${id}"`));const ready=!action.includes('disabled')
+      assert.equal(ready,n===2)
+      for(const origin of [id,undefined,'s2']){
+        const focused:string[]=[]
+        const repeat={dataset:{value:id},getClientRects:()=>[{}],focus(){focused.push(id)},scrollIntoView(){focused.push('reveal')}}
+        const detail={scrollTop:0,querySelector:(selector:string)=>{assert.match(selector,/make-signature.*not\(:disabled\)/);return ready?repeat:null}}
+        const root={querySelector:(s:string)=>s==='.recipe-book-detail'?detail:null,querySelectorAll:()=>[]}
+        nav.restore(root as unknown as HTMLElement,true,origin)
+        assert.deepEqual(focused,ready&&origin===id?[id,'reveal']:[])
+      }
+      assert.deepEqual(farm,before);assert.equal(nav.view.selectedId,id)
+    }
+  }finally{await server.close()}
 })

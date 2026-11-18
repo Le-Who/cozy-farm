@@ -1620,12 +1620,14 @@ function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
   const supplies = panel === 'garden-plans' ? dialogContent.querySelector<HTMLDetailsElement>('.garden-supplies') : null
-  return {kitchenSourceItem:panel === 'kitchen' ? kitchenSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  return {kitchenSourceItem:panel === 'kitchen' || panel === 'recipes' ? kitchenSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,honeyKitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
-function goBack() {
+function goBack(keyboard = false) {
   const previous=panelHistory.pop()
   if(!previous)return
+  const suppliedRecipe = keyboard && panel === 'warehouse-supply' && previous.panel === 'recipes' && selectedWarehouseRequest
+    && previous.kitchenSourceItem === bayProductId(selectedWarehouseRequest) ? previous.recipeBook.selectedId : undefined
   recipeBook.load(previous.recipeBook)
   journeyDetailsOpen=previous.journeyDetailsOpen
   journalDetailsOpen=previous.journalDetailsOpen
@@ -1663,7 +1665,7 @@ function goBack() {
     dialogContent.scrollTop=previous.scroll
     const target=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')).find(button=>
       (previous.kitchenSourceItem ? kitchenSourceItem(button)===previous.kitchenSourceItem : focusKey(button)===previous.focus) && button.getClientRects().length>0)
-    if (previous.panel === 'recipes') recipeBook.restore(dialogContent,true)
+    if (previous.panel === 'recipes') recipeBook.restore(dialogContent,true,suppliedRecipe)
     else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
     else if (previous.kitchenSourceItem) dialogContent.querySelector<HTMLButtonElement>('[data-action="recipe-family"][aria-pressed="true"]')?.focus({preventScroll:true})
     else if (previous.panel === 'market' && marketTab === 'sell') {
@@ -3637,7 +3639,7 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'travel-panel': if(value==='market') await visitPanelAt('home','market'); break
-    case 'back': if(!closeContextualSale()&&!returnToRecipeIndex())goBack(); break
+    case 'back': if(!closeContextualSale()&&!returnToRecipeIndex())goBack(event.detail===0); break
     case 'open-panel': if(value&&value in panelTitles)openPanel(value as Panel);break
     case 'harbour-view': if (value && isHarbourView(value)) island.setHarbourView(value); break
     case 'field-view': toggleFieldView(); break
@@ -4143,7 +4145,7 @@ function returnFromPanel(event: Event) {
     void resumeCommunityRequest()
   } else if (panelHistory.length) {
     event.preventDefault()
-    goBack()
+    goBack(event.type==='keydown')
   } else if (event.type === 'cancel') rememberClosedMarketSell()
 }
 dialog.addEventListener('cancel', returnFromPanel)
@@ -4154,7 +4156,7 @@ dialog.addEventListener('keydown', event => {
   if (event.repeat) event.preventDefault()
   else returnFromPanel(event)
 })
-dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&salePresentation.place){event.preventDefault();closeContextualSale();return}if(event.altKey&&event.key==='ArrowLeft'&&(panelHistory.length||panel==='recipes'&&recipeBook.view.mode==='detail'&&recipeBookNarrow())){event.preventDefault();if(!returnToRecipeIndex())goBack()}})
+dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&salePresentation.place){event.preventDefault();closeContextualSale();return}if(event.altKey&&event.key==='ArrowLeft'&&(panelHistory.length||panel==='recipes'&&recipeBook.view.mode==='detail'&&recipeBookNarrow())){event.preventDefault();if(!returnToRecipeIndex())goBack(true)}})
 dialog.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !(event.target instanceof HTMLButtonElement)) return
   const selector = event.target.closest('.island-selector,.house-selector,.tree-selector,.panel-tabs,.market-category-icons,.recipe-family-choices,.recipe-fish-choices')
