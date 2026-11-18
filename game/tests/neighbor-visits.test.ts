@@ -10,13 +10,14 @@ import { restoreLegacyFarm } from '../src/farm-save-migration.ts'
 import { farmSaveKeys as keys, friendshipFarmSaveKeys as v5 } from '../src/farm-save-keys.ts'
 import { VersionedSave } from '../src/versioned-save.ts'
 import { getBedStage } from '../src/farm.ts'
-function ready(){
+function ready(meetResidents=true){
   const f=createFarm();f.day=5;f.boatOwned=true;f.buildingLevels.farmhouse=2
   f.projects.fair={'dishes:appleJam':1,eggBaskets:1,'produce:carrot':4,'produce:wheat':3}
   f.fairGuestsServed=1;f.guestServedOn=1
   f.village={built:true,supplies:{'handmade:round':2,'fish:seaBass':2,honey:2},residents:['bea','finn'],meals:2,mealOn:2,serviceOn:{bea:0,finn:0},scouting:false}
-  f.dishes.windParfait=1;f.dishes.grilledFish=1;f.island='village'
-  for(const p of getNeighborPlans(f)){
+  if(meetResidents){f.dishes.windParfait=1;f.dishes.grilledFish=1}
+  f.island='village'
+  for(const p of meetResidents?getNeighborPlans(f):[]){
     assert.ok(joinNeighborPlan(f,p.id).ok)
     assert.ok(serveNeighborPlan(f,p.id,p.resident==='bea'?'dish:windParfait':'dish:grilledFish').ok)
     assert.ok(finishNeighborPlan(f,p.id,{kind:p.arrangement,settled:true,placements:[{slot:'food',x:0,y:0},{slot:'cup',x:-.6,y:.3},{slot:'flowers',x:.6,y:.3}]}).ok)
@@ -226,4 +227,29 @@ test('the visible first-visit receipt is not duplicated in history until farewel
     assert.deepEqual(f.neighborVisits.memories.map(m=>m.serial),before.neighborVisits.memories.map(m=>m.serial))
   }
   assert.deepEqual(load(f),f)
+})
+
+test('the guest leads an active visit; leaving consequences stay by the exit and invitation rules stay with invitations',()=>{
+  const read=(f:ReturnType<typeof createFarm>)=>{const before=structuredClone(f),html=renderNeighborVisits(f,()=>'');assert.deepEqual(f,before);return html}
+  function invitations(html:string){
+    assert.match(html,/Приглашения открываются после первой общей встречи/)
+    assert.match(html,/За визит не нужно платить или отдавать угощение/)
+    assert.match(html,/Один гость за раз/);assert.match(html,/Повторные визиты не дают монет/)
+  }
+  const locked=read(ready(false));invitations(locked)
+  assert.match(locked,/Сначала устройте с этим соседом общую встречу/);assert.match(locked,/data-value="beaFlock" disabled/)
+  const f=ready(),available=read(f);invitations(available);assert.match(available,/data-value="beaFlock">Пригласить/)
+  assert.ok(inviteNeighborVisit(f,'beaFlock').ok)
+  for(const observed of [false,true]){
+    if(observed)assert.ok(introduceHenToVisitor(f,0).ok)
+    const html=read(f);assert.match(html,/^<section class="home-visits">\s*<article class="home-visit-active"/)
+    assert.doesNotMatch(html,/Приглашения открываются|Один гость за раз|Повторные визиты не дают монет/)
+    assert.match(html,/После отдыха или поездки гость уйдёт, а записи в книге останутся\.<\/p>\s*<div class="dialog-actions">/)
+    assert.match(html,observed?/data-action="visit-reply"/:/data-action="visit-introduce-hen"/)
+    assert.match(html,/data-action="visit-finish"/)
+  }
+  assert.ok(finishNeighborVisit(f,f.neighborVisits.serial,'quiet').ok)
+  const history=read(f);invitations(history);assert.match(history,/Позвать снова/);assert.ok(history.includes(visitActivities.beaFlock.quiet))
+  assert.ok(sail(f,'grove').ok)
+  const away=read(f);invitations(away);assert.match(away,/Вернуться домой к приглашениям/);assert.match(away,/data-value="beaFlock" disabled/)
 })
