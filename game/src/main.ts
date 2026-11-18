@@ -1176,7 +1176,7 @@ function marketInlineCard(item: ReturnType<typeof goods>[number]) {
   const id=`inline-sale-${encodeURIComponent(item.key)}`
   return `<li class="market-inline-card" data-inline-key="${escapeHtml(item.key)}" data-inline-token="${escapeHtml(view.token)}">
     <span class="market-inline-art" aria-hidden="true">${itemIcon(item.image,item.trait)}</span>
-    <div class="market-inline-copy"><h2 class="market-inline-name">${escapeHtml(item.name)}</h2><p class="market-inline-stock">В запасе: ${item.count}</p><p class="market-inline-price">${item.price} ${icon('coin')} за штуку</p></div>
+    <div class="market-inline-copy"><h2 class="market-inline-name">${escapeHtml(item.name)}</h2><p class="market-inline-stock">В запасе: ${item.count}</p><p class="market-inline-price"><span aria-hidden="true">${item.price}</span> ${icon('coin')} <span class="sr-only">${quantity(item.price,'монета')} </span>за штуку</p></div>
     <div class="market-inline-footer"><div class="market-inline-stepper" role="group" aria-label="Количество: ${escapeHtml(item.name)}">
       <span class="market-step-limit" tabindex="-1" role="group" aria-label="Минимум: 1"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button></span>
       <input data-inline-quantity type="number" min="1" max="${item.count}" step="1" inputmode="numeric" value="${escapeHtml(view.raw)}" aria-label="Количество: ${escapeHtml(item.name)}" aria-describedby="${id}"${receipt||view.pending?' disabled':''}>
@@ -1750,7 +1750,7 @@ function exactSaleCard(contextual: boolean) {
       const recipe = selectedSale.kind==='signature' ? farm.culinary.recipes.find(item=>item.id===selectedSale!.key) : undefined
       const art = selectedSale.image ? itemIcon(selectedSale.image,selectedSale.trait) : recipe ? signatureResultPicture(recipe,{icon}) : ''
       return `<section class="exact-sale" data-sale-token="${escapeHtml(salePresentation.token)}"><div class="exact-sale-product"><span class="exact-sale-art" aria-hidden="true">${art}</span><h2 tabindex="-1">${escapeHtml(selectedSale.name)}</h2><p>В запасе: ${stock.count}</p><p>За 1: ${quantity(stock.price,'монета')}</p></div><div class="exact-sale-editor">${saleReceipt
-        ? `<p class="exact-sale-receipt" role="status" tabindex="-1">Продано: ${saleReceipt.quantity}. Цена: ${quantity(saleReceipt.total, 'монета')}. Осталось: ${saleReceipt.remaining}.</p>${nav(button('Продать ещё', 'sale-again', stock.count > 0), button(contextual?'К товарам':'Назад', contextual?'sale-context-close':'back', true, { secondary: true }))}`
+        ? `<p class="exact-sale-receipt" role="status" tabindex="-1">Продано: ${saleReceipt.quantity}. Получено: ${quantity(saleReceipt.total, 'монета')}. Осталось: ${saleReceipt.remaining}.</p>${nav(button('Продать ещё', 'sale-again', stock.count > 0), button(contextual?'К товарам':'Назад', contextual?'sale-context-close':'back', true, { secondary: true }))}`
         : `<label for="sale-quantity">Количество</label><div class="exact-sale-stepper"><button class="dialog-button secondary" type="button" data-action="sale-step" data-value="less" aria-label="Уменьшить количество на 1">−</button><input id="sale-quantity" data-sale-quantity type="number" min="1" max="${stock.count}" step="1" inputmode="numeric" value="${escapeHtml(saleQuantity)}" aria-describedby="sale-quote"><button class="dialog-button secondary" type="button" data-action="sale-step" data-value="more" aria-label="Увеличить количество на 1">+</button><button class="dialog-button secondary" type="button" data-action="sale-step" data-value="all" aria-label="Весь этот товар: ${stock.count}">Всё</button></div><p id="sale-quote" class="exact-sale-summary" aria-live="polite"></p>${nav(button('Продать выбранное', 'confirm-sale', false), button(contextual?'Закрыть выбор':'Отмена', contextual?'sale-context-close':'back', true, { secondary: true }))}`}</div></section>`
 
 }
@@ -1792,7 +1792,11 @@ function updateSaleQuote() {
   const confirm = dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')
   if (summary) summary.textContent = quote?.valid ? `Итого: ${quantity(quote.total, 'монета')}. Останется: ${quote.remaining}.`
     : `Введите целое число от 1 до ${stock?.count ?? 0}.`
-  if (confirm) { confirm.disabled = !quote?.valid; confirm.textContent = quote?.valid ? `Продать ${quote.quantity} · ${quote.total}` : 'Продать выбранное' }
+  if (confirm) {
+    confirm.disabled = !quote?.valid
+    confirm.textContent = quote?.valid ? `Продать ${quote.quantity} · ${quote.total}` : 'Продать выбранное'
+    confirm.setAttribute('aria-label',quote?.valid ? `${confirm.textContent} ${ruPlural(quote.total,['монета','монеты','монет'])}` : 'Продать выбранное')
+  }
   dialogContent.querySelectorAll<HTMLButtonElement>('[data-action="sale-step"]').forEach(control=>{
     control.disabled = !stock?.count || Boolean(quote?.valid && (control.dataset.value==='less' ? quote.quantity<=1 : quote.quantity>=stock.count))
   })

@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createFarm, restoreFarm, sellMarketItem, completeSignature, repeatSignature, sellSignature } from '../src/farm.ts'
+import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
+import { ruPlural } from '../src/ru.ts'
+import { MarketInlineSales } from '../src/market-inline-sale.ts'
+import { createFarm, restoreFarm, pickFruit, sellMarketItem, completeSignature, repeatSignature, sellSignature } from '../src/farm.ts'
 import { ActionClickGuard } from '../src/action-click-guard.ts'
 import { exactSaleQuote, saleStock } from '../src/exact-sale.ts'
 
@@ -73,4 +78,50 @@ test('keyboard activation is independent and a blocked follow-up does not renew 
   guard.remember(click(150, 0))
   assert.equal(guard.blocks(click(550, 2)), true)
   assert.equal(guard.blocks(click(610)), false)
+})
+
+const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+const block=(from:string,to:string)=>main.slice(main.indexOf(from),main.indexOf(to,main.indexOf(from)))
+const money=block('function quantity(','function row(')
+const format={ruPlural,numberFormat:new Intl.NumberFormat('ru-RU')}
+
+test('the unit price retains its decorative coin and exposes the currency in running text',()=>{
+  const render=block('function marketInlineCard(','function marketSaleResults(')
+  for(const [price,noun] of [[1,'монета'],[2,'монеты'],[5,'монет'],[11,'монет'],[21,'монета']] as const){
+    const item={key:'fruit:apple',count:10,price,name:'Яблоко'}
+    const html=runInNewContext(stripTypeScriptTypes(money+render+';marketInlineCard(item)'),{...format,item,marketInlineSales:new MarketInlineSales(),
+      icon:()=>'<img alt="" aria-hidden="true">',itemIcon:()=>'',escapeHtml:String}) as string
+    const line=html.match(/<p class="market-inline-price">([\s\S]*?)<\/p>/)![1]
+    assert.match(line,/<img alt="" aria-hidden="true">/)
+    const words=(s:string)=>s.replace(/<[^>]+>/g,' ').trim().replace(/\s+/g,' ')
+    assert.equal(words(line.replace(/<span aria-hidden="true">[^<]*<\/span>/g,'')),`${price} ${noun} за штуку`)
+    assert.equal(words(line.replace(/<span class="sr-only">[^<]*<\/span>/g,'')),`${price} за штуку`)
+  }
+})
+
+test('the exact confirmation names the batch total; its receipt reports actual proceeds, not unit price',()=>{
+  const farm=createFarm();assert.ok(pickFruit(farm,0).ok);const before=structuredClone(farm)
+  const selectedSale={kind:'market',key:'fruit:apple',name:'Яблоко'} as const
+  const stock=saleStock(farm,selectedSale)!;assert.equal(stock.count,2);assert.equal(stock.price,4)
+  const confirm={disabled:false,textContent:'',name:'',setAttribute(k:string,v:string){assert.equal(k,'aria-label');this.name=v}}
+  const summary={textContent:''}
+  const context={...format,farm,selectedSale,saleQuantity:'2',saleReceipt:undefined,saleStock,exactSaleQuote,sellMarketItem,
+    isSaleSurface:()=>true,perform:(op:()=>{ok:boolean})=>op().ok,playBaySound:()=>{},salePresentation:{token:'one'},
+    dialogContent:{querySelector:(q:string)=>q==='.exact-sale-summary'?summary:confirm,querySelectorAll:()=>[]},escapeHtml:String,button:()=>'',nav:()=>''}
+  const code=money+block('function exactSaleCard(','function isSaleSurface(')+block('function updateSaleQuote()','let disposeCoopServices:')
+  runInNewContext(stripTypeScriptTypes(code),context)
+  const run=(s:string)=>runInNewContext(s,context)
+  run('updateSaleQuote()');assert.equal(confirm.disabled,false);assert.equal(confirm.name,'Продать 2 · 8 монет')
+  assert.equal(confirm.textContent,'Продать 2 · 8');assert.deepEqual(farm,before)
+  const large=structuredClone(farm);large.fruit.apple=300;context.farm=large;context.saleQuantity='300';run('updateSaleQuote()')
+  assert.equal(confirm.textContent,'Продать 300 · 1200');assert.equal(confirm.name,confirm.textContent+' монет');context.farm=farm
+  context.saleQuantity='3';run('updateSaleQuote()');assert.ok(confirm.disabled);assert.equal(confirm.name,'Продать выбранное')
+  run('confirmExactSale()');assert.deepEqual(farm,before)
+  context.saleQuantity='2';run('updateSaleQuote();confirmExactSale()')
+  // The first-sale goal can award extra coins. The receipt quotes only the goods.
+  const expected=structuredClone(before);assert.ok(sellMarketItem(expected,'fruit:apple',2).ok);assert.deepEqual(farm,expected)
+  assert.equal(farm.fruit.apple,0)
+  const html=run('exactSaleCard(false)') as string
+  assert.match(html,/За 1: 4 монеты/);assert.match(html,/Продано: 2\. Получено: 8 монет\. Осталось: 0\./)
+  const once=structuredClone(farm);run('confirmExactSale()');assert.deepEqual(farm,once)
 })
