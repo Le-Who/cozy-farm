@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createServer } from 'vite'
+import { delayedLastFerryReceiptFarm } from './fixtures/last-ferry-receipt.ts'
+import { getLocalWarehouseSupply, withdrawWarehouseSupply } from '../src/warehouse-guidance.ts'
 import { fileURLToPath } from 'node:url'
-import { createFarm, workBed, sellMarketItem, buyBoat, refillWater, endDay, selectSeed, restoreFarm } from '../src/farm.ts'
+import { createFarm, workBed, sellMarketItem, buyBoat, refillWater, endDay, selectSeed, restoreFarm, sail, restoreCurrentFarm } from '../src/farm.ts'
 import { getFerrySupplyRequirement, sendFerryExpedition, receiveFerryExpedition, transferBayGoods } from '../src/harbour-economy.ts'
-import { combinedExpeditionId, quoteExpedition } from '../src/ferry-expeditions.ts'
-import { expeditionWallet } from '../src/harbour-economy.ts'
+import { combinedExpeditionId, quoteExpedition, initialExpeditionPreview } from '../src/ferry-expeditions.ts'
+import { openedFreightPorts, expeditionWallet } from '../src/harbour-economy.ts'
 import { getRequirementHint } from '../src/requirement-guidance.ts'
 import { ActionClickGuard, ActivationKeyGuard, isGuardedAction } from '../src/action-click-guard.ts'
 
@@ -142,4 +144,49 @@ test('an emptied bakery recovers through a real grain sale rather than free brea
   assert.equal(quoteExpedition(farm.freight.expeditions,'mill-buy',expeditionWallet(farm))?.available,false,'restocked bread still needs its price')
   assert.ok(sellMarketItem(farm,'produce:wheat',1).ok)
   assert.equal(quoteExpedition(farm.freight.expeditions,'mill-buy',expeditionWallet(farm))?.available,true)
+})
+
+test('a restored orchard voyage can use an existing local bun instead of opening a second ferry',async()=>{
+  const server=await createServer({root:fileURLToPath(new URL('..',import.meta.url)),configFile:false,server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try {
+    const {renderFreightPanel}=await server.ssrLoadModule('/src/bay-freight-ui.ts')
+    let farm=delayedLastFerryReceiptFarm()
+    const ok=(result:{ok:boolean;message:string})=>assert.ok(result.ok,result.message)
+    ok(receiveFerryExpedition(farm)); ok(sendFerryExpedition(farm,'mill-buy'))
+    ok(endDay(farm)); ok(receiveFerryExpedition(farm))
+    assert.equal(farm.handmade.round,2)
+    ok(sail(farm,'grove')); ok(transferBayGoods(farm,'deposit','grove','handmade:round',1))
+    ok(sendFerryExpedition(farm,'orchard-buns')); ok(sail(farm,'home')); ok(endDay(farm))
+    ok(receiveFerryExpedition(farm)); ok(endDay(farm))
+    assert.equal(farm.day,13)
+    const voyage='orchard-buns',preview=()=>initialExpeditionPreview(farm.freight.expeditions)
+    const render=()=>renderFreightPanel(farm.freight,{
+      day:farm.day,coins:farm.coins,boatOwned:farm.boatOwned,playerPort:farm.island,
+      expeditionPort:preview().port,expeditionOffer:preview().offer,openedPorts:openedFreightPorts(farm),
+      carried:expeditionWallet(farm).bag,products:[],icon:()=>'',
+    })
+    const baker=/data-action="expedition-port" data-value="mill" class="expedition-source">К пекарю в посад/
+    const local=/data-action="expedition-source" data-value="orchard-buns\|handmade:round" class="expedition-source">Посмотреть запас/
+    assert.match(render(),baker,'a bun on a different island is not a local withdrawal')
+    ok(sail(farm,'grove')); farm=restoreCurrentFarm(JSON.parse(JSON.stringify(farm)))!
+    assert.deepEqual(preview(),{port:'orchard',offer:voyage})
+    const before=structuredClone(farm),requirement=getFerrySupplyRequirement(farm,voyage,'handmade:round')!
+    assert.deepEqual(getRequirementHint(farm,requirement).action,{label:'Посмотреть запас',target:'warehouse-supply',value:'handmade:round|1'})
+    assert.match(render(),local)
+    assert.doesNotMatch(render(),baker)
+    assert.equal(quoteExpedition(farm.freight.expeditions,voyage,expeditionWallet(farm))?.available,false)
+    assert.deepEqual(farm,before,'viewing the source never loads or takes the bun')
+    const request=requirement.item,supply=getLocalWarehouseSupply(farm,request)!
+    ok(withdrawWarehouseSupply(farm,request,supply))
+    assert.equal(farm.handmade.round,1); assert.equal(farm.freight.warehouses.grove['handmade:round']??0,0)
+    assert.equal(farm.coins,before.coins); assert.equal(farm.day,before.day)
+    assert.deepEqual(farm.freight.expeditions,before.freight.expeditions)
+    assert.doesNotMatch(render(),local)
+    assert.equal(quoteExpedition(farm.freight.expeditions,voyage,expeditionWallet(farm))?.available,true)
+    ok(sendFerryExpedition(farm,voyage)); assert.equal(farm.freight.expeditions.active?.id,voyage)
+    assert.equal(farm.handmade.round,0); assert.equal(farm.coins,before.coins)
+    assert.doesNotMatch(render(),local); ok(sail(farm,'home')); ok(endDay(farm)); ok(receiveFerryExpedition(farm))
+    ok(sail(farm,'grove'))
+    assert.match(render(),baker,'the usual baker is still offered when the local warehouse is empty')
+  } finally {await server.close()}
 })

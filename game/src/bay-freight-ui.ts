@@ -1,4 +1,4 @@
-import { freightPorts,
+import { freightPorts, freightStock,
   setFreightStops, setFreightMode, setFreightPickup, startFreight, pauseFreight,
   type BayFreightState, type FreightPort, type FreightResult } from './bay-freight-model.ts';
 import { expeditionPorts, expeditionPortNames, expeditionPortDescriptions, expeditionTrades, expeditionOfferIds, quoteExpedition, portDemand, portProjectComplete, portProjects, expeditionStock, type ExpeditionPort, type ExpeditionManifest } from './ferry-expeditions.ts';
@@ -89,7 +89,8 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   }).join('');
   const missing = !active && manifest.outgoing.find(item => (ctx.carried[item.id] ?? 0) < item.quantity);
   const restock = getFerryRestockPlan(world,id,ctx.day,{bag:ctx.carried,harvestTier:ctx.harvestTier,coins:ctx.coins ?? 0,boatOwned:ctx.boatOwned ?? true});
-  const hint = missing ? sourceHints[missing.id] : undefined;
+  const localBun = missing && missing.id === 'handmade:round' && ctx.openedPorts.includes(ctx.playerPort) && freightStock(state, ctx.playerPort, missing.id) > 0;
+  const hint = localBun ? { label: 'Посмотреть запас', panel: 'warehouse-supply' } : missing ? sourceHints[missing.id] : undefined;
   const smaller = !restock ? smallerFerryCargo(world, id, { bag: ctx.carried, harvestTier: ctx.harvestTier, coins: ctx.coins ?? 0, boatOwned: ctx.boatOwned ?? true }) : undefined;
   const cargoLabel = (items: ExpeditionManifest['outgoing']) => items.map(item => `${product(item.id, ctx).name} ×${item.quantity}`);
   const smallerLabel = smaller ? `Посмотреть: ${cargoLabel(smaller.outgoing).join(' + ')} → ${[...cargoLabel(smaller.incoming), ...(smaller.earnCoins ? [ruCount(smaller.earnCoins, 'монета', 'монеты', 'монет')] : [])].join(' + ')}` : '';
