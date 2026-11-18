@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { readFileSync } from 'node:fs'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 import { createServer } from 'vite'
 import { createFarm, completeSignature } from '../src/farm.ts'
 
@@ -84,4 +86,33 @@ test('hiding the narrow recipe index does not replace its saved offset with the 
   assert.equal(nav.view.indexScroll,882)
   nav.capture(root(true,0))
   assert.equal(nav.view.indexScroll,0,'a visible pane actually scrolled to the top still records zero')
+})
+
+test('the first saved dish can be served from its book page with the ordinary fish actually carried', async () => {
+  const server = await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try {
+    const {signatureBook} = await server.ssrLoadModule('/src/culinary-ui.ts')
+    const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+    const p = commissionPlayer(opening)
+    assert.match(signatureBook(p.state, art), /Сохранённых рецептов пока нет/)
+    const id = p.cook()
+    assert.equal(p.state.culinary.recipes.length, 1); assert.equal(p.state.culinary.stock[id], 1)
+    const supper = () => {
+      const html: string = signatureBook(p.state, art, {selectedId:id, mode:'detail'})
+      const section = html.match(/<div class="recipe-book-supper">([\s\S]*?)<\/div>/)?.[1]
+      assert.ok(section?.includes(`data-action="supper-signature" data-value="${id}"`))
+      return section!
+    }
+    p.night(); p.visit('village')
+    assert.match(supper(), /disabled/, 'no ordinary fish yet')
+    p.visit('home'); p.act('catchFish', true); p.visit('village'); p.reload()
+    assert.ok(p.state.village.residents.includes('finn')); assert.equal(p.state.fish.seaBass, 0); assert.equal(p.state.fish.perch, 1)
+    const before = structuredClone(p.state), offer = supper()
+    assert.doesNotMatch(offer, /disabled/); assert.match(offer, /1 порция \+ 1 окунь\./)
+    assert.deepEqual(p.state, before, 'viewing the offer does not spend the dish or fish')
+    p.act('deliverSignature', id)
+    assert.equal(p.state.village.meals, before.village.meals + 1)
+    assert.equal(p.state.fish.perch, 0); assert.equal(p.state.culinary.stock[id], 0); assert.equal(p.state.coins, before.coins)
+    assert.match(supper(), /disabled/); assert.match(supper(), /уже состоялся/)
+  } finally {await server.close()}
 })

@@ -4,7 +4,7 @@ import { getRecipeRepeatGuide, recipeIngredientsDisclosureLabel } from './recipe
 import { sortedBookRecipes, visibleBookRecipes, selectedBookId, type RecipeBookView } from './recipe-book-view'
 import './recipe-book.css'
 import './recipe-repeat-guidance.css'
-import {getCoveActions,getSignatureAction,ingredientCount,type FarmState,type StockItem} from './farm'
+import {fishDefinitions,getCoveActions,getSignatureAction,getVillageMeal,ingredientCount,type FarmState,type StockItem} from './farm'
 import {signatureFruitNames,signatureProcessingDefinitions,resolvedCookeryFruit,cookeryFinishTraits,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary'
 import {traitIds,type Trait} from './climate'
 import {type CoveChoices} from './shoreline'
@@ -13,6 +13,7 @@ import {traitLabel} from './ru'
 import {signatureBookCapacity} from './signature-book'
 import {renderPicnicOffer,renderPicnicStatus} from './picnic-guidance'
 import './picnic-guidance.css'
+import {getReadySignatureSuppers} from './shared-supper'
 import {signatureTastingGuide} from './signature-tasting-guidance'
 import {getStoredSignature,storedSignatureValue} from './stored-signature'
 
@@ -56,6 +57,12 @@ function recipeDraftCard(farm: FarmState, art: Icons): string {
   </section>`
 }
 
+function recipeBookSupper(farm: FarmState, recipeId: string): string {
+  const offer = getReadySignatureSuppers(farm).find(({recipe}) => recipe.id === recipeId)
+  const fish = offer?.fish ?? getVillageMeal(farm).fish
+  return `<div class="recipe-book-supper">${control('Ужин вместе','supper-signature',recipeId,offer?.available ?? false)}<p>Расход: 1 порция + 1 ${fishDefinitions[fish].name.toLowerCase()}.${farm.village.mealOn===farm.day?' Сегодня общий ужин уже состоялся.':''}</p></div>`
+}
+
 function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeBookView):string {
   const count=farm.culinary.stock[recipe.id]??0, capacity=signatureBookCapacity(farm.culinary)
   const action=getSignatureAction(farm,recipe), batch=action.available&&action.items.every(item=>ingredientCount(farm,item)>=item.quantity*3), stored=getStoredSignature(farm,recipe.id)
@@ -86,7 +93,7 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
         if(!tasting)return ''
         const noteId=`tasting-${recipe.id}-${id}`
         return `<div class="signature-tasting">${control(`${art.icon('ui-'+id)}${tasting.label}`,'taste-signature',recipe.id,tasting.available,`data-resident="${id}"${tasting.reason||tasting.favoriteNote?` aria-describedby="${noteId}"`:''}`)}${tasting.reason||tasting.favoriteNote?`<p id="${noteId}">${tasting.reason}${tasting.reason&&tasting.favoriteNote?' ':''}${tasting.knownFavorite?'♥ ':''}${tasting.favoriteNote}</p>`:''}</div>`
-      }).join('')}</div>`:''}<div class="recipe-book-supper">${control('Ужин вместе','supper-signature',recipe.id,count>0&&farm.village.mealOn!==farm.day&&farm.fish[farm.village.residents.includes('finn')?'seaBass':'perch']>0)}<p>Расход: 1 порция + 1 ${farm.village.residents.includes('finn')?'морской окунь':'окунь'}.${farm.village.mealOn===farm.day?' Сегодня общий ужин уже состоялся.':''}</p></div></div>`:''}
+      }).join('')}</div>`:''}${recipeBookSupper(farm,recipe.id)}</div>`:''}
     </section>${!count&&!recipe.favorite?`<button class="signature-forget" type="button" data-action="forget-signature" data-value="${recipe.id}">Удалить пустой рецепт</button>`:''}
   </article>`
 }
