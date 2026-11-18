@@ -3,11 +3,12 @@ import {test} from 'node:test'
 import {readFileSync} from 'node:fs'
 import {stripTypeScriptTypes} from 'node:module'
 import {runInNewContext} from 'node:vm'
-import {createFarm,workBed,buySeeds,restoreCurrentFarm} from '../src/farm.ts'
+import {createFarm,workBed,buySeeds,restoreCurrentFarm,sellMarketItem,endDay,berryCropIds,cropIds} from '../src/farm.ts'
 import {saveGardenPlan,followGardenPlan} from '../src/garden-plans.ts'
 import {seedChoice,chooseSeedForBed} from '../src/seed-choice.ts'
 import {seedSavingQuote,saveCropSeeds} from '../src/seed-saving.ts'
 import {isGuardedAction} from '../src/action-click-guard.ts'
+import {renderSeedPicker} from '../src/seed-picker-ui.ts'
 
 function planned(){
   const farm=createFarm(),crops=Array(16).fill(null);crops[13]='wheat'
@@ -114,5 +115,31 @@ test('real UI routes browsing and buying separately from the guarded explicit ch
     const before=structuredClone(farm)
     assert.equal(chooseSeedForBed(farm,'wheat',change==='bed'?14:13,shown.token).ok,false,change)
     assert.deepEqual(farm,before,change)
+  }
+})
+
+test('explicit keyboard preview of the tenth stocked packet reaches its selector without choosing or buying',()=>{
+  const earned=createFarm()
+  assert.ok(workBed(earned,9).ok);assert.ok(sellMarketItem(earned,'produce:carrot',3).ok);assert.ok(endDay(earned).ok)
+  for(const crop of berryCropIds)assert.ok(buySeeds(earned,crop).ok)
+  assert.equal(cropIds.filter(crop=>earned.seeds[crop]>0).length,10)
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const branch=stripTypeScriptTypes("switch('preview-seed'){"+main.slice(main.indexOf("    case 'preview-seed':"),main.indexOf("    case 'choose-seed':"))+'}')
+  for(const [panel,detail,owned,stock] of [['seeds',0,true,true],['seeds',1,true,true],['inventory',0,true,true],['seeds',0,false,true],['seeds',0,true,false]] as const){
+    const farm=structuredClone(stock?earned:createFarm()),before=structuredClone(farm),original={},tile={},close={}
+    const document={activeElement:owned?original:close}
+    const art={icon:()=>'',button:(label:string,action:string,_enabled:boolean,options:{value?:string})=>`<button data-action="${action}" data-value="${options.value??''}">${label}</button>`}
+    const html=renderSeedPicker(farm,'raspberry',undefined,art)
+    const selects=html.match(/class="seed-picker-primary"><button data-action="choose-seed" data-value="([^"]+)"/)
+    if(stock)assert.equal(selects?.[1],seedChoice(farm,'raspberry').token)
+    assert.deepEqual([...html.matchAll(/data-action="preview-seed" data-value="([^"]+)"/g)].map(match=>match[1]),cropIds)
+    const selector={focus(options:{preventScroll:boolean}){assert.equal(options.preventScroll,true);document.activeElement=selector}}
+    const context={farm,cropIds,value:'raspberry',previewSeed:'carrot',panel,bagTab:'seeds',dialog:{open:true},event:{detail},control:original,document,
+      drawPanel(){if(owned)document.activeElement=tile},
+      dialogContent:{querySelector(css:string){assert.match(css,/data-action=["']choose-seed["']/);return selects?selector:null}},
+    }
+    runInNewContext(branch,context)
+    assert.equal(context.previewSeed,'raspberry');assert.deepEqual(farm,before)
+    assert.equal(document.activeElement,!owned?close:panel==='seeds'&&detail===0&&stock?selector:tile)
   }
 })
