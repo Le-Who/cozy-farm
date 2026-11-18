@@ -1,4 +1,5 @@
 .dough-workshop { position:relative; width:calc(100vw - 20px); height:calc(100dvh - 20px); max-width:100%; margin:0; color:#754421; font-family:Georgia,"Times New Roman",serif; background:#554031; }
+.dough-workshop[data-unavailable="true"] { display:grid; align-content:center; justify-items:center; gap:8px; padding:16px; overflow:auto; background:var(--paper-light); }
 .dough-workshop *, .dough-workshop *::before,.dough-workshop *::after { box-sizing:border-box; }
 .workshop-view { position:relative; width:100%; height:100%; overflow:hidden; touch-action:none; outline:none; cursor:grab; }
 .workshop-view canvas { display:block; position:absolute; inset:0; width:100%; height:100%; }
@@ -10,7 +11,7 @@
 .dough-workshop .workshop-object:disabled { cursor:default; }
 .dough-workshop .workshop-object:is([data-prop="pin"],[data-prop="knife"],[data-prop="scraper"]) { pointer-events:none; }
 .workshop-object:focus-visible { background:#e8c6ff15!important; }
-.dough-workshop .workshop-close { position:absolute; min-width:44px; min-height:44px; padding:0; border:0; background-color:transparent; background-repeat:no-repeat; background-position:center; background-size:contain; box-shadow:none; pointer-events:auto; z-index:5; }
+.dough-workshop:not([data-unavailable="true"]) .workshop-close { position:absolute; min-width:44px; min-height:44px; padding:0; border:0; background-color:transparent; background-repeat:no-repeat; background-position:center; background-size:contain; box-shadow:none; pointer-events:auto; z-index:5; }
 .dough-workshop .workshop-bake { position:absolute; min-width:90px; min-height:44px; padding:0; border:0; background-color:transparent; background-repeat:no-repeat; background-position:center; background-size:contain; box-shadow:none; pointer-events:auto; z-index:4; color:#753708; text-shadow:0 1px 0 #ffe9a2,0 -1px 0 #5c290866; font-size:calc(68px*var(--workshop-art-scale,.5)); font-weight:700; line-height:1; }
 .workshop-bake span { position:absolute; inset:22% 15% 36%; display:grid; place-items:center; white-space:nowrap; }
 .dough-workshop .workshop-bake:disabled { cursor:default; filter:saturate(.7) brightness(.91); }

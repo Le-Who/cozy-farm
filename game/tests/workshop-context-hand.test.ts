@@ -108,3 +108,25 @@ test('the board only invites another cut while it is available, without hiding t
   draw();assert.match(s.hint.textContent,/шесть.*другой инструмент/);assert.equal(s.cue.hidden,true);assert.equal(shown.hidden,true)
   s.activeTool='move';draw();assert.equal(s.cue.hidden,false);assert.match(s.cue.textContent,/Перетащите/);assert.equal(shown.hidden,true)
 })
+
+test('a refused renderer replaces the inert board with its focused, named exit', () => {
+  const start = find(n => ts.isTryStatement(n) && n.tryBlock.getText(source).includes('view.prepend(renderer.domElement)'))
+  const mount = ts.transpileModule(`function mount(){${start}};globalThis.mount=mount`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+  let focus = 'entry', disposed = 0
+  const status = {textContent:'', className:'', id:'', setAttribute(){}}
+  const closeButton = {className:'workshop-close', textContent:'×', classList:{add(){}}, description:'',
+    setAttribute(k:string,v:string){if(k==='aria-describedby')this.description=v},
+    focus(){focus='exit'}}
+  const shape = {}
+  const root = {children:[status,closeButton,shape,shape,shape] as unknown[], dataset:{},
+    replaceChildren(...children:unknown[]){this.children=children}, remove(){this.children=[]}}
+  const state:any = {root, status, closeButton, createRenderer(){throw Error('test: renderer refused')},
+    abort:{abort(){disposed++}}, cutWorker:null, previousFocus:{focus(){focus='entry'}}}
+  runInNewContext(mount,state)
+  const scene=state.mount()
+  assert.deepEqual(root.children,[status,closeButton], 'the unavailable game board must not expose shape, tool or bake controls')
+  assert.equal(focus,'exit'); assert.equal(closeButton.textContent,'Закрыть мастерскую')
+  assert.ok(closeButton.className.includes('workshop-close'), 'warm scene-entry selector still finds the same exit')
+  assert.match(status.textContent,/Не удалось открыть мастерскую/); assert.ok(status.id); assert.equal(closeButton.description,status.id)
+  scene.destroy();assert.equal(focus,'entry');assert.equal(disposed,1)
+})

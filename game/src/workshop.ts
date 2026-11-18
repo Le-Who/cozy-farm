@@ -190,7 +190,14 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     view.prepend(renderer.domElement)
   } catch {
     status.textContent = 'Не удалось открыть мастерскую. Закройте её и попробуйте ещё раз.'
-    closeButton.textContent = '×'
+    status.className = 'dialog-status'
+    status.id = 'workshop-start-error'
+    closeButton.classList.add('dialog-button')
+    closeButton.textContent = 'Закрыть мастерскую'
+    closeButton.setAttribute('aria-describedby', status.id)
+    root.dataset.unavailable = 'true'
+    root.replaceChildren(status, closeButton)
+    closeButton.focus({preventScroll:true})
     return {destroy(){cutWorker?.terminate();cutWorker=null;abort.abort();root.remove();previousFocus?.focus()}}
   }
   const canvas=renderer.domElement
