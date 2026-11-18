@@ -83,7 +83,7 @@ test('combined request chooser guards sets and returns to exact single recipe wi
  const novice=C.getShopCommissionOffers(f).find(o=>o.completed<2)!;assert.ok(v.choose(f,'customer',novice.customer));assert.equal(v.choose(f,'request','set'),false);assert.equal(v.mode,'single');assert.deepEqual(f,before)
 })
 
-test('successful view transitions reset old scroll; delivery only hands keyboard focus to completed-line results',()=>{
+test('successful view transitions reset old scroll; delivery never resets the panel or activates the next action',()=>{
  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
  for(const[action,target]of[['accept','commission-current'],['cancel','data-commission-view'],['finish','commission-receipt summary']]){
   const start=main.indexOf(`case 'commission-${action}':`),branch=main.slice(start,main.indexOf('break',start))
@@ -91,6 +91,5 @@ test('successful view transitions reset old scroll; delivery only hands keyboard
  }
  const start=main.indexOf("case 'commission-deliver':"),branch=main.slice(start,main.indexOf('break',start));assert.doesNotMatch(branch,/scrollTop/);assert.match(branch,/deliverShopCommission\(farm,value\)/)
  assert.match(branch,/keyboardDelivery = event.detail === 0 && document.activeElement === control/)
- assert.match(branch,/if\(keyboardDelivery && getShopCommissionLine\(farm,value\)\?\.remaining===0\)/)
- assert.match(branch,/result.tabIndex=-1; result.focus\(\{preventScroll:true\}\)/)
+ assert.doesNotMatch(branch,/\.click\(|openRecipeBook\(|finishShopCommission\(/)
 })

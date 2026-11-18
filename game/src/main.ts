@@ -3111,11 +3111,15 @@ app.addEventListener('click', async (event) => {
       const keyboardDelivery = event.detail === 0 && document.activeElement === control
       if(panel==='shop-commissions'&&dialog.open&&perform(()=>deliverShopCommission(farm,value),false,true)) {
         playBaySound('harbour.crate',.65)
-        // The completed line removes its button; announce the result, never activate the claim.
-        if(keyboardDelivery && getShopCommissionLine(farm,value)?.remaining===0) {
+        const updated = keyboardDelivery ? getShopCommissionLine(farm,value) : undefined
+        if(updated && !updated.canDeliver) {
           const line = Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-commission-line]')).find(item=>item.dataset.commissionLine===value)
-          const result = dialogContent.querySelector<HTMLElement>('.commission-ready') ?? line?.querySelector<HTMLElement>('.commission-line-ready')
-          if(result) { result.tabIndex=-1; result.focus({preventScroll:true}); result.scrollIntoView({block:'nearest'}) }
+          const result = updated.remaining ? line?.querySelector<HTMLElement>('[data-action="commission-recipe"]:not(:disabled)')
+            : dialogContent.querySelector<HTMLElement>('.commission-ready') ?? line?.querySelector<HTMLElement>('.commission-line-ready')
+          if(result) {
+            if(!updated.remaining) result.tabIndex=-1
+            result.focus({preventScroll:true}); result.scrollIntoView({block:'nearest'})
+          }
         }
       }
       break
