@@ -38,8 +38,6 @@
  .feed-choice-notes{margin-top:6px}
 }
 @media(min-width:461px) and (max-height:480px){
- /* Missing inputs are already named in the cost list; retain capacity warnings. */
- .feed-choice-card[data-feed-shortage="true"] .feed-choice-result>span{display:none}
  .farm-dialog[data-panel="chicken-feed"] .dialog-panel{padding-top:8px;padding-bottom:8px}
  .farm-dialog[data-panel="chicken-feed"] .dialog-header{min-height:44px;padding-bottom:4px}
  .farm-dialog[data-panel="chicken-feed"] .dialog-close{bottom:4px}

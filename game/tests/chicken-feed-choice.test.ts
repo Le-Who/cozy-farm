@@ -23,7 +23,7 @@ test('choice keeps one panel title, exact visual costs, result and separate feed
 test('missing ingredient is named at its choice, with no impossible total or enabled spend', () => {
  const f = ready(); f.fruit.apple = 0
  const html = renderChickenFeedMixes(f).split('aria-label="Садовая смесь"')[1]
- assert.match(html, /Нет в запасе/); assert.match(html, /Нужны: яблоко/)
+ assert.match(html, /Яблоко ×1<\/strong><small>Нет в запасе/); assert.doesNotMatch(html, /Нужны:/)
  assert.match(html, /data-value="orchard"[^>]* disabled/)
  assert.doesNotMatch(html, /Запас: /)
  const before = structuredClone(f); assert.equal(mixChickenFeed(f, 'orchard').ok, false); assert.deepEqual(f, before)
@@ -34,7 +34,7 @@ test('one deliberate mix changes only original stock/work; return and feeding re
  assert.ok(mixChickenFeed(f, 'garden').ok)
  const expected = structuredClone(before); expected.produce.wheat--; expected.produce.carrot--; expected.feed += 3; expected.workToday++
  assert.deepEqual(f, expected); assert.equal(f.chickensFed, false)
- const html = renderChickenFeedMixes(f); assert.match(html, /Нужны: морковь/)
+ const html = renderChickenFeedMixes(f); assert.match(html, /Морковь ×1<\/strong><small>Нет в запасе/)
  assert.deepEqual(restoreCurrentFarm(JSON.parse(JSON.stringify(f))), f)
  assert.ok(feedChickens(f).ok); assert.equal(f.feed, expected.feed - 1)
  assert.match(renderChickenFeedMixes(f), /Стая уже накормлена/)
