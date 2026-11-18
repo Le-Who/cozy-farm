@@ -251,14 +251,19 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
     }
     const empty = farm.village.residents.findIndex(resident => resident === null);
     if (empty >= 0) return arrive(task('second-neighbour', 'Встретьте ещё одного соседа', 'Второй домик готов к заселению.', 'ui-finn', { label: 'К свободному домику', target: 'visit-cottage', value: String(empty) }));
-    if (farm.bayShop.sold === 0 && farm.bayShop.visitsToday < bayShopDailyLimit(Number(farm.concertDay === farm.day), farm.bayShop.festivalVisitors)) {
+    const shop = farm.bayShop;
+    const moreGuests = shop.visitsToday < bayShopDailyLimit(Number(farm.concertDay === farm.day), shop.festivalVisitors);
+    // Visits count arrivals, not decisions. A guest already inside can still buy from the display.
+    if (shop.sold === 0 && (moreGuests || (shop.open && shop.visitor?.outcome === null))) {
       const foods = foodDescriptors(farm);
-      const stocked = foods.find(food => farm.bayShop.slots.some(slot => slot?.product.id === food.id && slot.quantity > 0));
-      const food = stocked ?? foods.find(food => food.count > 0 || freightStock(farm.freight, 'village', food.id) > 0);
+      const stocked = foods.find(food => shop.slots.some(slot => slot?.product.id === food.id && slot.quantity > 0));
+      const food = stocked ?? (moreGuests ? foods.find(food => food.count > 0 || freightStock(farm.freight, 'village', food.id) > 0) : undefined);
       if (food) {
-        const label = !stocked ? 'Предложите готовое угощение в лавке' : farm.bayShop.open ? 'Лавка открыта' : 'Откройте лавку для покупателей';
-        const detail = stocked ? `На прилавке: «${food.name}».${farm.bayShop.open ? ' Можно дождаться покупателя в лавке или отдохнуть дома.' : ''}`
-          : `Выставьте на прилавок: «${food.name}».${farm.bayShop.open ? '' : ' Затем откройте лавку.'}`;
+        const label = !stocked ? 'Предложите готовое угощение в лавке' : shop.open ? 'Лавка открыта' : 'Откройте лавку для покупателей';
+        const visitHint = !shop.open ? '' : moreGuests ? ' Можно дождаться покупателя в лавке или отдохнуть дома.'
+          : ' Последний гость ещё выбирает. Можно дождаться его решения или отдохнуть дома.';
+        const detail = stocked ? `На прилавке: «${food.name}».${visitHint}`
+          : `Выставьте на прилавок: «${food.name}».${shop.open ? '' : ' Затем откройте лавку.'}`;
         return arrive(task('first-shop', label, detail, 'bay/pavilion', { label: 'В свою лавку', target: 'open-panel', value: 'bay-shop' }));
       }
     }

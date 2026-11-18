@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { commissionPlayer } from './fixtures/commission-player.ts';
-import { reserveShopGoods } from '../src/harbour-economy.ts';
-import { setBayShopOpen, stockBayShop } from '../src/bay-shop-model.ts';
+import { reserveShopGoods, returnShopGoods } from '../src/harbour-economy.ts';
+import { advanceBayShop, removeBayShopStock, setBayShopOpen, setBayShopPrice, stockBayShop } from '../src/bay-shop-model.ts';
 import { describeFood } from '../src/intent-orders.ts';
 import { createFarm, endDay, feedChickens, foodDescriptors, getProject, workBed, type FarmState, type ProjectId } from '../src/farm.ts';
 import { getDiscoveryTask, getSupplyGuidance, getCoinGuidance } from '../src/discovery-path.ts';
@@ -269,16 +269,24 @@ test('the first shop uses ready pastries and local warehouse food before proposi
   assert.notEqual(getDiscoveryTask(farm, seen)?.action.value, 'bay-shop', 'distant warehouse food is not available on the shop shelves');
 });
 
+function earnedFirstPie() {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'));
+  const p = commissionPlayer(opening), food = foodDescriptors(p.state).find(item => item.count > 0)!;
+  assert.equal(p.state.day, 14); assert.equal(food.id, 'dish:orchardTart'); assert.equal(food.count, 1);
+  function stockPie() {
+    assert.ok(reserveShopGoods(p.state, food.id, 1));
+    assert.ok(stockBayShop(p.state.bayShop, 0, { id: food.id, identity: food.id, name: food.name,
+      image: '/art/lavender/ui-tart.webp', basePrice: food.sellPrice, tags: [...food.ingredients, ...describeFood(food)] }, 1));
+  }
+  return { p, food, stockPie };
+}
+
 test('the earned first pie guides stocking, reopening, then a visit until an actual customer purchase',()=>{
-  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'));
-  const p=commissionPlayer(opening), task=()=>getDiscoveryTask(p.state,seen)!;
-  const food=foodDescriptors(p.state).find(item=>item.count>0)!;
-  assert.equal(food.id,'dish:orchardTart'); assert.equal(food.count,1); assert.equal(p.state.bayShop.sold,0);
+  const {p, food, stockPie}=earnedFirstPie(), task=()=>getDiscoveryTask(p.state,seen)!;
+  assert.equal(p.state.bayShop.sold,0);
   assert.match(task().detail,/Выставьте/); assert.equal(task().action.value,'bay-shop');
   const coins=p.state.coins;
-  assert.ok(reserveShopGoods(p.state,food.id,1));
-  assert.ok(stockBayShop(p.state.bayShop,0,{id:food.id,identity:food.id,name:food.name,
-    image:'/art/lavender/ui-tart.webp',basePrice:food.sellPrice,tags:[...food.ingredients,...describeFood(food)]},1));
+  stockPie();
   p.reload(); assert.equal(p.state.dishes.orchardTart,0);
   assert.equal(task().label,'Откройте лавку для покупателей'); assert.match(task().detail,/На прилавке: «Фруктовый пирог»/);
   assert.equal(task().action.value,'bay-shop'); assert.equal(p.state.bayShop.slots[0]?.quantity,1);
@@ -291,4 +299,49 @@ test('the earned first pie guides stocking, reopening, then a visit until an act
   p.visit('village'); p.sale();
   assert.equal(p.state.bayShop.sold,1); assert.equal(p.state.coins-coins,food.sellPrice);
   assert.notEqual(task().id,'first-shop');
+});
+
+test('the first sale stays on the last undecided guest, not on a seventh arrival', () => {
+  const { p, food, stockPie } = earnedFirstPie(), coins = p.state.coins;
+  stockPie(); assert.ok(setBayShopPrice(p.state.bayShop, 0, 999)); setBayShopOpen(p.state.bayShop, true);
+  const step = (farm: FarmState) => {
+    for (const sale of advanceBayShop(farm.bayShop, 1000)) farm.coins += sale.price;
+  };
+  const task = (farm: FarmState) => getDiscoveryTask(farm, seen)!;
+  const refused = new Set<number>();
+  for (let ticks = 0; ticks < 200 && p.state.bayShop.visitsToday < 6; ticks++) {
+    step(p.state);
+    const visitor = p.state.bayShop.visitor;
+    if (visitor?.outcome?.kind === 'budget') refused.add(visitor.serial);
+  }
+  assert.deepEqual([...refused], [1, 2, 3, 4, 5]);
+  assert.equal(p.state.bayShop.visitor?.phase, 'approaching'); assert.equal(p.state.bayShop.sold, 0);
+  assert.equal(task(p.state).id, 'first-shop'); assert.match(task(p.state).detail, /Последний гость ещё выбирает/);
+  for (let i = 0; i < 4 && p.state.bayShop.visitor?.phase === 'approaching'; i++) step(p.state);
+  p.reload();
+  assert.equal(p.state.bayShop.visitor?.phase, 'browsing'); assert.equal(p.state.bayShop.visitor?.outcome, null);
+  assert.equal(task(p.state).action.value, 'bay-shop');
+
+  const closed = structuredClone(p.state); setBayShopOpen(closed.bayShop, false);
+  assert.notEqual(task(closed).id, 'first-shop');
+  const empty = structuredClone(p.state), returned = removeBayShopStock(empty.bayShop, 0)!;
+  returnShopGoods(empty, returned.id, returned.quantity);
+  assert.notEqual(task(empty).id, 'first-shop', 'no pie on display for the final guest');
+  const declined = structuredClone(p.state);
+  for (let i = 0; i < 4 && !declined.bayShop.visitor?.outcome; i++) step(declined);
+  assert.equal(declined.bayShop.visitor?.outcome?.kind, 'budget');
+  assert.notEqual(task(declined).id, 'first-shop', 'do not wait for a visitor who has already decided');
+  for (let i = 0; i < 30; i++) step(declined);
+  assert.equal(declined.bayShop.visitor, null); assert.equal(declined.bayShop.serial, 6);
+  assert.equal(declined.coins, coins); assert.notEqual(task(declined).id, 'first-shop');
+
+  assert.ok(setBayShopPrice(p.state.bayShop, 0, food.sellPrice));
+  p.visit('home'); assert.equal(task(p.state).action.value, 'village');
+  const overnight = structuredClone(p.state); assert.ok(endDay(overnight).ok);
+  p.visit('village'); p.sale();
+  for (const farm of [p.state, overnight]) {
+    assert.equal(farm.bayShop.serial, 6); assert.equal(farm.bayShop.sold, 1); assert.equal(farm.bayShop.slots[0]?.quantity, 0);
+    assert.equal(farm.coins - coins, food.sellPrice); assert.notEqual(task(farm).id, 'first-shop');
+  }
+  assert.equal(p.state.bayShop.visitsToday, 6); assert.equal(overnight.bayShop.visitsToday, 0);
 });
