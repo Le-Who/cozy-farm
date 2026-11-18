@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
 import ts from 'typescript'
-import {createFarm,restoreCurrentFarm,workBed} from '../src/farm.ts'
+import {createFarm,getGrillFish,restoreCurrentFarm,workBed} from '../src/farm.ts'
 import {GardenPlanEditor,renderGardenPlans} from '../src/garden-plans-ui.ts'
 import {commissionPlayer} from './fixtures/commission-player.ts'
 import {saveGardenPlan,followGardenPlan} from '../src/garden-plans.ts'
@@ -12,9 +12,10 @@ import {saveGardenPlan,followGardenPlan} from '../src/garden-plans.ts'
 // DOM adapter models closed <details> descendants as hidden, not native geometry.
 const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true)
 function find(predicate:(node:ts.Node)=>boolean){let result:ts.Node|undefined;function visit(node:ts.Node){if(!result&&predicate(node))result=node;ts.forEachChild(node,visit)}visit(ast);assert.ok(result);return result.getText(ast)}
-const declarations=['focusKey','rememberPanel','goBack','openPanel','visitPanelAt'].map(name=>find(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name))
+const declarations=['button','nav','focusKey','rememberPanel','goBack','openPanel','visitPanelAt'].map(name=>find(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name))
+const home=find(n=>ts.isCaseClause(n)&&n.expression.getText(ast)==="'rest'"&&n.getText(ast).includes('home-rest-services'))
 const travel=find(n=>ts.isCaseClause(n)&&n.expression.getText(ast)==="'travel-panel'")
-const code=ts.transpileModule(declarations.join('\n')+`\nasync function act(action,value){switch(action){${travel}}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+const code=ts.transpileModule(declarations.join('\n')+`\nfunction renderHome(){ switch("rest") { ${home} } }\nasync function act(action,value){switch(action){${travel}}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
 const noop=()=>{}
 function harness(){
  const farm=createFarm(),editor=new GardenPlanEditor()
@@ -23,7 +24,7 @@ function harness(){
   for(const[i,crop]of crops.entries()){editor.brush=crop;assert.ok(editor.paint([0,8,13][i]))}assert.ok(editor.save(farm).ok)
  }
  editor.choose(0);const baseline=structuredClone(farm),frames:Function[]=[],saves:any[]=[],visits:string[]=[]
- let detail:{open:boolean}|undefined,buttons:Button[]=[],html=''
+ let detail:{open:boolean}|undefined,homeServices:{open:boolean}|undefined,buttons:Button[]=[],html=''
  const document:{activeElement:Button|null}={activeElement:null}
  class Button{
   dataset:Record<string,string>;textContent:string;className='dialog-button';disabled=false
@@ -34,8 +35,9 @@ function harness(){
   focus(){if(this.getClientRects().length)document.activeElement=this}
  }
  const close=new Button('close','','Закрыть'),reset={reset:noop}
- const content={scrollTop:0,querySelector:(selector:string)=>selector==='.garden-supplies'?detail:null,querySelectorAll:()=>[]}
- const state:any={farm,gardenEditor:editor,panel:'garden-plans',panelHistory:[],panelRenderVersion:0,document,HTMLButtonElement:Button,dialogContent:content,
+ const content={scrollTop:0,querySelector:(selector:string)=>selector==='.garden-supplies'?detail:selector==='.home-rest-services'?homeServices:null,querySelectorAll:()=>[]}
+ const state:any={farm,getGrillFish,
+  communityRequest:undefined,bayAudio:{primeEvents:noop},getClimate:()=>({weather:'sun'}),weatherNames:{sun:'Ясно'},renderSelectedIntentRest:noop,renderShopRest:noop,renderRestPreview:noop,renderFerryReturn:noop,harbourGoods:noop,renderVisitRest:noop,renderPicnicStatus:noop,renderCoopCapacityWarning:noop,flockFeedRow:noop,gardenEditor:editor,panel:'garden-plans',panelHistory:[],panelRenderVersion:0,document,HTMLButtonElement:Button,dialogContent:content,
   dialog:{open:true,showModal(){this.open=true},querySelectorAll:()=>[close,...buttons].filter(b=>!b.disabled)},closeButton:close,
   salePresentation:{place:undefined,reset:noop},marketSaleBrowse:{reset:noop},transplantSelection:reset,berryNurserySelection:reset,berryRenewalSelection:reset,recipeSurplusSelection:reset,
   recipeBook:{snapshot:()=>({}),load:noop},restoreFerryPanelView:noop,
@@ -43,7 +45,15 @@ function harness(){
   inventoryGroup:'harvest',marketSaleFamily:undefined,marketSaleQuery:'',marketTab:'buy',marketCategory:'seeds',marketSellGroup:'all',celebratedFestival:undefined,
   island:{isCrossing:()=>false,setViewMode:noop,setCoveFocus:noop,crossIsland:()=>{throw Error('This local route must not sail')}},stopHarbour:noop,stopFishing:noop,stopWorkshop:noop,stopCookery:noop,stopArrangement:noop,playBaySound:noop,updateCommunityReturn:noop,
   app:{dataset:{}},toast:{},dialogFeedback:{},requestAnimationFrame:(fn:Function)=>frames.push(fn),saveFarm:()=>saves.push(structuredClone(farm)),
-  drawPanel:()=>{state.panelRenderVersion++;visits.push(state.panel);detail=undefined;buttons=[];html=state.panel==='garden-plans'?renderGardenPlans(farm,editor,()=>'<i></i>'):''
+  drawPanel:()=>{state.panelRenderVersion++;visits.push(state.panel);detail=undefined;homeServices=undefined;buttons=[];html=state.panel==='garden-plans'?renderGardenPlans(farm,editor,()=>'<i></i>'):''
+   if(state.panel==='rest'){
+    state.renderHome()
+    const services=(content as any).innerHTML.match(/<details class="home-rest-details home-rest-services"([^>]*)>([\s\S]*?)<\/details>/)
+    assert.ok(services);homeServices={open:/\bopen\b/.test(services[1])}
+    for(const match of services[2].matchAll(/<button[^>]*data-action="([^"]+)"([^>]*)>([^<]+)<\/button>/g)){
+     buttons.push(new Button(match[1],match[2].match(/data-value="([^"]+)"/)?.[1]??'',match[3].trim(),homeServices))
+    }
+   }
    const section=html.match(/<details class="garden-supplies"([^>]*)>([\s\S]*?)<\/details>/)
    if(section){detail={open:/\bopen\b/.test(section[1])};for(const match of section[2].matchAll(/<button[^>]*data-action="([^"]+)"[^>]*data-value="([^"]*)"[^>]*>([^<]+)<\/button>/g))buttons.push(new Button(match[1],match[2],match[3],detail))}
   },
@@ -52,7 +62,7 @@ function harness(){
  const target=()=>buttons.find(b=>b.dataset.action==='travel-panel'&&b.dataset.value==='market')!
  const flush=()=>{while(frames.length)frames.shift()!()}
  const assertReadOnly=()=>{assert.deepEqual(farm,baseline);assert.deepEqual(restoreCurrentFarm(JSON.parse(JSON.stringify(farm))),baseline);assert.deepEqual(saves,[])}
- return{state,editor,farm,baseline,content,saves,visits,flush,target,assertReadOnly,get detail(){return detail},get html(){return html},get focused(){return document.activeElement}}
+ return{state,editor,farm,baseline,content,saves,visits,flush,target,assertReadOnly,get homeServices(){return homeServices},homeService:(name:string)=>buttons.find(button=>button.dataset.action===name),get detail(){return detail},get html(){return html},get focused(){return document.activeElement}}
 }
 
 test('local Market Back restores the same saved plan supplies before resolving its original focus',async()=>{
@@ -123,4 +133,24 @@ test('the named HUD shortcut opens the active loaded page and its real seed defi
  ctx.enter(button(true));assert.equal(gardenEditor.slot,2);assert.deepEqual(farm,before)
  assert.ok(followGardenPlan(farm,null,farm.gardenPlans.revision).ok);gardenEditor.choose(0);html=''
  const manual=structuredClone(farm);ctx.enter(button(true));assert.equal(html,'');assert.equal(gardenEditor.slot,0);assert.deepEqual(farm,manual)
+})
+
+test('Back from each ordinary Home service reopens that visit before restoring its scroll and original button',()=>{
+ for(const service of ['kitchen','upgrades']){
+  const h=harness();h.state.openPanel('rest',false)
+  assert.equal(h.homeServices!.open,false);h.homeServices!.open=true;h.content.scrollTop=185
+  const launcher=h.homeService(service)!;assert.ok(launcher);launcher.focus()
+  h.state.openPanel(service);h.state.goBack(true)
+  assert.equal(h.homeServices!.open,true);h.flush()
+  assert.equal(h.content.scrollTop,185);assert.equal(h.focused,h.homeService(service));h.assertReadOnly()
+ }
+})
+test('a closed Home group stays closed on Back, and newer navigation supersedes a queued Home return',()=>{
+ const h=harness();h.state.openPanel('rest',false);h.state.closeButton.focus()
+ h.state.openPanel('guide');h.state.goBack();h.flush()
+ assert.equal(h.homeServices!.open,false);assert.equal(h.focused,h.state.closeButton)
+ h.homeServices!.open=true;h.homeService('upgrades')!.focus();h.content.scrollTop=185
+ h.state.openPanel('upgrades');h.state.goBack();h.state.openPanel('guide',false);h.flush()
+ assert.equal(h.state.panel,'guide');assert.equal(h.focused,h.state.closeButton);assert.equal(h.content.scrollTop,0)
+ h.state.openPanel('rest',false);assert.equal(h.homeServices!.open,false);h.assertReadOnly()
 })
