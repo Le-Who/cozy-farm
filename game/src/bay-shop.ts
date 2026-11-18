@@ -94,7 +94,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     const commission = commissionCustomer();
     const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
     const priceDraft = active instanceof HTMLInputElement && active.hasAttribute('data-price') ? active.value : undefined;
-    const focusAttribute = active ? ['data-customer', 'data-customer-help', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
+    const focusAttribute = active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
     const focusValue = focusAttribute ? active!.getAttribute(focusAttribute)! : '';
     const scroll = host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
     rendering = true;
@@ -184,6 +184,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       return;
     }
     if (button.hasAttribute('data-customer-help')) { customerView.explanation=!customerView.explanation; render(); return; }
+    if (button.hasAttribute('data-customer-history')) { customerView.historyOpen=!customerView.historyOpen; render(); return; }
     if (button.hasAttribute('data-shop-next')) {
       const next = dayGuidance().action;
       if (next === 'music') options.onOpenMusic?.(); else if (next === 'rest') options.onGoRest?.();

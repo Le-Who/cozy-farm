@@ -66,3 +66,24 @@ test('customer actions are local render-only and focus is retained across live r
  assert.match(actions,/customerView.choose/);assert.match(actions,/customerView.explanation/);assert.doesNotMatch(actions,/changed\(|onChange\(|setBayShop|advanceBayShop|takeStock/)
  assert.match(src,/'data-customer', 'data-customer-help'/);assert.match(src,/phase !== lastPhase[^\n]+tab === 'journal'/)
 })
+
+test('a multi-product shop keeps its totals and selected customer in view; the complete global ledger is optional',()=>{
+ const s=createBayShop(),v=new BayShopCustomerView()
+ assert.doesNotMatch(renderBayShopCustomers(s,v),/data-customer-history/)
+ const first={...pear,name:'Грушевое облако'},second={...pear,id:'signature:s2',identity:'berry-cloud',name:'Ягодное облако'}
+ assert.ok(stockBayShop(s,0,first,1));setBayShopOpen(s,true);run(s,7400)
+ const single=renderBayShopCustomers(s,v)
+ assert.doesNotMatch(single,/data-customer-history/);assert.match(single,/Помнят вкус: Беа/)
+ assert.ok(stockBayShop(s,1,second,1));advanceBayShopDay(s,2)
+ const before=structuredClone(s),closed=renderBayShopCustomers(s,v)
+ assert.match(closed,/data-customer-history aria-expanded="false" aria-controls="bay-shop-product-sales">Продажи по товарам · 2/)
+ assert.match(closed,/Продано: <strong>2/);assert.match(closed,/Выручка: <strong>100 монет/)
+ assert.match(card(s,v),/Грушевое облако/);assert.doesNotMatch(closed,/class="bay-shop-reputation"/)
+ v.historyOpen=true
+ const open=renderBayShopCustomers(s,v)
+ assert.match(open,/data-customer-history aria-expanded="true"/);assert.equal((open.match(/class="bay-shop-reputation"/g)??[]).length,2)
+ assert.match(open,/Грушевое облако/);assert.match(open,/Ягодное облако/)
+ assert.ok(v.choose('finn'));assert.equal(v.historyOpen,true);assert.equal(v.explanation,false)
+ v.historyOpen=false;assert.doesNotMatch(renderBayShopCustomers(s,v),/class="bay-shop-reputation"/)
+ assert.deepEqual(s,before)
+})
