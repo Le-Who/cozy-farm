@@ -10,7 +10,9 @@ export function bayShopDayGuidance(state: BayShopState, performanceBonus = 0, ca
   if (remaining === 0) return canPlayConcert && performanceBonus === 0
     ? { count, remaining, action: 'music' as const, detail: 'Концерт сегодня может пригласить ещё двух гостей.' }
     : { count, remaining, action: 'rest' as const, detail: 'Все гости сегодня уже пришли. Новые придут после отдыха дома.' }
-  return { count, remaining, action: undefined, detail: !state.open ? 'Лавка закрыта. Откройте её для гостей.'
-    : state.slots.some(slot => slot && slot.quantity > 0) ? 'Лавка открыта. Следующий гость скоро придёт.'
+  const stocked = state.slots.some(slot => slot && slot.quantity > 0)
+  if (!state.open) return { count, remaining, action: undefined,
+    detail: stocked ? 'Лавка закрыта. Откройте её для гостей.' : 'Сначала выставьте товар на прилавок.' }
+  return { count, remaining, action: undefined, detail: stocked ? 'Лавка открыта. Следующий гость скоро придёт.'
     : 'На полках пусто. Выставьте товар, пока не пришёл следующий гость.' }
 }

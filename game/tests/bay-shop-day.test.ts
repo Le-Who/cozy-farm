@@ -1,8 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { commissionPlayer } from './fixtures/commission-player.ts'
+import { reserveShopGoods } from '../src/harbour-economy.ts'
+import { describeFood } from '../src/intent-orders.ts'
+import { closeShopBeforeRest } from '../src/shop-rest.ts'
 import { bayShopDayGuidance } from '../src/bay-shop-day.ts'
-import { advanceBayShop, setBayShopOpen } from '../src/bay-shop-model.ts'
-import { endDay, restoreFarm } from '../src/farm.ts'
+import { advanceBayShop, setBayShopOpen, stockBayShop } from '../src/bay-shop-model.ts'
+import { endDay, foodDescriptors, restoreFarm } from '../src/farm.ts'
 import { shopDayFixture } from './fixtures/shop-day.ts'
 
 function finishVisitors(farm: ReturnType<typeof shopDayFixture>, target: number) {
@@ -69,4 +74,25 @@ test('only actual rest starts the next allowance; yesterday music and the sold c
   const hint = bayShopDayGuidance(loaded.bayShop, Number(loaded.concertDay === loaded.day), true)
   assert.equal(loaded.day, 6); assert.equal(loaded.concertDay, 5); assert.equal(hint.count, 'Гости сегодня: 0 из 6')
   assert.equal(hint.action, undefined); assert.equal(loaded.coins, coins); assert.equal(loaded.bayShop.slots[0]?.quantity, shelf); assert.equal(loaded.bayShop.sold, 8)
+})
+
+test('a sold-out shop closed before rest asks for stock, not reopening, on the new day', () => {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const p = commissionPlayer(opening), food = foodDescriptors(p.state).find(item => item.id === 'dish:orchardTart')!
+  assert.equal(food.count, 1)
+  assert.ok(reserveShopGoods(p.state, food.id, 1))
+  assert.ok(stockBayShop(p.state.bayShop, 0, { id: food.id, identity: food.id, name: food.name,
+    image: '/art/lavender/ui-tart.webp', basePrice: food.sellPrice, tags: [...food.ingredients, ...describeFood(food)] }, 1))
+  const guidance = () => bayShopDayGuidance(p.state.bayShop, Number(p.state.concertDay === p.state.day), true)
+  assert.match(guidance().detail, /Откройте/)
+  setBayShopOpen(p.state.bayShop, true)
+  finishVisitors(p.state, 6)
+  assert.equal(p.state.bayShop.sold, 1); assert.equal(p.state.bayShop.slots[0]?.quantity, 0)
+  p.visit('home'); assert.ok(closeShopBeforeRest(p.state, String(p.state.day)).ok)
+  assert.equal(guidance().action, 'music', 'today’s allowance still takes priority')
+  p.night(); p.visit('village')
+  assert.equal(p.state.bayShop.open, false); assert.equal(guidance().remaining, 6)
+  const before = structuredClone(p.state)
+  assert.equal(guidance().detail, 'Сначала выставьте товар на прилавок.')
+  assert.deepEqual(p.state, before)
 })
