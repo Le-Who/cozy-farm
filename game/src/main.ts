@@ -20,7 +20,7 @@ import './inventory-supplies.css'
 import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui'
 import './recipe-surplus.css'
 import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus, berrySeedPreview, revealBerrySeedPreview } from './berry-renewal-ui'
-import { getBerryRenewalPreview, harvestBerryAndKeep } from './farm'
+import { getBerryPropagation, getBerryRenewalPreview, harvestBerryAndKeep } from './farm'
 import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
 import { activeGardenPlan, plannedCropAt, seedForBed, followGardenPlan, removeGardenPlan } from './garden-plans'
 import { GardenPlanEditor, renderGardenPlans, renderGardenMode, gardenPlanToken } from './garden-plans-ui'
@@ -3067,7 +3067,9 @@ app.addEventListener('click', async (event) => {
       if (requirement?.kind !== 'stock' || getBerryNurserySource(farm, requirement.item) === undefined) break
       await visitPanelAt('home', 'berry-nursery')
       const source = getBerryNurserySource(farm, requirement.item)
-      if (panel === 'berry-nursery' && dialog.open && source !== undefined && berryNurserySelection.choose(farm, source)) { drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true}) }
+      if (panel !== 'berry-nursery' || !dialog.open || source === undefined) break
+      if (!farm.beds.some((_, index) => getBerryPropagation(farm, source, index).available)) break
+      if (berryNurserySelection.choose(farm, source)) { drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true}) }
       break
     }
     case 'berry-nursery-source':
