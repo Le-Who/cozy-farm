@@ -63,7 +63,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   const toolReturns=new Map<string,{x:{value:number;velocity:number};y:{value:number;velocity:number};width:{value:number;velocity:number};angle:{value:number;velocity:number};target:{x:number;y:number;width:number;angle:number}}>(),knifeAngle={value:-Math.PI*.29,velocity:0},pitcherTilt={value:0,velocity:0}
   const contact = createViscousFollower(), fruitFollow = createViscousFollower(), coating = { value: 0, velocity: 0 }, swirl = { value: 0, velocity: 0 }
   const fruitLayer = {value:0,velocity:0},custardLevel={value:0,velocity:0},incorporated = new Map<number,number>()
-  const parfaitTransfer=createParfaitTransfer()
+  const parfaitTransfer=createParfaitTransfer(()=>playBaySound('cook.cream-scoop'))
   const parfaitTopping={value:0,velocity:0}
   let previousCreamUi=-1
   let creamRelease:HoneyPoint|null=null
@@ -257,7 +257,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     if (!loaded || lost || destroyed || ['baking', 'committing', 'finished', 'cancelled'].includes(model.stage)) return
     knifeSounded.clear()
     if(creamRelease){depositParfaitCustard(model,parfaitTransfer.finishDeposit());creamRelease=null;endHoneyStroke(model)}
-    if(family==='windParfait'&&model.stage==='custard'&&parfaitBowlContact(point)){parfaitTransfer.scoop();playBaySound('cook.cream-scoop')}
+    if(family==='windParfait'&&model.stage==='custard'&&parfaitBowlContact(point))parfaitTransfer.scoop()
     cursor = point
     if (family === 'windParfait' && ['fruit', 'glaze', 'ready'].includes(model.stage)) for (const [id, object] of [...fruitParts].reverse()) if ((model.stage==='fruit'||!model.fruit.some(fruit=>fruit.id===id))&&object.mesh.visible && contains(object, point, 5)) { held = { fruit: id }; fruitFollow.x = point.x; fruitFollow.y = point.y; fruitFollow.vx = fruitFollow.vy = 0; selected = id; fruitAngle = model.fruit.find(value => value.id === id)?.angle ?? 0; moveHeld(point); return }
     const tool = currentTool(), object = parts.get(tool)

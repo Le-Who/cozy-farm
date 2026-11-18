@@ -61,3 +61,18 @@ test('honey flows and spreads in the single vessel while stationary, then settle
  settleHoney(model,.1,true);settleHoney(model,.05,true);assert.equal(model.stage,'ready')
  assert.deepEqual(model.steps,['layer-fruit','pour-honey'])
 })
+
+test('a carried scoop signals only the first actual load, not holding, topping up or pouring',()=>{
+ let scoops=0
+ const cream=createParfaitTransfer(()=>{scoops++})
+ cream.step(.05,false,false);cream.step(.05,false,true);cream.step(0,true,false)
+ assert.equal(scoops,0);assert.equal(cream.load,0)
+ cream.step(1/60,true,false);assert.ok(cream.load>0&&cream.load<cream.capacity);assert.equal(scoops,1)
+ cream.step(1/60,false,false);cream.scoop();assert.equal(cream.load,.34);assert.equal(scoops,1)
+ for(let i=0;i<40;i++)cream.step(1/60,true,false)
+ cream.scoop();assert.equal(scoops,1)
+ const first=cream.step(.05,false,true);assert.ok(first>0)
+ assert.ok(Math.abs(first+cream.finishDeposit()-.34)<1e-12);assert.equal(cream.load,0);assert.equal(scoops,1)
+ cream.scoop();assert.equal(cream.load,.34);assert.equal(scoops,2)
+ cream.scoop();assert.equal(scoops,2)
+})
