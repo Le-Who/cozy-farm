@@ -59,6 +59,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   }
   const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle))
   const abort = new AbortController(), signal = abort.signal
+  let recovery: AbortController | undefined
   prepareBaySoundScene(options.recipe.kind==='preserves' ? ['cook.fruit-pot','cook.berry-pot','cook.preserves-stir','cook.jam-scoop','cook.jam-flow','cook.jam-end','cook.finish'] : ['cook.fruit-tart','cook.berry-tart','cook.sugar','cook.finish'], signal)
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL
@@ -689,12 +690,16 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   resize(); sync()
   void loadArt().catch(error => {
     if (destroyed || error instanceof DOMException && error.name === 'AbortError') return
-    status.hidden = false; status.textContent = 'Не удалось загрузить кухню. Вернитесь и попробуйте снова.'
+    // This board cannot finish loading. Stop its input and frames, but keep its normal exit.
+    abort.abort(); observer.disconnect(); cancelAnimationFrame(frame)
+    root.style.removeProperty('width'); root.style.removeProperty('height')
+    recovery = new AbortController()
+    showCookeryRecovery(root, { returnLabel: options.returnLabel ?? 'На кухню', onCancel: cancel, signal: recovery.signal }, 'art')
   })
   frame = requestAnimationFrame(animate)
   return { destroy() {
     if (destroyed) return
-    destroyed = true; cancelCookery(model); cancelAnimationFrame(frame); abort.abort(); observer.disconnect()
+    destroyed = true; cancelCookery(model); cancelAnimationFrame(frame); abort.abort(); recovery?.abort(); observer.disconnect()
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose())
     renderer.dispose(); renderer.forceContextLoss(); scene.clear(); root.remove(); previousFocus?.focus({ preventScroll: true })
   } }

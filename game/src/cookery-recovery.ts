@@ -5,7 +5,7 @@ export type CookeryRecoveryOptions = {
 }
 
 /** A renderer may fail before resize runs. Keep recovery in normal document flow. */
-export function showCookeryRecovery(root: HTMLElement, options: CookeryRecoveryOptions): void {
+export function showCookeryRecovery(root: HTMLElement, options: CookeryRecoveryOptions, failure: 'renderer' | 'art' = 'renderer'): void {
   const document = root.ownerDocument
   root.dataset.unavailable = 'true'
   const panel = document.createElement('div')
@@ -14,7 +14,8 @@ export function showCookeryRecovery(root: HTMLElement, options: CookeryRecoveryO
   const title = document.createElement('h2')
   title.textContent = 'Не удалось открыть кухонный стол'
   const reason = document.createElement('p')
-  reason.textContent = 'Браузер не смог запустить трёхмерную графику. Ингредиенты не потрачены. Вернитесь в книгу рецептов: сохранённый рецепт можно повторить без ручной мастерской.'
+  reason.textContent = failure === 'art' ? 'Не удалось загрузить изображения. Ингредиенты не потрачены.'
+    : 'Браузер не смог запустить трёхмерную графику. Ингредиенты не потрачены. Вернитесь в книгу рецептов: сохранённый рецепт можно повторить без ручной мастерской.'
   const back = document.createElement('button')
   back.type = 'button'
   back.className = 'dialog-button'
