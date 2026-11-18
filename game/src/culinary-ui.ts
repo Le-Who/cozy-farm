@@ -15,6 +15,7 @@ import {signatureBookCapacity} from './signature-book'
 import {renderPicnicOffer,renderPicnicStatus} from './picnic-guidance'
 import './picnic-guidance.css'
 import {getReadySignatureSuppers} from './shared-supper'
+import {shopCommissionUsesRecipe} from './shop-commissions'
 import {signatureTastingGuide} from './signature-tasting-guidance'
 import {getStoredSignature,storedSignatureValue} from './stored-signature'
 
@@ -95,7 +96,7 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
         const noteId=`tasting-${recipe.id}-${id}`
         return `<div class="signature-tasting">${control(`${art.icon('ui-'+id)}${tasting.label}`,'taste-signature',recipe.id,tasting.available,`data-resident="${id}"${tasting.reason||tasting.favoriteNote?` aria-describedby="${noteId}"`:''}`)}${tasting.reason||tasting.favoriteNote?`<p id="${noteId}">${tasting.reason}${tasting.reason&&tasting.favoriteNote?' ':''}${tasting.knownFavorite?'♥ ':''}${tasting.favoriteNote}</p>`:''}</div>`
       }).join('')}</div>`:''}${recipeBookSupper(farm,recipe.id)}</div>`:''}
-    </section>${!count&&!recipe.favorite?`<button class="signature-forget" type="button" data-action="forget-signature" data-value="${recipe.id}">Удалить пустой рецепт</button>`:''}
+    </section>${!count&&!recipe.favorite&&!shopCommissionUsesRecipe(farm.shopCommissions,recipe.id)?`<button class="signature-forget" type="button" data-action="forget-signature" data-value="${recipe.id}">Удалить пустой рецепт</button>`:''}
   </article>`
 }
 

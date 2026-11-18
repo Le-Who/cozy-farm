@@ -154,3 +154,44 @@ test('returning after the final warehouse ingredient offers only the selected sa
     }
   }finally{await server.close()}
 })
+
+test('a tasted last portion keeps the commissioned recipe repeatable, not archivable, until release', async () => {
+  const { getShopCommissionOffers } = await import('../src/shop-commissions.ts')
+  const { forgetSignature } = await import('../src/farm.ts')
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const p = commissionPlayer(opening), id = p.cook()
+  p.shelf(id); p.sale()
+  const accept = () => {
+    const offer = getShopCommissionOffers(p.state).find(o => o.customer === 'bea' && o.recipeId === id)!
+    p.act('acceptShopCommission', offer.key)
+    return String(p.state.shopCommissions.serial)
+  }
+  const first = accept()
+  for (let i = 0; i < 2; i++) { p.cook(id); p.act('deliverShopCommission', first) }
+  p.act('finishShopCommission', first); p.night()
+  p.cook(id); p.cook(id)
+  p.fruit('apple', 1); p.fruit('pear', 1); p.visit('village')
+  const sibling = p.act('completeSignature', { base: 'preserves', ingredients: [{ id: 'apple', quantity: 1 }, { id: 'pear', quantity: 1 }] },
+    { family: 'preserves', processing: 'chunky', fruit: [], steps: ['mix', 'pour'] }).recipeId as string
+  p.act('nameSignature', sibling, p.state.culinary.recipes.find(recipe => recipe.id === id)!.name)
+  p.fruit('apple', 2); p.fruit('pear', 2); p.visit('village')
+  const serial = accept()
+  p.act('deliverShopCommission', serial); p.act('tasteSignature', id, 'bea')
+  assert.equal(p.state.culinary.stock[id], 0); assert.equal(p.state.culinary.stock[sibling], 1)
+  const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
+  try {
+    const { signatureBook } = await server.ssrLoadModule('/src/culinary-ui.ts')
+    const page = (key: string) => signatureBook(p.state, art, { selectedId: key, mode: 'detail' })
+    const archive = (key: string) => new RegExp(`data-action="forget-signature" data-value="${key}"`)
+    const before = structuredClone(p.state), html = page(id)
+    assert.doesNotMatch(html, archive(id)); assert.match(html, new RegExp(`data-action="make-signature" data-value="${id}"[^>]*>Повторить ×1`))
+    assert.doesNotMatch(html, /data-action="make-signature"[^>]*disabled/)
+    assert.equal(forgetSignature(p.state, id).ok, false); assert.deepEqual(p.state, before)
+    // An identically named non-commissioned recipe can still be archived as soon as its own bag is empty.
+    p.act('useSignature', sibling); assert.match(page(sibling), archive(sibling)); assert.doesNotMatch(page(id), archive(id))
+    // Cancellation returns the escrow to the bag. Archiving is available only after spending that portion.
+    p.act('cancelShopCommission', serial); assert.equal(p.state.culinary.stock[id], 1); assert.doesNotMatch(page(id), archive(id))
+    p.visit('home'); p.act('sellSignature', id, 1); assert.match(page(id), archive(id)); p.act('forgetSignature', id)
+    assert.ok(p.state.culinary.recipes.some(recipe => recipe.id === sibling))
+  } finally { await server.close() }
+})
