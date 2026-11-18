@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFarm, endDay, feedChickens, getProject, workBed, type FarmState, type ProjectId } from '../src/farm.ts';
+import { readFileSync } from 'node:fs';
+import { commissionPlayer } from './fixtures/commission-player.ts';
+import { reserveShopGoods } from '../src/harbour-economy.ts';
+import { setBayShopOpen, stockBayShop } from '../src/bay-shop-model.ts';
+import { describeFood } from '../src/intent-orders.ts';
+import { createFarm, endDay, feedChickens, foodDescriptors, getProject, workBed, type FarmState, type ProjectId } from '../src/farm.ts';
 import { getDiscoveryTask, getSupplyGuidance, getCoinGuidance } from '../src/discovery-path.ts';
 
 const seen = { collections: true, islands: true };
@@ -262,4 +267,28 @@ test('the first shop uses ready pastries and local warehouse food before proposi
   farm.freight.warehouses.home['handmade:long'] = 1;
   farm.island = 'village';
   assert.notEqual(getDiscoveryTask(farm, seen)?.action.value, 'bay-shop', 'distant warehouse food is not available on the shop shelves');
+});
+
+test('the earned first pie guides stocking, reopening, then a visit until an actual customer purchase',()=>{
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'));
+  const p=commissionPlayer(opening), task=()=>getDiscoveryTask(p.state,seen)!;
+  const food=foodDescriptors(p.state).find(item=>item.count>0)!;
+  assert.equal(food.id,'dish:orchardTart'); assert.equal(food.count,1); assert.equal(p.state.bayShop.sold,0);
+  assert.match(task().detail,/Выставьте/); assert.equal(task().action.value,'bay-shop');
+  const coins=p.state.coins;
+  assert.ok(reserveShopGoods(p.state,food.id,1));
+  assert.ok(stockBayShop(p.state.bayShop,0,{id:food.id,identity:food.id,name:food.name,
+    image:'/art/lavender/ui-tart.webp',basePrice:food.sellPrice,tags:[...food.ingredients,...describeFood(food)]},1));
+  p.reload(); assert.equal(p.state.dishes.orchardTart,0);
+  assert.equal(task().label,'Откройте лавку для покупателей'); assert.match(task().detail,/На прилавке: «Фруктовый пирог»/);
+  assert.equal(task().action.value,'bay-shop'); assert.equal(p.state.bayShop.slots[0]?.quantity,1);
+  setBayShopOpen(p.state.bayShop,true); p.reload();
+  assert.equal(task().label,'Лавка открыта'); assert.match(task().detail,/дождаться покупателя в лавке или отдохнуть дома/);
+  assert.equal(task().action.value,'bay-shop'); assert.equal(p.state.coins,coins);
+  p.visit('home'); assert.equal(task().action.value,'village');
+  const overnight=structuredClone(p.state);assert.ok(endDay(overnight).ok);
+  assert.equal(overnight.bayShop.sold,1);assert.equal(overnight.coins-coins,food.sellPrice);
+  p.visit('village'); p.sale();
+  assert.equal(p.state.bayShop.sold,1); assert.equal(p.state.coins-coins,food.sellPrice);
+  assert.notEqual(task().id,'first-shop');
 });
