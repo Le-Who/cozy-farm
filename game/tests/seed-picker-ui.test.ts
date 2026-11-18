@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createFarm, cropIds, cropDefinitions, workBed, restoreCurrentFarm } from '../src/farm.ts'
+import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
+import { createFarm, cropIds, cropDefinitions, buySeeds, workBed, selectSeed, restoreCurrentFarm } from '../src/farm.ts'
 import { renderSeedPicker } from '../src/seed-picker-ui.ts'
 import { seedChoice, chooseSeedForBed } from '../src/seed-choice.ts'
 import { seedSavingQuote, saveCropSeeds } from '../src/seed-saving.ts'
@@ -66,4 +69,18 @@ test('seed exchange names exact ordinary cost, preserves rare stock and never so
  assert.ok(saveCropSeeds(f,seedSavingQuote(f,'carrot')!.token).ok)
  assert.deepEqual(f.variants,before.variants);assert.deepEqual(f.beds,before.beds);assert.equal(f.selectedSeed,before.selectedSeed)
  assert.deepEqual(restoreCurrentFarm(JSON.parse(JSON.stringify(f))),f)
+})
+
+test('the primary purchase names the actual coin cost as well as the seed gain, unlike the harvest exchange',()=>{
+ const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+ const button=runInNewContext(stripTypeScriptTypes(source.slice(source.indexOf('function button(label:'),source.indexOf('function quantity('))+';button'),{cropDefinitions,icon:art.icon,numberFormat:new Intl.NumberFormat('ru')})
+ const f=createFarm();assert.ok(selectSeed(f,'beetroot').ok);assert.ok(workBed(f,13).ok);assert.ok(selectSeed(f,'carrot').ok)
+ for(const [crop,price] of [['beetroot',5],['blueberry',7]] as const){
+  const before=structuredClone(f),html=renderSeedPicker(f,crop,undefined,{...art,button})
+  const buy=html.match(/<button[^>]*data-action="buy-seeds"[^>]*>/)?.[0]
+  assert.ok(buy);assert.match(buy,new RegExp('aria-label="Купить ×3, Семена: '+cropDefinitions[crop].name.toLowerCase()+', цена: '+price+' монет"'));assert.deepEqual(f,before)
+  const checkout=structuredClone(f);assert.ok(buySeeds(checkout,crop).ok);assert.equal(f.coins-checkout.coins,price);assert.equal(checkout.seeds[crop]-f.seeds[crop],3)
+ }
+ const selected=renderSeedPicker(f,'carrot',undefined,{...art,button})
+ assert.doesNotMatch(selected,/data-action="buy-seeds"/);assert.match(selected,/Обменять урожай на 3 семени/)
 })
