@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
+import { commissionPlayer } from './fixtures/commission-player.ts'
+import * as expeditions from '../src/ferry-expeditions.ts'
 import { createServer } from 'vite'
 import { createFarm, endDay, restoreFarm } from '../src/farm.ts'
 import { expeditionOfferAfterClaim, quoteExpedition, type ExpeditionManifest } from '../src/ferry-expeditions.ts'
@@ -65,4 +70,47 @@ test('the next preview uses current terms while its separately labelled receipt 
     assert.match(html,/data-action="expedition-send" data-value="mill-sale"[^>]*disabled/)
     assert.deepEqual(farm,before)
   } finally {await server.close()}
+})
+
+test('cold loading an earned lighthouse receipt keeps its exact affordable repeat without sending it', async () => {
+  const actions = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url),'utf8')) as {name:string;args:unknown[]}[]
+  const p = commissionPlayer(actions.slice(0, actions.findIndex(action => action.name === 'buyBoat') + 1))
+  p.act('sellMarketItem','produce:tomato',3)
+  for (const id of ['mill-buy','explore-salt']) { p.act('sendFerryExpedition',id); p.night(); p.act('receiveFerryExpedition') }
+  p.act('sendFerryExpedition','salt-buy'); p.night()
+  const main = readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const startup = main.slice(main.indexOf('const ferryArrival ='),main.indexOf('let freightPlanOpen'))
+  const preview = () => runInNewContext(stripTypeScriptTypes(startup + '\n;({expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer})'), {
+    ...expeditions, farm:p.state, FerryArrivalPresentation:class {}, ShopAssortmentChoice:class {}, ShopCommissionView:class {},
+  })
+  const server = await createServer({root:fileURLToPath(new URL('..',import.meta.url)),configFile:false,server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try {
+    const {renderFreightPanel} = await server.ssrLoadModule('/src/bay-freight-ui.ts')
+    const render = () => renderFreightPanel(p.state.freight,{...preview(),day:p.state.day,coins:p.state.coins,boatOwned:true,
+      playerPort:'home',openedPorts:['home','grove'],products:[],carried:expeditionWallet(p.state).bag,icon:()=>''}) as string
+    assert.match(render(),/data-action="expedition-claim"/); assert.doesNotMatch(render(),/data-action="expedition-send"/)
+    p.act('receiveFerryExpedition'); p.reload()
+    assert.equal(p.state.day,5); assert.equal(p.state.seaSalt,2); assert.equal(p.state.coins,12)
+    const before=structuredClone(p.state), html=render()
+    assert.match(html,/<h3>Соль для своей кухни<\/h3>/)
+    assert.match(html,/data-action="expedition-send" data-value="salt-buy"[^>]*>/)
+    assert.doesNotMatch(html,/data-action="expedition-(claim|send)"[^>]*disabled/)
+    assert.match(html,/Прошлый груз получен · Соляной маяк · день 5/)
+    assert.deepEqual(p.state,before)
+    p.act('sendFerryExpedition','salt-buy')
+    assert.equal(p.state.coins,2); assert.equal(p.state.freight.expeditions.active?.serial,4)
+  } finally { await server.close() }
+})
+
+test('legacy and retired lighthouse cards use a valid preview without unlocking a route', () => {
+  const world=createFarm().freight.expeditions
+  assert.deepEqual(expeditions.initialExpeditionPreview(world),{port:'mill',offer:'mill-grain'})
+  world.last={name:'Соляной маяк',port:'salt',day:1,explored:false}
+  assert.deepEqual(expeditions.initialExpeditionPreview(world),{port:'mill',offer:'mill-grain'})
+  world.discovered.push('salt')
+  assert.deepEqual(expeditions.initialExpeditionPreview(world),{port:'salt',offer:'salt-carrots'})
+  for (const id of ['retired','salt-grill','pair:mill-buy+salt-buy']) {
+    world.last.settled={id,outgoing:[],incoming:[],earnCoins:0,payCoins:0}
+    assert.deepEqual(expeditions.initialExpeditionPreview(world),{port:'salt',offer:'salt-carrots'})
+  }
 })

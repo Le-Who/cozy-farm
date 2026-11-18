@@ -112,7 +112,7 @@ import { beginFestival, cancelFestival, contributeFestival, finishFestival, getF
 import { playBaySound } from './game-sound'
 import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
-import { combinedExpeditionId, expeditionOfferAfterClaim, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
+import { combinedExpeditionId, expeditionOfferAfterClaim, initialExpeditionPreview, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
 import { getFerryRestockPlan } from './ferry-restock'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
@@ -1669,10 +1669,9 @@ function goBack() {
 let harbourScene: {destroy():void} | undefined
 let selectedWarehouse = farm.island
 const ferryArrival = new FerryArrivalPresentation()
-let selectedExpeditionPort: ExpeditionPort = 'mill'
+let {port:selectedExpeditionPort,offer:selectedExpeditionOffer} = initialExpeditionPreview(farm.freight.expeditions)
 const shopAssortmentChoice = new ShopAssortmentChoice()
 const shopCommissionView = new ShopCommissionView()
-let selectedExpeditionOffer = 'mill-grain'
 let freightPlanOpen = false
 let musicView: BayMusicViewState | undefined
 function stopHarbour() {

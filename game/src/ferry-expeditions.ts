@@ -139,6 +139,14 @@ export function expeditionOfferAfterClaim(state: FerryExpeditions, voyage: Pick<
   return voyage.kind === 'trade' && state.discovered.includes(voyage.port) && ids.length > 0
     && ids.every(id => choices.some(choice => choice.id === id)) ? voyage.id : choices[0].id;
 }
+/** Rebuild only the initial panel preview; the active voyage and settled receipt already own these facts. */
+export function initialExpeditionPreview(state: FerryExpeditions): { port: ExpeditionPort; offer: string } {
+  if (state.active) return { port: state.active.port, offer: state.active.id };
+  const last = state.last;
+  if (!last || !state.discovered.includes(last.port)) return { port: 'mill', offer: expeditionTrades(state, 'mill')[0].id };
+  const id = typeof last.settled?.id === 'string' ? last.settled.id : '';
+  return { port: last.port, offer: expeditionOfferAfterClaim(state, { port: last.port, id, kind: last.explored ? 'explore' : 'trade' }) };
+}
 export function explorationReason(state: FerryExpeditions, port: ExpeditionPort): string {
   if (state.discovered.includes(port)) return 'Этот порт уже нанесён на карту.';
   if (port === 'salt' && state.markets.mill.visits < 1) return 'Сначала получите груз из Мельничного посада.';
