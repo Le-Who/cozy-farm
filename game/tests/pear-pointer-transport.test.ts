@@ -175,3 +175,40 @@ test('empty worktop motion and an outside press never credit a pear', () => {
     k.send('pointerdown', a); k.path(a, b, 150); k.send('pointerup', b); untouched(k)
   } finally { k.dispose() }
 })
+
+test('a slightly wavering diagonal across both rendered fruit works in either direction and at both sample rates', () => {
+  for (const samples of [5, 40]) for (const reverse of [false, true]) {
+    const k = kitchen()
+    try {
+      for (const [i, cx] of [375, 610].entries()) {
+        const at = (fraction: number) => {
+          const t = reverse ? 1 - fraction : fraction, wobble = 3 * Math.sin(3 * Math.PI * t)
+          return { x: cx + (t - .5) * 155 + wobble, y: 407 + (t - .5) * 180 - wobble * .45 }
+        }
+        k.send('pointerdown', at(0))
+        for (let j = 1; j <= samples; j++) k.send('pointermove', at(j / samples))
+        if (i === 1) { assert.equal(k.model.stage, 'cut'); assert.equal(k.model.pending, 'glaze') }
+        k.send('pointerup', at(1))
+        assert.ok(k.model.cuts.has(i), `fruit=${i} reverse=${reverse} samples=${samples}`)
+        assert.equal(k.model.cuts.size, i + 1)
+      }
+      assert.equal(k.model.stage, 'glaze'); assert.deepEqual(k.model.steps, ['cut-pears'])
+      assert.deepEqual(k.sounds, ['cook.pear-cut', 'cook.pear-cut'])
+    } finally { k.dispose() }
+  }
+})
+
+test('jitter, a short nick and circling on the skin do not finish a pear', () => {
+  for (const kind of ['jitter', 'nick', 'circle']) {
+    const k = kitchen()
+    try {
+      const at = (i: number) => kind === 'circle' ? { x: 380 + 23 * Math.cos(i * Math.PI / 12), y: 407 + 23 * Math.sin(i * Math.PI / 12) }
+        : kind === 'nick' ? { x: 375 + i, y: 400 } : { x: 375 + i % 3 - 1, y: 400 + i % 2 * 2 }
+      assert.ok(k.pearView.wholeHit(at(0)))
+      k.send('pointerdown', at(0))
+      for (let i = 1; i <= 24; i++) k.send('pointermove', at(i))
+      k.send('pointerup', at(24)); assert.equal(k.model.cuts.size, 0, kind)
+      assert.equal(k.model.stage, 'cut'); assert.equal(k.model.pending, null)
+    } finally { k.dispose() }
+  }
+})

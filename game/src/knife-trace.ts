@@ -30,6 +30,32 @@ function cover(trace: KnifeTrace, from: KnifePoint, to: KnifePoint, extent: Exte
   trace.progress = trace.bins.size / 16
 }
 
+// A short entry can give a good preview but a slightly biased plane. On leaving
+// the skin, reconsider only a single nearly straight, edge-to-edge pass. Never
+// join separate gestures or credit bins that the blade did not actually cross.
+function finishStraightPass(trace: KnifeTrace, sample: KnifeSample, last: KnifePoint): void {
+  const points = trace.samples, first = points[0]
+  if (!first || points.length >= 128 || trace.progress >= .875) return
+  const length = distance(first, last)
+  if (length < 1) return
+  const axis = { x: (last.x - first.x) / length, y: (last.y - first.y) / length }
+  if (dot(axis, trace.axis!) < Math.cos(Math.PI / 12)) return
+  const origin = { x: (first.x + last.x) / 2, y: (first.y + last.y) / 2 }
+  const extent = sample.extent(axis, origin), span = extent.max - extent.min
+  if (!(span > 0) || length < span * .8) return
+  const tolerance = clamp(span * .04, 2, 6)
+  let farthest = 0
+  for (const p of points) {
+    const x = p.x - first.x, y = p.y - first.y, along = x * axis.x + y * axis.y
+    if (Math.abs(y * axis.x - x * axis.y) > tolerance || along < farthest - tolerance) return
+    farthest = Math.max(farthest, along)
+  }
+  const fit = { ...trace, axis, origin, angle: Math.atan2(axis.y, axis.x), bins: new Set<number>(), progress: 0 }
+  for (let i = 1; i < points.length; i++) cover(fit, points[i - 1], points[i], extent)
+  cover(fit, points.at(-1)!, last, extent)
+  if (fit.progress >= .875) Object.assign(trace, fit)
+}
+
 /** Contact comes from the rendered food mesh. Extent is its actual screen projection
  * dotted onto the supplied unit axis, in the same pixel coordinates as point. */
 export function traceKnife(trace: KnifeTrace, sample: KnifeSample): KnifeTrace {
@@ -62,7 +88,16 @@ export function traceKnife(trace: KnifeTrace, sample: KnifeSample): KnifeTrace {
   const previous = trace.previous, wasContact = trace.wasContact
   trace.previous = { ...point }; trace.wasContact = sample.contact
   if (trace.axis) {
-    if (previous && (sample.contact || wasContact)) cover(trace, previous, point, sample.extent(trace.axis, trace.origin!))
+    if (previous && (sample.contact || wasContact)) {
+      const extent = sample.extent(trace.axis, trace.origin!)
+      cover(trace, previous, point, extent)
+      if (sample.contact) {
+        const last = trace.samples.at(-1), spacing = clamp((extent.max - extent.min) / 64, 1, 5)
+        if (trace.samples.length < 128 && (!last || distance(last, point) >= spacing)) trace.samples.push({ ...point })
+      } else if (wasContact) {
+        finishStraightPass(trace, sample, previous); trace.samples.length = 0
+      }
+    }
     return trace
   }
   if (!sample.contact) {
@@ -90,7 +125,7 @@ export function traceKnife(trace: KnifeTrace, sample: KnifeSample): KnifeTrace {
     trace.origin = origin
     if (trace.entry) cover(trace, trace.entry, first, extent)
     for (let i = 1; i < samples.length; i++) cover(trace, samples[i - 1], samples[i], extent)
-    trace.samples = []; trace.entry = null; trace.travel = 0
+    trace.entry = null; trace.travel = 0
   } else {
     // A curved arrival must not permanently poison a later deliberate straight cut.
     while (samples.length > 3 && (samples.length > 128 || trace.travel > span * .24)) {
