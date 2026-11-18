@@ -3787,14 +3787,14 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'visit-do': {
-      if(panel!=='neighbor-visits'||!dialog.open||!farm.neighborVisits.active||String(farm.neighborVisits.active.serial)!==value)break
+      if(panel!=='neighbor-visits'||!dialog.open||!farm.neighborVisits.active||farm.neighborVisits.active.observation||String(farm.neighborVisits.active.serial)!==value)break
       const kind=visitActivities[farm.neighborVisits.active.activity].kind
       if(kind==='pastry'){workshopRecipe='pastry';openPanel('workshop');break}
+      if(kind!=='crop'&&kind!=='fruit')break
       const index=kind==='crop'?farm.beds.findIndex(b=>b.kind==='crop'&&getBedStage(b)==='ripe'):farm.trees.home.findIndex(t=>t&&t.fruitReady>0)
-      if(kind==='crop'&&index<0){notify('Зрелых грядок пока нет. Гость пока останется на ферме.');drawPanel();break}
+      if(index<0){notify(kind==='crop'?'Зрелых грядок пока нет. Гость пока останется на ферме.':'Спелых плодов пока нет. Гость останется на ферме.');drawPanel();break}
       closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
-      if(index>=0)island.focusTarget({kind:kind==='crop'?'bed':'tree',index})
-      else notify(kind==='crop'?'Пока нет зрелого урожая. Можно пригласить гостя после созревания.':'Пока нет спелых плодов. Можно пригласить гостя позднее.')
+      island.focusTarget({kind:kind==='crop'?'bed':'tree',index})
       break
     }
     case 'hen-friend-select': {

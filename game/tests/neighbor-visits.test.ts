@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
-import { createFarm, restoreCurrentFarm, endDay, sail, workBed, petChicken, introduceHenToVisitor, bakeWorkshop, pickFruit, getNeighborPlans, joinNeighborPlan, serveNeighborPlan, finishNeighborPlan } from '../src/farm.ts'
+import { createFarm, restoreCurrentFarm, endDay, sail, workBed, storeTree, returnNurseryTree, plantTree, petChicken, introduceHenToVisitor, bakeWorkshop, pickFruit, getNeighborPlans, joinNeighborPlan, serveNeighborPlan, finishNeighborPlan } from '../src/farm.ts'
 import { inviteNeighborVisit, finishNeighborVisit, visitActivities, visitActivityIds } from '../src/neighbor-visits.ts'
 import { renderNeighborVisits, renderVisitRest } from '../src/neighbor-visits-ui.ts'
 import { restoreLegacyFarm } from '../src/farm-save-migration.ts'
@@ -252,4 +252,33 @@ test('the guest leads an active visit; leaving consequences stay by the exit and
   const history=read(f);invitations(history);assert.match(history,/Позвать снова/);assert.ok(history.includes(visitActivities.beaFlock.quiet))
   assert.ok(sail(f,'grove').ok)
   const away=read(f);invitations(away);assert.match(away,/Вернуться домой к приглашениям/);assert.match(away,/data-value="beaFlock" disabled/)
+})
+
+test('Finn points only to ripe fruit in the home garden; an obsolete route leaves the book and field view alone',()=>{
+  const f=ready();assert.ok(plantTree(f,1,'apple').ok);assert.ok(inviteNeighborVisit(f,'finnOrchard').ok)
+  const button=()=>renderNeighborVisits(f,()=>'').match(/<button[^>]*data-action="visit-do"[^>]*>[\s\S]*?<\/button>/)?.[0]
+  assert.match(button()!,/>К дереву</)
+  const token=String(f.neighborVisits.serial),main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const branch=main.slice(main.indexOf("    case 'visit-do': {"),main.indexOf("    case 'hen-friend-select':"))
+  const dispatch=()=>{
+    const before=structuredClone(f),calls:string[]=[],notices:string[]=[]
+    runInNewContext(stripTypeScriptTypes(`switch('visit-do'){${branch}}`),{
+      farm:f,visitActivities,getBedStage,panel:'neighbor-visits',dialog:{open:true},value:token,drawPanel:()=>calls.push('redraw'),
+      closeDialog:()=>calls.push('close'),fieldViewButton:{getAttribute:()=> 'true'},toggleFieldView:()=>calls.push('toggle'),
+      island:{focusTarget:(t:{kind:string;index:number})=>calls.push(`focus:${t.kind}:${t.index}`)},notify:(s:string)=>notices.push(s),
+    })
+    assert.deepEqual(f,before);return {calls,notices}
+  }
+  // The ripe apple has moved to storage; the grove has ripe fruit, but neither is a destination on this visit.
+  assert.ok(storeTree(f,0).ok);assert.ok(f.trees.grove.some(t=>t&&t.fruitReady>0));assert.ok(load(f))
+  const stale=dispatch()
+  assert.deepEqual(stale.calls,['redraw']);assert.match(stale.notices[0],/Спелых плодов пока нет/)
+  assert.match(button()!,/ disabled>Нет спелых плодов</)
+  const html=renderNeighborVisits(f,()=>'');assert.doesNotMatch(html,/Визит можно начать позднее/)
+  assert.match(html,/Побыть на ферме/);assert.match(html,/Завершить визит/)
+  assert.ok(returnNurseryTree(f,2,f.treeNursery[0].id).ok);assert.doesNotMatch(button()!,/disabled/)
+  assert.deepEqual(dispatch(),{calls:['close','toggle','focus:tree:2'],notices:[]})
+  assert.equal(f.neighborVisits.active?.observation,null);assert.ok(f.trees.home[2]!.fruitReady>0)
+  assert.ok(pickFruit(f,2).ok);assert.ok(f.neighborVisits.active?.observation);assert.equal(button(),undefined)
+  assert.deepEqual(dispatch(),{calls:[],notices:[]});assert.deepEqual(load(f),f)
 })
