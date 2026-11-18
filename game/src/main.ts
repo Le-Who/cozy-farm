@@ -1301,14 +1301,14 @@ function treeRow(index: number) {
   if (farm.island !== 'home' && farm.island !== 'grove') return ''
   const slot = farm.trees[farm.island][index]
   const definition = slot && treeDefinitions[slot.tree]
-  const action = getTreeAction(farm, index)
   const detail = slot && definition
     ? slot.age >= definition.days
       ? slot.fruitReady > 0 ? `Плодов к сбору: ${slot.fruitReady}` : 'Новые плоды завтра'
       : `${quantity(definition.days - slot.age, 'ночь')} до зрелости`
     : 'Место для саженца'
   return row(slot?.tree === 'apple' ? 'apple' : 'orchard', definition?.treeName ?? `Свободное место ${index + 1}`, detail,
-    button(action.kind === 'pick' ? 'Собрать плоды' : slot ? 'Осмотреть' : 'Посадить дерево', 'visit-tree', true, { value: index }))
+    button(slot ? 'Осмотреть дерево' : 'Посадить дерево', 'visit-tree', true, { value: index,
+      context: definition ? `${definition.treeName}, место ${index + 1}` : `место ${index + 1}` }))
 }
 
 const treeStorageChoice = new TreeStorageChoice()

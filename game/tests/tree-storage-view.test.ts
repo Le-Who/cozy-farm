@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {stripTypeScriptTypes} from 'node:module'
 import {runInNewContext} from 'node:vm'
-import {createFarm,treeDefinitions,buyAndPlantTree,storeTree,returnNurseryTree,endDay,pickFruit,restoreCurrentFarm} from '../src/farm.ts'
+import {createFarm,treeDefinitions,getTreeAction,buyAndPlantTree,storeTree,returnNurseryTree,endDay,pickFruit,restoreCurrentFarm} from '../src/farm.ts'
 import {nurseryFruitDetail} from '../src/orchard-guidance.ts'
 import {treeVariantCopy} from '../src/ready-variant-guidance.ts'
 import {TreeStorageChoice,storedTreeChoiceLabel} from '../src/tree-storage-choice.ts'
@@ -56,4 +56,30 @@ test('a real default full garden stores and relocates without selling or refilli
  const once=structuredClone(loaded);assert.equal(returnNurseryTree(loaded,0,id).ok,false);assert.deepEqual(loaded,once)
  assert.ok(pickFruit(loaded,1).ok);assert.equal(loaded.fruit.apple,fruit.apple+2)
  assert.deepEqual(restoreCurrentFarm(JSON.parse(JSON.stringify(loaded))),loaded)
+})
+
+test('orchard rows identify the tree and open its inspection without harvesting even when ripe',()=>{
+ const farm=createFarm();assert.ok(buyAndPlantTree(farm,1,'apple').ok)
+ for(let n=0;n<treeDefinitions.apple.days;n++)assert.ok(endDay(farm).ok)
+ const before=structuredClone(farm),opened:string[]=[]
+ const context={farm,treeDefinitions,getTreeAction,treeSlot:-1,quantity:String,itemIcon:()=>'',dialogContent:{},
+  island:{visit:()=>{},isCrossing:()=>false},bayAudio:{primeEvents:()=>{}},openPanel:(panel:string)=>opened.push(panel),revealTreeStorageReturn:()=>{}}
+ const slice=(from:string,to:string)=>source.slice(source.indexOf(from),source.indexOf(to,source.indexOf(from)))
+ const command=slice("    case 'visit-tree':","    case 'pet':")
+ const code=slice('function button(','function quantity(')+slice('function row(','function nav(')+
+  slice('function treeRow(','const treeStorageChoice')+slice('function activateTarget(','function useHotbar(')+
+  `function visit(value:string){switch('visit-tree'){${command}}}`
+ runInNewContext(stripTypeScriptTypes(code),context)
+ for(const index of [0,1,2]){
+  const html=runInNewContext(`treeRow(${index})`,context) as string
+  const label=index<2?'Осмотреть дерево':'Посадить дерево'
+  const target=index<2?'Яблоня, ':''
+  assert.match(html,new RegExp(`aria-label="${label}, ${target}место ${index+1}"`))
+  assert.match(html,new RegExp(`>${label}\\s*<`));assert.doesNotMatch(html,/Собрать плоды/)
+  if(index<2)assert.match(html,/Плодов к сбору: 2/)
+  assert.match(html,/data-action="visit-tree"/)
+  const value=html.match(/data-value="(\d+)"/)![1]
+  runInNewContext(`visit("${value}")`,context)
+  assert.equal(context.treeSlot,index);assert.equal(opened.at(-1),'tree');assert.deepEqual(farm,before)
+ }
 })
