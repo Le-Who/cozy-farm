@@ -2820,7 +2820,7 @@ function useHotbar(tool: Tool) {
   switch (tool) {
     case 'hoe':
       canvas.focus({ preventScroll: true })
-      notify('Выберите пустую грядку, чтобы вскопать её.')
+      notify(farm.beds.some(bed => bed.kind === 'empty') ? 'Выберите пустую грядку, чтобы вскопать её.' : 'Все грядки уже вскопаны.')
       break
     case 'water':
       if (farm.buildingLevels.well >= 2) {

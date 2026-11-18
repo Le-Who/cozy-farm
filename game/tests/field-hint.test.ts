@@ -63,3 +63,24 @@ test('the well hint follows the real watering can and leaves irrigation destinat
     assert.equal(inspect(),facilitySpecializations.well[branch].name)
   }
 })
+
+test('the hoe only directs the player to untilled soil while a till action exists',()=>{
+  const farm=createFarm()
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const hotbar=stripTypeScriptTypes(main.slice(main.indexOf('function useHotbar('),main.indexOf('function highlightControl('))+";useHotbar('hoe')")
+  const expected='Выберите пустую грядку, чтобы вскопать её.'
+  function chooseHoe(){
+    const before=structuredClone(farm),events:string[]=[]
+    const ctx={farm,activeTool:'seeds',status(){events.push('status')},canvas:{focus(){events.push('focus')}},notify(msg:string){events.push(msg)}}
+    runInNewContext(hotbar,ctx)
+    assert.deepEqual(farm,before);assert.equal(ctx.activeTool,'hoe')
+    assert.deepEqual(events.slice(0,2),['status','focus']);assert.equal(events.length,3)
+    return events[2]
+  }
+  const tillable=()=>farm.beds.map((_,i)=>i).filter(i=>getBedAction(farm,i).kind==='till')
+  assert.deepEqual(tillable(),[0,8]);assert.equal(chooseHoe(),expected)
+  assert.ok(workBed(farm,0).ok);assert.deepEqual(tillable(),[8]);assert.equal(chooseHoe(),expected)
+  assert.ok(workBed(farm,8).ok);assert.deepEqual(tillable(),[])
+  assert.deepEqual([...new Set(farm.beds.map((_,i)=>getBedAction(farm,i).kind))].sort(),['harvest','plant','water'])
+  assert.equal(farm.day,1);assert.equal(chooseHoe(),'Все грядки уже вскопаны.')
+})
