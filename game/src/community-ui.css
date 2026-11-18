@@ -25,3 +25,11 @@
 }
 
 .community-deadline{margin:0 0 12px;padding:9px 10px;border-radius:10px;background:#faf5e4;color:var(--muted);font-size:12px;line-height:1.4;text-align:left}.intent-rest{margin-top:0}.intent-rest .dialog-button{margin-top:5px}
+
+/* The narrower Buildings panel keeps the same labeled choices as the other Buy views. */
+.market-building-categories { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+.market-building-categories>button { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; min-width:0; height:auto; min-height:51px; padding:3px; font:700 14px/1.1 Georgia,serif; color:var(--plum); }
+.market-building-categories>button>.icon { flex:none; width:26px; height:26px; }
+@media(max-width:520px) {
+  .market-building-categories>button { flex-direction:column; gap:1px; font-size:clamp(11px,3.4vw,13px); }
+}
