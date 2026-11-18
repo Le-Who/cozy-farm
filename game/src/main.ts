@@ -1384,6 +1384,11 @@ function communityOffers() {
   const request = currentCommunityRequest()
   return request ? getIntentOffers(farm, request.intentId) : []
 }
+function currentCommunityRoute(preferred: 'request' | 'recipe', request = currentCommunityRequest()) {
+  const count = requestedFood && request ? getIntentOffers(farm, request.intentId).find(offer => offer.id === requestedFood)?.count : undefined
+  return communityReturnRoute(communityRequest?.kind ?? 'intent', farm.island, preferred, count,
+    request && 'phase' in request ? request.phase : undefined)
+}
 function updateCommunityReturn() {
   try {
     if (!saveStore.issue) {
@@ -1392,8 +1397,7 @@ function updateCommunityReturn() {
     }
   } catch { /* The current menu also works without browser storage. */ }
   const request = currentCommunityRequest()
-  const route = communityReturnRoute(communityRequest?.kind ?? 'intent', farm.island, 'recipe',
-    requestedFood ? communityOffers().find(offer => offer.id === requestedFood)?.count : undefined)
+  const route = currentCommunityRoute('recipe', request)
   communityResume.hidden = !communityRequest || dialog.open || island.isCrossing()
   communityResume.querySelector('span')!.textContent = route.label
   communityResume.setAttribute('aria-label', request ? `Вернуться: ${request.title}. ${route.label}` : 'Вернуться к соседям')
@@ -1401,8 +1405,7 @@ function updateCommunityReturn() {
 async function resumeCommunityRequest(mode: 'request' | 'recipe' = 'request') {
   const request = communityRequest
   if (!request || island.isCrossing()) return
-  const route = communityReturnRoute(request.kind, farm.island, mode,
-    requestedFood ? communityOffers().find(offer => offer.id === requestedFood)?.count : undefined)
+  const route = currentCommunityRoute(mode)
   if (route.mode === 'recipe') { panelHistory.length = 0; openPanel('request-food', false); return }
   const destination = route.destination
   if (route.travel) {

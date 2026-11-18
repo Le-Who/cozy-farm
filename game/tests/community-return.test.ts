@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 import { communityReturnRoute } from '../src/community-return.ts'
-import { canSailTo, getIntentOffers, getNeighborPlans, joinNeighborPlan, restoreFarm, sail } from '../src/farm.ts'
+import { canSailTo, finishNeighborPlan, getIntentOffers, getNeighborPlans, joinNeighborPlan, restoreFarm, sail } from '../src/farm.ts'
 import { communityReturnFixture } from './fixtures/community-return.ts'
 
 test('the HUD fallback with no selected recipe returns to the meeting shore', () => {
@@ -63,4 +65,35 @@ test('a blocked crossing cannot bypass boat ownership or change the saved meetin
   assert.equal(sail(farm,route.destination).ok,false)
   assert.deepEqual(farm,before)
   assert.ok(restoreFarm(farm))
+})
+
+test('the last serving finishes Bea’s meeting, not a second recipe errand after reload', () => {
+  const actions=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const supper=actions.findLastIndex((a:{name:string})=>a.name==='serveVillageMeal'),player=commissionPlayer(actions.slice(0,supper+1))
+  const recipe=player.cook(),food=`signature:${recipe}` as const
+  player.visit('home'); player.act('sellSignature',recipe,1); player.night()
+  player.fruit('apple',1); player.fruit('pear',1); player.visit('village')
+  assert.equal(player.state.day,15); assert.equal(player.state.village.mealOn,14)
+  const id='bea:1',route=()=>{
+    const farm=player.state,plan=getNeighborPlans(farm).find(plan=>plan.id===id)!
+    const offer=getIntentOffers(farm,plan.intentId).find(offer=>offer.id===food)!
+    return communityReturnRoute('neighbor',farm.island,'recipe',offer.count,plan.phase)
+  }
+  player.act('joinNeighborPlan',id); assert.equal(route().mode,'recipe')
+  player.act('repeatSignature',recipe); player.act('serveNeighborPlan',id,food)
+  assert.equal(route().mode,'request'); assert.equal(player.state.culinary.stock[recipe],1)
+  // A missing portion remains actionable until the meeting itself is finished.
+  player.act('transferBayGoods','deposit','village',food,1); assert.equal(route().mode,'recipe')
+  player.act('transferBayGoods','withdraw','village',food,1)
+  const coins=player.state.coins,other=player.state.dishes.orchardTart
+  const table={kind:'table',settled:true,placements:[{slot:'food',x:0,y:0},{slot:'cup',x:-.5,y:.2},{slot:'flowers',x:.5,y:-.2}]} as const
+  player.act('finishNeighborPlan',id,table); player.reload()
+  assert.equal(player.state.culinary.stock[recipe],0); assert.equal(player.state.dishes.orchardTart,other)
+  assert.equal(player.state.coins,coins+31); assert.equal(player.state.neighbors.bea.completed,1)
+  const done=structuredClone(player.state)
+  assert.deepEqual(route(),{mode:'request',destination:'village',travel:false,label:'К встрече'})
+  assert.equal(finishNeighborPlan(player.state,id,table).ok,false); assert.deepEqual(player.state,done)
+  player.act('advanceNeighborPlan',id); player.visit('home')
+  assert.equal(player.state.neighbors.bea.current?.phase,'remembered')
+  assert.deepEqual(route(),{mode:'request',destination:'village',travel:true,label:'К встрече в гавани'})
 })
