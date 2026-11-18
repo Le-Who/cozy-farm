@@ -37,6 +37,38 @@ function firstVisit() {
 
 // The ordinary fish names deliberately match the existing stock/species names.
 const kelpSummary = 'Обычно морской окунь, иногда окунь';
+test('festival perch uses a settled Grove only when Home is fished out', async () => {
+  const p=commissionPlayer(opening.slice(0,opening.findIndex(step=>step.name==='serveVillageMeal')+1));
+  p.act('beginFestival','lights');
+  const source=()=>getRequirementHint(p.state,{kind:'stock',item:{kind:'fish',item:'perch',quantity:1}}).action;
+  const exhaust=()=>{while(F.getFishAction(p.state).available)p.act('catchFish',true);};
+  const spendHome=()=>{
+    p.visit('home');exhaust();p.act('sellMarketItem','fish:perch',p.state.fish.perch);
+    assert.equal(p.state.fish.perch,0);
+  };
+  spendHome();p.visit('grove');p.act('collectShell',0);
+  assert.equal(source().value,'home','natural Grove has sea bass, not ordinary perch');
+  p.act('changeCove',{cover:'kelp'});assert.equal(source().value,'home','pending is not settled');
+  p.night();p.visit('grove');assert.equal(source().value,'home','keep the usual shore while it is available');
+  spendHome();p.visit('village');p.reload();
+  const server=await createServer({root:fileURLToPath(new URL('..',import.meta.url)),configFile:false,server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'});
+  try {
+    const {renderFestivalPanel}=await server.ssrLoadModule('/src/bay-festival-ui.ts');
+    assert.match(renderFestivalPanel(p.state),/data-action="festival-source" data-value="fish\|perch"><span>Окунь/);
+    const before=structuredClone(p.state);
+    assert.equal(source().target,'sail');assert.equal(source().value,'grove');
+    assert.deepEqual(p.state,before,'the directions do not sail, catch, rest or change the quota');
+    p.visit('grove');assert.equal(source().target,'visit-pier');
+    const config=F.getFishingTripConfig(p.state),seed=p.state.day*1009+(p.state.fishingTripSerial+1)*9176+71;
+    const perch=createFishingModel(config.capacity,config.resilience,seed,'seaBass',config.habitat).fish
+      .find(({loot})=>loot?.kind==='fish'&&loot.species==='perch'&&loot.variant==='regular')?.loot;
+    assert.ok(perch);p.act('finishFishingTrip',p.act('beginFishingTrip').token,[perch]);
+    p.visit('village');assert.match(renderFestivalPanel(p.state),/data-action="festival-contribute" data-value="fish\|perch"><span>Окунь/);
+    p.visit('grove');exhaust();p.visit('home');p.act('sellMarketItem','fish:perch',p.state.fish.perch);
+    assert.equal(source().value,'farmhouse','both shores are now spent');assert.equal(p.state.day,11);
+  } finally {await server.close();}
+});
+
 test('the archive and festival route lanternfish to water deep enough after each actual tide', async () => {
   const p=commissionPlayer(opening.slice(0,opening.findIndex(step=>step.name==='serveVillageMeal')+1));
   p.act('beginFestival','lights');p.visit('grove');p.act('collectShell',0);

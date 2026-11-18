@@ -11,7 +11,11 @@ export function rareFishClue(fish: FishId, farm?: FarmState): string | undefined
 
 /** Rare species depend on depth, not the common species assigned to a shore. */
 export function getFishSource(farm: FarmState, fish: FishId): OrchardIslandId {
-  if (fish === 'perch') return 'home';
+  if (fish === 'perch') {
+    if (!farm.boatOwned || getFishAction({...farm,island:'home'}).available) return 'home';
+    const grove={...farm,island:'grove' as const};
+    return getFishAction(grove).available && (getCoveHabitat(grove)?.perchWeight ?? 0)>0 ? 'grove' : 'home';
+  }
   if (fish === 'seaBass') return 'grove';
   if (fish === 'lanternfish' && !deepGrove(farm)) return 'home';
   const preferred = farm.island === 'grove' && farm.boatOwned ? 'grove' : 'home';
