@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import {readFileSync} from 'node:fs';
+import {berryNurseryPlayer} from './fixtures/berry-nursery-player.ts';
+import {rememberRecipeDraft} from '../src/recipe-draft.ts';
+import {recipePlanningGuide,recipePlanningIngredient} from '../src/recipe-planning.ts';
 import {cropDefinitions,cropIds,endDay,getBedHarvestPreview,restoreFarm,workBed} from '../src/farm.ts';
 import {getClimate,traitIds} from '../src/climate.ts';
 import {getRequirementHint} from '../src/requirement-guidance.ts';
@@ -34,10 +38,17 @@ test('ready exact crop and available exact warehouse goods retain priority',()=>
  assert.equal(getGrowingVariantSource(farm,request),undefined);
 });
 
-test('closest exact maturity wins, with already watered first on ties',()=>{
+test('one missing berry keeps closest maturity and watered tie priority, even with other dry beds',()=>{
  const farm=growingVariantFixture();farm.beds[0]={kind:'crop',crop:'strawberry',growth:0,watered:true,trait:'rainbow'};
  assert.equal(getGrowingVariantSource(farm,request)?.index,1);
- farm.beds[0].growth=1;assert.equal(getGrowingVariantSource(farm,request)?.index,0);
+ farm.beds[0].growth=1;
+ assert.equal(getGrowingVariantSource(farm,{...request,quantity:1})?.index,0);
+ farm.variants.strawberry={rainbow:1};
+ assert.equal(getGrowingVariantSource(farm,request)?.index,0,'stock reduces a two-berry recipe to one missing berry');
+ farm.beds[2]={kind:'crop',crop:'blueberry',growth:0,watered:false,trait:'rainbow'};
+ farm.beds[1]={kind:'crop',crop:'strawberry',growth:1,watered:false,trait:'dew'};
+ farm.variants.strawberry={};
+ assert.equal(getGrowingVariantSource(farm,request)?.index,0,'do not water a different crop or trait even if two are missing');
 });
 
 test('a changed or removed trait no longer promises this rare source',()=>{
@@ -80,4 +91,30 @@ test('rain after a dry night does not count as growth before the required care',
  endDay(farm);assert.equal(farm.beds[1].kind==='crop'&&farm.beds[1].growth,1);
  assert.equal(getGrowingVariantSource(farm,request)?.nights,1);assert.equal(hint(farm).action.value,'farmhouse');
  endDay(farm);assert.equal(getBedHarvestPreview(farm,1)?.trait,'rainbow');
+});
+
+test('a two-dew-berry draft directs care to both earned propagation beds before suggesting rest',()=>{
+ const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'));
+ const n=berryNurseryPlayer(opening),p=n.p;
+ n.divide(0,2);n.grow();p.act('workBed',0);n.cook();p.visit('home');
+ n.divide(2,0);
+ const part=recipePlanningIngredient(p.state,'blueberry','dew')!;
+ assert.ok(part);assert.ok(rememberRecipeDraft(p.state,{base:'preserves',slots:[part,{...part}],activeSlot:0}));p.reload();
+ const line=recipePlanningGuide(p.state)!.lines.find(line=>line.item.kind==='variants')!;
+ assert.equal(line.missing,2);assert.equal(p.state.day,20);
+ const guide=()=>getRequirementHint(p.state,{kind:'stock',item:line.item}).action;
+ p.act('workBed',0,0);
+ assert.equal(p.state.water,0);assert.equal(guide().value,'well');
+ p.act('refillWater');
+ const before=structuredClone(p.state);
+ assert.equal(guide().target,'focus-bed');assert.equal(guide().value,'2');
+ assert.deepEqual(p.state,before);
+ p.act('workBed',2,0);assert.equal(guide().value,'farmhouse');
+ for(let night=0;night<3;night++){p.night();assert.ok(endDay(before).ok)}
+ assert.equal(p.state.day,23);
+ assert.equal(getBedHarvestPreview(before,0)?.special,1);assert.equal(getBedHarvestPreview(before,2),undefined);
+ assert.equal(getBedHarvestPreview(p.state,0)?.special,1);assert.equal(getBedHarvestPreview(p.state,2)?.special,1);
+ assert.equal(p.state.variants.blueberry?.dew??0,0,'guidance and sleep never harvest');
+ p.act('workBed',0);p.act('workBed',2);assert.equal(p.state.variants.blueberry?.dew,2);
+ assert.equal(recipePlanningGuide(p.state)!.missing,0);
 });

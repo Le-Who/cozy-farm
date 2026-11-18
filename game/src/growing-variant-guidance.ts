@@ -4,13 +4,16 @@ type VariantRequest=Extract<StockItem,{kind:'variants'}>;
 
 /** Only an already known trait survives subsequent weather; never predict a new rare trait. */
 export function getGrowingVariantSource(farm:FarmState,request:VariantRequest){
- if(ingredientCount(farm,request)>=request.quantity||!cropIds.some(crop=>crop===request.item))return undefined;
+ const missing=request.quantity-ingredientCount(farm,request);
+ if(missing<=0||!cropIds.some(crop=>crop===request.item))return undefined;
  const candidates=farm.beds.flatMap((bed,index)=>{
   if(bed.kind!=='crop'||bed.crop!==request.item||bed.trait!==request.trait)return [];
   const nights=cropDefinitions[bed.crop].days-bed.growth;
   return nights>0?[{index,nights,watered:bed.watered}]:[];
  });
- return candidates.sort((a,b)=>a.nights-b.nights||Number(b.watered)-Number(a.watered)||a.index-b.index)[0];
+ // Each exact bed yields one rare item. Tend the earliest needed beds, not surplus copies.
+ const needed=candidates.sort((a,b)=>a.nights-b.nights||Number(b.watered)-Number(a.watered)||a.index-b.index).slice(0,missing);
+ return needed.find(bed=>!bed.watered)??needed[0];
 }
 
 export function growingVariantNotice(request:VariantRequest,source:NonNullable<ReturnType<typeof getGrowingVariantSource>>):string{
