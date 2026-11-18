@@ -3,8 +3,10 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 import { communityReturnRoute } from '../src/community-return.ts'
-import { canSailTo, finishNeighborPlan, getIntentOffers, getNeighborPlans, joinNeighborPlan, restoreFarm, sail } from '../src/farm.ts'
+import { getCommunityOrders, canSailTo, finishNeighborPlan, getIntentOffers, getNeighborPlans, joinNeighborPlan, restoreFarm, sail } from '../src/farm.ts'
 import { communityReturnFixture } from './fixtures/community-return.ts'
+import { canReturnToDailyIntent, renderSelectedIntentRest } from '../src/intent-deadline.ts'
+import { canConfirmRest } from '../src/rest-preview.ts'
 
 test('the HUD fallback with no selected recipe returns to the meeting shore', () => {
   assert.deepEqual(communityReturnRoute('neighbor','home','recipe'),
@@ -96,4 +98,31 @@ test('the last serving finishes Bea’s meeting, not a second recipe errand afte
   player.act('advanceNeighborPlan',id); player.visit('home')
   assert.equal(player.state.neighbors.bea.current?.phase,'remembered')
   assert.deepEqual(route(),{mode:'request',destination:'village',travel:true,label:'К встрече в гавани'})
+})
+
+test('a selected fair request can be recovered before the single irreversible morning control', () => {
+  const actions = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const p = commissionPlayer(actions.slice(0, 53)), farm = p.state
+  const order = getCommunityOrders(farm).find(order => order.id === 'intent:5:portable')!
+  assert.ok(order.unlocked && !order.delivered)
+  assert.ok(order.offers.find(offer => offer.id === 'dish:orchardTart')!.available)
+  const selection = { kind: 'intent' as const, orderId: order.id }, context = { panel: 'rest', open: true }
+  const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+  const view = source.slice(source.indexOf("    case 'rest':"), source.indexOf("    case 'journal': {"))
+  const decision = view.slice(view.indexOf('<section class="rest-decision"'), view.indexOf('</section>'))
+  const warning = '${renderSelectedIntentRest(farm,communityRequest)}', sleep = "button('До утра', 'sleep'"
+  assert.ok(decision.includes(warning) && decision.indexOf(warning) < decision.indexOf(sleep),
+    'the existing warning and its return control belong before sleep, inside the same decision')
+  assert.equal(view.split(warning).length, 2); assert.equal(view.split(sleep).length, 2)
+  const before = structuredClone(farm)
+  assert.match(renderSelectedIntentRest(farm, selection), /В дорогу[\s\S]*rest-intent-request" data-value="intent:5:portable"/)
+  assert.ok(canReturnToDailyIntent(farm, selection, order.id, context))
+  assert.equal(renderSelectedIntentRest(farm, undefined), '')
+  assert.equal(renderSelectedIntentRest(farm, { kind: 'neighbor' }), '')
+  assert.deepEqual(farm, before)
+  assert.ok(canConfirmRest(farm, '5')); p.night()
+  assert.equal(p.state.day, 6); assert.equal(p.state.dishes.orchardTart, 1)
+  assert.equal(p.state.coins, before.coins); assert.equal(canConfirmRest(p.state, '5'), false)
+  assert.equal(canReturnToDailyIntent(p.state, selection, order.id, context), false)
+  assert.equal(renderSelectedIntentRest(p.state, selection), '')
 })

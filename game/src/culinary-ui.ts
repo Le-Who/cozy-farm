@@ -164,6 +164,6 @@ export function coveControls(farm:FarmState):string{
     ${action.appliedToday?'<p class="cove-confirmation" role="status">Утренний прилив применил план. Обустройство берега готово.</p>':''}
     <p class="cove-effect"><strong>Сейчас:</strong> ${coveChoiceSummary(ecology.choices)}. ${shoreline.settled?coveEffectSummary(ecology.fishing):'Естественный берег.'}</p>
     ${forecast?`<p class="cove-effect cove-forecast" role="status"><strong>После прилива, день ${forecast.day}:</strong> ${coveChoiceSummary(forecast.ecology.choices)}. ${coveEffectSummary(forecast.ecology.fishing)}</p>
-      <div class="cove-plan"><span>План ещё не применён. Прилив наступит после отдыха дома.</span>${control('Отменить план','cove-cancel',action.planKey!)}</div>`:''}
-    <div class="cove-footer"><span>${shoreline.pending?'До прилива действует нынешний берег':shoreline.settled?`Обустройство действует с дня ${shoreline.settledOn}`:'Выберите обустройство берега'}</span>${control('На рыбалку','cove-fish','')}${control('Домой','sail','home')}</div></div>`
+      <div class="cove-plan"><span>Прилив наступит после отдыха дома.</span>${control('Отменить план','cove-cancel',action.planKey!)}</div>`:''}
+    <div class="cove-footer"><span>${shoreline.pending?'':shoreline.settled?`Обустройство действует с дня ${shoreline.settledOn}`:'Выберите обустройство берега'}</span>${control('На рыбалку','cove-fish','')}${control('Домой','sail','home')}</div></div>`
 }

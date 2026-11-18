@@ -17,7 +17,8 @@ test('cove panel distinguishes current shore, future forecast and the applied mo
     const planned = structuredClone(farm), html = coveControls(farm);
     assert.match(html, /Сейчас:<\/strong> Тихое течение · луг · песок/);
     assert.match(html, /После прилива, день 2:<\/strong> Открытое течение · луг · камни/);
-    assert.match(html, /План ещё не применён/);
+    assert.doesNotMatch(html, /План ещё не применён|До прилива действует нынешний берег/);
+    assert.equal(html.match(/Прилив наступит после отдыха дома/g)?.length, 1);
     assert.match(html, /data-action="cove-cancel" data-value="0:1:open:meadow:stones"/);
     assert.deepEqual(farm, planned);
     cancelCovePlan(farm, getCoveActions(farm).planKey);
