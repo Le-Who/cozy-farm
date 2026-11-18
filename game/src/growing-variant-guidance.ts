@@ -17,7 +17,12 @@ export function getGrowingVariantSource(farm:FarmState,request:VariantRequest){
 }
 
 export function growingVariantNotice(request:VariantRequest,source:NonNullable<ReturnType<typeof getGrowingVariantSource>>):string{
- const care=source.watered?'Грядка уже полита.':'Сначала полейте эту грядку; сухая грядка этой ночью не вырастет.';
- const timing=source.nights===1?'До зрелости осталась 1 ночь после полива.':`До зрелости осталось ${ruCount(source.nights,'ночь','ночи','ночей')} при политой грядке перед каждой ночью роста.`;
+ const retainsWater=cropIds.some(crop=>crop===request.item&&cropDefinitions[crop].retainsWater);
+ const nights=ruCount(source.nights,'ночь','ночи','ночей');
+ const care=retainsWater
+  ? source.watered?'Грядка уже полита, больше поливать не нужно.':'Полейте грядку один раз.'
+  : source.watered?'Грядка уже полита.':'Сначала полейте эту грядку; сухая грядка этой ночью не вырастет.';
+ const timing=retainsWater?`До зрелости: ${nights}.`
+  : source.nights===1?'До зрелости осталась 1 ночь после полива.':`До зрелости осталось ${nights} при политой грядке перед каждой ночью роста.`;
  return `На грядке ${source.index+1} уже растёт нужная разновидность: ${variantLabel(request.item,request.trait).name}. Редкий урожай этой грядки: ×1. ${care} ${timing} Отдых и сбор выбираются отдельно.`;
 }

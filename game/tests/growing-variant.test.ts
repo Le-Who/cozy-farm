@@ -93,6 +93,20 @@ test('rain after a dry night does not count as growth before the required care',
  endDay(farm);assert.equal(getBedHarvestPreview(farm,1)?.trait,'rainbow');
 });
 
+test('pumpkin keeps its one watering through maturity; strawberry still needs a watered bed each night',()=>{
+ const farm=growingVariantFixture();
+ const requirement=(crop:'pumpkin'|'strawberry')=>getRequirementHint(farm,{kind:'stock',item:{kind:'variants',item:crop,trait:'dew',quantity:1}}).notice!;
+ farm.beds[1]={kind:'crop',crop:'pumpkin',growth:0,watered:false,trait:'dew'};
+ assert.match(requirement('pumpkin'),/Полейте грядку один раз/);
+ assert.match(requirement('pumpkin'),/До зрелости: 3 ночи/);
+ assert.ok(workBed(farm,1).ok);endDay(farm);endDay(farm);
+ assert.match(requirement('pumpkin'),/До зрелости: 1 ночь/);
+ assert.match(requirement('pumpkin'),/больше поливать не нужно/);
+ endDay(farm);assert.equal(getBedHarvestPreview(farm,1)?.trait,'dew');
+ farm.beds[1]={kind:'crop',crop:'strawberry',growth:0,watered:false,trait:'dew'};
+ assert.match(requirement('strawberry'),/2 ночи при политой грядке перед каждой ночью роста/);
+});
+
 test('a two-dew-berry draft directs care to both earned propagation beds before suggesting rest',()=>{
  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'));
  const n=berryNurseryPlayer(opening),p=n.p;
@@ -102,15 +116,22 @@ test('a two-dew-berry draft directs care to both earned propagation beds before 
  assert.ok(part);assert.ok(rememberRecipeDraft(p.state,{base:'preserves',slots:[part,{...part}],activeSlot:0}));p.reload();
  const line=recipePlanningGuide(p.state)!.lines.find(line=>line.item.kind==='variants')!;
  assert.equal(line.missing,2);assert.equal(p.state.day,20);
- const guide=()=>getRequirementHint(p.state,{kind:'stock',item:line.item}).action;
+ const hint=()=>getRequirementHint(p.state,{kind:'stock',item:line.item});
+ const guide=()=>hint().action;
  p.act('workBed',0,0);
  assert.equal(p.state.water,0);assert.equal(guide().value,'well');
  p.act('refillWater');
  const before=structuredClone(p.state);
  assert.equal(guide().target,'focus-bed');assert.equal(guide().value,'2');
+ assert.match(hint().notice!,/Полейте грядку один раз/);
+ assert.match(hint().notice!,/До зрелости: 3 ночи/);
  assert.deepEqual(p.state,before);
  p.act('workBed',2,0);assert.equal(guide().value,'farmhouse');
- for(let night=0;night<3;night++){p.night();assert.ok(endDay(before).ok)}
+ for(const remaining of ['3 ночи','2 ночи','1 ночь']){
+  assert.ok(hint().notice!.includes('До зрелости: '+remaining+'.'));
+  assert.match(hint().notice!,/больше поливать не нужно/);
+  p.night();assert.ok(endDay(before).ok);
+ }
  assert.equal(p.state.day,23);
  assert.equal(getBedHarvestPreview(before,0)?.special,1);assert.equal(getBedHarvestPreview(before,2),undefined);
  assert.equal(getBedHarvestPreview(p.state,0)?.special,1);assert.equal(getBedHarvestPreview(p.state,2)?.special,1);
