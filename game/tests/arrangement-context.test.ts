@@ -89,3 +89,26 @@ for (const mode of Object.keys(modeInstructions) as Mode[]) test(`${mode}: descr
   if (mode === 'eggs' || mode === 'crate') assert.doesNotMatch(instructions, /сервиров|угощени/)
   if (mode === 'crate') assert.doesNotMatch(instructions, /корзин/)
 })
+
+test('renderer startup failure leaves one focused return for the actual activity, including warm entry', () => {
+  const startup = source.match(/try \{ renderer = makeRenderer\(\); view.prepend\(renderer.domElement\) \} catch \{[\s\S]*?\n  \}/)?.[0]
+  assert.ok(startup)
+  const code = ts.transpileModule(`function mount(){${startup}}; mount()`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url),'utf8')
+  const warmSelector = main.match(/next === 'arrangement' \? dialogContent.querySelector<HTMLElement>\('([^']+)'\)/)?.[1]
+  assert.ok(warmSelector?.includes('.arrangement-view') && warmSelector.includes('[data-arrangement-return]'))
+  for (const [mode,activity] of Object.entries({table:'сервировку стола',basket:'сбор корзинки для пикника',eggs:'упаковку корзины яиц',crate:'упаковку ящика яиц'})) {
+    let focused = false
+    const packing = mode === 'eggs' || mode === 'crate'
+    const status = {textContent:'',className:'',id:''}
+    const back = {className:'arrangement-close',textContent:'×',dataset:{} as Record<string,string>,attrs:new Map([['aria-label','Вернуться']]),
+      setAttribute(k:string,v:string){this.attrs.set(k,v)},removeAttribute(k:string){this.attrs.delete(k)},focus(){focused=true}}
+    const root = {dataset:{},children:[{},back,{disabled:true}] as unknown[],replaceChildren(...els:unknown[]){this.children=els}}
+    runInNewContext(code,{root,back,status,packing,options:{mode},makeRenderer(){throw Error('injected startup failure')}})
+    assert.deepEqual(root.children,[status,back]);assert.equal(focused,true)
+    assert.equal(back.textContent,packing?'В курятник':'К встрече')
+    assert.equal(status.textContent,`Не удалось начать ${activity}.`);assert.ok(status.id)
+    assert.equal(back.attrs.get('aria-describedby'),status.id);assert.equal(back.attrs.has('aria-label'),false)
+    assert.equal(back.dataset.arrangementReturn,'')
+  }
+})

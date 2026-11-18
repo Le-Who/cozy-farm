@@ -2470,7 +2470,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     : next === 'bay-music' ? dialogContent.querySelector<HTMLElement>(musicView?.sheet ? '.bay-music-sheet-close' : '.bay-music-close')
     : next === 'workshop' ? dialogContent.querySelector<HTMLElement>('.workshop-close')
     : next === 'fishing' ? dialogContent.querySelector<HTMLElement>('.fishing-controls .fishing-action')
-    : next === 'cookery' ? dialogContent.querySelector<HTMLElement>('.cookery-view') : next === 'arrangement' ? dialogContent.querySelector<HTMLElement>('.arrangement-view') : null
+    : next === 'cookery' ? dialogContent.querySelector<HTMLElement>('.cookery-view') : next === 'arrangement' ? dialogContent.querySelector<HTMLElement>('.arrangement-view, [data-arrangement-return]') : null
   ;(sceneEntry ?? closeButton).focus({ preventScroll: true })
 }
 

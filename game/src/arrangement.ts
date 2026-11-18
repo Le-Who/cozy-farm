@@ -41,9 +41,21 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     next.toneMapping = THREE.ACESFilmicToneMapping; next.toneMappingExposure = 1.1; next.domElement.setAttribute('aria-hidden', 'true'); return next
   }
   const cancel = () => { if (!destroyed) options.onCancel() }
-  root.querySelector('.arrangement-close')!.addEventListener('click', cancel, { signal })
+  const back = root.querySelector<HTMLButtonElement>('.arrangement-close')!
+  back.addEventListener('click', cancel, { signal })
   try { renderer = makeRenderer(); view.prepend(renderer.domElement) } catch {
-    status.textContent = 'Не удалось открыть стол. Вернитесь и попробуйте снова.'
+    const activity = { table: 'сервировку стола', basket: 'сбор корзинки для пикника', eggs: 'упаковку корзины яиц', crate: 'упаковку ящика яиц' }[options.mode]
+    status.textContent = `Не удалось начать ${activity}.`
+    status.className = 'dialog-status'
+    status.id = 'arrangement-start-error'
+    back.className = 'dialog-button'
+    back.textContent = packing ? 'В курятник' : 'К встрече'
+    back.removeAttribute('aria-label')
+    back.setAttribute('aria-describedby', status.id)
+    back.dataset.arrangementReturn = ''
+    root.dataset.unavailable = 'true'
+    root.replaceChildren(status, back)
+    back.focus({ preventScroll: true })
     return { destroy() { destroyed = true; abort.abort(); selectionGeometry.dispose(); selectionMaterial.dispose(); root.remove() } }
   }
   function wake() {
