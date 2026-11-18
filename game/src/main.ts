@@ -1222,7 +1222,13 @@ function confirmInlineSale(control: Element) {
   if(perform(()=>result,false,quote.remaining>0))playBaySound('trade.receive')
   const grid=dialogContent.querySelector<HTMLElement>('#market-sale-results');if(grid)grid.scrollTop=scroll
   const next=Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).find(card=>card.dataset.inlineKey===item.key)
-  const focus=next?.querySelector<HTMLButtonElement>('.market-inline-sell')??dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]')
+  let focus=next?.querySelector<HTMLElement>('.market-inline-sell')
+  if (!next && result.ok && quote.remaining===0 && marketSellGroup==='harvest' && marketSaleFamily) {
+    const stock=goods()
+    if (stock.some(row=>row.count>0) && searchMarketSales(stock,'harvest','',marketSaleFamily).total===0)
+      focus=dialogContent.querySelector<HTMLElement>('[data-action="market-sell-group"][data-value="all"]')
+  }
+  focus??=dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]')
   focus?.focus({preventScroll:true})
   if(!next)focus?.scrollIntoView({block:'nearest',inline:'nearest'})
 }
