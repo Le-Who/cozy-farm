@@ -3711,9 +3711,10 @@ app.addEventListener('click', async (event) => {
       break
     case 'save-crop-seeds':
       if(dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&seedSavingQuote(farm,previewSeed)?.token===value) {
-        const ownedFocus = panel==='seeds' && document.activeElement===control
+        const origin = panel
+        const ownedFocus = document.activeElement===control && (origin==='seeds' || event.detail===0)
         const saved = perform(()=>saveCropSeeds(farm,value),false,true)
-        if(saved&&ownedFocus&&panel==='seeds'&&dialog.open) {
+        if(saved&&ownedFocus&&dialog.open&&panel===origin&&(panel!=='inventory'||bagTab==='seeds')) {
           seedProductionFocus(dialogContent.querySelectorAll<HTMLButtonElement>('button'), {
             crop: previewSeed, exchangeToken: seedSavingQuote(farm,previewSeed)?.token,
             selectionToken: seedChoice(farm,previewSeed,seedPickerBed).token,

@@ -2,6 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { seedProductionFocus } from '../src/seed-production-focus.ts'
 import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
+import { commissionPlayer } from './fixtures/commission-player.ts'
+import { getBedAction } from '../src/farm.ts'
+import { seedChoice } from '../src/seed-choice.ts'
+import { seedSavingQuote, saveCropSeeds } from '../src/seed-saving.ts'
+import { renderSeedPicker } from '../src/seed-picker-ui.ts'
 const control=(action:string,value:string,disabled=false)=>({dataset:{action,value},disabled})
 const current={crop:'carrot',exchangeToken:'ss1|carrot|1|2|6|2',selectionToken:'sc1|home|1|carrot||0|manual|6'}
 
@@ -23,9 +30,33 @@ test('only the matching read-only crop packet is a final fallback',()=>{
  assert.equal(seedProductionFocus([control('preview-seed','carrot',true)],current),undefined)
 })
 
-test('host restoration follows only a successful focused hotbar conversion and never activates a control',()=>{
- const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'), helper=readFileSync(new URL('../src/seed-production-focus.ts',import.meta.url),'utf8')
- assert.match(main,/const ownedFocus = panel==='seeds' && document\.activeElement===control/)
- assert.match(main,/const saved = perform\(\(\)=>saveCropSeeds\(farm,value\),false,true\)\s*if\(saved&&ownedFocus&&panel==='seeds'&&dialog\.open\)/)
- assert.doesNotMatch(helper,/\.click\(|dispatchEvent|setAttribute|\.value\s*=(?!=)|localStorage/)
+test('inventory keyboard exchange follows the renewed same-crop quote, then the explicit crop selector',()=>{
+ const player=commissionPlayer([]),crop='beetroot',bed=0
+ player.act('workBed',bed);while(player.state.day<5)player.night()
+ player.act('selectSeed',crop);player.act('workBed',bed)
+ while(getBedAction(player.state,bed).kind!=='harvest'){assert.ok(player.state.day<10);if(getBedAction(player.state,bed).kind==='water')player.act('workBed',bed,0);player.night()}
+ player.act('workBed',bed);player.act('selectSeed','carrot')
+ const last=structuredClone(player.state)
+ player.act('workBed',5)
+ const surplus=player.state.produce[crop]-2
+ if(surplus>0)player.act('sellMarketItem','produce:beetroot',surplus)
+ assert.equal(last.produce[crop],1);assert.equal(player.state.produce[crop],2);assert.equal(last.variants[crop]?.rainbow,1)
+ const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+ const branch=stripTypeScriptTypes("switch('save-crop-seeds'){"+main.slice(main.indexOf("    case 'save-crop-seeds':"),main.indexOf("    case 'preview-seed':"))+'}')
+ for(const start of [last,player.state])for(const panel of ['inventory','seeds'])for(const [detail,owned] of [[0,true],[1,true],[0,false]] as const){
+  const farm=structuredClone(start),close=control('close',''),document={activeElement:close},scrollTop=244
+  const art={icon:()=>'',button:(label:string,action:string,_enabled:boolean,options:{value?:string})=>`<button data-action="${action}" data-value="${options.value??''}">${label}</button>`}
+  const buttons=()=>[...renderSeedPicker(farm,crop,undefined,art).matchAll(/<button\b([^>]*)>/g)].map(([,attrs])=>{
+   const el={...control(attrs.match(/data-action="([^"]+)"/)?.[1]??'',attrs.match(/data-value="([^"]+)"/)?.[1]??'',attrs.includes(' disabled')),focus(){document.activeElement=el}};return el
+  })
+  const old=buttons().find(b=>b.dataset.action==='save-crop-seeds')!;document.activeElement=owned?old:close
+  const dialogContent={scrollTop,querySelectorAll:buttons}
+  const context={farm,panel,bagTab:'seeds',dialog:{open:true},dialogContent,event:{detail},document,control:old,value:old.dataset.value,previewSeed:crop,seedPickerBed:undefined,
+   seedSavingQuote,saveCropSeeds,seedChoice,seedProductionFocus,perform:(action:()=>{ok:boolean})=>{const result=action();if(result.ok)document.activeElement=close;return result.ok}}
+  runInNewContext(branch,context)
+  const expected=structuredClone(start);assert.ok(saveCropSeeds(expected,old.dataset.value).ok);assert.deepEqual(farm,expected)
+  assert.equal(document.activeElement.dataset.action,!owned||detail===1&&panel==='inventory'?'close':farm.produce[crop]?'save-crop-seeds':'choose-seed')
+  if(document.activeElement!==close)assert.equal(document.activeElement.dataset.value,farm.produce[crop]?seedSavingQuote(farm,crop)!.token:seedChoice(farm,crop).token)
+  assert.equal(dialogContent.scrollTop,scrollTop);assert.equal(farm.selectedSeed,'carrot');assert.deepEqual(farm.variants,start.variants)
+ }
 })
