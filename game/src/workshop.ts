@@ -380,7 +380,8 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     handMenu.dataset.compact=String(palette.compact)
   }
   function updateCue(){
-    cue.hidden=!assetsReady||!handMenu.hidden||stage==='finished'||stage==='baking'||stage==='mixing'&&mixed>.2
+    const cutUnavailable=stage==='working'&&activeTool==='cut'&&(cutPending||pieces.length>=6)
+    cue.hidden=!assetsReady||!handMenu.hidden||stage==='finished'||stage==='baking'||stage==='mixing'&&mixed>.2||cutUnavailable
     if(stage==='ingredients'||stage==='mixing')cue.textContent='↻ Мешайте по кругу'
     else if(stage==='transferring')cue.textContent='На доску…'
     else if(stage==='finished')cue.textContent=''
@@ -465,7 +466,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     return new THREE.Vector3(x,.025,z)
   }
   function updateCutPreview(){
-    const piece=activePiece(),visible=assetsReady&&!contextLost&&!layoutChanging&&stage==='working'&&activeTool==='cut'&&!!piece
+    const piece=activePiece(),visible=assetsReady&&!contextLost&&!layoutChanging&&stage==='working'&&activeTool==='cut'&&pieces.length<6&&!!piece
     cutPreview.toggleAttribute('hidden',!visible)
     if(!visible||!piece)return
     const positions=piece.mesh.geometry.getAttribute('position')as THREE.BufferAttribute

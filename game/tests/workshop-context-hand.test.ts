@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
+import * as THREE from 'three'
 import { workshopTools, workshopToolGuide } from '../src/workshop-controls.ts'
 
 // Actual loss/restore and hand callbacks with inert graphics/DOM adapters.
@@ -84,4 +85,26 @@ test('failed or disposed restoration does not unlock the hand or change the pale
     assert.equal(h.rendererAttempts(),failure==='renderer'?1:0);assert.equal(h.state.contextLost,true);assert.equal(h.hand.disabled,true);assert.ok(h.tools.every(button=>button.disabled))
     assert.equal(h.state.handMenu.hidden,true);assert.equal(h.state.handMenuExpanded,false);assert.equal(h.state.activeTool,'roll')
   }
+})
+
+test('the board only invites another cut while it is available, without hiding the in-flight stroke',()=>{
+  const h=fixture(false),s=h.state as any, shown=s.cutPreview={hidden:true,dataset:{},toggleAttribute(_:string,hidden:boolean){this.hidden=hidden}}
+  const node={setAttribute(){}}
+  Object.assign(s,{cue:{},layout:{id:'portrait'},layoutChanging:false,activePiece:()=>h.piece,applyBox(){},
+    cutPreviewKey:'',cutPaths:[],cutStart:node,cutEnd:node,width:370,height:582,artwork:{x:0,y:0,width:370,height:582},
+    THREE,cutSurfacePoint:(x:number,z:number)=>new THREE.Vector3(x,0,z),boardToArtwork:(_:unknown,__:unknown,___:number,____:number,p:THREE.Vector3)=>({u:p.x,v:p.z}),camera:{},
+    activeTool:'cut',hand:{down:false,start:new THREE.Vector2(-1,0),x:1,z:0}})
+  Object.assign(h.piece,{seed:1,bounds:new THREE.Box3(new THREE.Vector3(-1,0,-1),new THREE.Vector3(1,1,1))})
+  Object.assign(h.piece.mesh,{position:new THREE.Vector3(),geometry:new THREE.BoxGeometry(2,1,2)})
+  runInNewContext(ts.transpileModule([declaration('updateCue'),declaration('updateCutPreview')].join('\n'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,s)
+  const draw=()=>{s.updateState();s.updateCutPreview()}
+  draw();assert.equal(s.cue.hidden,false);assert.match(s.cue.textContent,/Проведите/);assert.equal(shown.hidden,false)
+  s.hand.down=true;draw();assert.match(s.cue.textContent,/Отпустите/)
+  s.hand.down=false;s.cutPending=true;draw()
+  assert.match(s.hint.textContent,/Дождитесь/);assert.equal(s.cue.hidden,true);assert.equal(shown.hidden,false)
+  s.cutPending=false;s.pieces.push(h.piece);draw()
+  assert.equal(s.cue.hidden,false);assert.match(s.cue.textContent,/Проведите/);assert.equal(shown.hidden,false)
+  while(s.pieces.length<6)s.pieces.push(h.piece)
+  draw();assert.match(s.hint.textContent,/шесть.*другой инструмент/);assert.equal(s.cue.hidden,true);assert.equal(shown.hidden,true)
+  s.activeTool='move';draw();assert.equal(s.cue.hidden,false);assert.match(s.cue.textContent,/Перетащите/);assert.equal(shown.hidden,true)
 })
