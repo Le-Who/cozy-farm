@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFarm, boatPrice, getProject } from '../src/farm.ts';
+import { readFileSync } from 'node:fs';
+import { commissionPlayer } from './fixtures/commission-player.ts';
+import { createFarm, boatPrice, getProject, getBedStage, getMarketOrders, getCookAction, deliverMarketOrder } from '../src/farm.ts';
 import { getRequirementHint, type Requirement } from '../src/requirement-guidance.ts';
 
 test('each missing ingredient has its own source regardless of the onboarding task', () => {
@@ -103,4 +105,32 @@ test('secondary kitchen ingredient links guide to cooking instead of asking for 
   farm.farmhouseSpecialization = 'preserves'; farm.farmhouseSecondarySpecialization = 'bakery';
   farm.produce.wheat = 2; farm.eggs = 1;
   assert.equal(getRequirementHint(farm, { kind: 'stock', item: { kind: 'dishes', item: 'farmhouseBread', quantity: 1 } }).action.target, 'kitchen');
+});
+
+test('the third Grove market order uses a held perch on the grill, without asking for a sea bass', () => {
+  const p=commissionPlayer(JSON.parse(readFileSync(new URL('./fixtures/market-order-selection-commands.json',import.meta.url),'utf8')));
+  p.act('workBed',5); p.act('selectSeed','beetroot');
+  for(let attempt=0;attempt<3&&p.state.beds[5].kind!=='crop';attempt++) p.act('workBed',5);
+  p.visit('grove'); p.act('pickFruit',0); p.act('catchFish',true); p.act('transferBayGoods','withdraw','grove','seaSalt',3);
+  p.visit('home'); p.act('deliverMarketOrder','grove');
+  for(let day=0;day<8&&p.state.produce.beetroot<2;day++) {
+    const bed=p.state.beds[5]; assert.equal(bed.kind,'crop');
+    if(!bed.watered) { if(!p.state.water)p.act('refillWater'); p.act('workBed',5); }
+    if(getBedStage(p.state.beds[5])==='ripe')p.act('workBed',5); else p.night();
+  }
+  p.fruit('pear',2); p.visit('home'); p.act('deliverMarketOrder','grove'); p.night(); p.act('catchFish',true);
+  assert.equal(p.state.day,19); assert.equal(p.state.fish.perch,1); assert.equal(p.state.fish.seaBass,0);
+  const order=()=>getMarketOrders(p.state).find(o=>o.lane==='grove')!;
+  assert.equal(order().name,'Ужин в гавани'); assert.equal(order().status,'waiting');
+  const requirement={kind:'stock' as const,item:order().items[0]},hint=()=>getRequirementHint(p.state,requirement);
+  const before=structuredClone(p.state);
+  assert.ok(getCookAction(p.state,'grilledFish').available);
+  assert.equal(hint().action.target,'grill-kitchen');
+  assert.match(hint().selector!,/cook.*grilledFish/);
+  assert.deepEqual(p.state,before);
+  assert.equal(getRequirementHint(p.state,{kind:'stock',item:{kind:'fish',item:'seaBass',quantity:1}}).action.value,'grove');
+  p.act('sellMarketItem','produce:carrot',1);
+  assert.ok(!getCookAction(p.state,'grilledFish').available);
+  assert.deepEqual(hint().action,getRequirementHint(p.state,{kind:'stock',item:{kind:'produce',item:'carrot',quantity:1}}).action);
+  assert.equal(deliverMarketOrder(p.state,'grove').ok,false); assert.equal(p.state.orders.grove.completed,2);
 });

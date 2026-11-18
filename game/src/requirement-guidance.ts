@@ -14,7 +14,7 @@ import { getCoinGuidance, getSupplyGuidance, type DiscoveryTask } from './discov
 import { getIslandJourneys } from './journey.ts';
 import {
   boatPrice, buildingIds, canSailTo, cropIds, dishDefinitions, eggsPerCrate,
-  getFairGuest, getFishAction, getShellAt, getVillageProject, hasFarmhouseSpecialization, ingredientCount, isProjectComplete,
+  getCookAction, getCookIngredients, getFairGuest, getFishAction, getShellAt, getVillageProject, hasFarmhouseSpecialization, ingredientCount, isProjectComplete,
   type BuildingId, type FarmState, type IslandId, type StockItem,
 } from './farm.ts';
 import { hasShoal, getShoalFindAt } from './shoal.ts';
@@ -140,7 +140,9 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
     const recipe = dishDefinitions[item.item];
     if (recipe.capeLevel && farm.capeLevel < recipe.capeLevel) return farm.island !== 'cape' ? route('sail','cape') : route('open-panel','cape-upgrade');
     if (!recipe.capeLevel && (farm.buildingLevels.farmhouse < recipe.requiredLevel || recipe.specialization && !hasFarmhouseSpecialization(farm, recipe.specialization))) return atHome(farm,route('show-upgrade','farmhouse'));
-    const missing = recipe.ingredients.find(ingredient=>ingredientCount(farm,ingredient)<ingredient.quantity);
+    if (item.item === 'grilledFish' && getCookAction(farm, item.item).available)
+      return { ...route('grill-kitchen'), selector: '[data-action="cook"][data-value="grilledFish"]:not(:disabled)' };
+    const missing = getCookIngredients(farm, item.item).find(ingredient=>ingredientCount(farm,ingredient)<ingredient.quantity);
     if (missing) return stock(farm,missing);
     return recipe.capeLevel ? farm.island==='cape'?route('open-panel','honey-kitchen'):route('sail','cape') : atHome(farm,route('kitchen'));
   }

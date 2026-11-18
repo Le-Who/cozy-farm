@@ -2964,6 +2964,11 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
   else if (target === 'visit-harbor') openPanel('harbor')
   else if (target === 'fair-project') {marketTab='projects';openPanel('market')}
   else if (target === 'village-project') openPanel('village-project')
+  else if (target === 'grill-kitchen') {
+    const fish = getGrillFish(farm)
+    if (!getCookAction(farm,'grilledFish',fish).available) return
+    openPanel('kitchen',true,farm.island,'page.unfold',undefined,{grillFish:fish})
+  }
   else if (target === 'warehouse-supply') { selectedWarehouseRequest=warehouseRequest(value);openPanel('warehouse-supply') }
   else if (target === 'open-panel' && value && value in panelTitles) openPanel(value as Panel)
   else {openPanel('boat');return}
