@@ -2688,7 +2688,9 @@ function chooseSeed(crop: CropId, token: string) {
   if (farm.seeds[crop] === 0) { drawPanel(); return }
   const bed = seedPickerBed
   activeTool = 'seeds'
-  if (perform(() => chooseSeedForBed(farm,crop,bed,token),false,true) && bed !== undefined) {
+  // Without a bed the picker stays open. Confirm a changed seed or sow mode once.
+  const quiet = bed !== undefined || (farm.selectedSeed === crop && farm.gardenPlans.active === null)
+  if (perform(() => chooseSeedForBed(farm,crop,bed,token),false,quiet) && bed !== undefined) {
     closeDialog()
     island.focusTarget({kind:'bed',index:bed})
   }
