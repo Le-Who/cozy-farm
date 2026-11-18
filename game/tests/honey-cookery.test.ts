@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
+import { runInNewContext } from 'node:vm'
+import ts from 'typescript'
 import { honeyProgress,syncHoneyCoating,HONEY_PEAR_EACH_HALF,depositParfaitCustard,depositParfaitHoney } from '../src/honey-cookery-model.ts'
 import {createParfaitTransfer} from '../src/parfait-transfer.ts'
 import { advanceHoneyBake, beginHoneyStroke, cancelHoney, completeHoney, createHoneyModel, createHoneyFilm, depositHoneyPiece, measuredHoneyCoverage, reportHoneyCoating, endHoneyStroke, honeyBiscuitCenters, moveHoneyStroke, placeHoneyFruit, recordHoneyKnife, workHoneyPiece, settleHoney, startHoneyBake, type HoneyModel } from '../src/honey-cookery-model.ts'
@@ -226,4 +229,30 @@ test('pear progress reserves completion credit for every half as well as enough 
  syncHoneyCoating(model,[.3,.3,.3,.15])
  assert.equal(honeyProgress(model),1)
  assert.equal(model.pending,'settling','a full meter now agrees with the release-and-settle condition')
+})
+
+test('leaving the cake breaks the score path exactly where the painted stroke breaks',()=>{
+  // Run the actual connection between the worktop's brush contact and the
+  // model. A fake canvas records only the segments that the player painted.
+  const src=ts.createSourceFile('honey-cookery.ts',readFileSync(new URL('../src/honey-cookery.ts',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true)
+  let contact:ts.IfStatement|undefined
+  function visit(n:ts.Node){if(ts.isIfStatement(n)&&n.expression.getText(src).startsWith("contacting && (model.stage === 'glaze'"))contact=n;else ts.forEachChild(n,visit)}
+  visit(src);assert.ok(contact)
+  const js=ts.transpileModule(contact.getText(src),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+  const model=createHoneyModel('honeyCake')
+  beginHoneyStroke(model,'spoon',{x:.6,y:0})
+  for(let i=1;i<=160;i++)moveHoneyStroke(model,{x:.6*Math.cos(i*.1),y:.6*Math.sin(i*.1)})
+  endHoneyStroke(model);assert.ok(startHoneyBake(model));advanceHoneyBake(model,2.4)
+  const right={x:.8,y:0},left={x:-.8,y:0},outside={x:0,y:-1.5},painted:{x:number;y:number}[][]=[]
+  const ctx={family:'honeyCake',model,beginHoneyStroke,moveHoneyStroke,painting:true,pearView:null,dt:.05,coating:{value:.9},lastContact:null,contacting:false,n:right,point:right,
+    paintGlaze:(a:typeof right,b:typeof right)=>painted.push([a,b])}
+  const frame=(p:typeof right)=>{ctx.point=ctx.n=p;ctx.contacting=Math.hypot(p.x,p.y)<=1.03;runInNewContext(js,ctx)}
+  beginHoneyStroke(model,'honey',outside)
+  for(const edge of [right,left,right,left,right,left]){frame(outside);frame(edge);frame(edge)}
+  assert.ok(painted.every(([a,b])=>a.x===b.x),'only rim dabs were painted')
+  assert.ok(model.coverage.size>0,'real dabs count')
+  assert.equal(model.deposited.get(0)??0,0,'a phantom chord cannot glaze the center')
+  assert.equal(model.travel,0,'off-cake travel never becomes brush work')
+  for(let i=0;i<3;i++){frame(right);frame(left)}
+  assert.ok(model.coverage.has(0),'an actual continuous stroke across the middle still counts')
 })

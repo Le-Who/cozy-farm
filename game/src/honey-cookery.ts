@@ -410,6 +410,8 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
       }else creamFlow=0
       if (contacting && (model.stage === 'glaze' || model.stage === 'custard' || model.stage === 'mix')) {
         if(model.stage === 'mix' && lastContact){const old=normalized(lastContact),turn=angle(Math.atan2(n.y,n.x)-Math.atan2(old.y,old.x));swirlTarget=THREE.MathUtils.clamp(turn/Math.max(.001,dt),-5,5)}
+        // The mask starts a fresh dab on re-entry; score the same contact, not an off-cake chord.
+        if(family==='honeyCake'&&model.stage==='glaze'&&painting&&!lastContact)beginHoneyStroke(model,'honey',n)
         if(family==='windParfait'&&model.stage==='glaze')depositParfaitHoney(model,n,dt*Math.max(0,coating.value))
         else if(family!=='windParfait'||model.stage!=='custard')if((family!=='honeyBiscuits'&&family!=='honeyPear')||model.stage!=='glaze')moveHoneyStroke(model,n,dt*Math.max(.12,coating.value)*6)
         if (painting && !pearView) paintGlaze(lastContact ?? point, point, Math.min(.6,dt*9) * Math.max(.12,coating.value))
