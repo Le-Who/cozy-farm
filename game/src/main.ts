@@ -625,6 +625,8 @@ function status() {
   const sowingPlan = activeGardenPlan(farm)
   const modeBadge = app.querySelector<HTMLButtonElement>('.garden-mode')!
   modeBadge.hidden = !atHome || !sowingPlan
+  if (atHome && sowingPlan) modeBadge.dataset.plan = `${farm.gardenPlans.revision}:${farm.gardenPlans.active}`
+  else delete modeBadge.dataset.plan
   modeBadge.textContent = sowingPlan ? `План: ${sowingPlan.name}` : ''
   modeBadge.title = sowingPlan ? `Посев по плану «${sowingPlan.name}». Открыть планы огорода` : ''
   const taskArt = taskCard.querySelector<HTMLImageElement>('.task-medallion .icon')!
@@ -3010,6 +3012,10 @@ app.addEventListener('click', async (event) => {
   if (control.dataset.panel) {
     if (control === taskCard && control.dataset.panel === 'market') marketTab = 'orders'
     const next = control.dataset.panel as Panel
+    if (next === 'garden-plans' && control.matches('.garden-mode')) {
+      const {active, revision} = farm.gardenPlans
+      if (dialog.open || farm.island !== 'home' || active === null || control.dataset.plan !== `${revision}:${active}` || !gardenEditor.choose(active)) return
+    }
     if (control.closest('.dialog-destinations')) {
       if (next === panel) return
       const index = panelHistory.map(visit => visit.panel).lastIndexOf(next)

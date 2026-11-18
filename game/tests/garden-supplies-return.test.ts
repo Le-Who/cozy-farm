@@ -3,9 +3,10 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
 import ts from 'typescript'
-import {createFarm,restoreCurrentFarm} from '../src/farm.ts'
+import {createFarm,restoreCurrentFarm,workBed} from '../src/farm.ts'
 import {GardenPlanEditor,renderGardenPlans} from '../src/garden-plans-ui.ts'
-import {saveGardenPlan} from '../src/garden-plans.ts'
+import {commissionPlayer} from './fixtures/commission-player.ts'
+import {saveGardenPlan,followGardenPlan} from '../src/garden-plans.ts'
 
 // Execute actual app history/navigation and the public plan renderer. This tiny
 // DOM adapter models closed <details> descendants as hidden, not native geometry.
@@ -92,4 +93,34 @@ test('other routes and later navigation cannot receive the saved garden disclosu
  h.state.openPanel('market');assert.equal(h.state.panelHistory.at(-1).gardenSupplies,undefined)
  h.state.goBack();h.flush();assert.equal(h.state.panel,'guide')
  h.state.openPanel('garden-plans',false);assert.equal(h.detail!.open,false);h.assertReadOnly()
+})
+
+test('the named HUD shortcut opens the active loaded page and its real seed deficit, unlike the general notebook', () => {
+ const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+ const p=commissionPlayer(opening.slice(0,39)),editor=new GardenPlanEditor()
+ for(const [slot,name,crop,beds] of [[0,'Для хлеба','wheat',[3]],[2,'Для борща','beetroot',[0,2]]] as const){
+  assert.ok(editor.choose(slot)&&editor.begin(p.state));editor.draft!.name=name;editor.brush=crop
+  for(const bed of beds)assert.ok(editor.paint(bed))
+  assert.ok(editor.save(p.state).ok)
+ }
+ assert.ok(followGardenPlan(p.state,2,p.state.gardenPlans.revision).ok)
+ assert.equal(p.state.seeds.beetroot,1);assert.ok(workBed(p.state,0).ok)
+ const farm=restoreCurrentFarm(JSON.parse(JSON.stringify(p.state)))!,gardenEditor=new GardenPlanEditor()
+ assert.equal(farm.seeds.beetroot,0);assert.equal(farm.beds[2].kind,'tilled');assert.equal(farm.gardenPlans.active,2)
+ const before=structuredClone(farm)
+ const branch=find(n=>ts.isIfStatement(n)&&n.expression.getText(ast)==='control.dataset.panel')
+ const enter=ts.transpileModule(`function enter(control){${branch}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+ let html=''
+ const ctx:any={farm,gardenEditor,taskCard:{},dialog:{open:false},openPanel:(next:string)=>{assert.equal(next,'garden-plans');html=renderGardenPlans(farm,gardenEditor,()=> '')}}
+ runInNewContext(enter,ctx)
+ const token=`${farm.gardenPlans.revision}:${farm.gardenPlans.active}`
+ const button=(named:boolean,plan=token)=>({dataset:{panel:'garden-plans',plan},matches:(q:string)=>named&&q==='.garden-mode',closest:()=>null})
+ ctx.enter(button(true));assert.equal(gardenEditor.slot,2);assert.match(html,/<h2>Для борща<\/h2>/);assert.match(html,/Докупить на 5 монет/)
+ gardenEditor.choose(0);ctx.enter(button(false));assert.equal(gardenEditor.slot,0);assert.match(html,/<h2>Для хлеба<\/h2>/)
+ html='';ctx.enter(button(true,'0:2'));assert.equal(html,'');assert.equal(gardenEditor.slot,0)
+ ctx.enter(button(true,`${farm.gardenPlans.revision}:0`));assert.equal(html,'');assert.equal(gardenEditor.slot,0)
+ ctx.dialog.open=true;ctx.enter(button(true));assert.equal(html,'');ctx.dialog.open=false
+ ctx.enter(button(true));assert.equal(gardenEditor.slot,2);assert.deepEqual(farm,before)
+ assert.ok(followGardenPlan(farm,null,farm.gardenPlans.revision).ok);gardenEditor.choose(0);html=''
+ const manual=structuredClone(farm);ctx.enter(button(true));assert.equal(html,'');assert.equal(gardenEditor.slot,0);assert.deepEqual(farm,manual)
 })
