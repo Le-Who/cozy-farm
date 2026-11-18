@@ -3,7 +3,8 @@ import {test} from 'node:test'
 import {readFileSync} from 'node:fs'
 import {stripTypeScriptTypes} from 'node:module'
 import {runInNewContext} from 'node:vm'
-import {createFarm, getBedAction, getWaterCapacity, refillWater, workBed, upgradeBuilding, facilitySpecializations} from '../src/farm.ts'
+import {createFarm, cropDefinitions, getBedAction, getBedHarvestPreview, needsSeedChoice, selectSeed, getWaterCapacity, refillWater, workBed, upgradeBuilding, facilitySpecializations} from '../src/farm.ts'
+import {plannedCropAt,saveGardenPlan,followGardenPlan} from '../src/garden-plans.ts'
 import {compactFieldHintRooms, fieldHintOverlaps} from '../src/field-hint.ts'
 
 const view={width:568,height:320},field={left:134,right:434}
@@ -71,7 +72,7 @@ test('the hoe only directs the player to untilled soil while a till action exist
   const expected='Выберите пустую грядку, чтобы вскопать её.'
   function chooseHoe(){
     const before=structuredClone(farm),events:string[]=[]
-    const ctx={farm,activeTool:'seeds',status(){events.push('status')},canvas:{focus(){events.push('focus')}},notify(msg:string){events.push(msg)}}
+    const ctx={farm,needsSeedChoice,activeTool:'seeds',status(){events.push('status')},canvas:{focus(){events.push('focus')}},notify(msg:string){events.push(msg)}}
     runInNewContext(hotbar,ctx)
     assert.deepEqual(farm,before);assert.equal(ctx.activeTool,'hoe')
     assert.deepEqual(events.slice(0,2),['status','focus']);assert.equal(events.length,3)
@@ -79,8 +80,31 @@ test('the hoe only directs the player to untilled soil while a till action exist
   }
   const tillable=()=>farm.beds.map((_,i)=>i).filter(i=>getBedAction(farm,i).kind==='till')
   assert.deepEqual(tillable(),[0,8]);assert.equal(chooseHoe(),expected)
+  assert.ok(selectSeed(farm,'beetroot').ok);assert.ok(workBed(farm,13).ok)
+  assert.equal(farm.seeds.beetroot,0);assert.equal(chooseHoe(),'Выберите семена.')
+  assert.ok(selectSeed(farm,'carrot').ok);assert.equal(chooseHoe(),expected)
   assert.ok(workBed(farm,0).ok);assert.deepEqual(tillable(),[8]);assert.equal(chooseHoe(),expected)
   assert.ok(workBed(farm,8).ok);assert.deepEqual(tillable(),[])
   assert.deepEqual([...new Set(farm.beds.map((_,i)=>getBedAction(farm,i).kind))].sort(),['harvest','plant','water'])
   assert.equal(farm.day,1);assert.equal(chooseHoe(),'Все грядки уже вскопаны.')
+})
+
+test('the field card and the canvas announce the existing seed picker before it intercepts untilled ground',()=>{
+  const farm=createFarm(), main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const part=(from:string,to:string)=>main.slice(main.indexOf(from),main.indexOf(to,main.indexOf(from)))
+  const code=stripTypeScriptTypes(part('function updateFieldContext(','function readFieldHintBands()')+
+    'const controls={'+part('  inspect(target) {','  activate: activateTarget')+'};controls.inspect({kind:"bed",index})')
+  function hints(index:number){
+    const contextButton={textContent:'',dataset:{action:''},hidden:false}, before=structuredClone(farm)
+    const hint=runInNewContext(code,{farm,index,contextBed:undefined,contextButton,contextCard:{hidden:false},contextIcon:{getAttribute(){return ''}},
+      portraitView:{matches:true},fieldViewButton:{getAttribute(){return 'true'}},iconUrl:(id:string)=>id,updateFieldContextCopy(){},getBedAction,getBedHarvestPreview,cropDefinitions,plannedCropAt,needsSeedChoice})
+    assert.deepEqual(farm,before);return [hint,contextButton.textContent,contextButton.dataset.action,contextButton.hidden]
+  }
+  assert.ok(selectSeed(farm,'beetroot').ok);assert.ok(workBed(farm,13).ok);assert.equal(farm.seeds.beetroot,0)
+  assert.deepEqual(hints(0),['Целина · Выбрать семена','Выбрать семена','work-context',false])
+  assert.ok(selectSeed(farm,'carrot').ok)
+  assert.deepEqual(hints(0),['Целина · Вскопать землю','Вскопать землю','work-context',false])
+  const beds=farm.beds.map((_,i)=>i===0?'beetroot' as const:null)
+  assert.ok(saveGardenPlan(farm,0,{name:'Свёкла',crops:beds},farm.gardenPlans.revision).ok);assert.ok(followGardenPlan(farm,0,farm.gardenPlans.revision).ok)
+  assert.deepEqual(hints(0),['Целина · Выбрать семена · По плану','Выбрать семена','work-context',false])
 })
