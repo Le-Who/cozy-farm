@@ -223,6 +223,7 @@ kbd { font: inherit; font-weight: 800; white-space: nowrap; }
 .panel-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; margin-bottom: 11px; }
 .panel-tabs button { min-width: 0; padding-inline: 6px; overflow-wrap: anywhere; }
 .market-controls { position: sticky; z-index: 1; top: -1px; padding: 2px 0 1px; background: #fff4df; }
+.market-controls:has(> .market-header) { display:grid; row-gap:8px; }
 .market-header { display:flex; align-items:center; justify-content:space-between; gap:6px; }
 .market-header .coin-balance { margin:0; }
 .market-header .dialog-button { min-height:44px; margin:0; padding:4px 10px; }
