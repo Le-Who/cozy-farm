@@ -2228,17 +2228,18 @@ function drawPanel() {
         ? button(`Накопить на лодку · ещё ${quantity(boatPrice-farm.coins,'монета')}`,'boat-funds',true,{value:destination.id})
         : action ? button(action.target==='sail' && action.value===destination.id ? 'Отправиться' : action.label,action.target,action.enabled,{value:action.value,context:destination.name}) : ''
       const checklist = `<ul class="journey-requirements">${requirements.map(r=>requirementLink(`${icon(r.icon)}<span>${r.label}</span><strong>${r.current}/${r.target}</strong>`,{kind:'journey',island:destination.id,id:r.id},'journey-requirement',r.label,false)).join('')}</ul>`
+      const supperTomorrow = destination.current && destination.id === 'village' && getVillageMeal(farm, pastryShape).served
       const localPlaces = farm.island === 'home'
         ? button('Кухня','kitchen',true,{secondary:true}) + (isProjectComplete(farm,'fair') ? button('Просьбы соседей','open-panel',true,{value:'intents',secondary:true}) : '')
         : farm.island === 'grove' ? button('Живая заводь','open-panel',true,{value:'cove',secondary:true}) + (getHarborOrder(farm) ? button('Заказ гавани','visit-harbor',true,{secondary:true}) : '')
         : farm.island === 'cape' ? button(farm.capeLevel>=3?'Медовая кухня':'Пасека','open-panel',true,{value:farm.capeLevel>=3?'honey-kitchen':'hive',secondary:true})
-        : button('Соседи','open-village',true,{secondary:true}) + button(getVillageMeal(farm, pastryShape).served ? 'Ужин завтра' : 'Общий ужин','village-meal',true,{secondary:true})
+        : button('Соседи','open-village',true,{secondary:true}) + (supperTomorrow ? '' : button('Общий ужин','village-meal',true,{secondary:true}))
       dialogContent.innerHTML = `<nav class="island-selector" aria-label="Острова">${selectors}</nav>
         <article class="journey-card" data-island="${destination.id}" data-unlocked="${destination.unlocked}">
           <div class="journey-overview">
             <div class="journey-picture"><img src="${import.meta.env.BASE_URL}art/lavender/${destination.id}-plate.webp" alt="" draggable="false"></div>
             <div class="journey-caption"><div class="journey-heading"><h2>${destination.name}</h2></div>
-              <p>${destination.description}</p>${capeStatus ? `<p class="journey-return-status">${escapeHtml(capeStatus)}</p>` : ''}${destination.current ? '<span class="journey-here">Вы здесь</span>' : ''}
+              <p>${destination.description}</p>${capeStatus ? `<p class="journey-return-status">${escapeHtml(capeStatus)}</p>` : ''}${destination.current ? `<span class="journey-here">Вы здесь${supperTomorrow ? ' · Ужин завтра' : ''}</span>` : ''}
             </div>
           </div>
           <nav class="island-places" aria-label="Действия на острове">

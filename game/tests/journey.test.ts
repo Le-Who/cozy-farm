@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import { commissionPlayer } from './fixtures/commission-player.ts';
+import { getCapeJourneyStatus } from '../src/cape-journey-status.ts';
 import {
   buyBoat,
   contributeVillage,
@@ -7,6 +11,7 @@ import {
   deliverHarborOrder,
   deliverProject,
   endDay,
+  getVillageMeal,
   restoreFarm,
   sail,
   serveFairGuest,
@@ -156,4 +161,35 @@ test('restored pre-project saves retain locked destinations and reading journeys
   assert.equal(journey(farm, 'village').unlocked, false);
   assert.equal(journey(farm, 'village').requirements.find(item => item.id === 'visitors')?.current, 0);
   assert.deepEqual(farm, before);
+});
+
+test('the village island card retires supper after serving, but not Home travel or tomorrow’s table', () => {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8')) as {name:string; args:unknown[]}[];
+  const mealAt = opening.reduce((last, step, index) => step.name === 'serveVillageMeal' ? index : last, -1);
+  assert.ok(mealAt >= 0);
+  const p = commissionPlayer(opening.slice(0, mealAt));
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
+  const start = main.indexOf("    case 'boat': {"), end = main.indexOf("\n    case 'dock-project':", start);
+  const card = main.slice(start, end).replace('import.meta.env.BASE_URL', "'/'");
+  const render = (boatIsland: IslandId) => {
+    const dialogContent = {innerHTML: ''};
+    runInNewContext(`switch ('boat') { ${card} }`, {
+      farm:p.state, getIslandJourneys, getVillageMeal, getCapeJourneyStatus, boatIsland, dialogContent, pastryShape:'round',
+      icon:() => '', requirementLink:() => '', escapeHtml:(s:string) => s, journeyDetailsOpen:false,
+      button:(label:string, action:string, enabled:boolean, options?:{value?:string}) =>
+        `<button data-action="${action}" data-value="${options?.value ?? ''}"${enabled ? '' : ' disabled'}>${label}</button>`,
+    });
+    return dialogContent.innerHTML;
+  };
+  assert.equal(p.state.island, 'village'); assert.equal(getVillageMeal(p.state).available, true);
+  const supper = /data-action="village-meal"[^>]*>Общий ужин</;
+  assert.match(render('village'), supper);
+  p.act('serveVillageMeal', 'round');
+  const before = structuredClone(p.state), served = render('village');
+  assert.doesNotMatch(served, /data-action="village-meal"/);
+  assert.match(served, /Ужин завтра/);
+  assert.match(render('home'), /data-action="sail" data-value="home">Отправиться</);
+  assert.doesNotMatch(render('home'), /Ужин завтра/); assert.deepEqual(p.state, before);
+  p.night(); p.visit('village');
+  const morning = render('village'); assert.match(morning, supper); assert.doesNotMatch(morning, /Ужин завтра/);
 });
