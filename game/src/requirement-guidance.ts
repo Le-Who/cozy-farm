@@ -78,7 +78,8 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
   const ordinary=item.kind === 'honey'?getOrdinaryHoneyWait(farm):undefined;
   if(ordinary)return atHome(farm,{...route('open-panel','rest'),notice:ordinary.detail});
   const tomorrow = (notice: string) => atHome(farm,{...route('focus-place','farmhouse'),notice});
-  if (item.kind === 'fish' && !getFishAction({...farm,island:getFishSource(farm,item.item)}).available) return rareFishClue(item.item)
+  const fishClue=item.kind === 'fish' ? rareFishClue(item.item,farm) : undefined;
+  if (item.kind === 'fish' && !getFishAction({...farm,island:getFishSource(farm,item.item)}).available) return fishClue
     ? atHome(farm, { ...route('open-panel', 'rest'), notice: getSupplyGuidance(farm,item,'нужные припасы').detail })
     : tomorrow('Рыба вернётся в эти воды завтра.');
   if (item.kind === 'seaSalt' && farm.saltGatheredToday) return atHome(farm,{...route('open-panel','rest'),notice:seaSaltRestNotice(farm)});
@@ -154,7 +155,7 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
     const task=getSupplyGuidance(farm,item,'нужные припасы');
     return {...safe(task),...(task.action.target === 'open-panel' ? {} : {notice:task.detail})};
   }
-  if (item.kind === 'fish' && rareFishClue(item.item)) return { ...safe(getSupplyGuidance(farm,item,'нужные припасы')), notice: rareFishClue(item.item) };
+  if (fishClue) return { ...safe(getSupplyGuidance(farm,item,'нужные припасы')), notice: fishClue };
   const task=getSupplyGuidance(farm,item,'нужные припасы');
   return {...safe(task),...(item.kind==='produce'&&task.id.endsWith('-crop-space')?{notice:task.detail}:{})};
 }

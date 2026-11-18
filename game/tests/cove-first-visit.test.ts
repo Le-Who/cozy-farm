@@ -6,6 +6,8 @@ import { createServer } from 'vite';
 import * as F from '../src/farm.ts';
 import { createFishingModel } from '../src/fishing-model.ts';
 import { covePresets } from '../src/shoreline.ts';
+import { getRequirementHint } from '../src/requirement-guidance.ts';
+import { commissionPlayer } from './fixtures/commission-player.ts';
 
 const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8')) as { name: keyof typeof F; args: unknown[] }[];
 function reload(farm: F.FarmState) {
@@ -35,6 +37,39 @@ function firstVisit() {
 
 // The ordinary fish names deliberately match the existing stock/species names.
 const kelpSummary = 'Обычно морской окунь, иногда окунь';
+test('the archive and festival route lanternfish to water deep enough after each actual tide', async () => {
+  const p=commissionPlayer(opening.slice(0,opening.findIndex(step=>step.name==='serveVillageMeal')+1));
+  p.act('beginFestival','lights');p.visit('grove');p.act('collectShell',0);
+  const item=(species:'lanternfish'|'moonfish')=>({kind:'stock',item:{kind:'fish',item:species,quantity:1}} as const);
+  const source=(species:'lanternfish'|'moonfish'='lanternfish')=>getRequirementHint(p.state,item(species));
+  const server=await createServer({root:fileURLToPath(new URL('..',import.meta.url)),configFile:false,server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'});
+  try {
+    const {archiveCards}=await server.ssrLoadModule('/src/archive.ts'),{renderFestivalPanel}=await server.ssrLoadModule('/src/bay-festival-ui.ts');
+    const clue=()=>archiveCards(p.state,'bay',()=> '').match(/<strong>Рыба-фонарь<\/strong>([^<]+)/)![1];
+    p.act('changeCove',{cover:'kelp'});
+    assert.equal(source().action.value,'fishing','pending nursery is still natural water');
+    p.night();p.visit('grove');assert.equal(p.state.day,11);
+    const before=structuredClone(p.state);
+    assert.equal(source().action.value,'home','nursery cannot spawn targets in the lanternfish band');
+    assert.equal(source('moonfish').action.value,'fishing','moonfish can still spawn locally');
+    assert.match(clue(),/у Родного острова/);assert.doesNotMatch(clue(),/и в Солёной роще/);
+    assert.equal(source().notice,clue());
+    assert.deepEqual(p.state,before);
+    p.visit('home');assert.equal(source().action.value,'fishing');
+    while(F.getFishAction(p.state).available)p.act('catchFish',true);
+    p.visit('village');
+    assert.match(renderFestivalPanel(p.state),/data-action="festival-source" data-value="fish\|lanternfish"><span>Рыба-фонарь/);
+    assert.equal(source().action.value,'home');
+    p.visit('home');assert.equal(source().action.value,'rest');assert.equal(p.state.day,11);
+    p.visit('grove');p.act('changeCove',{flow:'open'});
+    assert.equal(source().action.value,'home','a proposed channel is not deep water yet');
+    p.night();p.visit('grove');
+    assert.equal(source().action.value,'fishing');assert.match(clue(),/и в Солёной роще/);
+    const config=F.getFishingTripConfig(p.state),seed=p.state.day*1009+(p.state.fishingTripSerial+1)*9176+71;
+    assert.ok(createFishingModel(config.capacity,config.resilience,seed,'seaBass',config.habitat).fish.some(({loot})=>loot?.kind==='fish'&&loot.species==='lanternfish'));
+  } finally { await server.close(); }
+});
+
 test('earned first Cove plan describes its fish mix, not an increase over the natural shore', async () => {
   const server = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), configFile: false, server: { middlewareMode: true }, appType: 'custom' });
   try {

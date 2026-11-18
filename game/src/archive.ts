@@ -18,7 +18,7 @@ export function archiveCards(farm: FarmState, group: ArchiveGroup, itemIcon: (na
     if(sky) return `${weatherNames[sky]} · ${when(nextWeatherDay(farm.day,sky))}`
     if(id==='pearl') return `Лунная отмель · ${shoalReturnCopy(farm,'pearl')}`
     if(id==='moon') return `Лунный прилив в роще · ${nextEvent(isLunarTide)}`
-    if(id==='moonfish'||id==='lanternfish')return rareFishClue(id)
+    if(id==='moonfish'||id==='lanternfish')return rareFishClue(id,farm)
     if(id==='perch')return 'Рыбачьте на Родном острове'
     if(id==='seaBass')return 'Рыбачьте в Солёной роще'
     if(id==='glass')return 'Найдите оба вида ракушек и загляните на отмель'

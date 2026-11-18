@@ -131,9 +131,9 @@ function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTas
     if (item.kind === 'seaSalt' && farm.seaSalt >= item.quantity) return task(id, 'Морская соль уже в припасах', `В припасах: ${farm.seaSalt}. Цель: ${purpose}. Дополнительный сбор не нужен.`, 'ui-sea-salt', {label:'Открыть запасы',target:'open-panel',value:'inventory'});
     if (item.kind === 'seaSalt' && farm.saltGatheredToday) return home(farm, task(id, 'Морская соль после отдыха', seaSaltRestNotice(farm), 'ui-sea-salt', {label:'К отдыху дома',target:'visit-rest'}));
     const destination = item.kind === 'fish' ? getFishSource(farm, item.item) : 'grove';
-    const clue = item.kind === 'fish' && rareFishClue(item.item);
+    const clue = item.kind === 'fish' && rareFishClue(item.item,farm);
     if (item.kind === 'fish' && !getFishAction({ ...farm, island: destination }).available) return clue
-      ? home(farm, task(id, 'Рыбалка после отдыха', `Дневной улов на доступных берегах уже собран. Новый день начнётся после отдыха дома. ${clue}`, 'sun', { label: 'К отдыху дома', target: 'visit-rest' }))
+      ? home(farm, task(id, 'Рыбалка после отдыха', `Дневной улов на подходящих берегах уже собран. Новый день начнётся после отдыха дома. ${clue}`, 'sun', { label: 'К отдыху дома', target: 'visit-rest' }))
       : rest(farm, purpose);
     if (farm.island !== destination) return task(id, 'Отправьтесь к воде', `${clue || `Запасите ${item.kind === 'seaSalt' ? 'морскую соль' : 'рыбу'}.`} Цель: ${purpose}.`, 'boat', { label: destination === 'grove' ? 'В рощу' : 'Домой', target: 'sail', value: destination });
     if (clue) return task(id, 'Ищите рыбу на глубине', `${clue} Цель: ${purpose}.`, 'boat', { label: 'К рыбалке', target: 'open-panel', value: 'fishing' });

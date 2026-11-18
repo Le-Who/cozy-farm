@@ -19,6 +19,18 @@ export type FishingModel = {
 };
 export const fishingDepth = 30;
 export const fishingHalfWidth = 4.8;
+const fishingTargetCount = 18;
+const lanternfishDepthRatio = .84;
+
+function targetDepth(id: number, roll: number, habitat?: FishingHabitat): number {
+  if (habitat?.profile === 'nursery') return 3 + Math.floor(id / 3) * 3.7 + id % 3 * .48 + roll * .2;
+  return habitat ? 5 + id / fishingTargetCount * 24.2 + roll * .5 : 3 + id / fishingTargetCount * 25 + roll * .5;
+}
+
+/** Each layout puts its deepest target last. This compares possible depths, not a rolled catch. */
+export function hasLanternfishDepth(habitat?: FishingHabitat): boolean {
+  return targetDepth(fishingTargetCount - 1, 1, habitat) / fishingDepth > lanternfishDepthRatio;
+}
 
 export const fishingCatchSounds = ['angling.snag-fish-light', 'angling.snag-fish-heavy', 'angling.snag-shell', 'angling.snag-stone', 'angling.snag-weed', 'angling.snag-boot'] as const;
 export type FishingCatchSound = typeof fishingCatchSounds[number];
@@ -60,7 +72,7 @@ export function fishingLootAtDepth(depth: number, roll: number, common: 'perch' 
   if (roll < junkChance) return { kind: 'junk', item: deep < .35 ? 'weed' : deep < .7 ? 'boot' : 'rock' };
   if (roll < junkChance+shellChance) return { kind: 'shell', variant: deep > .7 && roll < junkChance+.04 ? 'moon' : 'regular' };
   if (deep >= .62 && roll > 1 - (deep - .55) * .8 * (habitat?.rareWeight ?? 1)) return {
-    kind: 'fish', species: deep > .84 ? 'lanternfish' : 'moonfish', variant: 'rare',
+    kind: 'fish', species: deep > lanternfishDepthRatio ? 'lanternfish' : 'moonfish', variant: 'rare',
   };
   return { kind: 'fish', species: common, variant: 'regular' };
 }
@@ -68,10 +80,9 @@ export function fishingLootAtDepth(depth: number, roll: number, common: 'perch' 
 export function createFishingModel(capacity: number, resilience = 2, seed = 1, common: 'perch' | 'seaBass' = 'perch', habitat?: FishingHabitat): FishingModel {
   let state = (seed ^ (habitat ? Math.imul(habitat.revision, 0x9e3779b1) : 0)) >>> 0;
   const random = () => { state = (state * 1664525 + 1013904223) >>> 0; return state / 4294967296; };
-  const fish = Array.from({ length: 18 }, (_, id): FishingCatch => {
+  const fish = Array.from({ length: fishingTargetCount }, (_, id): FishingCatch => {
     const nursery = habitat?.profile === 'nursery';
-    const depth = habitat ? nursery ? 3 + Math.floor(id / 3) * 3.7 + id % 3 * .48 + random() * .2
-      : 5 + id / 18 * 24.2 + random() * .5 : 3 + id / 18 * 25 + random() * .5;
+    const depth = targetDepth(id, random(), habitat);
     const regional = habitat ? random() < habitat.perchWeight ? 'perch' : 'seaBass' : common;
     const loot = fishingLootAtDepth(depth, random(), regional, habitat);
     const x = (random() - .5) * 8.6, direction = random() > .5 ? 1 : -1;
