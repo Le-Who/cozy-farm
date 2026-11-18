@@ -18,7 +18,7 @@ test('all six visual choices expose exactly one active card, without touching st
 test('unvisited customers reveal no hidden likes or unobserved request',()=>{
  const s=createBayShop(),v=new BayShopCustomerView(),html=card(s,v)
  assert.match(html,/Любимые товары ещё неизвестны/);assert.doesNotMatch(html,/Нежное к чаю|груш|шёлк|silky|delicate|pear|Просит/)
- assert.match(html,/Базовый бюджет визита/);assert.match(html,/95 монет/);assert.match(html,/Не цена товара и не оценка качества/)
+ assert.match(html,/Базовый бюджет визита/);assert.match(html,/95 монет/);assert.doesNotMatch(html,/Не цена товара и не оценка качества/)
  assert.doesNotMatch(readFileSync(new URL('../src/bay-shop-customers.ts',import.meta.url),'utf8'),/\.likes|bayShopInterest/)
 })
 
@@ -53,7 +53,11 @@ test('budget is not willingness or a guaranteed price; observed rejected visit c
 test('help hides only explanatory prose; exact aggregate sales and remembered product data remain available',()=>{
  const s=opened(),v=new BayShopCustomerView();run(s,7400);const before=structuredClone(s),closed=renderBayShopCustomers(s,v)
  assert.match(closed,/aria-expanded="false"/);assert.match(closed,/id="bay-shop-customer-explanation" hidden/);assert.match(closed,/Продано: <strong>1/);assert.match(closed,/Выручка: <strong>50 монет/);assert.match(closed,/Помнят вкус: Беа/)
- v.explanation=true;const open=renderBayShopCustomers(s,v);assert.match(open,/aria-expanded="true"/);assert.doesNotMatch(open,/id="bay-shop-customer-explanation" hidden/);assert.deepEqual(s,before)
+ v.explanation=true;const open=renderBayShopCustomers(s,v)
+ assert.equal((open.match(/Не цена товара и не оценка качества/g)??[]).length,1)
+ assert.match(open,/id="bay-shop-customer-explanation">[\s\S]*Не цена товара и не оценка качества/)
+ assert.doesNotMatch(card(s,v),/Не цена товара и не оценка качества/)
+ assert.match(open,/aria-expanded="true"/);assert.doesNotMatch(open,/id="bay-shop-customer-explanation" hidden/);assert.deepEqual(s,before)
 })
 
 test('saved player recipe names are escaped, not interpreted as markup',()=>{

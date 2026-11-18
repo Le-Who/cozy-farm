@@ -7,6 +7,7 @@ import { beginFishingTrip, contributeFestival, finishFishingTrip, getFestivalSta
 import { createFishingPractice } from '../src/fishing-practice.ts'
 import { getFestivalFishingRoute } from '../src/festival-fishing-route.ts'
 import { festivalFishingFixture } from './fixtures/festival-fishing.ts'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 
 const reload = (farm: ReturnType<typeof festivalFishingFixture>) => restoreFarm(JSON.parse(JSON.stringify(farm)))!
 
@@ -105,4 +106,54 @@ test('the real festival activity handler rechecks the open panel and only naviga
   farm.festivals.active!.activity.fish = true
   await run(farm, 'festival', { open: true }, getFestivalFishingRoute, visit)
   assert.deepEqual(visits, [])
+})
+
+
+test('first earned harbour lights put today’s step and its consequences before progress and cancellation', async () => {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const p = commissionPlayer(opening.slice(0, opening.findIndex((a: { name: string }) => a.name === 'serveVillageMeal') + 1))
+  assert.equal(p.state.day, 10); assert.equal(p.state.village.meals, 1)
+  const coins = p.state.coins, fish = structuredClone(p.state.fish)
+  const server = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom' })
+  try {
+    const { renderFestivalPanel } = await server.ssrLoadModule('/src/bay-festival-ui.ts')
+    const read = (): string => {
+      const before = structuredClone(p.state), html = renderFestivalPanel(p.state)
+      assert.deepEqual(p.state, before, 'viewing does not contribute, cancel or advance time')
+      return html
+    }
+    const ordered = (html: string, ...needles: string[]) => {
+      let previous = -1
+      for (const needle of needles) {
+        const position = html.indexOf(needle)
+        assert.ok(position > previous, `Missing or out of order: ${needle}`); previous = position
+      }
+    }
+    p.act('beginFestival', 'lights')
+    assert.equal(read().match(/<button[^>]*data-action="([^"]+)"/)?.[1], 'festival-activity', 'first control is the current route, not cancellation')
+    ordered(read(), 'Гостей в день · 6 → 7', 'Улов для причала', 'После вклада или участия',
+      'data-action="festival-activity" data-value="fish"', 'festival-stages', 'data-action="festival-cancel" data-value="lights">')
+    p.act('cancelFestival', 'lights')
+    assert.equal(p.state.festivals.active, null); assert.deepEqual(p.state.fish, fish); assert.equal(p.state.coins, coins)
+
+    p.act('beginFestival', 'lights'); p.visit(getFestivalFishingRoute(p.state)!.island); p.act('catchFish', true); p.visit('village')
+    const afterCatch = read()
+    ordered(afterCatch, 'data-value="participation|fish"', 'data-value="fish|seaBass"', 'festival-stages', 'id="festival-cancel-reason"', 'data-action="festival-cancel" data-value="lights" disabled')
+    assert.equal(getFestivalStatus(p.state).active!.materialValue, 0)
+    p.act('contributeFestival', 'participation', 'fish')
+    assert.equal(read().match(/<button[^>]*data-value="([^"]+)"/)?.[1], 'fish|seaBass', 'offer the fish just caught before directions for missing fish')
+    ordered(read(), 'data-action="festival-contribute" data-value="fish|seaBass"', 'data-action="festival-source" data-value="fish|perch"',
+      'data-action="festival-source" data-value="fish|moonfish"', 'data-action="festival-source" data-value="fish|lanternfish"')
+    assert.equal(p.state.fish.seaBass, 1); assert.equal(p.state.coins, coins)
+    p.act('contributeFestival', 'fish', 'seaBass')
+    ordered(read(), '1/3', 'Окунь', 'На празднике: 10 монет за припасы + 24 монеты гонорара', 'festival-stages', 'data-action="festival-cancel"')
+    assert.equal(p.state.fish.seaBass, 0); assert.equal(p.state.coins, coins)
+
+    p.visit('home'); p.act('catchFish', true); p.act('catchFish', true); p.visit('village')
+    p.act('contributeFestival', 'fish', 'perch'); p.act('contributeFestival', 'fish', 'perch')
+    ordered(read(), 'Утро 11-го дня', 'data-action="festival-rest"', 'Что подготовить к утру', 'festival-stages', 'data-action="festival-cancel"')
+    assert.equal(p.state.day, 10); assert.equal(p.state.coins, coins)
+    p.night(); p.visit('village')
+    ordered(read(), 'Украшения берега', 'data-value="shore|shells"', 'festival-stages', 'data-action="festival-cancel"')
+  } finally { await server.close() }
 })

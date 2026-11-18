@@ -97,19 +97,24 @@ export function renderFestivalPanel(farm: FarmState, options: FestivalViewOption
         alternative.available > 0 ? 'festival-contribute' : 'festival-source', `${requirement.id}|${alternative.id}`,
         !active.waitingNight && (alternative.available === 0 || active.canContribute), 'festival-contribution');
     };
-    const alternatives = requirement.alternatives.map(contribution);
+    // A fish already in the basket comes before directions to other species.
+    const choices = requirement.id === 'fish'
+      ? [...requirement.alternatives].sort((a, b) => Number(b.available > 0) - Number(a.available > 0))
+      : requirement.alternatives;
+    const alternatives = choices.map(contribution);
     return `<li class="festival-requirement" data-complete="${done}"><div class="festival-requirement-heading"><strong>${escape(requirement.label)}</strong><span>${done ? '✓ ' : ''}${requirement.delivered}/${requirement.quantity}</span></div>
       ${done ? '' : `<div class="festival-contributions" aria-label="Выберите вклад: ${escape(requirement.label)}">${alternatives.slice(0, 4).join('')}</div>${alternatives.length > 4 ? `<details class="festival-alternatives"><summary>Другие угощения (${alternatives.length - 4})</summary><div class="festival-contributions">${alternatives.slice(4).join('')}</div></details>` : ''}<small class="festival-remaining">Осталось: ${remaining}</small>`}
     </li>`;
   }).join('');
   return `<section class="bay-festival festival-active" aria-label="${escape(active.name)}">
     <header class="festival-active-heading">${picture(active.tradition)}<div><small>Выбранная программа · выпуск ${active.edition} · ${escape(active.editionName)}</small><h2>${escape(active.name)}</h2><p class="festival-effect">${escape(choice.effect)}</p></div></header>
-    <div class="festival-selection"><p class="festival-note" id="festival-cancel-reason">${escape(active.canCancel ? 'Пока вы не внесли припасы и не участвовали в делах бухты, выбор можно отменить.' : active.cancelReason)}</p>
-      ${button('Отменить выбор', 'festival-cancel', active.tradition, active.canCancel, 'festival-secondary', 'festival-cancel-reason')}</div>
-    <ol class="festival-stages" aria-label="Подготовка праздника">${['1', '2', '3', 'Праздник'].map((label, index) => `<li data-complete="${index < active.stage}"${index === active.stage ? ' aria-current="step"' : ''}><span>${index < active.stage ? '✓' : label}</span></li>`).join('')}</ol>
-    <div class="festival-stage-heading"><span>${finale ? 'Всё готово к встрече' : `Подготовка ${stageNumber}/3`}</span><h3>${escape(active.label)}</h3><p>${escape(active.detail)}</p></div>
-    ${requirements && !active.waitingNight ? `<ul class="festival-requirements">${requirements}</ul>` : nextPreparationPreview(active)}
-    <p class="festival-return">Припасы: ${active.materialValue} + организация: ${ruCount(active.honorarium, 'монета', 'монеты', 'монет')}</p>
+    <div class="festival-stage-heading"><span>${finale ? 'Всё готово к встрече' : `Подготовка ${stageNumber}/3`}</span><h3>${escape(active.label)}</h3><p>${escape(active.detail)}${active.canCancel ? ' <span id="festival-cancel-reason">После вклада или участия программу нельзя сменить.</span>' : ''}</p></div>
+    ${requirements && !active.waitingNight ? `<ul class="festival-requirements">${requirements}</ul>` : ''}
+    <p class="festival-return">На празднике: ${ruCount(active.materialValue, 'монета', 'монеты', 'монет')} за припасы + ${ruCount(active.honorarium, 'монета', 'монеты', 'монет')} гонорара</p>
     ${active.waitingNight ? `<div class="festival-night"><p class="festival-wait" role="status"><span aria-hidden="true">☾</span><span>На сегодня всё<small>Утро ${active.readyOn}-го дня</small></span></p>${button('Отдохнуть дома', 'festival-rest', '', true, 'festival-secondary')}</div>` : finale ? button('Провести праздник', 'festival-finish', '', active.canFinish) : active.requirements.every(item => item.delivered >= item.quantity) ? button('Собрать подготовку', 'festival-contribute', '', active.canContribute) : ''}
+    ${nextPreparationPreview(active)}
+    <ol class="festival-stages" aria-label="Подготовка праздника">${['1', '2', '3', 'Праздник'].map((label, index) => `<li data-complete="${index < active.stage}"${index === active.stage ? ' aria-current="step"' : ''}><span>${index < active.stage ? '✓' : label}</span></li>`).join('')}</ol>
+    <div class="festival-selection">${active.canCancel ? '' : `<p class="festival-note" id="festival-cancel-reason">${escape(active.cancelReason)}</p>`}
+      ${button('Отменить выбор', 'festival-cancel', active.tradition, active.canCancel, 'festival-secondary', 'festival-cancel-reason')}</div>
   </section>`;
 }
