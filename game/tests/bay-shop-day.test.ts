@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
+import * as model from '../src/bay-shop-model.ts'
+import { BayShopCustomerView } from '../src/bay-shop-customers.ts'
+import { shopReturnLabel, shopRemainderQuote } from '../src/bay-shop-price-copy.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 import { reserveShopGoods } from '../src/harbour-economy.ts'
 import { describeFood } from '../src/intent-orders.ts'
@@ -95,4 +100,34 @@ test('a sold-out shop closed before rest asks for stock, not reopening, on the n
   const before = structuredClone(p.state)
   assert.equal(guidance().detail, 'Сначала выставьте товар на прилавок.')
   assert.deepEqual(p.state, before)
+})
+
+
+test('opening requires stock on a shelf even with goods in hand and in storage; an empty open shop can close', () => {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const p = commissionPlayer(opening), id = p.cook()
+  p.shelf(id); p.sale()
+  p.cook(id); p.act('transferBayGoods', 'deposit', 'village', 'signature:' + id, 1); p.cook(id)
+  const farm = p.state, soldOut = farm.bayShop.slots.find(slot => slot?.quantity === 0)!
+  assert.ok(soldOut); assert.equal(farm.culinary.stock[id], 1)
+  assert.equal(farm.freight.warehouses.village['signature:' + id], 1)
+
+  const source = readFileSync(new URL('../src/bay-shop.ts', import.meta.url), 'utf8')
+  const scene = stripTypeScriptTypes(source.slice(source.indexOf('const escape =')).replace('export function mountBayShop', 'function mountBayShop'))
+  const host = { innerHTML: '', querySelector: () => null, contains: () => false, addEventListener() {}, removeEventListener() {} }
+  const options = { state: farm.bayShop, products: () => [], onChange() {}, onClose() {} }
+  const mounted = runInNewContext(scene + ';mountBayShop(host, options)', {
+    ...model, BayShopCustomerView, bayShopDayGuidance, shopReturnLabel, shopRemainderQuote, host, options,
+    document: { activeElement: null }, HTMLElement: class {}, HTMLInputElement: class {}, matchMedia: () => ({ matches: true }),
+    performance: { now: () => 0 }, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, clearTimeout() {},
+    ResizeObserver: class { observe() {} disconnect() {} }, applyIngredientFinishes() {},
+  })
+  const toggle = () => host.innerHTML.match(/<button[^>]* data-open [^>]*>/)![0]
+  assert.match(toggle(), / disabled/); assert.match(toggle(), /aria-pressed="false"/)
+  assert.ok(reserveShopGoods(farm, 'signature:' + id, 1)); assert.ok(stockBayShop(farm.bayShop, 0, soldOut.product, 1))
+  mounted.refresh(); assert.doesNotMatch(toggle(), /disabled/); assert.match(toggle(), /aria-pressed="false"/)
+  setBayShopOpen(farm.bayShop, true); model.removeBayShopStock(farm.bayShop, 0)
+  mounted.refresh(); assert.doesNotMatch(toggle(), /disabled/); assert.match(toggle(), /aria-pressed="true"/)
+  setBayShopOpen(farm.bayShop, false); mounted.refresh()
+  assert.match(toggle(), / disabled/); mounted.destroy()
 })

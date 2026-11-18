@@ -41,6 +41,7 @@ const visitorMessages = {
 /** A scene owns its animation; the farm owns inventory, earnings and persistence. */
 export function mountBayShop(host: HTMLElement, options: BayShopOptions): { destroy(): void; refresh(): void } {
   const state = options.state;
+  const canToggleOpen = () => state.open || state.slots.some(slot => slot && slot.quantity > 0);
   const customerView = new BayShopCustomerView();
   if (options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
   let savedShopState = JSON.stringify(state);
@@ -99,7 +100,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     const scroll = host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
     rendering = true;
     host.innerHTML = `<section class="bay-shop" aria-label="Своя лавка у моря">
-      <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}">${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button><button type="button" class="bay-shop-close" data-close aria-label="Вернуться в бухту" title="Вернуться в бухту; работа лавки не меняется">×</button></div></header>
+      <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button><button type="button" class="bay-shop-close" data-close aria-label="Вернуться в бухту" title="Вернуться в бухту; работа лавки не меняется">×</button></div></header>
       <div class="bay-shop-scene"><div class="bay-shop-stage" style="background-image:url('${escape(options.background ?? '/art/lavender/bay/shop.webp')}')">
         <div class="bay-shop-display" aria-label="Четыре места на прилавке">${state.slots.map((slot, index) => `<button type="button" class="bay-shop-shelf ${index === selected ? 'is-selected' : ''}" data-user-text data-slot="${index}" aria-pressed="${index === selected}" aria-label="Место ${index + 1}${slot ? `: ${escape(slot.product.name)}, остаток ${slot.quantity}, цена ${slot.price} монет` : ': свободно'}">
           <span class="bay-shop-shelf-product">${slot && slot.quantity > 0 ? art(slot.product) : `<span class="bay-shop-shelf-empty">${slot ? 'Продано' : '+'}</span>`}</span>${slot ? `<span class="bay-shop-shelf-label">${money(slot.price)} <span aria-hidden="true">●</span><small>×${slot.quantity}</small></span>` : ''}</button>`).join('')}</div>
@@ -194,7 +195,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (button.hasAttribute('data-close')) { options.onClose(); return; }
     if (button.hasAttribute('data-freight')) { options.onOpenFreight?.(); return; }
     if (button.hasAttribute('data-open')) {
-      if (!state.open && !state.slots.some(slot => slot && slot.quantity > 0)) { playBaySound('menu.blocked',.8); notice = 'Сначала поставьте хотя бы один товар на прилавок.'; render(); return; }
+      if (!canToggleOpen()) { playBaySound('menu.blocked',.8); notice = 'Сначала поставьте хотя бы один товар на прилавок.'; render(); return; }
       setBayShopOpen(state, !state.open); notice = state.open ? 'Лавка открыта' : 'Лавка закрыта'; changed(); return;
     }
     if (button.dataset.slot !== undefined) { pending = undefined; selected = Number(button.dataset.slot); tab = 'stock'; notice = ''; render(); return; }
