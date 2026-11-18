@@ -113,3 +113,35 @@ test('one delivery gesture cannot activate the newly revealed rest or partial-su
  assert.equal(keys.blocks({key:'Enter',repeat:true},false),true)
  keys.release('Enter');assert.equal(keys.blocks({key:'Enter',repeat:false},true),false)
 })
+
+test('fresh visits prefer current ready work unless the player picked a lane; an explicit ready shortcut wins for that visit only',()=>{
+ const farm=ready()
+ farm.produce.wheat=2;farm.eggs=1
+ const entryBranch=source.slice(source.indexOf("  if(next==='cove'"),source.indexOf('  const reopenScroll ='))
+ const pickBranch=source.slice(source.indexOf("    case 'market-order-select':"),source.indexOf("    case 'deliver-order':"))
+ const c={farm,next:'market',remember:true,selectedMarketOrder:undefined as string|undefined,pickedMarketOrder:undefined as string|undefined,entry:undefined as {readyOrder?:boolean}|undefined,dialog:{open:false},panel:'market',marketTab:'orders',value:'garden',getMarketOrderBoard,drawPanel:()=>{},dialogContent:{querySelector:()=>null}}
+ const visible=()=>c.selectedMarketOrder=getMarketOrderBoard(farm,c.selectedMarketOrder).selected
+ const enter=(open:boolean,readyOrder=false)=>{c.dialog.open=open;c.entry={readyOrder};runInNewContext(stripTypeScriptTypes(`(function(){${entryBranch}})()`),c);return visible()}
+ assert.equal(enter(false),'garden')
+ assert.ok(deliverMarketOrder(farm,'garden').ok)
+ const before=structuredClone(farm)
+ assert.equal(enter(true),'garden','current receipt and redraw stay put')
+ c.remember=false;assert.equal(enter(false),'garden','Back does not begin a fresh visit');c.remember=true
+ assert.equal(enter(false),'pantry','the remaining ready order is immediately actionable')
+ c.dialog.open=true
+ runInNewContext(stripTypeScriptTypes(`switch('market-order-select'){${pickBranch}}`),c)
+ assert.equal(enter(false),'garden','an explicit pick survives normal reopen')
+ assert.equal(enter(true,true),'pantry','a ready-order task points at its order, not the old pick')
+ assert.equal(enter(false),'garden','following a shortcut did not overwrite the explicit pick')
+ assert.deepEqual(farm,before)
+})
+
+test('a guided Orders visit cannot travel or open another panel during an island crossing',()=>{
+ const branch=source.slice(source.indexOf("    case 'visit-market':"),source.indexOf("    case 'fishing-practice':"))
+ for(const crossing of [true,false]){
+  const events:string[]=[]
+  const context={value:'orders',island:{isCrossing:()=>crossing,visit:(target:{kind:string})=>events.push(target.kind)},openGuidedMarket:(value:string)=>events.push(value)}
+  runInNewContext(stripTypeScriptTypes(`switch('visit-market'){${branch}}`),context)
+  assert.deepEqual(events,crossing?[]:['market','orders'])
+ }
+})

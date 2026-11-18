@@ -1018,6 +1018,7 @@ function marketOrderStockTile(item: StockItem) {
 }
 
 let selectedMarketOrder: string | undefined
+let pickedMarketOrder: string | undefined
 function marketOrders() {
   const board = getMarketOrderBoard(farm, selectedMarketOrder)
   selectedMarketOrder = board.selected
@@ -2329,7 +2330,10 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel) {
   openPanel(next,false)
 }
 
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { seedPreview?: CropId; grillFish?: FishId }) {
+function openGuidedMarket(tab?: string) {
+  openPanel('market',true,farm.island,'page.unfold',undefined,{readyOrder:tab==='orders'})
+}
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
@@ -2345,6 +2349,8 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next === 'honey-kitchen' && farm.capeLevel < 3) return
   if(next==='cove'&&farm.island!=='grove')return
   if ((next === 'transplant' || next === 'garden-plans' || next === 'recipe-surplus') && farm.island !== 'home') return
+  // An automatic order belongs to this visit. A manual pick also survives an ordinary reopen.
+  if (entry?.readyOrder || !dialog.open && remember) selectedMarketOrder = entry?.readyOrder ? undefined : pickedMarketOrder
   const reopenScroll = !dialog.open && remember && next === 'market' && marketTab === 'sell'
     ? marketSaleBrowse.takeClosed(marketSellView()) : undefined
   if (!dialog.open) marketSaleBrowse.reset()
@@ -2896,7 +2902,7 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
   if (target === 'visit-market') {
     if(value==='buy'||value==='sell'||value==='orders')marketTab=value
     if(marketTab==='buy')marketCategory=hint.selector?.includes('buy-feed')?'care':hint.selector?.includes('buy-sapling')?'trees':'seeds'
-    openPanel('market')
+    openGuidedMarket(value)
   }
   else if (target === 'show-upgrade') { openPanel('upgrades');highlightControl(dialogContent.querySelector<HTMLElement>(`[data-value="${value}"]`));return }
   else if (target === 'upgrades') openPanel('upgrades')
@@ -3621,7 +3627,7 @@ app.addEventListener('click', async (event) => {
     case 'market-order-select':
       if (panel === 'market' && dialog.open && marketTab === 'orders' && getMarketOrderBoard(farm).choices.some(order => order.id === value)) {
         const pickerScroll = dialogContent.querySelector<HTMLElement>('.market-order-picker')?.scrollTop ?? 0
-        selectedMarketOrder = value
+        pickedMarketOrder = selectedMarketOrder = value
         drawPanel()
         const picker = dialogContent.querySelector<HTMLElement>('.market-order-picker')
         if (picker) picker.scrollTop = pickerScroll
@@ -3874,7 +3880,13 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'visit-coop': activateTarget({ kind: 'coop' }); break
-    case 'visit-market': activateTarget({ kind: 'market' }); break
+    case 'visit-market':
+      if (value === 'orders') {
+        if (island.isCrossing()) break
+        island.visit({kind:'market'})
+        openGuidedMarket(value)
+      } else activateTarget({kind:'market'})
+      break
     case 'fishing-practice': if (panel === 'fishing' && canPracticeFishing(farm)) mountFishing(true); break
     case 'visit-pier': activateTarget({ kind: 'pier' }); break
     case 'visit-hive': activateTarget({ kind: 'hive' }); break
