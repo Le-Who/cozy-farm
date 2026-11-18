@@ -125,13 +125,40 @@ test('earned first Cove plan describes its fish mix, not an increase over the na
   } finally { await server.close(); }
 });
 
+test('only the tide forecast changes until the new fishing habitat settles', async () => {
+  const server=await createServer({root:fileURLToPath(new URL('..',import.meta.url)),configFile:false,server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'});
+  try {
+    const {coveControls}=await server.ssrLoadModule('/src/culinary-ui.ts');
+    let farm=firstVisit();
+    const rows=()=>{
+      const before=structuredClone(farm),html:string=coveControls(farm);
+      const result=[...html.matchAll(/<p class="cove-effect[^"]*"[^>]*>(.*?)<\/p>/g)].map(match=>match[1]);
+      assert.deepEqual(farm,before);return result;
+    };
+    const morning=()=>{
+      assert.ok(F.sail(farm,'home').ok);assert.ok(F.endDay(farm).ok);
+      farm=reload(farm);assert.ok(F.sail(farm,'grove').ok);
+    };
+    assert.ok(F.changeCove(farm,{cover:'kelp'}).ok);
+    const [natural,quietForecast]=rows();
+    assert.match(natural,/Естественный берег/);assert.doesNotMatch(natural,/рыб[аы]-фонар/);
+    assert.match(quietForecast,/После прилива, день 3.*медленные косяки.*для рыбы-фонаря мелко/);
+    morning();const [quiet]=rows();assert.match(quiet,/Сейчас:.*для рыбы-фонаря мелко/);
+    assert.ok(F.changeCove(farm,{flow:'open'}).ok);
+    const [stillQuiet,openForecast]=rows();assert.equal(stillQuiet,quiet);
+    assert.match(openForecast,/После прилива, день 4.*больше редкой рыбы на глубине.*может встретиться рыба-фонарь/);
+    morning();const settled=rows();assert.equal(settled.length,1);
+    assert.match(settled[0],/Сейчас:.*может встретиться рыба-фонарь/);
+  } finally {await server.close();}
+});
+
 test('meadow forecast and current description stay unchanged; cancelling kelp restores them', async () => {
   const server = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), configFile: false, server: { middlewareMode: true }, appType: 'custom' });
   try {
     const { coveControls } = await server.ssrLoadModule('/src/culinary-ui.ts');
     const farm = firstVisit();
     assert.ok(F.changeCove(farm, covePresets.channel).ok);
-    const meadowSummary = 'Окунь чаще · больше редкой рыбы на глубине. Камни укрывают краба и смягчают рывки рыб.';
+    const meadowSummary = 'Окунь чаще · больше редкой рыбы на глубине; может встретиться рыба-фонарь. Камни укрывают краба и смягчают рывки рыб.';
     assert.ok(coveControls(farm).includes(meadowSummary));
     assert.ok(F.sail(farm, 'home').ok);
     assert.ok(F.endDay(farm).ok);

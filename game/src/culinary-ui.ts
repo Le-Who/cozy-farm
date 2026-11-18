@@ -7,7 +7,8 @@ import './recipe-repeat-guidance.css'
 import {fishDefinitions,getCoveActions,getSignatureAction,getVillageMeal,ingredientCount,type FarmState,type StockItem} from './farm'
 import {signatureFruitNames,signatureProcessingDefinitions,resolvedCookeryFruit,cookeryFinishTraits,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary'
 import {traitIds,type Trait} from './climate'
-import {type CoveChoices} from './shoreline'
+import {type CoveChoices,type CoveFishingHabitat} from './shoreline'
+import {hasLanternfishDepth} from './fishing-model'
 import './culinary-ui.css'
 import {traitLabel} from './ru'
 import {signatureBookCapacity} from './signature-book'
@@ -150,14 +151,18 @@ export function signatureStudio(farm:FarmState,base:SignatureDraft['base'],slots
 }
 
 const coveChoiceSummary=(choices:CoveChoices)=>`${choices.flow==='open'?'Открытое течение':'Тихое течение'} · ${choices.cover==='kelp'?'водоросли':'луг'} · ${choices.refuge==='stones'?'камни':'песок'}`
-const coveEffectSummary=(choices:CoveChoices)=>`${choices.cover==='kelp'?'Обычно морской окунь, иногда окунь':'Окунь чаще'} · ${choices.flow==='open'?'больше редкой рыбы на глубине':'медленные косяки'}. ${choices.refuge==='stones'?'Камни укрывают краба и смягчают рывки рыб.':'На песке краб ищет корм.'}`
+function coveEffectSummary(habitat:CoveFishingHabitat):string{
+  const flow=habitat.profile==='channel'?'больше редкой рыбы на глубине':'медленные косяки'
+  const lantern=hasLanternfishDepth(habitat)?'может встретиться рыба-фонарь':'для рыбы-фонаря мелко'
+  return `${habitat.cover==='kelp'?'Обычно морской окунь, иногда окунь':'Окунь чаще'} · ${flow}; ${lantern}. ${habitat.refuge==='stones'?'Камни укрывают краба и смягчают рывки рыб.':'На песке краб ищет корм.'}`
+}
 export function coveControls(farm:FarmState):string{
   const shoreline=farm.shoreline,action=getCoveActions(farm),{ecology,choices,forecast}=action
   const groups:[keyof CoveChoices,string,string,readonly [string,string][]][]=[['flow','cove-current','Течение',[['sheltered','Тихое'],['open','Открытое']]],['cover','cove-kelp-right','Растения',[['kelp','Водоросли'],['meadow','Луг']]],['refuge','cove-refuge','Берег',[['sand','Песок'],['stones','Камни']]]]
   return `<div class="cove-console"><div class="cove-tools">${groups.map(([key,image,name,options])=>`<fieldset><legend><img src="${import.meta.env.BASE_URL}art/lavender/${image}.webp" alt="">${name}</legend>${options.map(([value,label])=>`<button type="button" data-action="cove-choice" data-value="${key}:${value}" aria-pressed="${choices[key]===value}">${label}</button>`).join('')}</fieldset>`).join('')}</div>
     ${action.appliedToday?'<p class="cove-confirmation" role="status">Утренний прилив применил план. Обустройство берега готово.</p>':''}
-    <p class="cove-effect"><strong>Сейчас:</strong> ${coveChoiceSummary(ecology.choices)}. ${shoreline.settled?coveEffectSummary(ecology.choices):'Естественный берег.'}</p>
-    ${forecast?`<p class="cove-effect cove-forecast" role="status"><strong>После прилива, день ${forecast.day}:</strong> ${coveChoiceSummary(forecast.ecology.choices)}. ${coveEffectSummary(forecast.ecology.choices)}</p>
+    <p class="cove-effect"><strong>Сейчас:</strong> ${coveChoiceSummary(ecology.choices)}. ${shoreline.settled?coveEffectSummary(ecology.fishing):'Естественный берег.'}</p>
+    ${forecast?`<p class="cove-effect cove-forecast" role="status"><strong>После прилива, день ${forecast.day}:</strong> ${coveChoiceSummary(forecast.ecology.choices)}. ${coveEffectSummary(forecast.ecology.fishing)}</p>
       <div class="cove-plan"><span>План ещё не применён. Прилив наступит после отдыха дома.</span>${control('Отменить план','cove-cancel',action.planKey!)}</div>`:''}
     <div class="cove-footer"><span>${shoreline.pending?'До прилива действует нынешний берег':shoreline.settled?`Обустройство действует с дня ${shoreline.settledOn}`:'Выберите обустройство берега'}</span>${control('На рыбалку','cove-fish','')}${control('Домой','sail','home')}</div></div>`
 }
