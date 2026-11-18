@@ -99,9 +99,41 @@ test('home inventory shortcut is a dialog button, never a harvest toggle; other 
     runInNewContext(js(statusLoop),{farm:{island,selectedSeed:'carrot'},atHome:island==='home',sowingPlan:undefined,cropDefinitions:farmApi.cropDefinitions,tools,hotbarButtons:states.map(s=>s.button),activeTool,counts:{basket:3},iconUrl:(id:string)=>id,basketHotbarIcons,basketHotbarLabels})
     for(const {button,attrs} of states){
       const shortcut=button.dataset.tool==='basket'&&island==='home'
-      assert.equal(attrs['aria-pressed'],shortcut?undefined:String(button.dataset.tool===activeTool))
+      assert.equal(attrs['aria-pressed'],shortcut?undefined:String(button.dataset.tool===activeTool && !(island==='grove'&&button.disabled)))
       if(shortcut)assert.equal(attrs['aria-haspopup'],'dialog')
       else if(button.dataset.tool==='basket')assert.equal(attrs['aria-haspopup'],undefined,'home popup semantics cannot leak into another island')
     }
   }
 })
+
+test('first Grove landing enables only its three working shortcuts; returning Home restores the others',()=>{
+  const farm=earlyFerryFarm(),slots=tools.map(({id}:{id:string})=>{
+    const attrs:Record<string,string>={},image={getAttribute:()=>'',src:''},badge={};
+    return {dataset:{tool:id},attrs,disabled:false,hidden:false,title:'',
+      setAttribute:(k:string,v:string)=>attrs[k]=v,removeAttribute:(k:string)=>delete attrs[k],
+      querySelector:(s:string)=>s==='.slot-icon img'?image:badge};
+  });
+  assert.ok(farmApi.sail(farm,'grove').ok);
+  const expected=structuredClone(farm),events:string[]=[];
+  const state:any={...farmApi,tools,farm,hotbarButtons:slots,atHome:false,counts:{},activeTool:'water',sowingPlan:null,
+    iconUrl:(s:string)=>s,basketHotbarLabels,basketHotbarIcons,island:{isCrossing:()=>false,visit:()=>{}},status:()=>{},
+    notify:(s:string)=>events.push(s),openPanel:(p:string)=>events.push(p),dialog:{open:false},
+    window:{addEventListener:(_:string,fn:Function)=>state.keydown=fn}};
+  runInNewContext(js(activation+hotbar+keyboard),state);
+  const draw=()=>runInNewContext(js(statusLoop),state);
+  draw();
+  assert.equal(slots.filter((s:any)=>!s.hidden&&!s.disabled).map((s:any)=>s.dataset.tool).join(','),'basket,rod,boat');
+  for (const slot of slots.filter((s:any)=>s.disabled)) {
+    assert.equal(slot.hidden,false);assert.equal(slot.attrs['aria-pressed'],'false');assert.equal(slot.attrs['aria-keyshortcuts'],undefined);
+    const key=tools.find((t:any)=>t.id===slot.dataset.tool).key;
+    state.keydown({key,code:'Digit'+key,preventDefault(){}});
+  }
+  assert.deepEqual(events,[]);assert.equal(state.activeTool,'water');
+  for(const key of ['5','7','8']) state.keydown({key,code:'Digit'+key,preventDefault(){}});
+  assert.deepEqual(events,['orchard','fishing','boat']);assert.deepEqual(farm,expected);
+  assert.ok(farmApi.sail(farm,'home').ok);state.atHome=true;draw();
+  assert.equal(slots.filter((s:any)=>!s.hidden&&!s.disabled).length,8);
+  assert.equal(slots.find((s:any)=>s.dataset.tool==='seeds').attrs['aria-keyshortcuts'],'3');
+  state.keydown({key:'3',code:'Digit3',preventDefault(){}});
+  assert.equal(events.at(-1),'seeds');
+});

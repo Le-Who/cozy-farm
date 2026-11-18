@@ -340,10 +340,10 @@ const tools = [
   { id: 'water', label: 'Лейка', image: 'can', key: '2' },
   { id: 'seeds', label: 'Семена', image: 'seeds', key: '3' },
   { id: 'feed', label: 'Корм для кур', image: 'feed', key: '4' },
-  { id: 'basket', label: basketHotbarLabels[farm.island], image: 'crate', key: '5' },
+  { id: 'basket', label: basketHotbarLabels[farm.island], image: 'crate', key: '5', inGrove: true },
   { id: 'coop', label: 'Курятник', image: 'hen', key: '6' },
-  { id: 'rod', label: 'Удочка', image: 'rod', key: '7' },
-  { id: 'boat', label: 'Лодка', image: 'boat', key: '8' },
+  { id: 'rod', label: 'Удочка', image: 'rod', key: '7', inGrove: true },
+  { id: 'boat', label: 'Лодка', image: 'boat', key: '8', inGrove: true },
 ] as const
 
 type Tool = (typeof tools)[number]['id']
@@ -690,20 +690,23 @@ function status() {
     const atVillage = farm.island === 'village'
     button.hidden = atVillage && toolId !== 'basket' && toolId !== 'coop' && toolId !== 'boat'
     const label = toolId === 'basket' ? basketHotbarLabels[farm.island] : atVillage && toolId === 'coop' ? 'Соседи' : definition.label
+    const groveBlocked = farm.island === 'grove' && !('inGrove' in definition)
+    const title = toolId === 'seeds' ? atHome && sowingPlan ? `Посев по плану: ${sowingPlan.name}` : `${label} · ${cropDefinitions[farm.selectedSeed].name}` : label
     button.setAttribute('aria-label', label)
-    button.title = `${label} (${definition.key})`
+    button.title = groveBlocked ? `${title} · Родной остров` : `${title} (${definition.key})`
+    if (groveBlocked) button.removeAttribute('aria-keyshortcuts')
+    else button.setAttribute('aria-keyshortcuts', definition.key)
     const image = button.querySelector<HTMLImageElement>('.slot-icon img')!
     const source = iconUrl(toolId === 'basket' ? basketHotbarIcons[farm.island] : atVillage && toolId === 'coop' ? 'ui-bea' : `tool-${definition.image}`)
     if (image.getAttribute('src') !== source) image.src = source
-    button.disabled = farm.island === 'cape' && toolId === 'rod'
+    button.disabled = groveBlocked || farm.island === 'cape' && toolId === 'rod'
     const count = counts[toolId]
     const badge = button.querySelector<HTMLElement>('.slot-count')!
-    if (toolId === 'seeds') button.title = atHome && sowingPlan ? `Посев по плану: ${sowingPlan.name} (3)` : `Семена · ${cropDefinitions[farm.selectedSeed].name} (3)`
     if (toolId === 'basket' && atHome) {
       button.removeAttribute('aria-pressed')
       button.setAttribute('aria-haspopup', 'dialog')
     } else {
-      button.setAttribute('aria-pressed', String(toolId === activeTool))
+      button.setAttribute('aria-pressed', String(!groveBlocked && toolId === activeTool))
       if (toolId === 'basket') button.removeAttribute('aria-haspopup')
     }
     badge.hidden = atVillage || count === undefined
@@ -2857,10 +2860,7 @@ function useHotbar(tool: Tool) {
       return
     }
   }
-  if (farm.island === 'grove' && tool !== 'rod' && tool !== 'boat' && tool !== 'basket') {
-    notify('Вернитесь на Родной остров к грядкам и курочкам.')
-    return
-  }
+  if (farm.island === 'grove' && !tools.some(entry => entry.id === tool && 'inGrove' in entry)) return
   activeTool = tool
   status()
   switch (tool) {

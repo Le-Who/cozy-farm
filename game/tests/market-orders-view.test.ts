@@ -145,3 +145,11 @@ test('a guided Orders visit cannot travel or open another panel during an island
   assert.deepEqual(events,crossing?[]:['market','orders'])
  }
 })
+
+test('the chooser precedes its selected detail in both the reading sequence and the responsive layout',()=>{
+ const html=rendered(ready()),picker=html.indexOf('<nav class="market-order-picker"'),detail=html.indexOf('<div class="market-order-detail"')
+ assert.ok(picker>=0&&picker<detail&&detail<html.indexOf('<summary>Когда появится следующий заказ'))
+ assert.doesNotMatch(html,/tabindex="[1-9]/,'do not force tab order independently of reading order')
+ const css=readFileSync(new URL('../src/market-orders-view.css',import.meta.url),'utf8')
+ assert.doesNotMatch(css,/\.market-order-(?:picker|detail)\s*\{[^}]*\border\s*:/,'preserve the DOM order at every breakpoint')
+})

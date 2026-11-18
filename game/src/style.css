@@ -116,6 +116,7 @@ kbd { font: inherit; font-weight: 800; white-space: nowrap; }
   width: var(--slot); height: var(--slot); min-width: 0; padding: 4px; border: 1px solid transparent; border-radius: clamp(10px, 1.5vw, 24px);
   background: transparent; color: var(--plum);
 }
+.hotbar[data-island="grove"] .hotbar-slot:disabled { opacity: .48; }
 .hotbar-slot + .hotbar-slot::before { content: ''; position: absolute; top: 8%; bottom: 8%; left: -1px; width: 1px; background: var(--rule); pointer-events: none; }
 .hotbar-slot[aria-pressed="true"] { z-index: 1; border-color: #ac80bf; background: linear-gradient(#d6b6e0, #c4a5d4); box-shadow: inset 0 0 0 2px #fae9ffad; color: #4b2949; }
 .hotbar-slot[aria-pressed="true"]::before, .hotbar-slot[aria-pressed="true"] + .hotbar-slot::before { display: none; }
