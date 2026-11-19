@@ -145,3 +145,12 @@
  .signature-book .recipe-book-draft>span:first-of-type{grid-row:auto;line-height:1.2}
  .signature-book .recipe-book-draft>span:last-child{grid-column:3;grid-row:auto}
 }
+
+/* Keep the detail page at its reading width and use spare desktop space for recipes. */
+@media (min-width: 960px) and (min-height: 560px) {
+ .farm-dialog[data-panel=recipes]{width:min(1200px,calc(100vw - 32px))}
+ .signature-book{grid-template-columns:clamp(264px,calc(100% - 634px),564px) minmax(0,1fr)}
+ .signature-book .signature-book-tools .dialog-button{display:flex;align-items:center;justify-content:center}
+ .recipe-book-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));column-gap:12px}
+ .recipe-book-search-empty{grid-column:1/-1}
+}
