@@ -5,6 +5,8 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import * as farmApi from '../src/farm.ts'
 import { transferBayGoods } from '../src/harbour-economy.ts'
+import { getMarketOrderBoard, renderMarketOrderPicker } from '../src/market-orders-view.ts'
+import { getNextMarketOrders } from '../src/market-return.ts'
 import { workshopToolGuide } from '../src/workshop-controls.ts'
 
 // Existing source-fixture seam: real UI callbacks/receipt with inert scene adapters,
@@ -16,6 +18,7 @@ function find(file:ts.SourceFile,predicate:(node:ts.Node)=>boolean){let found:ts
 const panelCase=find(main,n=>ts.isCaseClause(n)&&n.expression.getText(main)==="'workshop'"&&n.getText(main).includes('createWorkshop'))
 const update=find(workshop,n=>ts.isFunctionDeclaration(n)&&n.name?.text==='updateState')
 const bake=find(workshop,n=>ts.isCallExpression(n)&&n.expression.getText(workshop)==='bakeButton.addEventListener')
+const orderClick=find(workshop,n=>ts.isCallExpression(n)&&n.expression.getText(workshop)==='orderButton.addEventListener')
 const finished=find(workshop,n=>ts.isIfStatement(n)&&n.expression.getText(workshop)==="stage === 'baking'"&&n.getText(workshop).includes('surface.setBaked'))
 const tick=find(workshop,n=>ts.isFunctionDeclaration(n)&&n.name?.text==='tick') as ts.FunctionDeclaration
 // Run the actual frame clock and completion block, not an uncapped test-only delta.
@@ -49,11 +52,11 @@ function handoff(farm:farmApi.FarmState,recipe:'bread'|'pastry',shape:farmApi.Wo
  assert.ok(options,'earned stock opens actual workshop callback')
  const element=()=>({disabled:false,hidden:false,textContent:'',innerHTML:'',dataset:{},setAttribute(){}})
  const state:any={document,bakeKeyboardFocus:false,options,dishDefinitions:farmApi.dishDefinitions,stage:'working',chosenShape:shape,shapeNames:{round:'Круглая булочка',long:'Батон',folded:'Слойка'},destroyed:false,committed:false,contextLost:false,cutPending:false,assetsReady:true,work:.2,mixed:1,selected:0,activeTool:'knead',hand:{down:false},handMenuExpanded:false,
-  root:{dataset:{},setAttribute(){}},shapeButtons:[],toolButtons:[],hotspots:[],resultLabel:element(),handButton:element(),handMenu:element(),modeTitle:element(),hint:element(),bakeButton:{...element(),addEventListener(id:string,fn:(event:{detail:number})=>void){handlers[id]=fn},focus(){focusCalls++;document.activeElement=state.bakeButton}},signal:new AbortController().signal,
+  root:{dataset:{},setAttribute(){}},shapeButtons:[],toolButtons:[],hotspots:[],resultLabel:element(),handButton:element(),handMenu:element(),orderButton:{...element(),hidden:true,addEventListener(_type:string,handler:()=>void){handlers.order=handler}},modeTitle:element(),hint:element(),bakeButton:{...element(),addEventListener(id:string,fn:(event:{detail:number})=>void){handlers[id]=fn},focus(){focusCalls++;document.activeElement=state.bakeButton}},signal:new AbortController().signal,
   pieces:[{mass:1,dirty:true,offset:new Float32Array(1),velocity:new Float32Array(1),mesh:{geometry:{}}}],
   performance:{now:()=>now},lastTime:now,elapsed:0,bakeStartedAt:0,workshopToolGuide,updateSpriteBoxes(){},rebuildMixSurface(){},positionHandMenu(){},updateCue(){},fitBakeLabel(){},surface:{setCrustRoughness(){},setBaked(amount:number){baked.push(amount)}},prepareDoughBaking(){return {}},recognize(){return shape},release(){},playBaySound(id:string){sounds.push(id)},announce(v:string){announcements.push(v)},mix(){},bakeElapsed:0,delta:0,ovenLight:{intensity:0},THREE:{MathUtils:{smoothstep:(n:number)=>n}},riseDough(_geometry:unknown,_baking:unknown,amount:number){risen.push(amount)}}
- runInNewContext(js(`${update.getText(workshop)}; const ${close.getText(workshop)}; ${bake.getText(workshop)};${focusListeners.map(n=>n.getText(workshop)).join(';')}; function advance(now){${frameClock};${finished.getText(workshop)}}`),state)
- return {state,options,saved,announcements,sounds,baked,risen,focusCalls:()=>focusCalls,input:(type:string,event:any={})=>focusHandlers.get(type)?.(event),elapseWithoutFrame:(seconds:number)=>{now+=seconds*1000},frameAt:(milliseconds:number)=>{now=1000+milliseconds;state.advance(now)},click:(detail=1)=>{if(!state.destroyed){handlers.click({detail});if(state.bakeButton.disabled&&document.activeElement===state.bakeButton)document.activeElement=body}},advance:(seconds:number)=>{now+=seconds*1000;state.advance(now)},back:()=>options.onCancel(),returns:()=>returns}
+ runInNewContext(js(`${update.getText(workshop)}; const ${close.getText(workshop)}; ${bake.getText(workshop)};${orderClick.getText(workshop)};${focusListeners.map(n=>n.getText(workshop)).join(';')}; function advance(now){${frameClock};${finished.getText(workshop)}}`),state)
+ return {state,options,mainState,order:()=>handlers.order({detail:1}),saved,announcements,sounds,baked,risen,focusCalls:()=>focusCalls,input:(type:string,event:any={})=>focusHandlers.get(type)?.(event),elapseWithoutFrame:(seconds:number)=>{now+=seconds*1000},frameAt:(milliseconds:number)=>{now=1000+milliseconds;state.advance(now)},click:(detail=1)=>{if(!state.destroyed){handlers.click({detail});if(state.bakeButton.disabled&&document.activeElement===state.bakeButton)document.activeElement=body}},advance:(seconds:number)=>{now+=seconds*1000;state.advance(now)},back:()=>options.onCancel(),returns:()=>returns}
 }
 
 test('bread receipt names the actual granted dish for every chosen sculptural form',()=>{
@@ -179,4 +182,61 @@ test('holding the initiating key does not cancel focus return; disposal or conte
   if(outcome==='cancel')h.back();else if(outcome==='contextLost')h.state.contextLost=true;else h.state.document.hasFocus=()=>false
   h.advance(4);assert.equal(h.focusCalls(),0,outcome);assert.equal(h.saved.length,1)
  }
+})
+
+function extraWheat(farm:farmApi.FarmState) {
+ assert.ok(farmApi.selectSeed(farm,'wheat').ok)
+ for(let day=0;day<6;day++){
+  const a=farmApi.getBedAction(farm,0)
+  if(a.kind==='plant'||a.kind==='harvest')assert.ok(farmApi.workBed(farm,0).ok)
+  if(farm.produce.wheat>=6)return
+  if(farmApi.getBedAction(farm,0).kind==='water')assert.ok(farmApi.workBed(farm,0).ok)
+  assert.ok(farmApi.endDay(farm).ok)
+ }
+ throw Error('No earned wheat')
+}
+
+test('the loaf that fills the Bread Basket offers its existing exact order, never delivery or a second cooking session',()=>{
+ const farm=earned(true), h=handoff(farm,'bread','long'), ctx=h.mainState, events:string[]=[]
+ assert.equal(farmApi.getHomeBreadBasket(farm)?.status,'waiting')
+ assert.equal(h.state.orderButton.hidden,true);h.order();assert.equal(farm.dishes.farmhouseBread,0)
+ h.click();const paid=structuredClone(farm);assert.equal(h.state.orderButton.hidden,true);h.order()
+ assert.deepEqual([farm.dishes.farmhouseBread,farm.produce.wheat,farm.eggs],[1,2,2])
+ h.frameAt(4000);assert.equal(h.state.orderButton.textContent,'К заказу «Хлебная корзина»');assert.equal(h.state.orderButton.hidden,false)
+ assert.equal(h.state.resultLabel.textContent,'Домашний хлеб · в запасах');assert.equal(h.state.bakeButton.innerHTML,'<span>Готово</span>')
+ // Run the real market-order detail, with simple icon/ingredient adapters.
+ Object.assign(ctx,{dialog:{open:true},island:{isCrossing:()=>false},getMarketOrderBoard,renderMarketOrderPicker,getNextMarketOrders,
+  selectedMarketOrder:'garden',marketTab:'buy',pickedMarketOrder:'garden',numberFormat:new Intl.NumberFormat('ru'),ruPlural:()=> 'монет',
+  icon:()=>'',marketOrderStockTile:(item:farmApi.StockItem)=>farmApi.marketKey(item),button:(label:string,action:string,enabled:boolean,meta:{value:string})=>'<button data-action="'+action+'" data-value="'+meta.value+'" '+(enabled?'':'disabled')+'>'+label+'</button>',
+  openPanel(next:string,remember:boolean){assert.equal(remember,false,'replace finished receipt, retaining its existing kitchen return');ctx.panel=next;ctx.dialogContent.innerHTML=ctx.marketOrders();events.push(next)},
+  dialogContent:{innerHTML:'',querySelector:(q:string)=>{assert.equal(q,'.market-order-detail');return{focus:()=>events.push('focus'),scrollIntoView:()=>events.push('scroll')}}}})
+ const orderCard=find(main,n=>ts.isFunctionDeclaration(n)&&n.name?.text==='marketOrders')
+ runInNewContext(js(orderCard.getText(main)),ctx)
+ h.order();assert.deepEqual(events,['market','focus','scroll']);assert.equal(ctx.marketTab,'orders');assert.equal(ctx.pickedMarketOrder,'garden')
+ assert.match(ctx.dialogContent.innerHTML,/<h2 id="order-specialty">Хлебная корзина<\/h2>/)
+ assert.match(ctx.dialogContent.innerHTML,/data-action="deliver-order" data-value="specialty" >Доставить/)
+ assert.deepEqual(farm,paid);assert.equal(h.saved.length,1);h.order();assert.deepEqual(events,['market','focus','scroll'])
+})
+
+test('no extra receipt action for already-ready, insufficient remaining wheat, today’s delivered basket or a different bakery order',()=>{
+ for(const example of ['already-ready','not-enough','delivered','different'] as const) {
+  const farm=earned(true)
+  if(example==='not-enough')assert.ok(farmApi.sellMarketItem(farm,'produce:wheat',1).ok)
+  else {
+   extraWheat(farm);assert.ok(farmApi.cookDish(farm,'farmhouseBread').ok)
+   if(example!=='already-ready')assert.ok(farmApi.deliverMarketOrder(farm,'specialty').ok)
+   if(example==='different'){assert.ok(farmApi.endDay(farm).ok);assert.equal(farmApi.getHomeBreadBasket(farm),undefined)}
+  }
+  const before=structuredClone(farm), h=handoff(farm,'bread','long')
+  h.click(); h.frameAt(4100);assert.equal(h.state.stage,'finished',example);assert.equal(h.state.orderButton.hidden,true,example)
+  assert.equal(h.options.readyOrder(),undefined);h.order();assert.equal(farm.dishes.farmhouseBread,before.dishes.farmhouseBread+1)
+  h.click();assert.equal(h.returns(),1,'normal Done survives');assert.equal(h.saved.length,1)
+ }
+})
+
+test('a quoted loaf order is rechecked on actual click, and Done remains available if the loaf is no longer held',()=>{
+ const farm=earned(true),h=handoff(farm,'bread','long');h.click();h.frameAt(4000);assert.equal(h.state.orderButton.hidden,false)
+ assert.ok(farmApi.sellMarketItem(farm,'dishes:farmhouseBread',1).ok);const afterSale=structuredClone(farm)
+ h.order();assert.equal(h.state.orderButton.hidden,true);assert.equal(h.mainState.panel,'workshop')
+ assert.deepEqual(farm,afterSale);h.click();assert.equal(h.returns(),1)
 })

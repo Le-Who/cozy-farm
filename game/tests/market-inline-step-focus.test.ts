@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { MarketInlineSales } from '../src/market-inline-sale.ts'
-import { getMarketStock, sellMarketItem } from '../src/farm.ts'
+import { getMarketStock, getSale, getTreeAction, sellMarketItem } from '../src/farm.ts'
 import { searchMarketSales, type MarketSaleGroup } from '../src/market-sale-search.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 
@@ -38,6 +38,42 @@ test('the last sale in a selected family offers All without activating it or foc
   assert.equal(after('variants:apple:dew','harvest','fruit:apple','dew'),'search','a filtered sibling is not an exhausted family')
   assert.equal(after('produce:carrot','harvest',undefined),'search')
   assert.equal(after('produce:carrot','harvest','produce:carrot','',true),'empty','no other goods to browse: the empty notice replaces search')
+})
+
+test('selling the final unit in a crowded grid focuses a neighboring product name, never its sale action',()=>{
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/market-order-selection-commands.json',import.meta.url),'utf8'))
+  const p=commissionPlayer(opening); p.visit('home')
+  while(getSale(p.state).items<416){
+    assert.ok(p.state.day<800)
+    if(getTreeAction(p.state,0).available)p.act('pickFruit',0);else p.night()
+  }
+  const baseline=p.state
+  assert.equal(getSale(baseline).items,416)
+  const confirm=main.slice(main.indexOf('function confirmInlineSale('),main.indexOf('function updateMarketSaleSearch('))
+  const click=main.slice(main.indexOf("    case 'inline-sale-confirm':"),main.indexOf("    case 'inline-sale-again':"))
+  const code=stripTypeScriptTypes(confirm+";switch ('inline-sale-confirm') {"+click+'}')
+  for(const [key,detail,expected] of [
+    ['variants:pear:rainbow',0,'variants:egg:rainbow'], // the next card moves into this position
+    ['variants:egg:rainbow',0,'variants:pear:rainbow'], // last card: previous heading
+    ['variants:pear:rainbow',1,'search'], // pointer retains its original behavior
+  ] as const){
+    const farm=structuredClone(baseline),sales=new MarketInlineSales(),control={}
+    let focused='',scrolled=''
+    const stop=(id:string)=>({focus(){focused=id},scrollIntoView(){scrolled=id}})
+    const draw=()=>getMarketStock(farm).filter(x=>x.count>0).map(x=>({dataset:{inlineKey:x.key},
+      querySelector:(selector:string)=>stop(selector==='.market-inline-name'?x.key:'action:'+x.key)}))
+    let cards=draw()
+    const item=getMarketStock(farm).find(x=>x.key===key)!,card=cards.find(x=>x.dataset.inlineKey===key)!
+    assert.equal(item.count,1)
+    const shell={querySelectorAll:()=>cards,querySelector:(s:string)=>s==='[data-market-sale-query]'?stop('search'):null}
+    runInNewContext(code,{farm,control,document:{activeElement:control},event:{detail},dialogContent:shell,marketInlineSales:sales,
+      inlineSaleContext:()=>({item,card,token:sales.view(key,item.count,item.price).token}),marketSellGroup:'all',sellMarketItem,
+      perform:(act:()=>{ok:boolean})=>{const ok=act().ok;cards=draw();return ok},playBaySound(){}})
+    assert.equal(focused,expected);assert.equal(scrolled,expected)
+    assert.equal(farm.coins,baseline.coins+item.price);assert.equal(getSale(farm).items,415)
+  }
+  const heading=main.slice(main.indexOf('function marketInlineCard('),main.indexOf('function marketSaleResults('))
+  assert.match(heading,/<h2 class="market-inline-name" tabindex="-1">/,'heading is not a transaction or an extra tab stop')
 })
 
 function runStep(direction: 'more'|'less', raw: string, detail: number, active = true) {

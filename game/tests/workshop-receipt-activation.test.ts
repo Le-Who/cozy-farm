@@ -54,3 +54,11 @@ test('tool shortcuts and unrelated fresh buttons keep their existing repeat beha
  assert.equal(h.key(disabled),false);assert.equal(h.key(tool,true),false)
  assert.equal(h.key(new Control('dialog-button',{action:'cook'}),false),false)
 }))
+
+test('a held receipt review key cannot activate Deliver on the replacement page',()=>withCapture(h=>{
+ const review=new Control('workshop-order',{action:'bread-basket-review'}),deliver=new Control('dialog-button',{action:'deliver-order'})
+ for(const key of ['Enter',' ']){
+  assert.equal(h.key(review,false,key),false);assert.equal(h.key(deliver,true,key),true)
+  h.release(key);assert.equal(h.key(deliver,false,key),false);h.release(key)
+ }
+}))
