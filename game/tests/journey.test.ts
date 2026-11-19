@@ -193,3 +193,40 @@ test('the village island card retires supper after serving, but not Home travel 
   p.night(); p.visit('village');
   const morning = render('village'); assert.match(morning, supper); assert.doesNotMatch(morning, /Ужин завтра/);
 });
+
+test('the compact Islands strip labels each preview and distinguishes current, selected and locked', () => {
+  const steps = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8')) as {name:string; args:unknown[]}[];
+  const p = commissionPlayer(steps.slice(0, steps.findIndex(step => step.name === 'buyBoat') + 1));
+  p.visit('grove');
+  const before = structuredClone(p.state);
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
+  const start = main.indexOf('const selectors = journeys.map(');
+  const selectors = main.slice(start, main.indexOf('const action = destination.nextAction', start));
+  const journeys = getIslandJourneys(p.state);
+  const html: string = runInNewContext(selectors + '\nselectors', {
+    journeys, destination:journey(p.state, 'cape'), icon:() => '<img alt="">',
+  });
+  const choices = [...html.matchAll(/<button ([^>]+)>([\s\S]*?)<\/button>/g)];
+  assert.equal(choices.length, 4);
+  for (const [i, [id, name, compact, status]] of [
+    ['home', 'Родной остров', 'Дом', ''], ['grove', 'Солёная роща', 'Роща', 'Вы здесь'],
+    ['cape', 'Цветочный мыс', 'Мыс', 'Закрыто'], ['village', 'Лавандовая гавань', 'Гавань', 'Закрыто'],
+  ].entries()) {
+    const [, attrs, content] = choices[i];
+    assert.match(attrs, new RegExp(`data-action="boat-island" data-value="${id}" aria-pressed="${id === 'cape'}"`));
+    assert.ok(attrs.includes(`aria-label="${name}${id === 'grove' ? ', вы здесь' : status ? ', пока закрыт' : ''}"`));
+    assert.doesNotMatch(attrs, /disabled/); // Locked destinations still explain their prerequisites.
+    assert.ok(content.includes(`>${name}</span>`));
+    const compactLabel = content.match(/<span class="island-compact-name"[^>]*>([\s\S]*?)<\/span>/)?.[1];
+    assert.equal(compactLabel, compact + (status ? `<small>${status}</small>` : ''));
+  }
+  // The alternative text must actually become visible in the short landscape strip,
+  // without replacing the ordinary full names at other viewport sizes.
+  const css = readFileSync(new URL('../src/navigation.css', import.meta.url), 'utf8');
+  const compactRules = css.split('@media (min-width:480px) and (max-width:700px) and (max-height:360px) {')[1]?.split(/^}/m)[0] ?? '';
+  assert.match(css, /\.island-selector \.island-compact-name\s*\{\s*display:\s*none/);
+  assert.match(compactRules, /\.island-selector \.island-compact-name\s*\{\s*display:\s*grid/);
+  assert.match(compactRules, /\.island-selector \.island-full-name\s*\{\s*display:\s*none/);
+  assert.doesNotMatch(compactRules, /clip-path/);
+  assert.deepEqual(p.state, before);
+});

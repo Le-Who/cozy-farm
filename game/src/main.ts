@@ -2262,7 +2262,9 @@ function drawPanel() {
       const destination = journeys.find(place => place.id === boatIsland) ?? journeys[0]
       const selectors = journeys.map(place => {
         const status = place.current ? ', вы здесь' : place.unlocked ? '' : ', пока закрыт'
-        return `<button type="button" data-action="boat-island" data-value="${place.id}" aria-pressed="${place.id===destination.id}" aria-label="${place.name}${status}" title="${place.name}${status}">${icon({home:'upgrade-farmhouse-card',grove:'ui-tree-apple',cape:'ui-honey',village:'ui-bea'}[place.id])}<span>${place.name}</span></button>`
+        const shortName = {home:'Дом',grove:'Роща',cape:'Мыс',village:'Гавань'}[place.id]
+        const shortStatus = place.current ? 'Вы здесь' : place.unlocked ? '' : 'Закрыто'
+        return `<button type="button" data-action="boat-island" data-value="${place.id}" aria-pressed="${place.id===destination.id}" aria-label="${place.name}${status}" title="${place.name}${status}">${icon({home:'upgrade-farmhouse-card',grove:'ui-tree-apple',cape:'ui-honey',village:'ui-bea'}[place.id])}<span class="island-full-name">${place.name}</span><span class="island-compact-name" aria-hidden="true">${shortName}${shortStatus ? `<small>${shortStatus}</small>` : ''}</span></button>`
       }).join('')
       const action = destination.nextAction
       const capeStatus = getCapeJourneyStatus(farm, destination.id)
@@ -3825,11 +3827,18 @@ app.addEventListener('click', async (event) => {
     case 'sale-again': if(currentSaleControl(control)&&selectedSale)beginExactSale(selectedSale); break
     case 'buy-feed': if(perform(() => buyFeed(farm)))playBaySound('trade.pay'); break
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
-    case 'buy-seeds':
-      if (crop && perform(() => buySeeds(farm,crop))){
+    case 'buy-seeds': {
+      const scroll = control.closest('.market-seed-grid')?.scrollTop
+      if (crop && perform(() => buySeeds(farm,crop))) {
+        // The purchase redraw replaces the scrolling shelf, even when focus returns to the same pack.
+        if (scroll) {
+          const grid = dialogContent.querySelector<HTMLElement>('.market-seed-grid')
+          if (grid) grid.scrollTop = scroll
+        }
         playBaySound('trade.pay')
       }
       break
+    }
     case 'garden-shop': case 'garden-shop-scope': case 'garden-shop-back': case 'garden-buy-seeds': case 'garden-slot': case 'garden-edit': case 'garden-copy': case 'garden-cancel': case 'garden-brush': case 'garden-paint': case 'garden-save': case 'garden-follow': case 'garden-delete': case 'garden-remove': case 'garden-bed': {
       if (panel !== 'garden-plans' || !dialog.open || farm.island !== 'home') break
       const token = gardenPlanToken(value)
