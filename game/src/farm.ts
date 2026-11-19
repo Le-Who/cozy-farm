@@ -1816,9 +1816,10 @@ export function tasteSignature(farm:FarmState,id:string,resident:ResidentId):Act
   if(!isId(residentIds,resident)||farm.island!=='village'||!farm.village.built||!farm.village.residents.includes(resident)||!recipe||(farm.culinary.stock[id]??0)<1)return failure('Принесите приготовленное блюдо приглашённому соседу в гавани.');
   const memory=farm.culinary.tastings[resident];if(memory.servedOn===farm.day||memory.visits>=1_000_000)return failure('Сегодня сосед уже пробовал ваше блюдо.');
   const taste=residentTastes[resident],liked=recipe.processing===taste.processing||recipe.ingredients.some(part=>part.id===taste.fruit);
+  const beaHelpMessage=getBeaPastryCount(farm)===4?' Помощь Беа уже сохранена: выпечка ×4.':' В следующий раз Беа испечёт ещё одно изделие.';
   farm.culinary.stock[id]--;memory.servedOn=farm.day;memory.visits++;memory.lastRecipeId=id;
   if(liked){memory.liked++;memory.bonus=true;if(!memory.favoriteIds.includes(id))memory.favoriteIds.push(id)}
-  return {ok:true,message:`${taste.name} запомнит блюдо «${recipe.name}».${liked?resident==='bea'?' В следующий раз Беа испечёт ещё одно изделие.':' К следующей рыбалке Финн подготовит особенно прочный крючок.':' В другой день попробуйте любимый фрукт или текстуру этого соседа.'}`};
+  return {ok:true,message:`${taste.name} запомнит блюдо «${recipe.name}».${liked?resident==='bea'?beaHelpMessage:' К следующей рыбалке Финн подготовит особенно прочный крючок.':' В другой день попробуйте любимый фрукт или текстуру этого соседа.'}`};
 }
 export function deliverSignature(farm:FarmState,id:string):ActionResult{
   const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id),fish=getVillageMeal(farm).fish;

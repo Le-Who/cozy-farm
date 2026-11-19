@@ -29,7 +29,7 @@ export function signaturePortionStock(farm:FarmState,part:SignatureIngredient):n
   return part.trait?farm.variants[part.id]?.[part.trait]??0:part.id==='apple'||part.id==='pear'||part.id==='peach'?farm.fruit[part.id]:farm.produce[part.id]
 }
 const ingredientName=(part:SignatureIngredient)=>part.trait?`${traitLabel(part.trait,part.id)} ${signatureFruitNames[part.id].toLowerCase()}`:signatureFruitNames[part.id]
-const control=(text:string,action:string,id:string,enabled=true,extra='')=>`<button type="button" class="dialog-button" data-action="${action}" data-value="${id}" ${enabled?'':'disabled'} ${extra}>${text}</button>`
+const control=(text:string,action:string,id:string,enabled=true,extra='',secondary=false)=>`<button type="button" class="dialog-button${secondary?' secondary':''}" data-action="${action}" data-value="${id}" ${enabled?'':'disabled'} ${extra}>${text}</button>`
 
 export function finishedIcon(markup:string,traits:readonly Trait[],surface:'fruit'|'jar'='fruit'):string{
  const finish=traitIds.filter(trait=>traits.includes(trait)).join(' ')
@@ -69,6 +69,7 @@ function recipeBookSupper(farm: FarmState, recipeId: string): string {
 const capacityDescription = (canCreate:boolean) => canCreate ? '' : 'aria-describedby="recipe-capacity-note"'
 
 function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeBookView):string {
+  const beaTasting=signatureTastingGuide(farm,recipe.id,'bea')
   const count=farm.culinary.stock[recipe.id]??0, capacity=signatureBookCapacity(farm.culinary)
   const action=getSignatureAction(farm,recipe), batch=action.available&&action.items.every(item=>ingredientCount(farm,item)>=item.quantity*3), stored=getStoredSignature(farm,recipe.id)
   const guide=getRecipeRepeatGuide(farm,recipe.id)!
@@ -96,10 +97,12 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
       <details data-recipe-disclosure="picnic-offer"${opened('picnic-offer')}><summary>Эффект и расход пикника</summary>${renderPicnicOffer(farm,recipe.processing)}</details>
       ${farm.island==='home'?control('Продать лишние ингредиенты','recipe-surplus-choose',recipe.id):''}
       ${farm.island==='village'&&farm.village.built?`<div class="signature-neighbours">${farm.village.residents.some(Boolean)?`<div class="signature-tastings" aria-label="Угощения соседям"><p>Каждый сосед пробует одно угощение за игровой день.</p>${(['bea','finn'] as const).map(id=>{
-        const tasting=signatureTastingGuide(farm,recipe.id,id)
+        const tasting=id==='bea'?beaTasting:signatureTastingGuide(farm,recipe.id,id)
         if(!tasting)return ''
         const noteId=`tasting-${recipe.id}-${id}`
-        return `<div class="signature-tasting">${control(`${art.icon('ui-'+id)}${tasting.label}`,'taste-signature',recipe.id,tasting.available,`data-resident="${id}"${tasting.reason||tasting.favoriteNote?` aria-describedby="${noteId}"`:''}`)}${tasting.reason||tasting.favoriteNote?`<p id="${noteId}">${tasting.reason}${tasting.reason&&tasting.favoriteNote?' ':''}${tasting.knownFavorite?'♥ ':''}${tasting.favoriteNote}</p>`:''}</div>`
+        const icon=art.icon('ui-'+id)
+        const taste=control(`${tasting.bakeFirst?'':icon}${tasting.label}`,'taste-signature',recipe.id,tasting.available,`data-resident="${id}"${tasting.reason||tasting.favoriteNote?` aria-describedby="${noteId}"`:''}`,!!beaTasting?.bakeFirst)
+        return `<div class="signature-tasting">${tasting.bakeFirst?`<div class="signature-bake-choice">${control(icon+'К Беа · выпечка ×4','tasting-bakery',recipe.id)}${taste}</div>`:taste}${tasting.reason||tasting.favoriteNote?`<p id="${noteId}">${tasting.reason}${tasting.reason&&tasting.favoriteNote?' ':''}${tasting.knownFavorite?'♥ ':''}${tasting.favoriteNote}</p>`:''}</div>`
       }).join('')}</div>`:''}${recipeBookSupper(farm,recipe.id)}</div>`:''}
     </section>${!count&&!recipe.favorite&&!shopCommissionUsesRecipe(farm.shopCommissions,recipe.id)?`<button class="signature-forget" type="button" data-action="forget-signature" data-value="${recipe.id}">Удалить пустой рецепт</button>`:''}
   </article>`
