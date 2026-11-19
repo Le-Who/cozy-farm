@@ -1306,7 +1306,9 @@ function marketCards() {
   const categories=`<nav class="market-category-icons${marketCategory==='buildings'?' market-building-categories':''}" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}<span>${category.name}</span></button>`).join('')}</nav>`
   if(marketCategory==='seeds')return `<section data-market-seed-browser><div class="market-controls">${tabs}</div>${categories}<div class="market-seed-grid">${cropIds.map(crop=>{
     const definition=cropDefinitions[crop]
-    return `<section data-seed-pack="${crop}"><div class="market-seed-art">${icon('ui-seed-'+crop)}</div><div class="market-seed-copy"><h2>${definition.name}</h2><p>В пакете: ${seedPackSize} ${ruPlural(seedPackSize,['семя','семени','семян'])}</p><p class="market-seed-stock">В запасе: ${numberFormat.format(farm.seeds[crop])} ${ruPlural(farm.seeds[crop],['семя','семени','семян'])}</p><p class="market-seed-price" aria-label="${quantity(definition.seedPrice,'монета')} за пакет">${definition.seedPrice} ${icon('coin')} за пакет</p></div>${button('Купить пакет','buy-seeds',farm.coins>=definition.seedPrice,{crop,context:`${definition.name}, ${seedPackSize} семени за ${quantity(definition.seedPrice,'монета')}`})}</section>`
+    const stock=`В запасе: ${numberFormat.format(farm.seeds[crop])} ${ruPlural(farm.seeds[crop],['семя','семени','семян'])}`, affordable=farm.coins>=definition.seedPrice
+    const buy=button('Купить пакет','buy-seeds',affordable,{crop,context:`${definition.name}, ${seedPackSize} семени за ${quantity(definition.seedPrice,'монета')}`})
+    return `<section data-seed-pack="${crop}"><div class="market-seed-art">${icon('ui-seed-'+crop)}</div><div class="market-seed-copy"><h2>${definition.name}</h2><p>В пакете: ${seedPackSize} ${ruPlural(seedPackSize,['семя','семени','семян'])}</p><p class="market-seed-stock">${stock}</p><p class="market-seed-price" aria-label="${quantity(definition.seedPrice,'монета')} за пакет">${definition.seedPrice} ${icon('coin')} за пакет</p></div>${affordable?buy:`<div class="market-seed-limit" role="group" tabindex="-1" aria-label="${definition.name}. ${stock}">${buy}</div>`}</section>`
   }).join('')}</div>${stall?`<footer class="market-seed-tools">${stall}</footer>`:''}</section>`
   if(marketCategory==='trees')return `<section data-market-tree-browser><div class="market-controls">${tabs}</div>${categories}${!farm.trees.home.includes(null)?`<div class="market-tree-space"><p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','market-orchard-space',true,{secondary:true}))}</div>`:''}<div class="market-tree-grid">${treeIds.map(tree=>{
     const definition=treeDefinitions[tree]
@@ -1921,6 +1923,8 @@ function drawPanel() {
     ? document.activeElement
     : undefined
 
+  const focusedSeedCrop = focused?.matches('[data-seed-pack] [data-action="buy-seeds"]:focus-visible') ? focused.dataset.crop : undefined
+
   switch (panel) {
     case 'recipe-surplus':
       dialogContent.innerHTML = renderRecipeSurplus(farm, recipeSurplusSelection, item => stockLabel(item).name)
@@ -2373,6 +2377,8 @@ function drawPanel() {
   if (focused && panel !== 'bay-freight' && panel !== 'recipes') {
     const replacement = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
       .find(candidate => focusKey(candidate) === focusKey(focused))
+      // A spent pack keeps a neutral result at the old button's position, even on a clipped shelf.
+      ?? (focusedSeedCrop ? dialogContent.querySelector<HTMLElement>(`[data-seed-pack="${CSS.escape(focusedSeedCrop)}"] .market-seed-limit`) : null)
     const nextFocus = replacement ?? (panel === 'hen-friendship' ? henCareResultFocus(dialogContent, focused) : undefined) ?? closeButton
     nextFocus.focus({ preventScroll: true })
   }

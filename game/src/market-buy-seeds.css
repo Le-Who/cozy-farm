@@ -29,6 +29,7 @@
 .market-seed-price {display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .market-seed-price .icon {width:24px;height:24px}
 [data-market-seed-browser] .market-seed-grid .dialog-button {grid-column:1/-1;justify-self:end;min-width:170px;width:auto;min-height:46px;margin:0;padding:7px 20px;border:1px solid #9c5543;border-radius:12px;background:linear-gradient(#d78363,#b96047);box-shadow:inset 0 1px #ffcfab88,0 2px 0 #974d3833;color:#fffaf0;font:700 18px Georgia,serif}
+.market-seed-limit {display:grid;grid-column:1/-1;justify-self:end;border-radius:12px}
 [data-market-seed-browser] .market-seed-grid .dialog-button:disabled {opacity:.48;cursor:default}
 [data-market-seed-browser] .market-seed-grid .dialog-button:focus-visible {outline:3px solid #805789;outline-offset:2px}
 .market-seed-tools {flex:none;display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid #d5baa0}

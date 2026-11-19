@@ -17,7 +17,8 @@ const workshop = main.slice(main.indexOf("    case 'workshop': {"), main.indexOf
 const closeSale = main.slice(main.indexOf('function closeContextualSale('), main.indexOf('function beginExactSale('))
 const close = main.slice(main.indexOf('function closeCurrentPanel()'), main.indexOf("closeButton.addEventListener('click'"))
 const back = main.slice(main.indexOf('function returnFromPanel('), main.indexOf("dialog.addEventListener('cancel'"))
-const resume = main.slice(main.indexOf('async function resumeCommunityRequest('), main.indexOf('function requestedRecipe()'))
+const resume = main.slice(main.indexOf('function currentCommunityRequest()'), main.indexOf('function updateCommunityReturn()'))
+  + main.slice(main.indexOf('async function resumeCommunityRequest('), main.indexOf('function requestedRecipe()'))
 
 function setup(at: farmApi.IslandId, signature = false, from = at === 'cape' ? 'honey-kitchen' : 'kitchen') {
   const { farm, selection } = cookingReturnFixture(at)
