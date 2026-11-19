@@ -1356,17 +1356,17 @@ function nurseryCard(slot?: number) {
   if (farm.island !== 'home' && farm.island !== 'grove' || !farm.treeNursery.length) return ''
   const target = slot ?? farm.trees[farm.island].findIndex(tree => tree === null)
   const available = farm.trees[farm.island][target] === null
-  const otherGarden = farm.island === 'home' ? 'grove' : 'home'
-  const otherHasRoom = farm.boatOwned && farm.trees[otherGarden].includes(null)
+  const crossing = treeStorageChoice.otherPlot(farm)
   const entry = treeStorageChoice.current(farm)!
   const {id,tree} = entry, definition = treeDefinitions[tree.tree]
   const detail = [nurseryFruitDetail(tree), treeVariantCopy(tree)].filter(Boolean).join(' ')
   return `<section class="tree-storage" aria-label="Деревья на хранении">
     <label class="tree-storage-picker">Деревья на хранении · ${farm.treeNursery.length}<select data-tree-storage-choice aria-label="Выберите дерево на хранении">${farm.treeNursery.map(item=>`<option value="${item.id}"${item.id===id?' selected':''}>${escapeHtml(storedTreeChoiceLabel(item))}</option>`).join('')}</select></label>
     <ul class="dialog-list">${row('ui-tree-' + tree.tree, `${definition.treeName} · №${id}`, detail, button(available ? `Вернуть · место ${target + 1}` : 'Нет места в саду', 'return-nursery-tree', available, { value: id, context: definition.treeName }), tree.trait)}</ul>
-    ${available ? '' : `<p class="tree-storage-availability">${otherHasRoom
-      ? `Освободите место здесь или верните дерево ${otherGarden === 'grove' ? 'в Солёной роще' : 'на Родном острове'}.`
+    ${available ? '' : `<p class="tree-storage-availability">${crossing
+      ? `Освободите место здесь или верните дерево ${crossing.to === 'grove' ? 'в Солёной роще' : 'на Родном острове'}.`
       : 'Сначала освободите место в этом саду.'}</p>`}
+    ${crossing ? button(`Плыть ${crossing.to==='grove'?'в Солёную рощу':'на Родной остров'} · место ${crossing.slot+1}`,'nursery-sail-plot',true,{value:crossing.key,secondary:true}) : ''}
     <details class="tree-storage-rules"><summary>Бесплатное хранение: правила</summary><p>Перенос бесплатный. Возраст, готовые плоды и особенность сохраняются. На хранении рост и новые плоды на паузе. После возврата плоды собираются отдельно.</p></details>
   </section>`
 }
@@ -1631,6 +1631,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  ferryMorning?: number; // This ferry visit's explicit trip to the Home forecast.
   recipeBook: RecipeBookView;
   kitchenSourceItem?: string;
   ferryView: FerryPanelView | undefined;
@@ -2147,6 +2148,8 @@ function drawPanel() {
         <div class="home-morning-preview">${renderRestPreview(farm,true)}${renderFerryReturn(farm,harbourGoods(),true)}</div>
         <div class="rest-before-morning">${renderVisitRest(farm)}${farm.neighborVisits.active?nav(button('Поговорить с гостем', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${renderPicnicStatus(farm,true)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}</div>
         <details class="home-rest-details home-rest-services"><summary>${farm.village.built&&!farm.neighborVisits.active?'Кухня, гости и улучшения':'Кухня и улучшения'}</summary><div>${farm.village.built&&!farm.neighborVisits.active?nav(button('Гостевая книга', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}</div></details>`
+      if (farm.freight.expeditions.active?.phase === 'sailing' && panelHistory.at(-1)?.ferryMorning === farm.freight.expeditions.active.serial)
+        dialogContent.querySelector<HTMLButtonElement>('[data-action="sleep"]')!.textContent = 'До утра · к парому'
       break
     case 'journal': {
       const goal = currentTask(), journal = getDiscoveryJournal(farm)
@@ -2409,11 +2412,18 @@ function drawPanel() {
 
 // A map shortcut continues at the chosen place after the crossing. Only global
 // pages can be revisited on the new island; a local building belongs to its shore.
-async function visitPanelAt(destination: typeof farm.island, next: Panel) {
+async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryMorning?: number) {
   if (island.isCrossing()) return
-  if (farm.island === destination) { openPanel(next); return }
+  // Keep an incubation morning on the farm so its hatch is not covered by a menu.
+  const ferryVisit = ferryMorning !== undefined && farm.hatchDay !== farm.day + 1 && dialog.open && panel === 'bay-freight' && next === 'rest'
+    ? {...rememberPanel(),ferryMorning} : undefined
+  if (farm.island === destination) {
+    if (ferryVisit) { panelHistory.push(ferryVisit); openPanel(next,false) }
+    else openPanel(next)
+    return
+  }
   if (!canSailTo(farm,destination)) return
-  const returnPath = dialog.open && panel ? [...panelHistory,rememberPanel()].filter(visit =>
+  const returnPath = dialog.open && panel ? [...panelHistory,ferryVisit ?? rememberPanel()].filter(visit =>
     ['guide','boat','archive','bay-freight','inventory','journal'].includes(visit.panel)) : []
   if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
   closeDialog()
@@ -3299,7 +3309,8 @@ app.addEventListener('click', async (event) => {
     }
     case 'expedition-rest': {
       const voyage = farm.freight.expeditions.active
-      if (panel === 'bay-freight' && voyage?.phase === 'sailing' && String(voyage.serial) === value) await visitPanelAt('home','rest')
+      if (panel !== 'bay-freight' || !dialog.open || voyage?.phase !== 'sailing' || String(voyage.serial) !== value) break
+      await visitPanelAt('home','rest',voyage.serial)
       break
     }
     case 'harbour-fish-catch': {
@@ -4032,6 +4043,7 @@ app.addEventListener('click', async (event) => {
       const oldShip=farm.freight.ship
       const expeditionBeforeNight=farm.freight.expeditions.active ? {...farm.freight.expeditions.active} : null
       const expeditionWasSailing=farm.freight.expeditions.active?.phase==='sailing'
+      const returnSerial=expeditionWasSailing ? panelHistory.at(-1)?.ferryMorning : undefined
       const rested=perform(() => {
         const result=endDay(farm)
         if(result.ok)committedRestClose=true
@@ -4042,6 +4054,11 @@ app.addEventListener('click', async (event) => {
       if (rested && farm.flockSize > flockSize) {
         playBaySound('flock.hatch', 1, 0);island.showHatch()
         notify('В стае появилась новая курочка.')
+      }
+      if (rested && returnSerial === expeditionBeforeNight?.serial && returnSerial !== undefined &&
+          farm.freight.expeditions.active?.phase === 'ready' && farm.freight.expeditions.active.serial === returnSerial) {
+        panelHistory.length=0
+        openPanel('bay-freight',false)
       }
       break
     }
@@ -4247,6 +4264,19 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'buy-plant-tree': {const tree=treeIds.find(id=>id===value);if(tree && perform(()=>buyAndPlantTree(farm,treeSlot,tree)))playBaySound('orchard.sapling', 1, 0);break}
+    case 'nursery-sail-plot': {
+      if(!dialog.open||(panel!=='tree'&&panel!=='orchard')||island.isCrossing())break
+      const crossing=treeStorageChoice.otherPlot(farm)
+      if(!crossing||crossing.key!==value)break
+      treeSlot=crossing.slot
+      // Sailing opens the exact empty plot. Returning the tree and picking its
+      // fruit are still ordinary, separate, explicit local actions.
+      await visitPanelAt(crossing.to,'tree')
+      if(dialog.open&&panel==='tree'&&farm.island===crossing.to&&treeSlot===crossing.slot
+          &&farm.trees[crossing.to][crossing.slot]===null&&treeStorageChoice.current(farm)?.id===crossing.id)
+        revealTreeStorageReturn(dialogContent)
+      break
+    }
     case 'buy-sapling': {
       const tree = treeIds.find((id) => id === value)
       if (tree) perform(() => buySapling(farm, tree))

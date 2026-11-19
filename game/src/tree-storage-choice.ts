@@ -7,6 +7,14 @@ export class TreeStorageChoice {
   current(farm: FarmState) {
     return farm.treeNursery.find(entry => entry.id === this.id) ?? farm.treeNursery[0]
   }
+  otherPlot(farm: FarmState) {
+    const from=farm.island
+    if(!farm.boatOwned||(from!=='home'&&from!=='grove')||farm.trees[from].includes(null))return
+    const tree=this.current(farm),to=from==='home'?'grove' as const:'home' as const
+    const slot=farm.trees[to].findIndex(tree=>tree===null)
+    if(!tree||slot<0)return
+    return {from,to,slot,id:tree.id,key:[from,to,slot,tree.id].join(':')}
+  }
   choose(farm: FarmState, value: string | undefined) {
     if (farm.island !== 'home' && farm.island !== 'grove') return false
     const entry = farm.treeNursery.find(entry => String(entry.id) === value)
