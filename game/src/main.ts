@@ -234,6 +234,7 @@ import {
   getIrrigationRow,
   getIrrigationPair,
   getMarketOrders,
+  getHomeBreadBasket,
   getMarketStock,
   getProject,
   getSale,
@@ -1223,7 +1224,7 @@ function marketInlineCard(item: ReturnType<typeof goods>[number]) {
   const id=`inline-sale-${encodeURIComponent(item.key)}`
   return `<li class="market-inline-card" data-inline-key="${escapeHtml(item.key)}" data-inline-token="${escapeHtml(view.token)}">
     <span class="market-inline-art" aria-hidden="true">${itemIcon(item.image,item.trait)}</span>
-    <div class="market-inline-copy"><h2 class="market-inline-name">${escapeHtml(item.name)}</h2><p class="market-inline-stock">В запасе: ${item.count}</p><p class="market-inline-price"><span aria-hidden="true">${item.price}</span> ${icon('coin')} <span class="sr-only">${quantity(item.price,'монета')} </span>за штуку</p></div>
+    <div class="market-inline-copy"><h2 class="market-inline-name" tabindex="-1">${escapeHtml(item.name)}</h2><p class="market-inline-stock">В запасе: ${item.count}</p><p class="market-inline-price"><span aria-hidden="true">${item.price}</span> ${icon('coin')} <span class="sr-only">${quantity(item.price,'монета')} </span>за штуку</p></div>
     <div class="market-inline-footer"><div class="market-inline-stepper" role="group" aria-label="Количество: ${escapeHtml(item.name)}">
       <span class="market-step-limit" tabindex="-1" role="group" aria-label="Минимум: 1"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button></span>
       <input data-inline-quantity type="number" min="1" max="${item.count}" step="1" inputmode="numeric" value="${escapeHtml(view.raw)}" aria-label="Количество: ${escapeHtml(item.name)}" aria-describedby="${id}"${receipt||view.pending?' disabled':''}>
@@ -1261,19 +1262,24 @@ function updateInlineSaleCard(card: HTMLElement) {
   status.ariaLive=view.receipt?'off':'polite'
   status.textContent=view.receipt?inlineReceiptText(view.receipt):quote.valid?'':`Введите целое число от 1 до ${item.count}.`
 }
-function confirmInlineSale(control: Element) {
+function confirmInlineSale(control: Element, keyboard = false) {
   const context=inlineSaleContext(control)
   if(!context)return
   const {item,token}=context, quote=marketInlineSales.take(item.key,token,item.count,item.price)
   if(!quote){updateInlineSaleCard(context.card);return}
   const scroll=dialogContent.querySelector<HTMLElement>('#market-sale-results')?.scrollTop??0
+  const position=keyboard && quote.remaining===0
+    ? Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).indexOf(context.card) : -1
   const result=sellMarketItem(farm,item.key,quote.quantity)
   marketInlineSales.finish(item.key,result.ok?quote:undefined,result.goalRewardText)
   if(perform(()=>result,false,quote.remaining>0))playBaySound('trade.receive')
   const grid=dialogContent.querySelector<HTMLElement>('#market-sale-results');if(grid)grid.scrollTop=scroll
-  const next=Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).find(card=>card.dataset.inlineKey===item.key)
+  const cards=Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]'))
+  const next=cards.find(card=>card.dataset.inlineKey===item.key)
   let focus=next?.querySelector<HTMLElement>('.market-inline-sell')
-  if (!next && result.ok && quote.remaining===0 && marketSellGroup==='harvest' && marketSaleFamily) {
+  // Stay where the row disappeared without arming a different product's sale button.
+  if (!next && result.ok && position>=0) focus=cards[Math.min(position,cards.length-1)]?.querySelector<HTMLElement>('.market-inline-name')
+  if (!next && !focus && result.ok && quote.remaining===0 && marketSellGroup==='harvest' && marketSaleFamily) {
     const stock=goods()
     if (stock.some(row=>row.count>0) && searchMarketSales(stock,'harvest','',marketSaleFamily).total===0)
       focus=dialogContent.querySelector<HTMLElement>('[data-action="market-sell-group"][data-value="all"]')
@@ -2292,10 +2298,30 @@ function drawPanel() {
         break
       }
       dialogContent.innerHTML = '<div class="workshop-host"></div>'
-      let made = false
+      let made = false, basketDay: number | undefined
       workshopGame = createWorkshop(dialogContent.querySelector<HTMLElement>('.workshop-host')!, {
         initialShape: bread ? 'long' : pastryShape, recipe: bread ? 'bread' : 'pastry',
-        onBake(shape) { if (made) return true; if (panel !== 'workshop') return false; made = perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true);  return made },
+        onBake(shape) {
+          if (made) return true
+          if (panel !== 'workshop') return false
+          const waiting = bread && getHomeBreadBasket(farm)?.status === 'waiting'
+          made = perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true)
+          if (made && waiting && getHomeBreadBasket(farm)?.status === 'ready') basketDay = farm.day
+          return made
+        },
+        readyOrder: bread ? () => {
+          if (basketDay !== farm.day || panel !== 'workshop') return
+          const order = getHomeBreadBasket(farm)
+          if (order?.status !== 'ready') return
+          return { name: order.name, open() {
+            if (!dialog.open || island.isCrossing()) return
+            marketTab = 'orders'; selectedMarketOrder = order.lane
+            // Replace the paid receipt: Back resumes its original kitchen, never a fresh batch.
+            openPanel('market', false)
+            const detail = dialogContent.querySelector<HTMLElement>('.market-order-detail')
+            detail?.focus({preventScroll:true}); detail?.scrollIntoView({block:'nearest'})
+          } }
+        } : undefined,
         onCancel: leaveScene,
       })
       break
@@ -3971,7 +3997,7 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
-    case 'inline-sale-confirm': if(event.detail<=1)confirmInlineSale(control); break
+    case 'inline-sale-confirm': if(event.detail<=1)confirmInlineSale(control,event.detail===0 && document.activeElement===control); break
     case 'inline-sale-again': {
       const context=inlineSaleContext(control)
       if(event.detail<=1&&context&&marketInlineSales.rearm(context.item.key,context.token,context.item.count,context.item.price))updateInlineSaleCard(context.card)
@@ -4584,7 +4610,7 @@ app.addEventListener('input', event => {
   }
 })
 app.addEventListener('keydown', event => {
-  if(!event.defaultPrevented&&event.key==='Enter'&&event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')){event.preventDefault();if(!event.repeat)confirmInlineSale(event.target)}
+  if(!event.defaultPrevented&&event.key==='Enter'&&event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')){event.preventDefault();if(!event.repeat)confirmInlineSale(event.target,document.activeElement===event.target)}
   if (!event.defaultPrevented && event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
     event.preventDefault()
     if (!event.repeat && currentSaleControl(event.target)) dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')?.click()

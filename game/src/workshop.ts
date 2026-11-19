@@ -14,7 +14,7 @@ import { workshopTools, workshopToolGuide, workshopToolPalette, type WorkshopToo
 import './workshop.css'
 
 export type WorkshopShape = 'round' | 'folded' | 'long'
-export interface WorkshopOptions { initialShape?: WorkshopShape; recipe?: 'pastry' | 'bread'; onBake: (shape: WorkshopShape) => boolean | void; onCancel?: () => void }
+export interface WorkshopOptions { initialShape?: WorkshopShape; recipe?: 'pastry' | 'bread'; onBake: (shape: WorkshopShape) => boolean | void; readyOrder?: () => {name:string; open:()=>void} | undefined; onCancel?: () => void }
 type Stage = WorkshopStage
 type Tool = WorkshopTool
 type DoughPiece = {
@@ -57,6 +57,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       </div>
       <div class="workshop-shape-picker" role="group" aria-label="Какую выпечку слепить">${(['round','long','folded'] as const).map(shape=>`<button type="button" data-shape="${shape}" aria-label="${shapeNames[shape]}" aria-pressed="${chosenShape===shape}"><img src="${base}art/lavender/ui-handmade-${shape}.webp" alt=""><span>${shape==='round'?'Булочка':shapeNames[shape]}</span></button>`).join('')}</div>
       <p class="workshop-result" aria-live="polite"></p>
+      <button type="button" class="workshop-order" data-action="bread-basket-review" hidden></button>
       <div class="workshop-mode" role="status" aria-live="polite" aria-atomic="true"><strong class="workshop-mode-title"></strong><span class="workshop-hint" id="workshop-mode-hint"></span></div>
     </div>
     <p class="workshop-sr-only" id="workshop-controls">Мешайте по кругу в миске или нажимайте пробел. На доске нажимайте и тяните тесто для замеса. R — раскатать, C — округлить, F — сложить, X — разрезать, M — перенести. Цифры от 1 до 6 выбирают кусочек; Shift со стрелками перемещает его. Для рецепта нужны 2 пшеницы и 1 яйцо.</p>
@@ -70,6 +71,13 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   fitViewport();window.addEventListener('resize',fitViewport,{signal});window.visualViewport?.addEventListener('resize',fitViewport,{signal})
   const view = root.querySelector<HTMLElement>('.workshop-view')!
   const bakeButton = root.querySelector<HTMLButtonElement>('.workshop-bake')!
+  const orderButton = root.querySelector<HTMLButtonElement>('.workshop-order')!
+  orderButton.addEventListener('click', () => {
+    if (destroyed || contextLost || stage !== 'finished' || orderButton.hidden) return
+    const order = options.readyOrder?.()
+    if (order) order.open()
+    else { orderButton.hidden = true; bakeButton.focus({preventScroll:true}) }
+  }, {signal})
   const cutPreview=root.querySelector<SVGSVGElement>('.workshop-cut-preview')!
   const cutPaths=[...cutPreview.querySelectorAll<SVGPathElement>('.workshop-cut-border,.workshop-cut-path')]
   const cutStart=cutPreview.querySelector<SVGCircleElement>('.workshop-cut-start')!
@@ -986,6 +994,8 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       if (amount === 1) {
         stage = 'finished'; playBaySound('cook.oven-out'); updateState()
         bakeButton.disabled = contextLost; bakeButton.innerHTML = '<span>Готово</span>'
+        const order = options.readyOrder?.()
+        if (order) { orderButton.textContent = `К заказу «${order.name}»`; orderButton.hidden = false }
         fitBakeLabel()
         announce('Выпечка готова и добавлена в запасы фермы.')
         // Disabling Bake blurs a keyboard user; do not override any later focus intent.

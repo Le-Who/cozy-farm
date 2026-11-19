@@ -347,9 +347,10 @@ const orderMenus: Record<Exclude<OrderLane, typeof optionalOrderLanes[number]>, 
   ],
 };
 
+const breadBasketOrder: Order = { name: 'Хлебная корзина', reward: 29, items: [{ kind: 'dishes', item: 'farmhouseBread', quantity: 1 }, { kind: 'produce', item: 'wheat', quantity: 2 }] };
 const specialtyMenus: Record<SpecializationId, readonly Order[]> = {
   bakery: [
-    { name: 'Хлебная корзина', reward: 29, items: [{ kind: 'dishes', item: 'farmhouseBread', quantity: 1 }, { kind: 'produce', item: 'wheat', quantity: 2 }] },
+    breadBasketOrder,
     { name: 'Стол пекаря', reward: 48, items: [{ kind: 'dishes', item: 'farmhouseBread', quantity: 2 }, { kind: 'dishes', item: 'appleJam', quantity: 1 }] },
   ],
   preserves: [
@@ -1989,6 +1990,13 @@ function marketOrder(farm: FarmState, lane: OrderLane, menu: readonly Order[]) {
     : order.upgradedKitchen && farm.buildingLevels.farmhouse < dishDefinitions.grilledFish.requiredLevel ? 'upgrade'
     : order.items.every((item) => ingredientCount(farm, item) >= item.quantity) ? 'ready' : 'waiting';
   return { ...order, reward: supplyOrderReward(farm,order), lane, status } as const;
+}
+
+/** This specific bakery commission, not another order currently occupying the same lane. */
+export function getHomeBreadBasket(farm: FarmState) {
+  if (farm.island !== 'home' || farm.farmhouseSpecialization !== 'bakery') return;
+  const order = marketOrder(farm, 'specialty', specialtyMenus.bakery);
+  return order.items === breadBasketOrder.items ? order : undefined;
 }
 
 export function getMarketOrders(farm: FarmState) {

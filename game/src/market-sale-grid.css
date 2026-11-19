@@ -51,6 +51,7 @@
 .market-inline-sell .icon {width:24px;height:24px}
 .market-inline-sell:disabled {opacity:.55;cursor:default}
 .market-inline-status {grid-column:1/-1;white-space:pre-line;margin:0;min-height:18px;font-size:12px;line-height:1.2;color:var(--moss)}
+.market-inline-name:focus-visible,
 .market-inline-card :is(button,input,.market-step-limit):focus-visible {outline:3px solid #805789;outline-offset:-3px}
 .market-inline-tools {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;flex:none;padding-top:8px;border-top:1px solid #d5baa0}
 [data-market-sale-browser] .market-total {display:flex;align-items:center;gap:12px;margin:0;padding:0;font-size:13px;border:0;background:none;box-shadow:none}

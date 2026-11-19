@@ -75,3 +75,8 @@
 .dough-workshop:is([data-stage="baking"],[data-stage="finished"]) .workshop-result { top:10%; bottom:auto; font-size:clamp(12px,1.5vw,19px); padding:7px 15px; }
 
 .dough-workshop:is([data-stage="baking"],[data-stage="finished"]) .workshop-mode { top:calc(10% + 44px); }
+
+/* A newly filled bread basket takes the ordinary finished hint's place, not another row. */
+.workshop-order:not([hidden]) {position:absolute;z-index:10;top:calc(10% + 44px);left:50%;transform:translateX(-50%);max-width:90%;min-height:44px;padding:5px 14px;border:2px solid #976ca3;border-radius:12px;background:#fff4e5;color:#603568;font:700 14px/1.2 ui-rounded,"Trebuchet MS",sans-serif;cursor:pointer}
+.workshop-order:not([hidden]) + .workshop-mode {display:none}
+.workshop-order:focus-visible {outline:3px solid #86559c;outline-offset:2px}
