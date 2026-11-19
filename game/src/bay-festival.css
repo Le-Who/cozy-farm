@@ -18,3 +18,7 @@
 .festival-selection{display:grid;justify-items:center;gap:8px}.festival-selection>.festival-note{max-width:58ch}.festival-selection>.festival-button{min-width:170px}
 
 .festival-next-preview{margin:12px 0;padding:10px 12px;border:1px solid #d9c9aa;border-radius:12px;text-align:left;font-size:12px}.festival-next-preview>summary{cursor:pointer;font-weight:700}.festival-next-preview p{font-size:12px;line-height:1.45;margin:8px 0}.festival-next-preview>ul{padding-left:18px;margin:8px 0 0}.festival-next-preview li+li{margin-top:10px}
+
+.festival-exhibit{display:flex;align-items:center;gap:5px;font-size:12px}
+.festival-exhibit>.variant-art,.festival-contribution>.variant-art{flex:none;width:30px;height:30px}
+.festival-exhibit>.variant-art .icon,.festival-contribution>.variant-art .icon{width:100%;height:100%;object-fit:contain}

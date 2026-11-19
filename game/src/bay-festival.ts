@@ -1,5 +1,7 @@
 import { festivalMelodyNames } from './bay-music-model.ts';
-import type { FarmState, StockItem } from './farm.ts';
+import { traitIds } from './climate.ts';
+import { festivalFruitArt, festivalFruitLabel, isFestivalFruit, type FestivalFruit } from './festival-fruit.ts';
+import type { FarmState, StockItem, TreeId } from './farm.ts';
 
 export const festivalTraditions = ['harvest', 'lights', 'stage'] as const;
 export type FestivalTradition = (typeof festivalTraditions)[number];
@@ -14,12 +16,14 @@ export type FestivalPreparation = {
   cargoDelivered: number;
   activity: Record<FestivalActivity, boolean>;
   delivered: Record<string, number>;
+  exhibit?: FestivalFruit;
 };
 export type FestivalActivity = 'harvest' | 'bake' | 'fish' | 'shore';
 export type BayFestivalState = {
   completed: Record<FestivalTradition, number>;
   lastCompletedOn: number;
   active: FestivalPreparation | null;
+  harvestExhibit?: FestivalFruit;
 };
 export const festivalDefinitions = {
   harvest: {
@@ -59,6 +63,7 @@ type Alternative = {
   item?: StockItem;
   event?: 'concert' | 'delivery' | FestivalActivity;
   signature?: string;
+  exhibit?: FestivalFruit;
 };
 type Requirement = { id: string; label: string; quantity: number; alternatives: Alternative[] };
 type Preparation = { label: string; detail: string; requirements: Requirement[] };
@@ -121,6 +126,13 @@ function themedPreparations(active: FestivalPreparation, context?: FestivalConte
       signature: recipe.id,
     })),
   ];
+  // One optional specimen replaces one ordinary fruit. Never suggest unowned rarities.
+  const harvestFruit = active.tradition === 'harvest' && active.stage === 0 && context && !active.exhibit
+    ? [...fruit, ...(Object.keys(festivalFruitArt) as TreeId[]).flatMap(item => traitIds.flatMap(trait => {
+        const portion = {kind:'variants' as const, item, trait, quantity:1};
+        return context.count(portion) > 0 ? [{...stock(`exhibit:${item}:${trait}`, festivalFruitLabel({item,trait}), portion), exhibit:{item,trait}}] : [];
+      }))]
+    : fruit;
   const req = (id: string, label: string, quantity: number, alternatives: Alternative[]): Requirement => ({
     id,
     label,
@@ -133,7 +145,7 @@ function themedPreparations(active: FestivalPreparation, context?: FestivalConte
           {
             label: 'Плоды первого стола',
             detail: 'Принесите любые садовые плоды. Можно вносить их понемногу.',
-            requirements: [req('fruit', 'Плоды сада', 2 + scale, fruit)],
+            requirements: [req('fruit', 'Плоды сада', 2 + scale, harvestFruit)],
           },
           {
             label: 'Разноцветные корзины',
@@ -156,7 +168,7 @@ function themedPreparations(active: FestivalPreparation, context?: FestivalConte
               detail: 'Для пикника нужны две разные группы урожая.',
               requirements: [
                 req('roots', 'Корнеплоды', 2 + scale, roots),
-                req('fruit', 'Садовые плоды', 2, fruit),
+                req('fruit', 'Садовые плоды', 2, harvestFruit),
               ],
             },
             {
@@ -176,7 +188,7 @@ function themedPreparations(active: FestivalPreparation, context?: FestivalConte
               detail: 'Соседи запасают зерно и садовые плоды.',
               requirements: [
                 req('greens', 'Зелень или зерно', 3 + scale, greens),
-                req('fruit', 'Садовые плоды', 2, fruit),
+                req('fruit', 'Садовые плоды', 2, harvestFruit),
               ],
             },
             {
@@ -340,8 +352,11 @@ export function restoreBayFestival(
     (!unlocked && (total > 0 || value.active !== null))
   )
     return undefined;
+  const last = value.harvestExhibit;
+  if (last !== undefined && (!isFestivalFruit(last) || counts.harvest === 0)) return undefined;
+  const harvestMemory = last === undefined ? {} : {harvestExhibit:{item:last.item,trait:last.trait}};
   if (value.active === null)
-    return { completed: counts, lastCompletedOn: value.lastCompletedOn, active: null };
+    return { completed: counts, lastCompletedOn: value.lastCompletedOn, ...harvestMemory, active: null };
   const a = value.active;
   if (
     !record(a) ||
@@ -387,6 +402,11 @@ export function restoreBayFestival(
     },
     delivered: {},
   };
+  if (a.exhibit !== undefined) {
+    if (a.tradition !== 'harvest' || !isFestivalFruit(a.exhibit) || !a.materialValue
+        || a.stage === 0 && (!integer(a.delivered.fruit) || a.delivered.fruit < 1)) return undefined;
+    active.exhibit = {item:a.exhibit.item,trait:a.exhibit.trait};
+  }
   const requirements = preparations(active)[active.stage]?.requirements ?? [];
   for (const [id, amount] of Object.entries(a.delivered)) {
     const req = requirements.find((req) => req.id === id);
@@ -395,7 +415,7 @@ export function restoreBayFestival(
   }
   if (requirements.length && requirements.every((req) => (active.delivered[req.id] ?? 0) === req.quantity))
     return undefined;
-  return { completed: counts, lastCompletedOn: value.lastCompletedOn, active };
+  return { completed: counts, lastCompletedOn: value.lastCompletedOn, ...harvestMemory, active };
 }
 function nextFestivalReward(id: FestivalTradition, completed: number): string {
   if (completed >= 3) return 'Повторная программа · гонорар 12 монет';
@@ -450,7 +470,7 @@ export function getBayFestivalStatus(state: BayFestivalState, context: FestivalC
       remaining = req.quantity - delivered;
     const alternatives = req.alternatives.map((alt) => ({
       ...alt,
-      available: Math.min(remaining, available(alt, a, context)),
+      available: Math.min(remaining, alt.exhibit ? 1 : Infinity, available(alt, a, context)),
     }));
     return {
       id: req.id,
@@ -459,7 +479,7 @@ export function getBayFestivalStatus(state: BayFestivalState, context: FestivalC
       delivered,
       available: Math.min(
         remaining,
-        alternatives.reduce((sum, alt) => sum + alt.available, 0),
+        alternatives.reduce((sum, alt) => sum + (alt.exhibit ? 0 : alt.available), 0) + Number(alternatives.some(alt => alt.exhibit && alt.available > 0)),
       ),
       alternatives,
     };
@@ -547,11 +567,11 @@ export function contributeBayFestival(
       (!requirementId || req.id === requirementId) &&
       (a.delivered[req.id] ?? 0) < req.quantity &&
       req.alternatives.some(
-        (alt) => (!alternativeId || alt.id === alternativeId) && available(alt, a, context) > 0,
+        (alt) => (alternativeId ? alt.id === alternativeId : !alt.exhibit) && available(alt, a, context) > 0,
       ),
   );
   const alt = req?.alternatives.find(
-    (alt) => (!alternativeId || alt.id === alternativeId) && available(alt, a, context) > 0,
+    (alt) => (alternativeId ? alt.id === alternativeId : !alt.exhibit) && available(alt, a, context) > 0,
   );
   if (!req || !alt) return fail('Выберите доступную замену для недостающего вклада.');
   const materialValue = alt.item
@@ -564,6 +584,7 @@ export function contributeBayFestival(
     return fail('Для этого вклада в праздничной смете нет места.');
   if (alt.item) context.take({ ...alt.item, quantity: alt.quantity });
   if (alt.signature) context.culinary.stock[alt.signature] -= alt.quantity;
+  if (alt.exhibit) a.exhibit = {...alt.exhibit};
   a.materialValue += materialValue;
   a.delivered[req.id] = (a.delivered[req.id] ?? 0) + 1;
   if (
@@ -585,6 +606,7 @@ export function finishBayFestival(state: BayFestivalState, context: FestivalCont
   if (!a || !getBayFestivalStatus(state, context).active?.canFinish)
     return fail('Завершите приготовления и дождитесь следующего утра в гавани.');
   const reward = a.materialValue + (state.completed[a.tradition] === 0 ? 24 : 12);
+  if (a.exhibit) state.harvestExhibit = {...a.exhibit};
   state.completed[a.tradition]++;
   state.lastCompletedOn = context.day;
   state.active = null;

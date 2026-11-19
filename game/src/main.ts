@@ -1959,7 +1959,7 @@ function drawPanel() {
       break
     }
     case 'festival':
-      dialogContent.innerHTML=renderFestivalPanel(farm,{celebrated:celebratedFestival,celebrationEffect:celebrationReceipt?.effect,celebrationCoins:celebrationReceipt?.coins,icon})
+      dialogContent.innerHTML=renderFestivalPanel(farm,{celebrated:celebratedFestival,celebrationEffect:celebrationReceipt?.effect,celebrationCoins:celebrationReceipt?.coins,icon,itemIcon})
       break
     case 'bay-shop':
     case 'bay-music': {
