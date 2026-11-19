@@ -29,6 +29,7 @@ export function supperCottageReady(farm: FarmState): boolean {
 
 export function renderSupperResult(farm: FarmState, cottageArt: string, homeButton: string): string {
   if (farm.island !== 'village' || !getVillageMeal(farm).served) return ''
+  if (farm.village.meals === 1) return `<p class="dialog-status" tabindex="-1" data-supper-result>До второго домика: 1 из 2 ужинов. Следующий ужин завтра.</p>${homeButton}`
   if (!supperCottageReady(farm)) return `<p class="dialog-status">Сегодня общий ужин уже состоялся. Следующий ужин завтра.</p>${homeButton}`
   return `<section class="supper-result"><div class="supper-result-head"><span aria-hidden="true">${cottageArt}</span><div><small>Общий ужин состоялся</small><h2 tabindex="-1" data-supper-result>Второй домик свободен</h2></div></div><div class="supper-result-actions"><button type="button" class="dialog-button" data-action="supper-cottage">К домику 2</button>${homeButton}</div></section>`
 }
