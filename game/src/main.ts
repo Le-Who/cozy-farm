@@ -4141,7 +4141,8 @@ app.addEventListener('click', async (event) => {
       if(rested){playBaySound(expeditionWasSailing&&farm.freight.expeditions.active?.phase==='ready'||oldShip.phase==='sailing'&&farm.freight.ship.phase==='docked'?'harbour.berth':'daybreak.shutters')}
       if (rested && farm.flockSize > flockSize) {
         playBaySound('flock.hatch', 1, 0);island.showHatch()
-        notify('В стае появилась новая курочка.')
+        selectedFriendHen = farm.flockSize - 1
+        notify(`Из яйца вылупилась ${henFriends[selectedFriendHen].name}.`)
       }
       if (rested && returnSerial === expeditionBeforeNight?.serial && returnSerial !== undefined &&
           farm.freight.expeditions.active?.phase === 'ready' && farm.freight.expeditions.active.serial === returnSerial) {
