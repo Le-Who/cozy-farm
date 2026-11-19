@@ -5,15 +5,17 @@ import { runInNewContext } from 'node:vm'
 import { FerryArrivalPresentation } from '../src/ferry-arrival-presentation.ts'
 import { createFarm, endDay } from '../src/farm.ts'
 import { canConfirmRest } from '../src/rest-preview.ts'
-import { sendFerryExpedition } from '../src/harbour-economy.ts'
+import { receiveFerryExpedition, sendFerryExpedition } from '../src/harbour-economy.ts'
 import { closeShopBeforeRest } from '../src/shop-rest.ts'
+import { earlyFerryFarm, tendEarlyFerryFarm } from './fixtures/early-ferry.ts'
+import { isGuardedAction } from '../src/action-click-guard.ts'
 import { SalePresentation } from '../src/sale-presentation.ts'
 import { shopRestFixture } from './fixtures/shop-rest.ts'
 const main = await readFile(new URL('../src/main.ts', import.meta.url),'utf8')
 const sleep = main.slice(main.indexOf("    case 'sleep': {"),main.indexOf("    case 'refill':"))
 function run(farm:any, opts:any={}) {
  const events:string[]=[];let hatch=0
- const state={ferryArrival:new FerryArrivalPresentation(),committedRestClose:false,farm,panel:'rest',dialog:{open:true},value:String(farm.day),canConfirmRest,endDay,
+ const state={ferryArrival:new FerryArrivalPresentation(),committedRestClose:false,panelHistory:[],farm,panel:'rest',dialog:{open:true},value:String(farm.day),canConfirmRest,endDay,
   perform:(action:any)=>action().ok,playBaySound:(id:string)=>events.push(id),island:{showHatch:()=>hatch++},notify:()=>{},...opts}
  runInNewContext(`switch('sleep'){${sleep}}`,state)
  return {events,hatch,committedRestClose:state.committedRestClose}
@@ -26,6 +28,23 @@ test('an expedition arriving on sleep substitutes berth for dawn',()=>{
  assert.deepEqual(run(f),{events:['harbour.berth'],hatch:0,committedRestClose:true});assert.equal(f.freight.expeditions.active?.phase,'ready')
  // Ready but uncollected arrival is not replayed next day.
  assert.deepEqual(run(f),{events:['daybreak.shutters'],hatch:0,committedRestClose:true})
+})
+test('only a night reviewed from this voyage returns to its manifest; collecting is still a second gesture',()=>{
+ for(const mode of ['matched','other-voyage','ordinary-home','stale-day'] as const){
+  const farm=earlyFerryFarm();assert.ok(endDay(farm).ok);tendEarlyFerryFarm(farm)
+  assert.ok(sendFerryExpedition(farm,'mill-grain').ok)
+  const serial=farm.freight.expeditions.active!.serial,day=farm.day,coins=farm.coins,buns=farm.handmade.round,pages:string[]=[]
+  const panelHistory=mode==='ordinary-home'?[]:[{panel:'bay-freight',ferryMorning:mode==='other-voyage'?serial+1:serial}]
+  run(farm,{panelHistory,value:String(mode==='stale-day'?day-1:day),openPanel:(next:string,remember:boolean)=>{assert.equal(remember,false);pages.push(next)}})
+  assert.deepEqual(pages,mode==='matched'?['bay-freight']:[])
+  assert.equal(farm.day,day+(mode==='stale-day'?0:1));assert.equal(farm.coins,coins);assert.equal(farm.handmade.round,buns)
+  if(mode==='matched'){
+   assert.equal(panelHistory.length,0);assert.equal(farm.freight.expeditions.active?.phase,'ready')
+   assert.ok(receiveFerryExpedition(farm).ok);assert.equal(farm.coins,coins+5);assert.equal(farm.handmade.round,buns+1)
+   assert.equal(receiveFerryExpedition(farm).ok,false)
+  }
+ }
+ assert.equal(isGuardedAction('sleep'),true)
 })
 test('legacy ferry arrival substitutes berth for dawn',()=>{
  const f=createFarm();f.boatOwned=true;f.freight.ship={phase:'sailing',from:'home',to:'grove',arrivesOn:2,cargo:[]}
@@ -56,7 +75,7 @@ test('the exact close listener consumes committed sleep once and preserves later
  const events:string[]=[];let close!:()=>void
  const noop=()=>{},selection={reset:noop},salePresentation=new SalePresentation()
  salePresentation.open({kind:'market',key:'fruit:apple'},{index:0,scroll:0})
- const state={salePresentation,committedRestClose:true,dialog:{open:false,addEventListener:(_id:string,fn:()=>void)=>{close=fn}},
+ const state={salePresentation,stopCoopServices:noop,committedRestClose:true,dialog:{open:false,addEventListener:(_id:string,fn:()=>void)=>{close=fn}},
   transplantSelection:selection,berryNurserySelection:selection,berryRenewalSelection:selection,recipeSurplusSelection:selection,
   playBaySound:(id:string)=>events.push(id),island:{setViewMode:noop,setCoveFocus:noop},app:{dataset:{scene:''}},
   stopHarbour:noop,stopFishing:noop,stopWorkshop:noop,stopCookery:noop,stopArrangement:noop,
