@@ -3944,7 +3944,15 @@ app.addEventListener('click', async (event) => {
     case 'chicken-feed-open':
       if (panel === 'coop' && dialog.open && farm.island === 'home' && farm.buildingLevels.coop >= 2) openPanel('chicken-feed')
       break
-    case 'mix-chicken-feed': if(panel === 'chicken-feed' && dialog.open)perform(() => mixChickenFeed(farm, value), false, true); break
+    case 'mix-chicken-feed': {
+      const keyboardMix = event.detail === 0 && document.activeElement === control
+      if (panel === 'chicken-feed' && dialog.open && perform(() => mixChickenFeed(farm, value), false, true)
+        && keyboardMix && document.activeElement === closeButton) {
+        // The chosen recipe ran out. Review the new stock rather than arming Close or the other mix.
+        dialogContent.querySelector<HTMLElement>('[data-feed-stock]')?.focus()
+      }
+      break
+    }
     case 'feed': if(perform(() => feedChickens(farm), false, farm.progress.feed > 0))playBaySound('flock.feed', 1, 0); break
     case 'collect': if(perform(() => collectEggs(farm)))playBaySound('flock.eggs', 1, 0); break
     case 'unpack-egg-basket':perform(()=>unpackEggBasket(farm),false,true);break
