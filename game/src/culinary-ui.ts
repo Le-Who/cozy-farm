@@ -65,6 +65,8 @@ function recipeBookSupper(farm: FarmState, recipeId: string): string {
   return `<div class="recipe-book-supper">${control('Ужин вместе','supper-signature',recipeId,offer?.available ?? false)}<p>Расход: 1 порция + 1 ${fishDefinitions[fish].name.toLowerCase()}.${farm.village.mealOn===farm.day?' Сегодня общий ужин уже состоялся.':''}</p></div>`
 }
 
+const capacityDescription = (canCreate:boolean) => canCreate ? '' : 'aria-describedby="recipe-capacity-note"'
+
 function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeBookView):string {
   const count=farm.culinary.stock[recipe.id]??0, capacity=signatureBookCapacity(farm.culinary)
   const action=getSignatureAction(farm,recipe), batch=action.available&&action.items.every(item=>ingredientCount(farm,item)>=item.quantity*3), stored=getStoredSignature(farm,recipe.id)
@@ -83,7 +85,7 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
       <div class="signature-actions recipe-book-repeat">${control('Повторить ×1','make-signature',recipe.id,action.available)}${control('Партия ×3','batch-signature',recipe.id,batch)}</div>
       ${reason?`<p class="recipe-book-blocker" tabindex="-1" data-recipe-focus="blocker" role="status">${escapeRecipeText(reason)}</p>`:!batch?'<p class="recipe-book-blocker">Для партии ×3 нужно втрое больше каждого ингредиента.</p>':''}
       <section class="recipe-repeat-guide" aria-label="Точный повтор рецепта"><details data-repeat-guide="${recipe.id}"${reason||view.expandedRepeatId===recipe.id?' open':''}><summary>${recipeIngredientsDisclosureLabel}</summary><ul class="ingredients">${guide.items.map(art.stock).join('')}</ul><p class="recipe-repeat-note">Тот же состав, особенности и оформление. Для партии ×3 нужно втрое больше каждого ингредиента.</p></details>${guide.away?control('На домашнюю кухню','recipe-repeat-home',recipe.id):''}</section>
-      ${control('Готовить вручную','manual-signature',recipe.id,capacity.canCreate)}${!capacity.canCreate?`<p class="recipe-book-note">${capacity.message}</p>`:''}
+      ${control('Готовить вручную','manual-signature',recipe.id,capacity.canCreate,capacityDescription(capacity.canCreate))}
     </section>
     <section class="recipe-book-uses" aria-label="Применить готовые порции"><h2>Применить</h2>
       <div class="signature-actions">${control('Пикник · 1 порция','use-signature',recipe.id,count>0&&farm.culinary.picnic===null)}${farm.island==='home'?control('Продать…','sell-signature',recipe.id,count>0):''}</div>
@@ -120,7 +122,8 @@ export function signatureBook(farm:FarmState,art:Icons,state:RecipeBookView|stri
   const draft=farm.recipeDraft
   const status=renderPicnicStatus(farm)
   return `<div class="signature-book" data-selected-recipe="${selectedId??''}" data-mode="${view.mode??'index'}">
-    <section class="recipe-book-index" aria-label="Список рецептов">${status?`<details class="recipe-book-picnic recipe-book-picnic-index" data-recipe-disclosure="picnic-status-index"${view.disclosures?.includes('picnic-status-index')?' open':''}><summary>Пикник действует · до сна</summary>${status}</details>`:''}<div class="recipe-book-tools"><span class="recipe-book-capacity" aria-label="Рецептов в книге: ${recipes.length} из 24">${recipes.length}/24</span><div class="signature-book-tools">${control(`${art.icon('ui-apple-jam')}Варенье +`,'new-signature','preserves',capacity.canCreate)}${control(`${art.icon('ui-tart')}Тарт +`,'new-signature','tart',capacity.canCreate)}</div>${capacity.message?`<p class="signature-capacity" role="status">${capacity.message}</p>`:''}</div>
+    ${capacity.message?`<p id="recipe-capacity-note" class="signature-capacity" role="status">${capacity.message}</p>`:''}
+    <section class="recipe-book-index" aria-label="Список рецептов">${status?`<details class="recipe-book-picnic recipe-book-picnic-index" data-recipe-disclosure="picnic-status-index"${view.disclosures?.includes('picnic-status-index')?' open':''}><summary>Пикник действует · до сна</summary>${status}</details>`:''}<div class="recipe-book-tools"><span class="recipe-book-capacity" aria-label="Рецептов в книге: ${recipes.length} из 24">${recipes.length}/24</span><div class="signature-book-tools">${control(`${art.icon('ui-apple-jam')}Варенье +`,'new-signature','preserves',capacity.canCreate,capacityDescription(capacity.canCreate))}${control(`${art.icon('ui-tart')}Тарт +`,'new-signature','tart',capacity.canCreate,capacityDescription(capacity.canCreate))}</div></div>
       <div class="recipe-book-search"><label for="recipe-book-query">Найти рецепт<input id="recipe-book-query" type="search" data-recipe-query maxlength="100" value="${escapeRecipeText(view.query??'')}" placeholder="Название рецепта" aria-controls="recipe-book-results" autocomplete="off"></label>${control('Очистить','recipe-search-clear','',Boolean(view.query))}</div>
       <p class="recipe-book-search-status" role="status" aria-live="polite">${recipeBookSearchStatus(farm,view)}</p>
       ${draft?`<button class="recipe-book-draft" type="button" data-action="select-recipe" data-value="draft" aria-pressed="${selectedId==='draft'}"><strong>Черновик</strong><span>${draft.slots.map(part=>part?ingredientName(part):'ещё не выбрано').join(' + ')}</span><span aria-hidden="true">›</span></button>`:''}

@@ -195,3 +195,31 @@ test('a tasted last portion keeps the commissioned recipe repeatable, not archiv
     assert.ok(p.state.culinary.recipes.some(recipe => recipe.id === sibling))
   } finally { await server.close() }
 })
+
+test('a full book explains only new variants once, for both panes; exact repeats still work', async () => {
+  const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try {
+    const {signatureBook}=await server.ssrLoadModule('/src/culinary-ui.ts')
+    const {farm,first}=bookFarm()
+    assert.doesNotMatch(signatureBook(farm,art), /id="recipe-capacity-note"/)
+    farm.fruit.apple=100; farm.produce.wheat=100; farm.eggs=100
+    for (let i=1;i<=22;i++) {
+      const res=completeSignature(farm,{base:'tart',ingredients:[{id:'apple',quantity:2}]},{family:'decorate',fruit:[{ingredientId:'apple',x:-i/25,y:0,angle:0}],steps:['fruit']})
+      assert.ok(res.recipeId)
+    }
+    assert.equal(farm.culinary.recipes.length,24)
+    const before=structuredClone(farm)
+    for (const mode of ['index','detail']) {
+      const html=signatureBook(farm,art,{mode,selectedId:first})
+      assert.equal((html.match(/id="recipe-capacity-note"/g)??[]).length,1)
+      assert.equal((html.match(/aria-describedby="recipe-capacity-note"/g)??[]).length,3)
+      for (const a of ['new-signature','manual-signature']) assert.match(html,new RegExp('data-action="'+a+'"[^>]*disabled[^>]*aria-describedby="recipe-capacity-note"'))
+      for (const a of ['make-signature','batch-signature']) {
+        const button=html.match(new RegExp('<button[^>]*data-action="'+a+'"[^>]*>'))?.[0]
+        assert.ok(button);assert.doesNotMatch(button,/disabled|aria-describedby/)
+      }
+      assert.match(html,/Удалить пустой рецепт/)
+    }
+    assert.deepEqual(farm,before)
+  } finally {await server.close()}
+})

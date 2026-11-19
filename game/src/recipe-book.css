@@ -8,6 +8,9 @@
 .farm-dialog[data-panel=recipes] .dialog-back{top:6px;bottom:auto;left:10px;min-width:44px;min-height:44px}
 .farm-dialog[data-panel=recipes] .dialog-content{grid-row:2;height:100%;min-height:0;overflow:hidden;padding:0;margin:0}
 .signature-book{display:grid;grid-template-columns:264px minmax(0,1fr);height:100%;min-height:0;color:#502747;font-size:16px;line-height:1.4}
+/* Capacity belongs to the whole book, including when only one pane is shown. */
+.signature-book:has(>#recipe-capacity-note){grid-template-rows:auto minmax(0,1fr)}
+.signature-book>#recipe-capacity-note{grid-column:1/-1;margin:0;padding:6px 12px;border:0;border-bottom:1px solid #ceb888;border-radius:0}
 .recipe-book-index,.recipe-book-detail{min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .recipe-book-index{padding:12px;border-right:1px solid #cfb79e}
 .recipe-book-detail{padding:20px 24px}
