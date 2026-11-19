@@ -24,7 +24,7 @@ test('the last sale in a selected family offers All without activating it or foc
     const item=goods().find(row=>row.key===key)!,token=sales.view(key,item.count,item.price).token,coins=farm.coins
     let focused=''
     const stop=(name:string)=>({focus(){focused=name},scrollIntoView(){}})
-    const shell={querySelector:(s:string)=>s==='[data-market-sale-query]'?stop('search'):s==='[data-action="market-sell-group"][data-value="all"]'?stop('all'):null,
+    const shell={querySelector:(s:string)=>s==='[data-market-sale-empty]'&&!goods().some(row=>row.count>0)?stop('empty'):s==='[data-market-sale-query]'&&goods().some(row=>row.count>0)?stop('search'):s==='[data-action="market-sell-group"][data-value="all"]'?stop('all'):null,
       querySelectorAll:()=>searchMarketSales(goods(),group,query,family).items.map(row=>({dataset:{inlineKey:row.key},querySelector:()=>stop(row.key)}))}
     const ctx={farm,goods,searchMarketSales,marketInlineSales:sales,marketSellGroup:group,marketSaleFamily:family,marketSaleQuery:query,
       dialogContent:shell,inlineSaleContext:()=>({item,token}),sellMarketItem,perform:(act:()=>{ok:boolean})=>act().ok,playBaySound(){}}
@@ -37,7 +37,7 @@ test('the last sale in a selected family offers All without activating it or foc
   assert.equal(after('produce:tomato','harvest','produce:tomato'),'produce:tomato','partial sale retains its own control')
   assert.equal(after('variants:apple:dew','harvest','fruit:apple','dew'),'search','a filtered sibling is not an exhausted family')
   assert.equal(after('produce:carrot','harvest',undefined),'search')
-  assert.equal(after('produce:carrot','harvest','produce:carrot','',true),'search','no other goods to browse')
+  assert.equal(after('produce:carrot','harvest','produce:carrot','',true),'empty','no other goods to browse: the empty notice replaces search')
 })
 
 function runStep(direction: 'more'|'less', raw: string, detail: number, active = true) {

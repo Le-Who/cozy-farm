@@ -69,13 +69,15 @@ test('search or a product group cannot activate a whole-farm sale, including a s
     ['all','',false,false],['all','  ',true,true],['all','',true,true],
   ] as const){
     const farm=structuredClone(earned),expected=structuredClone(earned),control={}
+    let focusedEmpty=false
     const state={farm,marketSellGroup:group,marketSaleQuery:query,panel:'market',marketTab:'sell',dialog:{open:true},
-      dialogContent:{contains:(candidate:unknown)=>attached&&candidate===control},control,salePresentation:{},sellProduce,
+      dialogContent:{contains:(candidate:unknown)=>attached&&candidate===control,querySelector:(selector:string)=>selector==='[data-market-sale-empty]'&&!getSale(farm).items?{focus:()=>{focusedEmpty=true}}:null},control,salePresentation:{},sellProduce,
       perform:(action:()=>{ok:boolean})=>action().ok,playBaySound:()=>{},getSale,quantity:(v:number)=>String(v),button:(label:string)=>label}
     runInNewContext(code,state)
     if(authorized)assert.ok(sellProduce(expected).ok)
     assert.equal(getSale(farm).items,authorized?0:getSale(earned).items);assert.deepEqual(farm,expected)
     const rendered=runInNewContext(stripTypeScriptTypes(policy+';marketBulkSaleControls()'),state)
-    assert.equal(rendered.includes('Продать всё'),group==='all'&&!query.trim())
+    assert.equal(rendered.includes('Продать всё'),getSale(farm).items>0&&group==='all'&&!query.trim())
+    assert.equal(focusedEmpty,authorized)
   }
 })

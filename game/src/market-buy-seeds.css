@@ -74,4 +74,8 @@
  [data-market-seed-browser] .market-seed-grid>section {grid-template-columns:100px minmax(0,1fr);grid-template-rows:minmax(86px,auto) auto;padding:8px;gap:6px 10px}
  .market-seed-art,.market-seed-art>.icon {height:86px}
  .market-seed-copy h2 {margin-bottom:6px}
+ /* Keep the pack context in Tab's scroll area only when the dialog has room for both rows. */
+ @media (min-height:320px) and (max-width:600px), (min-height:375px){
+  [data-market-seed-browser] .market-seed-grid .dialog-button:focus-visible {scroll-margin-block-start:7.5rem}
+ }
 }

@@ -1185,7 +1185,8 @@ function wholeInventorySaleView() {
 function marketBulkSaleControls() {
   if (!wholeInventorySaleView()) return ''
   const sale = getSale(farm)
-  return `<span>${sale.items ? `Всего: ${quantity(sale.items,'предмет')} · ${quantity(sale.coins,'монета')}` : 'Запасы пусты'}</span>${button('Продать всё','sell',sale.items>0&&!salePresentation.place)}`
+  if (!sale.items) return ''
+  return `<span>Всего: ${quantity(sale.items,'предмет')} · ${quantity(sale.coins,'монета')}</span>${button('Продать всё','sell',!salePresentation.place)}`
 }
 function marketInlineCard(item: ReturnType<typeof goods>[number]) {
   const view=marketInlineSales.view(item.key,item.count,item.price), quote=view.quote, receipt=view.receipt
@@ -1244,7 +1245,7 @@ function confirmInlineSale(control: Element) {
     if (stock.some(row=>row.count>0) && searchMarketSales(stock,'harvest','',marketSaleFamily).total===0)
       focus=dialogContent.querySelector<HTMLElement>('[data-action="market-sell-group"][data-value="all"]')
   }
-  focus??=dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]')
+  focus??=dialogContent.querySelector<HTMLElement>('[data-market-sale-empty]') ?? dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]')
   focus?.focus({preventScroll:true})
   if(!next)focus?.scrollIntoView({block:'nearest',inline:'nearest'})
 }
@@ -1287,6 +1288,11 @@ function marketCards() {
     </ul>` + (isProjectComplete(farm,'fair') ? nav(button('Кондитерская','workshop',true,{secondary:true})) : '')
   }
   if (marketTab === 'sell') {
+    const destinations = stall + (farm.culinary.recipes.length ? nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})) : '')
+    // A zero-result filter can still have stock elsewhere. Only suppress browsing when the entire market is empty.
+    if (getSale(farm).items === 0) return `<section data-market-sale-browser><div class="market-controls">${tabs}</div>
+      <p class="market-sale-search-empty" data-market-sale-empty tabindex="-1" role="status">Пока нет товаров для продажи.</p>
+      ${destinations ? `<footer class="market-inline-tools">${destinations}</footer>` : ''}</section>`
     const bulk = marketBulkSaleControls()
     return `<section data-market-sale-browser><div class="market-controls">${tabs}</div>
       <div class="market-sale-filters"><div class="market-sale-search"><label for="market-sale-query"><span class="sr-only">Найти товар</span><input id="market-sale-query" data-market-sale-query type="search" maxlength="100" value="${escapeHtml(marketSaleQuery)}" placeholder="Найти товар" aria-controls="market-sale-results" autocomplete="off"></label>${button('Очистить','market-sale-clear',Boolean(marketSaleQuery),{secondary:true})}</div>
@@ -1294,8 +1300,7 @@ function marketCards() {
       ${marketSellGroup==='harvest'?`<div class="market-inline-family"><select data-market-sale-family aria-label="Товар и его варианты"><option value="harvest"${!marketSaleFamily?' selected':''}>Весь урожай</option>${marketFamilyOptions(marketSaleFamily)}</select></div>`:''}
       <p class="market-sale-search-status${marketSaleQuery||marketSellGroup!=='all'?'':' sr-only'}" role="status" aria-live="polite">${marketSaleSearchStatus()}</p>
       <div id="market-sale-results">${marketSaleResults()}</div>
-      <footer class="market-inline-tools">${marketSellGroup==='all'?`<div class="market-total"${bulk?'':' hidden'}>${bulk}</div>`:''}${stall}
-      ${farm.culinary.recipes.length?nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})):''}</footer></section>`
+      <footer class="market-inline-tools">${marketSellGroup==='all'?`<div class="market-total"${bulk?'':' hidden'}>${bulk}</div>`:''}${destinations}</footer></section>`
   }
 
   const categories=`<nav class="market-category-icons${marketCategory==='buildings'?' market-building-categories':''}" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}<span>${category.name}</span></button>`).join('')}</nav>`
@@ -3797,7 +3802,10 @@ app.addEventListener('click', async (event) => {
       break
     case 'sell':
       if(dialog.open && panel==='market' && marketTab==='sell' && wholeInventorySaleView() && !salePresentation.place && dialogContent.contains(control)
-        && perform(() => sellProduce(farm), false, farm.progress.sell > 0))playBaySound('trade.receive')
+        && perform(() => sellProduce(farm), false, farm.progress.sell > 0)){
+        playBaySound('trade.receive')
+        dialogContent.querySelector<HTMLElement>('[data-market-sale-empty]')?.focus({preventScroll:true})
+      }
       break
     case 'inline-sale-step': {
       const context=inlineSaleContext(control), direction=control.dataset.step

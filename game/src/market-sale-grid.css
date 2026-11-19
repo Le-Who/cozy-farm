@@ -98,3 +98,9 @@
  .market-inline-card{grid-template-columns:100px minmax(0,1fr);grid-template-rows:86px auto 18px;padding:8px}
  .market-inline-art,.market-inline-art>.icon,.market-inline-art>.variant-art{height:86px}
 }
+
+/* An empty inventory does not need a viewport-height product shelf. */
+.farm-dialog:has([data-market-sale-empty]) { width:min(760px,calc(100vw - 16px)); }
+.farm-dialog:has([data-market-sale-empty]) .dialog-panel { height:auto; }
+[data-market-sale-browser]:has([data-market-sale-empty]) { height:auto;min-height:0; }
+[data-market-sale-empty]:focus-visible { outline:3px solid #805789;outline-offset:-3px; }
