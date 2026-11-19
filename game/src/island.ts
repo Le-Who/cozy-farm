@@ -15,6 +15,7 @@ import { createWeatherEffects } from './weather-effects';
 import { isLunarTide } from './tide';
 import { hasShoal, shoalFindIds } from './shoal';
 import { createSupportShadow, type SupportShadow } from './support-shadow';
+import { festivalFruitArt } from './festival-fruit';
 import { festivalRewardArt } from './festival-art';
 import { defaultHenPositions, henIdlePoint, projectHenToGround, type HenNativePoint } from './hen-roaming';
 import { getCoveEcology } from './shoreline';
@@ -764,6 +765,14 @@ export function createIsland(
       };
       drawReward(prop.x, prop.y);
       if (tradition === 'harvest') {
+        const fruit = farm.festivals.harvestExhibit;
+        const artKey = fruit && `festival-fruit-${fruit.item}`, source = artKey && art.image(artKey);
+        if (fruit && artKey && source && art.image(key)) {
+          // Front fruit of the top crate in the original 566×496 festival sprite.
+          const contact = scenePoint(prop.x - 14, prop.y - 75);
+          art.draw(world,artKey,contact.x,contact.y,18*sceneScale,18*sceneScale,
+            {baseline:1,footY:scenePoint(0,prop.y).y+.1,mipmaps:true}, finishedIngredient(source,[fruit.trait]));
+        }
         if (tier >= 2) drawReward(470, 705, .6);
         if (tier >= 3) drawReward(590, 705, .55);
       } else if (tradition === 'lights') {
@@ -2057,6 +2066,8 @@ export function createIsland(
       for (const tradition of ['harvest', 'lights', 'stage'] as const) {
         if (next.festivals.completed[tradition] > 0) art.load(`festival-${tradition}`, `lavender/festivals/${tradition}`, [1, 1]);
       }
+      const exhibit = next.festivals.harvestExhibit;
+      if (exhibit) art.load(`festival-fruit-${exhibit.item}`,festivalFruitArt[exhibit.item].path,[1,1]);
       for (const instrument of ['handpan', 'bass']) art.load(`festival-${instrument}`, `lavender/bay/music-${instrument}`, [1, 1]);
       load('village-bea', 6);
       load('village-finn', 6);

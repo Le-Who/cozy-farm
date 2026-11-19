@@ -1425,7 +1425,11 @@ export function getVillageHomeCount(farm: FarmState): number {
 }
 
 function festivalContext(farm:FarmState):FestivalContext {
-  return {...farm,count:item=>ingredientCount(farm,item),take:item=>removeStock(farm,item),value:item=>unitPrice(item,farm)*item.quantity};
+  return {...farm,count:item=>ingredientCount(farm,item),value:item=>unitPrice(item,farm)*item.quantity,take:item=>{
+    removeStock(farm,item);
+    // An older warehouse can hold a genuine fruit whose album entry was never recorded.
+    if (item.kind === 'variants') (farm.discoveries[item.item] ??= {})[item.trait] = true;
+  }};
 }
 function syncFestivalRewards(farm:FarmState):void {
   farm.freight.harvestStore=Math.min(3,farm.festivals.completed.harvest);
@@ -2633,6 +2637,9 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   const variants = restoreCollection(savedVariants, traitIds, (entry): entry is number => isQuantity(entry) && entry > 0);
   const discoveries = restoreCollection(savedDiscoveries, discoveryIds, (entry): entry is true => entry === true);
   if (!orders || !projects || !variants || !discoveries || !isRecord(savedDishes)) return undefined;
+  for (const exhibit of [festivals.harvestExhibit, festivals.active?.exhibit]) {
+    if (exhibit && !discoveries[exhibit.item]?.[exhibit.trait]) return undefined;
+  }
   const dishes = { strawberryTart: 0, blueberryTart: 0, raspberryTart: 0, appleJam: 0, farmhouseBread: 0, orchardPreserves: 0, honeyCake: 0, honeyBiscuits: 0, honeyPear: 0, windParfait: 0, ...savedDishes };
   if (typeof canUpgraded !== 'boolean' || !isQuantity(workToday) || !isBuildingLevels(buildingLevels)) return undefined;
   if (farmhouseSpecialization !== null && !isId(specializationIds, farmhouseSpecialization)) return undefined;
