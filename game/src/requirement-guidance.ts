@@ -163,8 +163,18 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
 }
 
 /** Read-only wayfinding. Following a condition never purchases, harvests, rests or delivers. */
-export function getRequirementHint(farm: FarmState, requirement: Requirement): RequirementHint {
-  if (requirement.kind === 'stock') return stock(farm, requirement.item);
+export function getRequirementHint(farm: FarmState, requirement: Requirement, origin?: 'saved-recipe'): RequirementHint {
+  if (requirement.kind === 'stock') {
+    const item = requirement.item, hint = stock(farm, item);
+    // Keep this exact recipe on Back. A warehouse, crossing or planting task keeps its own route.
+    if (origin === 'saved-recipe' && item.kind === 'fruit' && farm.fruit[item.item] < item.quantity && hint.action.target === 'visit-tree' &&
+        (farm.island === 'home' || farm.island === 'grove')) {
+      const tree = farm.trees[farm.island][Number(hint.action.value)];
+      if (tree?.tree === item.item && tree.fruitReady > Number(!!tree.trait))
+        return { ...route('inspect-tree', hint.action.value), selector:'[data-action="pick-fruit"]' };
+    }
+    return hint;
+  }
   if (requirement.kind === 'delivery') return route('guide-delivery');
   if (requirement.kind === 'building') return atHome(farm, route('show-upgrade',requirement.building));
   const id = requirement.id;
