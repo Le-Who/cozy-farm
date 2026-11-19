@@ -21,6 +21,7 @@ import { RecipeSurplusSelection, renderRecipeSurplus } from './recipe-surplus-ui
 import './recipe-surplus.css'
 import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus, berrySeedPreview, revealBerrySeedPreview } from './berry-renewal-ui'
 import { getBerryPropagation, getBerryRenewalPreview, harvestBerryAndKeep } from './farm'
+import { saveGardenSeedPacket } from './garden-harvest-seeds'
 import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
 import { activeGardenPlan, plannedCropAt, seedForBed, followGardenPlan, removeGardenPlan } from './garden-plans'
 import { GardenPlanEditor, renderGardenPlans, renderGardenMode, gardenPlanToken } from './garden-plans-ui'
@@ -1036,6 +1037,7 @@ function marketOrders() {
   selectedMarketOrder = board.selected
   const order = getMarketOrders(farm).find(order => order.lane === board.selected)
   const next = getNextMarketOrders(farm).find(order => order.lane === board.selected)
+  const warehouse = board.choices.find(choice=>choice.id===board.selected)?.warehouseRequest
   const detail = board.selected === 'harbor' ? `<p class="market-order-location">Причал рощи · можно вносить частями</p>${harborCard()}` : order
     ? `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
       <header class="order-header"><h2 id="order-${order.lane}">${order.name}</h2>
@@ -1043,6 +1045,7 @@ function marketOrders() {
       ${order.status === 'delivered' ? `<p class="order-done">✓ Сегодня доставлено</p>${next ? renderNextMarketOrder(next,marketOrderStockTile)+button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)}) : ''}`
         : `<ul class="ingredients order-items">${order.items.map(marketOrderStockTile).join('')}</ul>
           ${order.status === 'upgrade' ? button('Улучшить дом', 'upgrades', true, { secondary: true })
+            : warehouse ? button('К домашнему складу', 'warehouse-supply', true, {value:warehouse,context:order.name})
             : button('Доставить', 'deliver-order', order.status === 'ready', { value: order.lane, context: order.name })}`}
     </section>` : ''
   return `<div class="market-orders-workspace">${renderMarketOrderPicker(board,icon)}<div class="market-order-detail" tabindex="-1" role="region" aria-labelledby="${board.selected==='harbor'?'harbor-order':`order-${board.selected}`}">${detail}</div></div>
@@ -3895,6 +3898,12 @@ app.addEventListener('click', async (event) => {
         }
         playBaySound('trade.pay')
       }
+      break
+    }
+    case 'garden-save-seeds': {
+      if(panel!=='garden-plans'||!dialog.open||gardenEditor.draft||!gardenEditor.shopping)break
+      if(!perform(()=>saveGardenSeedPacket(farm,gardenEditor.slot,gardenEditor.shopping!,value)))drawPanel()
+      else if(event.detail===0)dialogContent.querySelector<HTMLElement>('[data-garden-basket-total]')?.focus({preventScroll:true})
       break
     }
     case 'garden-shop': case 'garden-shop-scope': case 'garden-shop-back': case 'garden-buy-seeds': case 'garden-slot': case 'garden-edit': case 'garden-copy': case 'garden-cancel': case 'garden-brush': case 'garden-paint': case 'garden-save': case 'garden-follow': case 'garden-delete': case 'garden-remove': case 'garden-bed': {

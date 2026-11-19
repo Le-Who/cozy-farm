@@ -34,3 +34,5 @@
   .garden-plan-preview .garden-plan-controls [data-action="garden-follow"]:disabled{display:none}
   .garden-plan-preview .garden-plan-guidance-desktop{display:block}
 }
+
+.garden-harvest-seeds{margin:10px 0}.garden-harvest-seeds h3{margin:0 0 5px}.garden-harvest-seeds>div{display:grid;justify-items:start;gap:3px;margin:7px 0}.garden-harvest-seeds small{color:var(--muted)}
