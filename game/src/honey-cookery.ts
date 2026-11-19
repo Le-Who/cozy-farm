@@ -332,6 +332,8 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     if(held&&'tool' in held&&held.tool!=='hand'&&!drainCream)returnTool(held.tool)
     if (held && 'fruit' in held && commit) { if (placeHoneyFruit(model, held.fruit, normalized(cursor), 'peach', fruitAngle)) {playBaySound('cook.fruit-cream');landings.set(held.fruit, createFruitLanding((reduced.matches?2:8)/surface.ry,0));landingXY.set(held.fruit,{...fruitFollow});incorporated.set(held.fruit,0)} }
     if(commit&&held&&'tool' in held&&held.tool==='hand')playBaySound('cook.dough-release',.65)
+    // Lifting ends real blade contact even when its screen position is still on the skin.
+    if (commit && held && 'tool' in held && held.tool === 'knife' && !knifeTransport) pearView?.trace(cursor,cursor,recordKnifeContact,true)
     pearView?.releaseTrace();foods.forEach(object => object.dough?.release()); grippedDough=null; gripMaterial=null; if(commit&&held&&'tool' in held&&held.tool==='honey'&&(family==='honeyPear'||family==='windParfait')&&coating.value>.005){const target=family==='windParfait'&&onHoneySurface(normalized(contact),1.12)?parfaitReceivingPoint(contact):contact;honeyDrop={body:createFruitLanding(Math.max(.02,(target.y-strandTip.y)*.55/surface.ry),0),x:target.x,targetY:target.y,hit:false,fade:0,flow:coating.value}};strandTail = commit && held && 'tool' in held && held.tool === 'honey' && coating.value>.005 ? 1 : 0
     if(!commit){honeyDrop=null;coating.value=coating.velocity=0}
     if(!commit)setBaySoundContact(honeySound,false);setBaySoundContact('cook.batter-stir',false);if(!drainCream)setBaySoundContact('cook.cream-flow',false)

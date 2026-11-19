@@ -212,3 +212,30 @@ test('jitter, a short nick and circling on the skin do not finish a pear', () =>
     } finally { k.dispose() }
   }
 })
+
+test('lifting on the far skin fits the same measured pass as continuing off the edge; cancellation does not', () => {
+  for (const finish of ['exit', 'lift', 'cancel'] as const) for (const reverse of [false,true]) {
+    const k=kitchen()
+    try {
+      for (const [id,cx] of [375,610].entries()) {
+        const y=429, edge=(sign:number)=>{
+          let lo=0,hi=100
+          for(let j=0;j<12;j++){const mid=(lo+hi)/2;if(k.pearView.wholeHit({x:cx+sign*mid,y}))lo=mid;else hi=mid}
+          return cx+sign*(lo-1)
+        }
+        const a=edge(reverse?1:-1),b=edge(reverse?-1:1)
+        const at=(t:number)=>({x:a+(b-a)*t,y:y+3.0*Math.sin(3*Math.PI*t)})
+        assert.ok(k.pearView.wholeHit(at(0))&&k.pearView.wholeHit(at(1)))
+        k.send('pointerdown',at(0))
+        for(let j=1;j<=36;j++)k.send('pointermove',at(j/36))
+        const last=at(1),outside={x:last.x+Math.sign(b-a)*5,y:last.y}
+        if(finish==='exit'){assert.equal(k.pearView.wholeHit(outside),false);k.send('pointermove',outside)}
+        k.send(finish==='cancel'?'pointercancel':'pointerup',finish==='exit'?outside:last)
+        if(finish==='cancel'){assert.equal(k.model.cuts.size,0);assert.equal(k.model.stage,'cut');break}
+        assert.ok(k.model.cuts.has(id),`${finish}, reverse=${reverse}, pear ${id}: ${k.model.cutTracks[id].bins.size}/16`)
+        assert.ok(k.model.cutTracks[id].bins.size>=14)
+      }
+      if(finish!=='cancel'){assert.equal(k.model.stage,'glaze');assert.deepEqual(k.model.steps,['cut-pears'])}
+    } finally { k.dispose() }
+  }
+})
