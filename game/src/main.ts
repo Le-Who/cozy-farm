@@ -28,7 +28,7 @@ import { GardenPlanEditor, renderGardenPlans, renderGardenMode, gardenPlanToken 
 import './garden-plans.css'
 import { inviteNeighborVisit, finishNeighborVisit, visitActivities } from './neighbor-visits'
 import { renderNeighborVisits, renderVisitRest } from './neighbor-visits-ui'
-import { introduceHenToVisitor } from './farm'
+import { canIntroduceHenToVisitor, introduceHenToVisitor } from './farm'
 import './neighbor-visits.css'
 import { restoreLegacyFarm } from './farm-save-migration'
 import { getHarbourFishRoute, renderHarbourFishChoice } from './harbour-fish-route'
@@ -174,7 +174,7 @@ import {
   capeDishIds,
   canUpgradePrice,
   beginFishingTrip,
-  finishFishingTrip,
+  finishFishingTrip, type LandedFish,
   cancelFishingTrip,
   getFishingTripConfig,
   bakeWorkshop,
@@ -307,10 +307,11 @@ const farm = await saveStore.load() ?? createFarm()
 let saveAvailable = !saveStore.blocked
 let saveRecovery: ReturnType<typeof mountSaveRecovery> | undefined
 
+let fishingLanding: LandedFish | undefined
 let pendingSaves = 0
 function saveFarm() {
   pendingSaves++
-  return saveStore.save(farm).then(saved => {
+  return saveStore.save(fishingLanding?.saveSnapshot() ?? farm).then(saved => {
     pendingSaves--
     const changed = saveAvailable !== saved
     saveAvailable = saved
@@ -1379,6 +1380,12 @@ let cookeryGame: ReturnType<typeof createCookery> | undefined
 let arrangementGame: ReturnType<typeof createArrangement> | undefined
 
 function stopFishing() {
+  // The save snapshot includes this default keep. Move it from the hook to the live bag.
+  if (fishingLanding) {
+    fishingLanding.keep()
+    fishingLanding = undefined
+    status()
+  }
   fishingPractice?.cancel()
   fishingPractice = undefined
   fishingGame?.destroy()
@@ -1522,6 +1529,7 @@ function repeatRequestedFood() {
 
 function mountFishing(practiceOnly = false) {
   stopFishing()
+  let castToken: number | undefined
   const practice = practiceOnly ? createFishingPractice(farm) : undefined
   if (practiceOnly ? !practice : !getFishAction(farm).available) return
   fishingPractice = practice
@@ -1543,7 +1551,7 @@ function mountFishing(practiceOnly = false) {
       }
       const trip = beginFishingTrip(farm)
       if (!trip.ok || trip.token === undefined) { notify(trip.message, false); return false }
-      fishingToken = trip.token
+      castToken = fishingToken = trip.token
       island.setFishing(true)
       saveFarm()
       return true
@@ -1557,12 +1565,23 @@ function mountFishing(practiceOnly = false) {
         island.setFishing(false)
         return practice.finish(catches)
       }
-      const token = fishingToken
-      fishingToken = undefined
+      const token = castToken
+      if (token === undefined || fishingToken !== token) return false
+      castToken = fishingToken = undefined
       island.setFishing(false)
-      if (token === undefined) return false
-      perform(() => finishFishingTrip(farm, token, catches), false, true)
-      return getFishAction(farm).available
+      perform(() => {
+        const result = finishFishingTrip(farm, token, catches, true)
+        fishingLanding = result.landed
+        return result
+      }, false, true)
+      const landed = fishingLanding, canRecast = getFishAction(farm).available
+      if (!landed) return canRecast
+      return { canRecast, index: landed.index, release() {
+        if (landed !== fishingLanding || !landed.release()) return false
+        fishingLanding = undefined
+        saveFarm()
+        return true
+      } }
     },
   })
   host.querySelector<HTMLButtonElement>('.fishing-practice-shore, .fishing-controls .fishing-action')?.focus({ preventScroll: true })
@@ -2888,14 +2907,19 @@ function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 
       treeSlot = target.index
       openPanel('tree')
       break
-    case 'hen':
-      if (farm.pettedChickens.includes(target.index)) {
-        playBaySound(henGesture === 'settle' ? 'flock.settle' : 'flock.stroke', 1, 0)
-        notify(`${henFriends[target.index].name} снова радостно кудахчет.`)
-      } else {
-        perform(() => petChicken(farm, target.index), false, true) && playBaySound(henGesture === 'settle' ? 'flock.settle' : 'flock.stroke', 1, 0)
+    case 'hen': {
+      const id = target.index
+      const petted = farm.pettedChickens.includes(id)
+      const meeting = henGesture === 'stroke' && canIntroduceHenToVisitor(farm,id)
+      const sound = henGesture === 'settle' ? 'flock.settle' : 'flock.stroke'
+      if (petted && !meeting) {
+        playBaySound(sound, 1, 0)
+        notify(`${henFriends[id].name} снова радостно кудахчет.`)
+      } else if (perform(() => petted ? introduceHenToVisitor(farm,id) : petChicken(farm,id), false, !meeting)) {
+        playBaySound(sound, 1, 0)
       }
       break
+    }
     case 'salt': if (perform(() => gatherSeaSalt(farm))) playBaySound('gather.salt', 1, 0); break
   }
 }

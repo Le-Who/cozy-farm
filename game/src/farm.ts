@@ -1113,7 +1113,25 @@ export function beginFishingTrip(farm: FarmState): ActionResult & { token?: numb
   return { ok: true, message: 'Опустите крючок, а затем поднимите улов.', token, config:copyFishingTripConfig(config) };
 }
 
-export function finishFishingTrip(farm: FarmState, token: number, catchResult: number | readonly FishingLoot[]): ActionResult {
+/** One actual landed fish stays on this hook, never in sellable/cookable stock.
+ * The save projects the normal keep outcome if the player reloads the open result. */
+function holdLandedFish(farm: FarmState, token: number, index: number, species: 'perch' | 'seaBass') {
+  const { day, island } = farm;
+  let held = true;
+  return {
+    index, species,
+    saveSnapshot: () => held ? { ...farm, fish: { ...farm.fish, [species]: farm.fish[species] + 1 } } : farm,
+    keep() { if (held) { held = false; farm.fish[species] += 1; } },
+    release() {
+      if (!held || farm.fishingTripSerial !== token || farm.day !== day || farm.island !== island) return false;
+      held = false;
+      return true;
+    },
+  };
+}
+export type LandedFish = ReturnType<typeof holdLandedFish>;
+
+export function finishFishingTrip(farm: FarmState, token: number, catchResult: number | readonly FishingLoot[], atLiveHook = false): ActionResult & { landed?: LandedFish } {
   const trip = farm.pendingFishingTrip;
   if (!trip || token !== trip.token) return failure('Эта рыбалка уже закончилась.');
   if (typeof catchResult === 'number' ? !isQuantity(catchResult) : !Array.isArray(catchResult)
@@ -1128,11 +1146,14 @@ export function finishFishingTrip(farm: FarmState, token: number, catchResult: n
     : catchResult.slice(0, trip.config.capacity);
   const remaining = Math.max(0, getFishLimit(farm, trip.island) - farm.fishCaughtToday[trip.island]);
   let fishCount = 0, junk = 0;
+  let landed: LandedFish | undefined;
   const brought: string[] = [];
-  for (const item of catches) {
+  for (const [index, item] of catches.entries()) {
     if (item.kind === 'fish') {
       if (fishCount >= remaining) continue;
-      farm.fish[item.species] += 1;
+      if (atLiveHook && !landed && item.variant === 'regular' && (item.species === 'perch' || item.species === 'seaBass')) {
+        landed = holdLandedFish(farm, token, index, item.species);
+      } else farm.fish[item.species] += 1;
       discoverBay(farm, item.species);
       fishCount++;
       brought.push(fishDefinitions[item.species].name.toLowerCase());
@@ -1146,8 +1167,8 @@ export function finishFishingTrip(farm: FarmState, token: number, catchResult: n
   if(fishCount>0)noteFestivalActivity(farm.festivals,'fish');
   if(catches.some(item=>item.kind==='shell'))noteFestivalActivity(farm.festivals,'shore');
   if (catches.length) farm.workToday += 1;
-  const message = brought.length ? `Улов принесён домой: ${brought.join(', ')}.` : junk ? 'Вода стала чище.' : 'Крючок пуст. Попробуйте ещё раз.';
-  return { ok: true, message: message + (junk ? ` Убрано: ${ruCount(junk, 'предмет', 'предмета', 'предметов')} мусора.` : '') };
+  const message = landed ? `Улов у берега: ${brought.join(', ')}.` : brought.length ? `Улов принесён домой: ${brought.join(', ')}.` : junk ? 'Вода стала чище.' : 'Крючок пуст. Попробуйте ещё раз.';
+  return { ok: true, ...(landed ? { landed } : {}), message: message + (junk ? ` Убрано: ${ruCount(junk, 'предмет', 'предмета', 'предметов')} мусора.` : '') };
 }
 
 export function cancelFishingTrip(farm: FarmState, token?: number): ActionResult {
@@ -2016,9 +2037,14 @@ export function moveHen(farm: FarmState, id: number, point: HenNativePoint): Act
   return { ok: true, message: '' };
 }
 
+export function canIntroduceHenToVisitor(farm: FarmState, id: number): boolean {
+  const visit = farm.neighborVisits.active;
+  return farm.island === 'home' && isChickenId(id, farm.flockSize) && !!visit && visit.startedOn === farm.day
+    && visitActivities[visit.activity].kind === 'hen' && !visit.observation;
+}
+
 export function introduceHenToVisitor(farm: FarmState, id: number): ActionResult {
-  if (farm.island !== 'home' || !isChickenId(id, farm.flockSize) || !farm.neighborVisits.active
-    || visitActivities[farm.neighborVisits.active.activity].kind !== 'hen' || farm.neighborVisits.active.observation)
+  if (!canIntroduceHenToVisitor(farm, id))
     return failure('Сначала пригласите соседа познакомиться со стаей.');
   return { ok: true, message: noteNeighborVisit(farm, 'hen', henFriends[id].name, henFriends[id].character).trim() };
 }

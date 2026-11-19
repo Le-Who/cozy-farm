@@ -11,6 +11,8 @@ import {
 } from './fishing-model';
 import './fishing.css';
 
+type HookChoice = { canRecast: boolean; index: number; release(): boolean };
+
 export type FishingGameOptions = {
   capacity: number;
   maxDepth: number;
@@ -21,7 +23,7 @@ export type FishingGameOptions = {
   practiceOnly?: boolean;
   onCast?: () => boolean | void;
   /** Return false when the cast used the last available attempt. */
-  onFinish: (result: { count: number; depth: number; catches: FishingLoot[] }) => boolean | void;
+  onFinish: (result: { count: number; depth: number; catches: FishingLoot[] }) => HookChoice | boolean | void;
   onAgain?: () => void;
   /** Explicit opt-in after the rewarded daily quota is exhausted. */
   onPractice?: () => void;
@@ -339,6 +341,8 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
   let halfHeight = 5.3;
   let calloutUntil = 0;
   let caughtAt = -Infinity;
+  // Simulation time stops at landing; this brief departure uses visible frame time.
+  let swimmingAway: { id: number; age: number; x: number; y: number; angle: number } | undefined;
   const abort = new AbortController();
   const signal = abort.signal;
   prepareBaySoundScene(fishingSoundBank, signal)
@@ -535,7 +539,7 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     float.position.x = (model.x - .4) * .12;
     surfaceRipple.position.x = float.position.x;
     if (!reducedMotion.matches) float.position.y = Math.sin(model.time * 2) * .045;
-    fishTime.value = reducedMotion.matches ? 0 : model.time;
+    fishTime.value = reducedMotion.matches ? 0 : model.time + Math.min(swimmingAway?.age ?? 0, 1.25);
     waterTime.value = plantTime.value = reducedMotion.matches ? 0 : model.time;
     // Follow the physical camera; depth only pans through the artwork's safe cover overflow.
     camera.getWorldDirection(backgroundForward);
@@ -550,7 +554,18 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       const fish = model.fish[i];
       const caughtIndex = model.caught.indexOf(fish.id);
       const bodyScale = fishingCatchScale(fish);
-      if (caughtIndex >= 0) {
+      if (swimmingAway?.id === fish.id) {
+        const swim = swimmingAway;
+        swim.age += dt;
+        const t = Math.min(1, swim.age / 1.25), dir = swim.x < 0 ? 1 : -1;
+        group.visible = !reducedMotion.matches && t < 1;
+        group.position.set(swim.x + (dir * (halfWidth + 1.7) - swim.x) * t * t,
+          swim.y - Math.sin(t * Math.PI / 2) * 1.2, 1.25);
+        const facing = fish.direction === dir ? dir : fish.direction * Math.cos(Math.PI * Math.min(1, 4 * t));
+        const size = bodyScale * (.66 + .34 * t);
+        group.scale.set(facing * size, size, .66);
+        group.rotation.z = swim.angle * Math.max(0, 1 - 4 * t);
+      } else if (caughtIndex >= 0) {
         const angle = isFish ? fish.direction * (.95 + Math.sin(model.time * 3 + i) * (reducedMotion.matches ? 0 : .05)
           + (caughtIndex === model.caught.length - 1 ? catchSpring : 0)) : -.12;
         const mouth = fishingCatchMouth(fish);
@@ -585,7 +600,9 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
       clearKeys(); releasePointer();
       const catches = model.caught.map(id => fishingCatchLoot(model.fish.find(fish => fish.id === id)!, options.fish));
       const depth = Math.round(model.deepest / fishingDepth * maxDepth);
-      const canRecast = options.onFinish({ count: catches.length, depth, catches }) !== false;
+      const outcome = options.onFinish({ count: catches.length, depth, catches });
+      const choice = typeof outcome === 'object' ? outcome : undefined;
+      const canRecast = choice ? choice.canRecast : outcome !== false;
       if (destroyed) return;
       resultTitle.textContent = options.practiceOnly ? 'Тренировка завершена' : catches.length ? 'Ваш улов' : 'Пустой крючок';
       resultSummary.textContent = options.practiceOnly
@@ -593,12 +610,29 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
         : catches.length
         ? `Глубина: ${formatRuNumber(depth)} м`
         : `Глубина: ${formatRuNumber(depth)} м · Ловите рыбу за переднюю часть`;
-      for (const loot of options.practiceOnly ? [] : catches) {
+      for (const [index, loot] of (options.practiceOnly ? [] : catches).entries()) {
         const item = document.createElement('li');
         const img = document.createElement('img'); img.src = lootArt(loot); img.alt = '';
         if (loot.kind === 'shell' && loot.variant === 'moon') img.className = 'moon-shell';
         const label = document.createElement('span'); label.textContent = lootName(loot);
         item.append(img, label); resultCatches.append(item);
+        if (choice?.index === index && loot.kind === 'fish') {
+          const release = document.createElement('button');
+          release.type = 'button'; release.className = 'fishing-leave fishing-release';
+          release.textContent = 'Отпустить'; release.setAttribute('aria-label', loot.species === 'seaBass' ? 'Отпустить морского окуня' : 'Отпустить окуня');
+          resultSummary.textContent += ' · Если уйти, улов останется у вас.';
+          release.addEventListener('click', () => {
+            if (destroyed || !choice.release()) return;
+            const id = model.caught[index], group = fishMeshes[model.fish.findIndex(f => f.id === id)].group;
+            swimmingAway = { id, age: 0, x: group.position.x, y: group.position.y, angle: group.rotation.z };
+            release.remove();
+            label.textContent = lootName(loot) + ' · отпущен';
+            resultSummary.textContent = `Глубина: ${formatRuNumber(depth)} м · Рыба вернулась в бухту.`;
+            announce(resultSummary.textContent);
+            (again.hidden ? practice.hidden ? leave : practice : again).focus({ preventScroll: true });
+          }, { signal });
+          item.append(release);
+        }
       }
       again.hidden = !canRecast || !options.onAgain;
       resultQuota.hidden = canRecast || !!options.practiceOnly;
