@@ -66,6 +66,7 @@ import { shoalReturnCopy } from './shoal-return'
 import { getApiaryCopy } from './apiary-preview'
 import { getCapeJourneyStatus } from './cape-journey-status'
 import './apiary-preview.css'
+import { activeHarvestPicnic } from './harvest-picnic'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopCapacityWarning } from './coop-preview'
 import { renderCoopPanel } from './coop-panel'
@@ -106,6 +107,7 @@ import { mountSaveRecovery } from './save-recovery'
 import { renderFestivalPanel } from './bay-festival-ui'
 import { getFestivalConcertState } from './festival-concert-guidance'
 import { getFestivalHarvestRoute } from './festival-harvest-route'
+import { getFinnFishingRoute } from './finn-fishing-route'
 import { getFestivalFishingRoute } from './festival-fishing-route'
 import { festivalTraditions, type FestivalTradition } from './bay-festival'
 import { beginFestival, cancelFestival, contributeFestival, finishFestival, getFestivalChoices, getFestivalStatus, getShellAt } from './farm'
@@ -152,6 +154,7 @@ import { RecipeBookNavigation, recipeBookNarrow, type RecipeBookView } from './r
 import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
 import { communityBoard, communityIntent, neighborDetail, neighborHelpCard, type CommunityArt } from './community-ui'
+import { bakeRequestedBeaBatch, getRequestedBeaBatch } from './request-bea-batch'
 import { neighborHelpStatus } from './neighbor-help'
 import { communityReturnRoute } from './community-return'
 import {
@@ -1466,10 +1469,11 @@ function requestedRecipeCard() {
     return `<p class="dialog-status">${recovery?.message || 'Этот рецепт больше недоступен. Выберите другое угощение.'}</p>${button('Выбрать другое угощение', 'resume-community')}`
   }
   const { offer, ingredients, action } = source
-  if (offer.available) return `${deadline}<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2>${escapeHtml(offer.name)}</h2><p class="dialog-intro">Угощение готово. В запасе: ${offer.count}.</p>${button(communityRequest?.kind === 'neighbor' ? 'К встрече' : 'К просьбе', 'resume-community')}</section>`
+  if (offer.available) return `${deadline}<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2 tabindex="-1" data-request-ready>${escapeHtml(offer.name)}</h2><p class="dialog-intro">Угощение готово. В запасе: ${offer.count}.</p>${button(communityRequest?.kind === 'neighbor' ? 'К встрече' : 'К просьбе', 'resume-community')}</section>`
+  const batch = communityRequest?.kind === 'neighbor' ? getRequestedBeaBatch(farm,communityRequest.planId,offer.id) : undefined
   const sourceLabel = farm.island !== source.destination ? 'К месту готовки' : ingredients.some(item => ingredientCount(farm, item) < item.quantity) ? 'Найти ингредиенты' : 'Что нужно для рецепта'
   return `${deadline}<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2>${escapeHtml(offer.name)}</h2><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>
-    ${action.available ? button(offer.source === 'signature' ? 'Повторить точно ×1' : 'Готовить', offer.source === 'signature' ? 'request-repeat-exact' : 'request-start-cook') : `${button(sourceLabel, 'request-food-source')}<p class="recipe-reason">${action.label}</p>`}${nav(button('Другое угощение', 'resume-community', true, { secondary: true }))}</section>`
+    ${action.available ? button(offer.source === 'signature' ? 'Повторить точно ×1' : batch ? 'Испечь вручную ×1' : 'Готовить', offer.source === 'signature' ? 'request-repeat-exact' : 'request-start-cook') : `${button(sourceLabel, 'request-food-source')}<p class="recipe-reason">${action.label}</p>`}${batch ? `<div class="request-bea-batch">${icon('ui-bea')}<div><strong>Помощь Беа</strong><small>4 пшеницы · 2 яйца · раз в день</small></div>${button('Испечь ×'+batch.count,'request-bea-batch',true,{value:batch.key,secondary:true,context:'помощь Беа на сегодня, 4 пшеницы и 2 яйца'})}</div>` : ''}${nav(button('Другое угощение', 'resume-community', true, { secondary: true }))}</section>`
 }
 async function guideRequestedFood() {
   const source = requestedRecipe()
@@ -1607,12 +1611,14 @@ function neighboursCard() {
       const def = residentDefinitions[id]
       const service = getResidentService(farm, id, pastryShape)
       const here = resident === id
+      const pier = here && id === 'finn' ? getFinnFishingRoute(farm) : undefined
       return `<section class="resident-card" data-present="${here}"><header class="resident-heading">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2></header>
         ${here ? '' : `<div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 изделия в день':'+1 место на крючке · крепче снасть'}</span></div>`}
         <div class="resident-service">${here ? (id === 'bea' ? `<div class="resident-patterns"><div class="resident-pattern-heading"><h3>Форма выпечки</h3><small>✓ Освоено</small></div>${pastryChoices()}</div><ul class="ingredients">${[{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }].map(item => stockTile(item as StockItem)).join('')}</ul>${button(farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?'Испечь ×4':'Испечь ×3', 'resident-service', service.available, { value: id })}`
-          : button(farm.village.scouting ? 'Маршрут готов · +1 место на крючке' : 'Разведать · +1 место на крючке', 'resident-service', service.available, { value: id }))
+          : pier ? `<div class="finn-hook-ready" tabindex="-1" data-finn-hook>${icon('tool-rod')}<strong>Крючок готов · +1 место</strong></div>${button(pier.label, 'finn-pier', true, { value: pier.island + ':' + pier.panel })}`
+          : button('Разведать · +1 место на крючке', 'resident-service', service.available, { value: id }))
         : button('Пригласить', 'invite-resident', true, { value: id })}
-        ${here&&!service.available?`<p class="dialog-status">${service.label}</p>${id==='bea'&&!farm.workshopPatterns.includes(pastryShape)?button(`Освоить: ${workshopDefinitions[pastryShape].name.toLowerCase()}`,'practice-pattern',true,{value:pastryShape}):''}`:''}
+        ${here&&!service.available&&!pier?`<p class="dialog-status">${service.label}</p>${id==='bea'&&!farm.workshopPatterns.includes(pastryShape)?button(`Освоить: ${workshopDefinitions[pastryShape].name.toLowerCase()}`,'practice-pattern',true,{value:pastryShape}):''}`:''}
         </div>${here ? `<div class="resident-gatherings">${dinner}${nav(button(`Замысел: ${def.name}`, 'open-neighbor', true, { value: id, secondary: true }))}${neighborHelpCard(farm,id)}</div>` : ''}
       </section>`
     }).join('')}</div>`}
@@ -3511,6 +3517,13 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'request-start-cook': startRequestedFood(); break
+    case 'request-bea-batch': {
+      const request = communityRequest
+      if (panel !== 'request-food' || !dialog.open || request?.kind !== 'neighbor') break
+      if (perform(()=>bakeRequestedBeaBatch(farm,request.planId,requestedFood,value),false,true))
+        dialogContent.querySelector<HTMLElement>('[data-request-ready]')?.focus({preventScroll:true})
+      break
+    }
     case 'request-repeat-exact': repeatRequestedFood(); break
     case 'request-food-source': await guideRequestedFood(); break
     case 'rest-intent-request':
@@ -3707,6 +3720,15 @@ app.addEventListener('click', async (event) => {
     case 'show-requirement': {
       const requirement = value === undefined ? undefined : requirementLinks.get(value)
       if (requirement) await showRequirement(requirement,control)
+      break
+    }
+    case 'picnic-field': {
+      if(!dialog.open||(panel!=='recipes'&&panel!=='rest')||island.isCrossing())break
+      const target=activeHarvestPicnic(farm)
+      if(!target||target.token!==value)break
+      closeDialog()
+      if(farm.island!=='home')await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))
+      if(farm.island==='home'&&activeHarvestPicnic(farm)?.token===value)island.focusTarget({kind:'bed',index:target.index})
       break
     }
     case 'focus-bed':
@@ -4160,7 +4182,16 @@ app.addEventListener('click', async (event) => {
     case 'share-meal': finishSharedSupper(() => serveVillageMeal(farm, pastryShape), true); break
     case 'resident-service': {
       const id = residentIds.find(id => id === value)
-      if (id) perform(() => runResidentService(farm, id, pastryShape), true, id !== 'finn')
+      if (id && panel === 'village' && farm.village.residents[villageSlot] === id
+        && perform(() => runResidentService(farm, id, pastryShape), id !== 'finn', true) && id === 'finn')
+        dialogContent.querySelector<HTMLElement>('[data-finn-hook]')?.focus({preventScroll:true})
+      break
+    }
+    case 'finn-pier': {
+      if (panel !== 'village' || !dialog.open || farm.village.residents[villageSlot] !== 'finn') break
+      const pier = getFinnFishingRoute(farm)
+      if (pier && value === pier.island + ':' + pier.panel) await visitPanelAt(pier.island,pier.panel)
+      else drawPanel()
       break
     }
     case 'buy-boat': if(perform(()=>buyBoat(farm),false,true))playBaySound('trade.pay'); break

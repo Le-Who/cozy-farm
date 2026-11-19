@@ -33,3 +33,5 @@
 @media(max-width:520px) {
   .market-building-categories>button { flex-direction:column; gap:1px; font-size:clamp(11px,3.4vw,13px); }
 }
+
+.request-bea-batch{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;justify-content:center;border-top:1px solid var(--rule);padding-top:12px}.request-bea-batch>.icon{width:42px;height:48px;object-fit:contain}.request-bea-batch>div{display:grid;gap:3px;text-align:left}.request-bea-batch small{color:var(--muted)}.request-bea-batch>button{min-height:44px}

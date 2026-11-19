@@ -49,3 +49,6 @@
 }
 .farm-dialog[data-panel=village] .neighbor-house-page .resident-card[data-present=false] {grid-template-columns:minmax(0,1fr);gap:10px}
 .neighbor-house-page .resident-card[data-present=false] .neighbour-promise {margin:0}
+
+.finn-hook-ready{display:flex;align-items:center;justify-content:center;gap:9px;color:var(--plum)}
+.finn-hook-ready>.icon{width:40px;height:40px;object-fit:contain}

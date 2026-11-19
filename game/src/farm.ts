@@ -1510,6 +1510,10 @@ export function serveVillageMeal(farm: FarmState, shape: WorkshopShape): ActionR
   return { ok: true, message: `Вы поужинали с соседями.${farm.village.meals === 2 ? ' Второй домик готов!' : ''}` };
 }
 
+export function getBeaPastryCount(farm: FarmState): number {
+  return farm.culinary.tastings.bea.bonus || farm.neighbors.bea.helpReady ? 4 : 3;
+}
+
 export function getResidentService(farm: FarmState, id: ResidentId, shape: WorkshopShape = farm.workshopPatterns[0] ?? 'round') {
   const present = isId(residentIds, id) && farm.island === 'village' && farm.village.built && farm.village.residents.includes(id);
   const used = isId(residentIds, id) && farm.village.serviceOn[id] === farm.day;
@@ -1526,7 +1530,7 @@ export function runResidentService(farm: FarmState, id: ResidentId, shape: Works
   const action = getResidentService(farm, id, shape);
   if (!action.available) return failure(action.label);
   farm.village.serviceOn[id] = farm.day;
-  const pastries=farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?4:3;
+  const pastries=getBeaPastryCount(farm);
   if (id === 'finn') farm.village.scouting = true;
   else {
     farm.produce.wheat -= 4;

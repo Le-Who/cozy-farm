@@ -1,3 +1,4 @@
+import { renderHarvestPicnicRoute } from './harvest-picnic.ts'
 import { getFishLimit, type FarmState } from './farm.ts'
 import { picnicExpiryText, signatureProcessingDefinitions, type SignatureProcessing } from './culinary.ts'
 
@@ -23,5 +24,5 @@ export function renderPicnicStatus(farm: FarmState, beforeRest = false): string 
   return `<section class="picnic-status" aria-label="Эффект пикника"><h2>${beforeRest ? 'Перед отдыхом · пикник ещё действует' : 'Пикник ещё действует'}</h2>
     <p>${effect.use}</p><p>${effect.timing}</p>
     <p><strong>${picnicExpiryText}</strong>${beforeRest ? ' Можно отдохнуть сейчас, если бонус не нужен.' : ' Новый пикник станет доступен после использования эффекта или утром.'}</p>
-    ${limit ? '<p class="picnic-limit">На открытых островах дневная рыбалка уже закончилась. Этот эффект не продлевает лимит улова.</p>' : ''}</section>`
+    ${limit ? '<p class="picnic-limit">На открытых островах дневная рыбалка уже закончилась. Этот эффект не продлевает лимит улова.</p>' : ''}${beforeRest ? renderHarvestPicnicRoute(farm) : ''}</section>`
 }
