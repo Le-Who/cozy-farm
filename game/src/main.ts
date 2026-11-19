@@ -1613,8 +1613,11 @@ function villageProjectCard() {
 
 function finishSharedSupper(action: () => { ok: boolean; message: string }, pastry = false) {
   // Keep the earned decision visible. Other cooking/recipe-book contexts retain their own return path.
-  const handoff = panel === 'village-meal' && farm.island === 'village' && farm.village.meals >= 1 && !farm.village.residents[1]
-  if (perform(action, pastry && !handoff, pastry || handoff) && handoff && supperCottageReady(farm)) {
+  const table = panel === 'village-meal' && farm.island === 'village'
+  const first = table && farm.village.meals === 0
+  const handoff = table && farm.village.meals >= 1 && !farm.village.residents[1]
+  if (perform(action, pastry && !first && !handoff, pastry || first || handoff)
+    && (first || handoff && supperCottageReady(farm))) {
     dialogContent.scrollTop = 0
     dialogContent.querySelector<HTMLElement>('[data-supper-result]')?.focus({ preventScroll: true })
   }
@@ -1702,6 +1705,8 @@ function rememberPanel(): PanelVisit {
 function goBack(keyboard = false) {
   const previous=panelHistory.pop()
   if(!previous)return
+  // Today's table button is gone after supper; return focus to the same cottage.
+  const supperCottage = previous.panel === 'village' && panel === 'village-meal' && getVillageMeal(farm).served
   const suppliedRecipe = keyboard && previous.panel === 'recipes' && (panel === 'tree' || panel === 'warehouse-supply' &&
     selectedWarehouseRequest && previous.kitchenSourceItem === bayProductId(selectedWarehouseRequest)) ? previous.recipeBook.selectedId : undefined
   recipeBook.load(previous.recipeBook)
@@ -1748,6 +1753,7 @@ function goBack(keyboard = false) {
       (previous.kitchenSourceItem ? kitchenSourceItem(button)===previous.kitchenSourceItem : focusKey(button)===previous.focus) && button.getClientRects().length>0)
     if (previous.panel === 'recipes') recipeBook.restore(dialogContent,true,suppliedRecipe)
     else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
+    else if (supperCottage) dialogContent.querySelector<HTMLButtonElement>('[data-action="village-slot"][aria-pressed="true"]')?.focus({preventScroll:true})
     else if (previous.kitchenSourceItem) dialogContent.querySelector<HTMLButtonElement>('[data-action="recipe-family"][aria-pressed="true"]')?.focus({preventScroll:true})
     else if (previous.panel === 'market' && marketTab === 'sell') {
       const search = dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]')
