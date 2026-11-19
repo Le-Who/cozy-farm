@@ -144,3 +144,49 @@ test('real autonomous basket-preparation branch changes only the visual actor, n
   assert.equal(state.panel, 'cookery'); assert.equal(JSON.stringify(farm), before)
   assert.doesNotMatch(source, /activate\(|crossIsland|sail\(|openPanel|resumeCommunityRequest/)
 })
+
+test('only the live unfinished recipe from Bea returns to its saved ingredient slots, then to that meeting',async()=>{
+  const {commissionPlayer}=await import('./fixtures/commission-player.ts')
+  const {recipePlanningIngredient}=await import('../src/recipe-planning.ts')
+  const {rememberRecipeDraft}=await import('../src/recipe-draft.ts')
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const p=commissionPlayer(opening.slice(0,opening.findIndex((x:{name:string})=>x.name==='serveVillageMeal')))
+  p.fruit('apple',2);p.visit('village')
+  const id=farmApi.getNeighborPlans(p.state).find(plan=>plan.resident==='bea')!.id;p.act('joinNeighborPlan',id)
+  assert.equal(p.actions,95);assert.equal(p.state.day,11);assert.equal(p.state.fruit.apple,3)
+  const sec=(a:string,b:string)=>main.slice(main.indexOf(a),main.indexOf(b,main.indexOf(a)+a.length))
+  const actions=js('(cmd)=>{switch(cmd){'+sec("    case 'intent-own-recipe':","    case 'honey-kitchen-recipe':")
+    +sec("    case 'signature-base':","    case 'signature-home':")+'}}')
+  for(const mode of ['cancel','finished','retired'] as const){
+    const {state:x,calls}=setup('village',true),f=structuredClone(p.state)
+    Object.assign(x,Object.fromEntries('selectedWarehouseRequest selectedExpeditionPort selectedExpeditionOffer selectedWarehouse inventoryGroup boatIsland marketSaleFamily marketSaleQuery marketTab marketCategory marketSellGroup bagTab archiveGroup treeSlot previewSeed specializationBuilding previewSpecialization irrigationMode villageSlot seedPickerBed expandedRepeatId communityOrderId requestedFood kitchenTart kitchenPreserves kitchenGroup kitchenDish honeyKitchenDish'.split(' ').map(key=>[key,undefined])))
+    Object.assign(x,{farm:f,panel:'neighbor',panelHistory:[],communityResident:'bea',communityRequest:{kind:'neighbor',resident:'bea',planId:id},
+      control:{dataset:{}},recipePlanningIngredient,rememberRecipeDraft,saveFarm(){},drawPanel(){},getSignatureAction:farmApi.getSignatureAction,
+      document:{activeElement:null},HTMLButtonElement:class {},recipeBook:{snapshot(){return{}},load(){}},dialogContent:{querySelector(){return null},querySelectorAll(){return[]},scrollTop:0},
+      dialog:{open:true,querySelectorAll(){return[]}},restoreFerryPanelView(){},panelRenderVersion:0,requestAnimationFrame:(cb:()=>void)=>cb(),
+      openPanel(next:string,remember=true){if(remember)x.panelHistory.push(x.rememberPanel());x.panel=next},
+      openRecipeBook(recipe?:string){calls.push('recipe-book');x.openedRecipe=recipe;x.openPanel('recipes',false)},
+      perform(action:()=>{ok:boolean}){return action().ok}})
+    runInNewContext(js(sec('function leaveScene()', 'let harbourScene:')+sec('function rememberCurrentRecipeDraft()', 'const recipeBook =')),x)
+    const click=runInNewContext(actions,x)
+    click('intent-own-recipe');x.value='preserves';click('signature-base');x.value='apple';click('signature-fruit');click('signature-fruit')
+    assert.deepEqual(JSON.parse(JSON.stringify(x.signatureSlots)),[{id:'apple',quantity:1},{id:'apple',quantity:1}])
+    click('start-signature');mount(x);const start=structuredClone(f),draft=structuredClone(f.recipeDraft)
+    assert.deepEqual(x.panelHistory.map((entry:{panel:string})=>entry.panel),['neighbor','signature'])
+    assert.equal(x.options.returnLabel,'К выбору ингредиентов')
+    if(mode==='finished'){
+      assert.ok(x.options.onComplete({family:'preserves',processing:'silky',fruit:[],steps:['mix','pour']}))
+      assert.equal(x.options.returnLabel,'Мои рецепты');const paid=structuredClone(f)
+      x.options.onCancel();assert.equal(x.panel,'recipes');assert.deepEqual(x.panelHistory,[]);assert.equal(x.openedRecipe,f.culinary.recipes.at(-1)?.id)
+      assert.equal(f.fruit.apple,start.fruit.apple-2);assert.deepEqual(f,paid)
+    }else if(mode==='retired'){
+      x.communityRequest=undefined
+      assert.equal(x.options.returnLabel,'Мои рецепты');x.options.onCancel();assert.equal(x.panel,'recipes');assert.deepEqual(f,start)
+    }else{
+      x.options.onCancel();assert.equal(x.panel,'signature');assert.equal(x.signatureBase,'preserves')
+      assert.deepEqual(JSON.parse(JSON.stringify(x.signatureSlots)),draft!.slots);assert.equal(x.signatureSlot,draft!.activeSlot)
+      x.goBack(true);assert.equal(x.panel,'neighbor');assert.equal(x.communityResident,'bea');assert.equal(x.communityRequest.planId,id)
+      assert.deepEqual(f,start);assert.equal(f.island,'village')
+    }
+  }
+})

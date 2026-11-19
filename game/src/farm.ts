@@ -584,7 +584,7 @@ export type FarmState = {
   discoveries: Collection<DiscoveryId, true>;
 };
 
-export type ActionResult = { ok: boolean; message: string };
+export type ActionResult = { ok: boolean; message: string; goalRewardText?: string };
 
 function cropBed(crop: CropId, growth: number): Bed {
   return { kind: 'crop', crop, growth, watered: false };
@@ -2361,7 +2361,8 @@ function record(farm: FarmState, id: GoalId, message: string): ActionResult {
   const completed = goals.find((goal) => goal.id === id && goal.target === farm.progress[id]);
   if (!completed) return { ok: true, message };
   farm.coins += completed.reward;
-  return { ok: true, message: `${message} Награда за задание: +${ruCount(completed.reward, 'монета', 'монеты', 'монет')}.` };
+  const goalRewardText = `Награда за задание: +${ruCount(completed.reward, 'монета', 'монеты', 'монет')}.`;
+  return { ok: true, message: `${message} ${goalRewardText}`, goalRewardText };
 }
 
 function failure(message: string): ActionResult {

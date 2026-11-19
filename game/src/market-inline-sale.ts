@@ -1,7 +1,11 @@
 import { exactSaleQuote, stepSaleQuantity } from './exact-sale.ts'
+import { ruCount } from './ru.ts'
 import { SalePresentation } from './sale-presentation.ts'
 
-type Receipt = { quantity: number; total: number; remaining: number }
+type Receipt = { quantity: number; total: number; remaining: number; goalRewardText?: string }
+export function inlineReceiptText(receipt: Receipt) {
+  return `Продано: ${receipt.quantity} · ${ruCount(receipt.total, 'монета', 'монеты', 'монет')}. Осталось: ${receipt.remaining}.${receipt.goalRewardText ? '\n' + receipt.goalRewardText : ''}`
+}
 type Draft = { owner: SalePresentation; raw: string; count: number; price: number; pending: boolean; receipt?: Receipt }
 /** Per-row presentation only. Exact quote and the existing farm reducer remain authoritative. */
 export class MarketInlineSales {
@@ -43,10 +47,10 @@ export class MarketInlineSales {
     draft.pending=true; draft.owner.open({kind:'market',key})
     return {quantity:quote.quantity,total:quote.total,remaining:quote.remaining}
   }
-  finish(key: string, receipt?: Receipt) {
+  finish(key: string, receipt?: Receipt, goalRewardText?: string) {
     const draft=this.drafts.get(key)
     if(!draft)return
-    draft.pending=false; draft.receipt=receipt
+    draft.pending=false; draft.receipt=receipt && goalRewardText ? {...receipt,goalRewardText} : receipt
     if(receipt)draft.count=receipt.remaining
     draft.owner.open({kind:'market',key})
   }

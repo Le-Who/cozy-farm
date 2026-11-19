@@ -1,6 +1,6 @@
 import { projectContributionCopy, projectLevelCopy, projectRewardLabel } from './project-readiness-copy'
 import './market-project-readiness.css'
-import { MarketInlineSales } from './market-inline-sale'
+import { MarketInlineSales, inlineReceiptText } from './market-inline-sale'
 import { MarketSaleBrowseMemory } from './market-sale-browse'
 import { marketSaleFamilies } from './market-sale-family'
 import { SalePresentation } from './sale-presentation'
@@ -1208,7 +1208,7 @@ function marketInlineCard(item: ReturnType<typeof goods>[number]) {
       <input data-inline-quantity type="number" min="1" max="${item.count}" step="1" inputmode="numeric" value="${escapeHtml(view.raw)}" aria-label="Количество: ${escapeHtml(item.name)}" aria-describedby="${id}"${receipt||view.pending?' disabled':''}>
       <span class="market-step-limit" tabindex="-1" role="group" aria-label="Максимум: ${item.count}"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="more" aria-label="Увеличить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity>=item.count?' disabled':''}>+</button></span>
     </div><button type="button" class="market-inline-sell" aria-label="${escapeHtml(receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)}" data-action="${receipt?'inline-sale-again':'inline-sale-confirm'}" data-value="${escapeHtml(item.key)}"${view.pending||!receipt&&!quote.valid?' disabled':''}>${receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`}</button></div>
-    <p class="market-inline-status" id="${id}" role="status">${receipt?`Продано: ${receipt.quantity} · ${quantity(receipt.total,'монета')}. Осталось: ${receipt.remaining}.`:quote.valid?'':`Введите целое число от 1 до ${item.count}.`}</p>
+    <p class="market-inline-status" id="${id}" role="status" aria-live="${receipt?'off':'polite'}">${receipt?escapeHtml(inlineReceiptText(receipt)):quote.valid?'':`Введите целое число от 1 до ${item.count}.`}</p>
   </li>`
 }
 function marketSaleResults() {
@@ -1235,7 +1235,10 @@ function updateInlineSaleCard(card: HTMLElement) {
   sell.disabled=view.pending||!view.receipt&&!quote.valid
   sell.setAttribute('aria-label',view.receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)
   sell.innerHTML=view.receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`
-  card.querySelector<HTMLElement>('.market-inline-status')!.textContent=view.receipt?`Продано: ${view.receipt.quantity} · ${quantity(view.receipt.total,'монета')}. Осталось: ${view.receipt.remaining}.`:quote.valid?'':`Введите целое число от 1 до ${item.count}.`
+  const status=card.querySelector<HTMLElement>('.market-inline-status')!
+  // The dialog already announces a completed sale. Keep this persistent receipt readable, not a second live event.
+  status.ariaLive=view.receipt?'off':'polite'
+  status.textContent=view.receipt?inlineReceiptText(view.receipt):quote.valid?'':`Введите целое число от 1 до ${item.count}.`
 }
 function confirmInlineSale(control: Element) {
   const context=inlineSaleContext(control)
@@ -1244,7 +1247,7 @@ function confirmInlineSale(control: Element) {
   if(!quote){updateInlineSaleCard(context.card);return}
   const scroll=dialogContent.querySelector<HTMLElement>('#market-sale-results')?.scrollTop??0
   const result=sellMarketItem(farm,item.key,quote.quantity)
-  marketInlineSales.finish(item.key,result.ok?quote:undefined)
+  marketInlineSales.finish(item.key,result.ok?quote:undefined,result.goalRewardText)
   if(perform(()=>result,false,quote.remaining>0))playBaySound('trade.receive')
   const grid=dialogContent.querySelector<HTMLElement>('#market-sale-results');if(grid)grid.scrollTop=scroll
   const next=Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).find(card=>card.dataset.inlineKey===item.key)
@@ -1654,6 +1657,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  neighborComposerPlan?: string; // Only set by this visit's explicit “Свой рецепт” button.
   ferryMorning?: number; // This ferry visit's explicit trip to the Home forecast.
   recipeBook: RecipeBookView;
   kitchenSourceItem?: string;
@@ -2280,13 +2284,19 @@ function drawPanel() {
       let made=false, resultRecipeId=repeatId
       // The saved neighbour selection is an explicit travel shortcut, not this
       // cooking session's return address. Keep ordinary exits at their entry.
-      const fromRequestedFood = panelHistory.at(-1)?.panel === 'request-food'
+      const composer = panelHistory.at(-1), source = panelHistory.at(-2)
+      const fromRequestedFood = composer?.panel === 'request-food'
+      const editingForNeighbor = () => signature && !made && !repeatId && composer?.panel === 'signature'
+        && source?.panel === 'neighbor' && !!source.neighborComposerPlan && panelHistory.at(-1) === composer
+        && communityRequest?.kind === 'neighbor' && communityRequest.planId === source.neighborComposerPlan
+        && getNeighborPlans(farm).some(plan => plan.id === source.neighborComposerPlan && plan.resident === source.communityResident
+          && (plan.phase === 'joined' || plan.phase === 'arranging'))
       dialogContent.innerHTML = '<div class="cookery-host"></div>'
       cookeryGame = createCookery(dialogContent.querySelector<HTMLElement>('.cookery-host')!, {
         recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??familyName??'Мой рецепт':preparedDish==='grilledFish'?`${fishDefinitions[preparedFish].name} на гриле`:recipe.name, kind, signature,processing:savedRecipe?.processing,fishSpecies:preparedDish==='grilledFish'?preparedFish:undefined,
           selectedFruit,fruitOptions:selectedFruit.map(part=>({id:part.id,name:signatureFruitNames[part.id as typeof signatureFruitIds[number]],art:part.id==='apple'?'apple-slice':part.id==='pear'?'pear-piece':part.id==='peach'?'peach-slice':part.id})),
           ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity,...(item.kind==='variants'?{trait:item.trait}:{})})) },
-        returnLabel: fromRequestedFood ? 'К рецепту' : signature ? 'Мои рецепты' : 'На кухню',
+        get returnLabel() { return editingForNeighbor() ? 'К выбору ингредиентов' : fromRequestedFood ? 'К рецепту' : signature ? 'Мои рецепты' : 'На кухню' },
         onComplete(result) {if(made)return true;if(panel!=='cookery')return false;made=perform(()=>{
           const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
           const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
@@ -2294,7 +2304,7 @@ function drawPanel() {
           if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
           return receipt
         },false,true);return made},
-        onCancel(){if(signature&&!fromRequestedFood){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
+        onCancel(){if(signature&&!fromRequestedFood&&!editingForNeighbor()){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
       })
       break
     }
@@ -3575,7 +3585,14 @@ app.addEventListener('click', async (event) => {
       if (canReturnToDailyIntent(farm,communityRequest,value,{panel,open:dialog.open})) await resumeCommunityRequest('request')
       break
     case 'resume-community': await resumeCommunityRequest(control === communityResume ? 'recipe' : 'request'); break
-    case 'intent-own-recipe': signatureBase = 'tart'; signatureSlots = [null, null]; signatureSlot = 0; signatureRepeatId = undefined; signatureFamily = undefined; openPanel('signature'); break
+    case 'intent-own-recipe': {
+      const plan = panel === 'neighbor' && communityRequest?.kind === 'neighbor' ? communityRequest.planId : undefined
+      signatureBase = 'tart'; signatureSlots = [null, null]; signatureSlot = 0; signatureRepeatId = undefined; signatureFamily = undefined
+      openPanel('signature')
+      const origin = panelHistory.at(-1)
+      if (plan && panel === 'signature' && origin?.panel === 'neighbor') origin.neighborComposerPlan = plan
+      break
+    }
     case 'honey-kitchen-recipe': {
       const dish = chooseHoneyKitchenRecipe(value, {panel,open:dialog.open,island:farm.island,capeLevel:farm.capeLevel})
       if (dish !== undefined) { honeyKitchenDish = dish; drawPanel(); dialogContent.scrollTop = 0 }

@@ -30,7 +30,7 @@
 [data-market-sale-browser] .market-sale-search-status {flex:none;font-size:13px;color:var(--muted);margin:-4px 0 0}
 [data-market-sale-browser] #market-sale-results {flex:1;min-height:120px;overflow:auto;overscroll-behavior:contain;padding:3px}
 .market-inline-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:14px;margin:0;padding:0;list-style:none}
-.market-inline-card {display:grid;grid-template-columns:136px minmax(0,1fr);grid-template-rows:minmax(116px,auto) auto 18px;gap:8px 10px;align-items:center;min-width:0;padding:14px 14px 10px;border:1px solid #bd9d7f;border-radius:17px;background:linear-gradient(130deg,#fffaf0,#f8e9d6);box-shadow:inset 0 1px #fff9ed,0 2px 1px #ad795726}
+.market-inline-card {display:grid;grid-template-columns:136px minmax(0,1fr);grid-template-rows:minmax(116px,auto) auto minmax(18px,auto);gap:8px 10px;align-items:center;min-width:0;padding:14px 14px 10px;border:1px solid #bd9d7f;border-radius:17px;background:linear-gradient(130deg,#fffaf0,#f8e9d6);box-shadow:inset 0 1px #fff9ed,0 2px 1px #ad795726}
 .market-inline-art {display:grid;place-items:center;width:136px;height:116px;overflow:visible}
 .market-inline-art>.icon,.market-inline-art>.variant-art {width:128px;height:116px;object-fit:contain}
 .market-inline-art>.variant-art .icon {position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
@@ -50,7 +50,7 @@
 .market-inline-sell {display:flex;align-items:center;justify-content:center;gap:5px;flex:1;min-width:0;min-height:46px;padding:6px 8px;border:1px solid #9c5543;border-radius:12px;background:linear-gradient(#d78363,#b96047);box-shadow:inset 0 1px #ffcfab88,0 2px 0 #974d3833;color:#fffaf0;font:700 18px Georgia,serif;white-space:nowrap}
 .market-inline-sell .icon {width:24px;height:24px}
 .market-inline-sell:disabled {opacity:.55;cursor:default}
-.market-inline-status {grid-column:1/-1;margin:0;min-height:18px;font-size:12px;line-height:1.2;color:var(--moss)}
+.market-inline-status {grid-column:1/-1;white-space:pre-line;margin:0;min-height:18px;font-size:12px;line-height:1.2;color:var(--moss)}
 .market-inline-card :is(button,input,.market-step-limit):focus-visible {outline:3px solid #805789;outline-offset:-3px}
 .market-inline-tools {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;flex:none;padding-top:8px;border-top:1px solid #d5baa0}
 [data-market-sale-browser] .market-total {display:flex;align-items:center;gap:12px;margin:0;padding:0;font-size:13px;border:0;background:none;box-shadow:none}
@@ -80,7 +80,7 @@
  [data-market-sale-browser] .market-sale-search input{min-height:44px;font-size:16px}
  [data-market-sale-browser] .market-inline-groups .panel-tabs{gap:4px}[data-market-sale-browser] .market-inline-groups .panel-tabs button{padding:4px;font-size:15px}
  .market-inline-grid{grid-template-columns:minmax(0,1fr);gap:10px}
- .market-inline-card{grid-template-columns:100px minmax(0,1fr);grid-template-rows:minmax(92px,auto) auto 18px;padding:10px;gap:6px 10px}
+ .market-inline-card{grid-template-columns:100px minmax(0,1fr);grid-template-rows:minmax(92px,auto) auto minmax(18px,auto);padding:10px;gap:6px 10px}
  .market-inline-art{width:100px;height:92px}.market-inline-art>.icon,.market-inline-art>.variant-art{width:100px;height:92px}
  .market-inline-name{font-size:21px}.market-inline-stock,.market-inline-price{font-size:16px}
  .market-inline-footer{gap:8px}.market-inline-stepper{grid-template-columns:44px 44px 44px}.market-inline-sell{font-size:16px;padding:5px}
@@ -95,7 +95,7 @@
  [data-market-sale-browser] .market-sale-search-status{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
  [data-market-sale-browser] #market-sale-results{flex:none;height:190px;min-height:190px}
  .market-inline-grid{grid-template-columns:minmax(0,1fr)}
- .market-inline-card{grid-template-columns:100px minmax(0,1fr);grid-template-rows:86px auto 18px;padding:8px}
+ .market-inline-card{grid-template-columns:100px minmax(0,1fr);grid-template-rows:86px auto minmax(18px,auto);padding:8px}
  .market-inline-art,.market-inline-art>.icon,.market-inline-art>.variant-art{height:86px}
 }
 
