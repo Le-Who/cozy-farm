@@ -84,7 +84,7 @@ test('walk availability, return and completion are compact without dropping thei
 })
 
 test('view-only selection is not serialized, spends still use original guarded domain actions', () => {
-  assert.match(source,/renderHenFriendship\(farm, island.henWalkStatus\(\), island.henWalkAvailable\(\), selectedFriendHen, icon\)/)
+  assert.match(source,/renderHenFriendship\(farm, island.henWalkStatus\(\), island.henWalkAvailable\(\), selectedFriendHen, icon, island\.henFieldTarget\(selectedFriendHen\)\)/)
   assert.doesNotMatch(branch,/saveFarm|perform\(|treatHen|petChicken|playBaySound|localStorage/)
   assert.match(source,/case 'hen-treat':[\s\S]*?perform\(\(\) => treatHen\(farm, Number\(choice\[1\]\), choice\[2\]\), false, true\)/)
   for(const action of ['hen-treat','pet','hen-walk-start','hen-walk-return'])assert.ok(isGuardedAction(action))

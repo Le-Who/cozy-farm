@@ -49,3 +49,5 @@
  .hen-friend-treats h3{font-size:13px;margin-bottom:3px}.hen-treats{gap:4px}.hen-treats .dialog-button{gap:2px;padding:4px 2px}.hen-treats .icon{width:30px;height:30px}.hen-treats strong{font-size:11px}.hen-treats small{font-size:10px}
  .hen-treat-status{font-size:11px;margin-top:3px}.hen-friend-notes{margin-top:4px}
 }
+
+.hen-field-guide[hidden]{display:none!important}

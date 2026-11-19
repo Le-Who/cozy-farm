@@ -2133,7 +2133,7 @@ function drawPanel() {
       dialogContent.innerHTML = renderNeighborVisits(farm, icon)
       break
     case 'hen-friendship':
-      dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable(), selectedFriendHen, icon)
+      dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable(), selectedFriendHen, icon, island.henFieldTarget(selectedFriendHen))
       break
     case 'chicken-feed':
       dialogContent.innerHTML = renderChickenFeedMixes(farm, icon)
@@ -2701,7 +2701,7 @@ const island = createIsland(canvas, {
     return fieldHintCache.value
   },
   henWalkChanged: () => {
-    if (dialog.open && panel === 'hen-friendship') refreshHenWalkChoice(dialogContent, farm, island.henWalkStatus(), island.henWalkAvailable())
+    if (dialog.open && panel === 'hen-friendship') refreshHenWalkChoice(dialogContent, farm, island.henWalkStatus(), island.henWalkAvailable(), island.henFieldTarget(selectedFriendHen))
   },
   harbourViewChanged: (view, traveling) => harbourControls?.select(view, traveling),
   moveHen(index, point) {
@@ -3994,6 +3994,18 @@ app.addEventListener('click', async (event) => {
         dialog.close()
         if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
         notify(`${henFriends[id].name} идёт с вами. Закончить прогулку можно в дневнике стаи.`)
+      }
+      break
+    }
+    case 'hen-guide': {
+      const choice=/^([0-4]):((?:bed|tree):[0-9]+)$/.exec(value??'')
+      if (!choice || panel!=='hen-friendship' || !dialog.open || Number(choice[1])!==selectedFriendHen) break
+      const target=island.startHenGuide(selectedFriendHen,choice[2])
+      if (target) {
+        dialog.close()
+        if (fieldViewButton.getAttribute('aria-pressed')==='true') toggleFieldView()
+        island.focusTarget(target)
+        notify(`${henFriends[selectedFriendHen].name} покажет, где ждёт угощение. Собрать урожай можно отдельно.`)
       }
       break
     }

@@ -1,4 +1,5 @@
 import { syncHomeVisitor, stepHomeVisitor, type HomeVisitor } from './neighbor-visit-scene';
+import {guideKey,henFieldRoute,refreshHenFieldWalk,type HenFieldTarget} from './hen-harvest-walk';
 import { canWalkWithHen, createHenCompanion, returnHenCompanion, stepHenCompanion, type HenCompanion, type HenCompanionStatus } from './hen-companion';
 import { playBaySound } from './game-sound'
 import {BedPointerGuard} from './bed-work-intent'
@@ -422,6 +423,15 @@ export function createIsland(
   let homeVisitor: HomeVisitor | undefined;
   let companion: HenCompanion | undefined;
   let companionDay = 0;
+  function fieldRoute(id:number) {
+    if (!state || !world.available || crossing || heldHen || companion || !canWalkWithHen(state,id)) return;
+    const hen=hens[id], from=nativeHenPoint({x:hen.px.value,y:hen.py.value});
+    return henFieldRoute(state,id,from,target=>{
+      const site=homeSites.find(area=>sameTarget(area.target,target));
+      // Wait on the aisle beside the produce, leaving the crop's main hit point open.
+      return site && nativeHenPoint({x:site.stop.x + (target.kind==='bed'?18:-15),y:site.stop.y});
+    });
+  }
   function clearHenCompanion(resetPosition: boolean): void {
     if (!companion) return;
     const hen = hens[companion.id];
@@ -2105,7 +2115,17 @@ export function createIsland(
       requestPaint();
     },
     henWalkAvailable(): boolean { return world.available && !crossing && state?.island === 'home'; },
-    henWalkStatus(): HenCompanionStatus | null { return companion ? { id: companion.id, returning: companion.returning } : null; },
+    henWalkStatus(): HenCompanionStatus | null { return companion ? { id: companion.id, returning: companion.returning, ...(companion.guide ? {guiding:true} : {}) } : null; },
+    henFieldTarget(id:number): HenFieldTarget|undefined { return fieldRoute(id)?.target; },
+    startHenGuide(id:number,key:string): HenFieldTarget|undefined {
+      const route=fieldRoute(id);
+      if (!state || !route || guideKey(route.target)!==key) return;
+      const hen=hens[id];
+      companion=createHenCompanion(id,nativeHenPoint({x:hen.px.value,y:hen.py.value}));
+      companion.guide={target:route.target,stop:route.stop};companion.path=route.path;companion.target=route.stop;
+      companionDay=state.day;henWalkChanged?.();requestPaint();
+      return route.target;
+    },
     startHenWalk(id: number): boolean {
       if (!state || !world.available || crossing || heldHen || companion || !canWalkWithHen(state, id)) return false;
       companion = createHenCompanion(id, nativeHenPoint({ x: hens[id].px.value, y: hens[id].py.value }));
@@ -2176,6 +2196,7 @@ export function createIsland(
       homeVisitor=syncHomeVisitor(homeVisitor,next);
       if (companion && (next.island !== 'home' || next.day !== companionDay || !canWalkWithHen(next, companion.id))) clearHenCompanion(true);
       loadIslandAssets(next);
+      if (companion?.guide) refreshHenFieldWalk(next,companion);
       const moment = performance.now();
       hens.forEach((hen,index)=>{
         const saved=next.henPositions?.[index]??null;
