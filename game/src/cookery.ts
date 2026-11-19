@@ -81,7 +81,8 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     <div class="cookery-keyboard-cursor" hidden aria-hidden="true"></div>
     </div><p id="cookery-instructions" class="cookery-sr-only">Переносите фрукты с тарелки. Ложкой перемешивайте конфитюр, сахарницей посыпайте тарт. Клавиатура: F — следующий фрукт, S — ложка или сахарница, стрелки — перемещение, пробел — взять или положить, Q и E — поворот дольки, Esc — на кухню, Enter — завершить готовое блюдо.</p><p class="cookery-live cookery-sr-only" aria-live="polite" aria-atomic="true"></p>`
   host.append(root)
-  root.querySelector('.cookery-close')!.setAttribute('aria-label', options.returnLabel ?? 'На кухню')
+  const exitButton = root.querySelector<HTMLButtonElement>('.cookery-close')!
+  exitButton.setAttribute('aria-label', options.returnLabel ?? 'На кухню')
   const view = root.querySelector<HTMLElement>('.cookery-view')!
   const status = root.querySelector<HTMLElement>('.cookery-render-status')!
   const hint = root.querySelector<HTMLElement>('.cookery-hint')!
@@ -347,8 +348,10 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
         fruitTraitsVersion: 1, fruit: model.fruit.map(fruit => ({ ingredientId: fruitId(fruit.id), ...(fruitTrait(fruit.id) ? {trait:fruitTrait(fruit.id)} : {}), x: fruit.x, y: fruit.y, angle: normalizeAngle(fruit.angle) })),
         steps: model.kind === 'preserves' ? ['add-fruit', `stir-${model.processing}`, 'fill-jar'] : ['arrange-fruit', 'dust-sugar'],
         ...(model.kind === 'preserves' ? { baking: { method: 'stovetop' as const, finish: 'set' as const, seconds: Math.min(1800, elapsed) } } : {}) }
-      if (completeCookery(model, () => options.onComplete(result))) playBaySound('cook.finish')
-      else if (model.stage === 'ready') announce('Не хватает ингредиентов. Выберите другой рецепт на кухне.')
+      if (completeCookery(model, () => options.onComplete(result))) {
+        exitButton.setAttribute('aria-label', options.returnLabel ?? 'На кухню')
+        playBaySound('cook.finish')
+      } else if (model.stage === 'ready') announce('Не хватает ингредиентов. Выберите другой рецепт на кухне.')
     } catch { announce('Не удалось сохранить блюдо. Попробуйте ещё раз.') }
     sync()
   }
