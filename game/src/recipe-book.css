@@ -157,3 +157,5 @@
  .recipe-book-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));column-gap:12px}
  .recipe-book-search-empty{grid-column:1/-1}
 }
+
+.signature-bake-choice{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:6px}

@@ -151,7 +151,8 @@ import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
 import { ferryCommissionUse, openFerryCommissionRecipe } from './ferry-commission-use'
-import { RecipeBookNavigation, recipeBookNarrow, type RecipeBookView } from './recipe-book-view'
+import { signatureTastingGuide } from './signature-tasting-guidance'
+import { RecipeBookNavigation, recipeBookNarrow, selectedBookId, type RecipeBookView } from './recipe-book-view'
 import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
 import { communityBoard, communityIntent, neighborDetail, neighborHelpCard, type CommunityArt } from './community-ui'
@@ -1657,6 +1658,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  tastingBakery?: string; // An explicit stop from this particular saved recipe.
   neighborComposerPlan?: string; // Only set by this visit's explicit “Свой рецепт” button.
   ferryMorning?: number; // This ferry visit's explicit trip to the Home forecast.
   recipeBook: RecipeBookView;
@@ -1755,7 +1757,16 @@ function goBack(keyboard = false) {
     dialogContent.scrollTop=previous.scroll
     const target=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')).find(button=>
       (previous.kitchenSourceItem ? kitchenSourceItem(button)===previous.kitchenSourceItem : focusKey(button)===previous.focus) && button.getClientRects().length>0)
-    if (previous.panel === 'recipes') recipeBook.restore(dialogContent,true,suppliedRecipe)
+    if (previous.panel === 'recipes') {
+      recipeBook.restore(dialogContent,true,suppliedRecipe)
+      const offer = previous.tastingBakery && signatureTastingGuide(farm,previous.tastingBakery,'bea')
+      if (offer && offer.available && !offer.bakeFirst) {
+        const taste = dialogContent.querySelector<HTMLButtonElement>('[data-action="taste-signature"][data-resident="bea"]:not(:disabled)')
+        if (taste && taste.dataset.value === previous.tastingBakery && taste.getClientRects().length) {
+          taste.focus({preventScroll:true}); taste.scrollIntoView({block:'nearest'})
+        }
+      }
+    }
     else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
     else if (supperCottage) dialogContent.querySelector<HTMLButtonElement>('[data-action="village-slot"][aria-pressed="true"]')?.focus({preventScroll:true})
     else if (previous.kitchenSourceItem) dialogContent.querySelector<HTMLButtonElement>('[data-action="recipe-family"][aria-pressed="true"]')?.focus({preventScroll:true})
@@ -3724,7 +3735,17 @@ app.addEventListener('click', async (event) => {
       break
     case 'sell-signature':if(value)beginExactSale({kind:'signature',key:value});break
     case 'use-signature':if(value)perform(()=>useSignature(farm,value!),false);break
-    case 'taste-signature':{const id=residentIds.find(id=>id===control.dataset.resident);if(value&&id)perform(()=>tasteSignature(farm,value!,id),false);break}
+    case 'tasting-bakery': {
+      if (panel !== 'recipes' || !dialog.open || !value || selectedBookId(farm,recipeBook.view) !== value || island.isCrossing()) break
+      const route = signatureTastingGuide(farm,value,'bea')?.bakeFirst
+      if (!route) break
+      if (!getResidentService(farm,'bea',pastryShape).available) pastryShape = route.shape
+      activateTarget({kind:'village-home',index:route.slot})
+      const source = panelHistory.at(-1)
+      if (source?.panel === 'recipes') source.tastingBakery = value
+      break
+    }
+    case 'taste-signature':{const id=residentIds.find(id=>id===control.dataset.resident);if(panel==='recipes'&&dialog.open&&value&&id&&selectedBookId(farm,recipeBook.view)===value)perform(()=>tasteSignature(farm,value!,id),false);break}
     case 'supper-signature': if(value)finishSharedSupper(()=>deliverSignature(farm,value!)); break
     case 'supper-cottage':
       if(panel==='village-meal' && supperCottageReady(farm)) activateTarget({kind:'village-home',index:1})
@@ -3949,11 +3970,17 @@ app.addEventListener('click', async (event) => {
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
     case 'buy-seeds': {
       const scroll = control.closest('.market-seed-grid')?.scrollTop
+      const keyboardPicker = control.closest('.seed-picker-primary') && panel === 'seeds' && dialog.open
+        && event.detail === 0 && document.activeElement === control && crop === previewSeed
       if (crop && perform(() => buySeeds(farm,crop))) {
         // The purchase redraw replaces the scrolling shelf, even when focus returns to the same pack.
         if (scroll) {
           const grid = dialogContent.querySelector<HTMLElement>('.market-seed-grid')
           if (grid) grid.scrollTop = scroll
+        }
+        if (keyboardPicker && panel === 'seeds' && dialog.open && previewSeed === crop) {
+          const next = dialogContent.querySelector<HTMLButtonElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)')
+          if (next?.dataset.value === seedChoice(farm,crop,seedPickerBed).token) next.focus({preventScroll:true})
         }
         playBaySound('trade.pay')
       }
@@ -4269,8 +4296,9 @@ app.addEventListener('click', async (event) => {
     case 'share-meal': finishSharedSupper(() => serveVillageMeal(farm, pastryShape), true); break
     case 'resident-service': {
       const id = residentIds.find(id => id === value)
+      const fromTasting = id === 'bea' && !!panelHistory.at(-1)?.tastingBakery
       if (id && panel === 'village' && farm.village.residents[villageSlot] === id
-        && perform(() => runResidentService(farm, id, pastryShape), id !== 'finn', true) && id === 'finn')
+        && perform(() => runResidentService(farm, id, pastryShape), id !== 'finn' && !fromTasting, !fromTasting) && id === 'finn')
         dialogContent.querySelector<HTMLElement>('[data-finn-hook]')?.focus({preventScroll:true})
       break
     }
