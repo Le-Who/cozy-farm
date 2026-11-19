@@ -1681,8 +1681,8 @@ function rememberPanel(): PanelVisit {
 function goBack(keyboard = false) {
   const previous=panelHistory.pop()
   if(!previous)return
-  const suppliedRecipe = keyboard && panel === 'warehouse-supply' && previous.panel === 'recipes' && selectedWarehouseRequest
-    && previous.kitchenSourceItem === bayProductId(selectedWarehouseRequest) ? previous.recipeBook.selectedId : undefined
+  const suppliedRecipe = keyboard && previous.panel === 'recipes' && (panel === 'tree' || panel === 'warehouse-supply' &&
+    selectedWarehouseRequest && previous.kitchenSourceItem === bayProductId(selectedWarehouseRequest)) ? previous.recipeBook.selectedId : undefined
   recipeBook.load(previous.recipeBook)
   journeyDetailsOpen=previous.journeyDetailsOpen
   journalDetailsOpen=previous.journalDetailsOpen
@@ -2348,7 +2348,7 @@ function drawPanel() {
       if(slot){
         const definition=treeDefinitions[slot.tree],growing=slot.age<definition.days
         dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong>${growing ? 'До зрелости: ' + quantity(definition.days-slot.age,'ночь') : 'Новые плоды завтра'}</strong>`}
-          ${treeVariantCopy(slot)?`<p class="dialog-intro">${treeVariantCopy(slot)}</p>`:''}${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):''}</div>
+          ${treeVariantCopy(slot)?`<p class="dialog-intro">${treeVariantCopy(slot)}</p>`:''}${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):panelHistory.at(-1)?.panel==='recipes'?button('К рецепту','back',true,{secondary:true}):''}</div>
           <p class="dialog-intro">Хранение бесплатно освободит это место. Возраст, готовые плоды и особенность сохранятся; рост и новые плоды будут на паузе.</p>
           ${nav(button('Убрать дерево на хранение','store-tree',true,{value:treeSlot,secondary:true}))}`
       }else{
@@ -2957,7 +2957,7 @@ function highlightControl(element: HTMLElement | null) {
 }
 
 async function showRequirement(requirement: Requirement, origin?: HTMLElement, depth = 0): Promise<void> {
-  const hint = getRequirementHint(farm, requirement)
+  const hint = getRequirementHint(farm, requirement, panel === 'recipes' && origin?.closest('.signature-page') ? 'saved-recipe' : undefined)
   const {target,value} = hint.action
   if (target === 'sail') {
     const destination = islandIds.find(id => id === value)
@@ -4259,7 +4259,10 @@ app.addEventListener('click', async (event) => {
     }
     case 'pick-fruit': {
       const tree = (farm.island === 'home' || farm.island === 'grove') && farm.trees[farm.island][treeSlot]
-      if(tree && perform(() => pickFruit(farm, treeSlot)))playBaySound(orchardPickSound(tree.tree), 1, 0)
+      if(tree && perform(() => pickFruit(farm, treeSlot))) {
+        playBaySound(orchardPickSound(tree.tree), 1, 0)
+        dialogContent.querySelector<HTMLButtonElement>('.tree-focus [data-action="back"]')?.focus({preventScroll:true})
+      }
       break
     }
     case 'upgrade-building': {
