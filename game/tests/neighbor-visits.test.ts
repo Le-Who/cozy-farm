@@ -3,13 +3,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
-import { createFarm, restoreCurrentFarm, endDay, sail, workBed, storeTree, returnNurseryTree, plantTree, petChicken, introduceHenToVisitor, bakeWorkshop, pickFruit, getNeighborPlans, joinNeighborPlan, serveNeighborPlan, finishNeighborPlan } from '../src/farm.ts'
+import { createFarm, restoreCurrentFarm, endDay, sail, workBed, storeTree, returnNurseryTree, plantTree, petChicken, canIntroduceHenToVisitor, introduceHenToVisitor, bakeWorkshop, pickFruit, getNeighborPlans, joinNeighborPlan, serveNeighborPlan, finishNeighborPlan } from '../src/farm.ts'
 import { inviteNeighborVisit, finishNeighborVisit, visitActivities, visitActivityIds } from '../src/neighbor-visits.ts'
 import { renderNeighborVisits, renderVisitRest } from '../src/neighbor-visits-ui.ts'
 import { restoreLegacyFarm } from '../src/farm-save-migration.ts'
 import { farmSaveKeys as keys, friendshipFarmSaveKeys as v5 } from '../src/farm-save-keys.ts'
 import { VersionedSave } from '../src/versioned-save.ts'
 import { getBedStage } from '../src/farm.ts'
+import { henFriends } from '../src/hen-friendship.ts'
 function ready(meetResidents=true){
   const f=createFarm();f.day=5;f.boatOwned=true;f.buildingLevels.farmhouse=2
   f.projects.fair={'dishes:appleJam':1,eggBaskets:1,'produce:carrot':4,'produce:wheat':3}
@@ -78,6 +79,30 @@ test('already-petted hens may be introduced without farming friendship or repeat
   const observed=structuredClone(f);assert.equal(introduceHenToVisitor(f,0).ok,false);assert.deepEqual(f,observed)
   finishNeighborVisit(f,f.neighborVisits.serial);inviteNeighborVisit(f,'finnFlock');introduceHenToVisitor(f,1)
   assert.equal(f.neighborVisits.memories.length,1);assert.equal(f.neighborVisits.memories[0].subject,'Плюша');assert.deepEqual(load(f),f)
+})
+test('a flock visitor can meet a hen by stroking her in the yard after the daily pet, without a second care reward',()=>{
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const handler = stripTypeScriptTypes(main.slice(main.indexOf('function activateTarget('), main.indexOf('function useHotbar(')))
+  const farm=ready(), id=1, saves:boolean[]=[], feedback:string[]=[]
+  const greet=(gesture:'stroke'|'settle')=>runInNewContext(handler+`
+activateTarget({kind:'hen',index:${id}},'${gesture}')`,{
+    farm,henFriends,canIntroduceHenToVisitor,introduceHenToVisitor,petChicken,island:{isCrossing:()=>false,visit:()=>{}},
+    playBaySound:()=>{},notify:(text:string)=>feedback.push(text),
+    perform:(action:()=>ReturnType<typeof petChicken>,_dismiss=false,quiet=false)=>{
+      const result=action();assert.ok(result.ok,result.message);saves.push(true);if (!quiet) feedback.push(result.message);return true
+    },
+  })
+  // The morning pet is ordinary farm work, before the visitor arrives.
+  greet('stroke');assert.deepEqual(farm.pettedChickens,[id]);assert.equal(farm.henFriendship.hens[id].points,1)
+  assert.ok(inviteNeighborVisit(farm,'finnFlock').ok);const before=economy(farm)
+  greet('settle');assert.equal(farm.neighborVisits.active?.observation,null);assert.equal(saves.length,1)
+  greet('stroke');assert.equal(farm.neighborVisits.active?.observation?.subject,'Искорка')
+  assert.match(feedback.at(-1)!,/Финн запомнил/);assert.deepEqual(economy(farm),before)
+  const observed=structuredClone(farm);greet('stroke');assert.equal(saves.length,2);assert.deepEqual(farm,observed)
+  assert.ok(finishNeighborVisit(farm,farm.neighborVisits.serial,'curious').ok)
+  assert.equal(load(farm).neighborVisits.memories[0].subject,'Искорка')
+  assert.ok(inviteNeighborVisit(farm,'beaHands').ok);greet('stroke')
+  assert.equal(farm.neighborVisits.active?.observation,null);assert.equal(saves.length,2)
 })
 test('cancel, failed work, wrong kind, rest and travel do not invent memories or lose earned ones',()=>{
   const f=ready();inviteNeighborVisit(f,'beaHands');petChicken(f,1);assert.equal(f.neighborVisits.active?.observation,null)
