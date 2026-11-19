@@ -16,6 +16,7 @@
 .kitchen-workbench .kitchen-menu-choices {
   position:static;grid-area:choices;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
 }
+.kitchen-ready-heading {grid-column:1/-1;font-size:14px;line-height:1.15;color:var(--plum)}
 .kitchen-workbench .kitchen-menu-choices>button {
   width:100%;height:auto;min-height:52px;display:grid;align-content:center;gap:2px;padding:4px;color:var(--plum);font-weight:750;
   font-size:clamp(12px,3.55vw,15px);line-height:1.11;box-shadow:0 2px #a8693930;
@@ -81,4 +82,13 @@
 @media(min-width:500px) and (max-height:450px) {
   .kitchen-workbench {row-gap:3px}
   .kitchen-menu-recipe .recipe {row-gap:2px}
+}
+
+/* Match tab order: ready recipes and their one Cook control precede browsing. */
+.kitchen-ready-workbench {grid-template-areas:"choices choices" "recipe recipe" "tabs book"}
+@media(max-width:449px) {
+  .kitchen-ready-workbench {grid-template-areas:"choices" "recipe" "tabs" "book"}
+}
+@media(min-width:500px) and (max-height:450px) {
+  .kitchen-ready-workbench {grid-template-areas:"choices recipe" "tabs book"}
 }
