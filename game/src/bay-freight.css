@@ -76,3 +76,6 @@
 .bay-freight[data-expedition-phase=planning]:has(.expedition-receipt):has([aria-label="Следующая разведка"]) .expedition-receipt{order:2;margin-block:4px}
 .bay-freight[data-expedition-phase=planning]:has(.expedition-receipt):has([aria-label="Следующая разведка"]) .expedition-departure>p{font-size:11px;line-height:1.2;margin-block:2px}
 }
+
+.expedition-commission-use{margin:.4rem 0 .1rem;padding:.5rem .6rem;border-left:3px solid var(--bf-gold);background:var(--bf-paper);color:var(--bf-ink);border-radius:8px;overflow-wrap:anywhere}
+.expedition-commission-use>p{margin:.16rem 0 .36rem;font-size:.85em}

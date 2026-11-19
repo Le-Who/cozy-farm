@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { completeSignature, deliverSignature, endDay, forgetSignature, getVillageHomeCount, restoreFarm, serveVillageMeal } from '../src/farm.ts'
+import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
+import { completeSignature, deliverSignature, endDay, forgetSignature, getVillageHomeCount, inviteResident, restoreFarm, serveVillageMeal } from '../src/farm.ts'
 import { getDiscoveryTask } from '../src/discovery-path.ts'
-import { getReadySignatureSuppers, renderSignatureSuppers } from '../src/shared-supper.ts'
+import { getReadySignatureSuppers, renderSignatureSuppers, renderSupperResult, supperCottageReady } from '../src/shared-supper.ts'
 import { isGuardedAction, ActionClickGuard, ActivationKeyGuard } from '../src/action-click-guard.ts'
 import { sharedSupperFixture } from './fixtures/shared-supper.ts'
 
@@ -123,7 +126,7 @@ test('the exact selected recipe is spent without touching other portions, and cu
 })
 
 test('both supper gestures protect redraw against double click and held activation', () => {
-  for(const action of ['supper-signature','share-meal'])assert.equal(isGuardedAction(action),true)
+  for(const action of ['supper-signature','share-meal','supper-cottage'])assert.equal(isGuardedAction(action),true)
   const clicks=new ActionClickGuard()
   clicks.remember({detail:1,timeStamp:100,clientX:20,clientY:40})
   assert.equal(clicks.blocks({detail:2,timeStamp:160,clientX:20,clientY:40}),true)
@@ -132,4 +135,53 @@ test('both supper gestures protect redraw against double click and held activati
   assert.equal(keys.blocks({key:'Enter',repeat:true},false),true)
   keys.release('Enter')
   assert.equal(keys.blocks({key:'Enter',repeat:false},false),false)
+})
+
+test('both real dinner commands keep the earned choice; only a separate visit opens vacant cottage 2', () => {
+  const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
+  const between = (start: string, end: string) => {
+    const a = main.indexOf(start), b = main.indexOf(end, a + start.length)
+    assert.ok(a >= 0 && b > a)
+    return main.slice(a,b)
+  }
+  const route = between("    case 'supper-signature':", "    case 'cove-choice':")
+    + main.split('\n').find(line => line.startsWith("    case 'share-meal':"))!
+  const code = stripTypeScriptTypes(between('function finishSharedSupper(', 'function neighboursCard(')
+    + between('function activateTarget(', 'function useHotbar(')
+    + `switch (command) {${route}}`)
+  for (const command of ['share-meal','supper-signature']) {
+    const farm = sharedSupperFixture('manual'), before = structuredClone(farm)
+    const id = farm.culinary.recipes[0].id, home = '<button data-action="sail" data-value="home">Домой</button>'
+    const visits: string[] = []
+    let focused = false
+    const context = { farm, command, value: id, pastryShape: 'round', deliverSignature, serveVillageMeal,
+      panel: 'village-meal', villageSlot: 0, supperCottageReady,
+      dialogContent: { scrollTop: 99, innerHTML: '', querySelector: (selector: string) => selector === '[data-supper-result]' ? { focus: () => { focused=true } } : null },
+      perform(action: () => {ok:boolean}, dismiss: boolean) {
+        const {ok} = action()
+        if (ok && dismiss) context.panel = ''
+        if (ok) context.dialogContent.innerHTML = renderSupperResult(farm,'',home)
+        return ok
+      },
+      island: { isCrossing: () => false, visit: (target: {kind:string, index:number}) => visits.push(target.kind + ':' + target.index) },
+      openPanel: (next: string) => { context.panel=next },
+    }
+    assert.equal(supperCottageReady(farm),false)
+    assert.equal(renderSupperResult(farm,'',home),'')
+    runInNewContext(code,context)
+    assert.equal(context.panel,'village-meal'); assert.equal(focused,true); assert.equal(context.dialogContent.scrollTop,0)
+    assert.match(context.dialogContent.innerHTML,/data-action="supper-cottage">К домику 2/); assert.ok(context.dialogContent.innerHTML.includes(home))
+    assert.equal(farm.village.meals,2); assert.equal(farm.fish.perch,before.fish.perch-1)
+    assert.equal(farm.handmade.round,before.handmade.round-(command==='share-meal'?1:0))
+    assert.equal(farm.culinary.stock[id],before.culinary.stock[id]-(command==='supper-signature'?1:0))
+    assert.deepEqual(farm.village.residents,['bea',null]); assert.deepEqual(visits,[])
+    const paid = structuredClone(farm); context.command='supper-cottage'
+    runInNewContext(code,context)
+    assert.equal(context.panel,'village'); assert.equal(context.villageSlot,1); assert.deepEqual(visits,['village-home:1'])
+    assert.deepEqual(farm,paid,'visiting neither invites, spends nor sails')
+    runInNewContext(code,context); assert.equal(visits.length,1,'old table click cannot activate in a house')
+    assert.equal(inviteResident(farm,'finn',1).ok,true); context.panel='village-meal'
+    runInNewContext(code,context); assert.equal(visits.length,1,'occupied house is no longer offered')
+    assert.doesNotMatch(renderSupperResult(farm,'',home),/supper-cottage/); assert.ok(renderSupperResult(farm,'',home).includes(home))
+  }
 })

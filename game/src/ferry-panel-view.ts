@@ -55,15 +55,25 @@ export function restoreFerryPanelView(host: HTMLElement, view: FerryPanelView | 
     ? panel.querySelector<HTMLElement>(`.expedition-${focus.summary} > summary`) ?? undefined
     : matches.find(button => focus.area === 'panel' || button.closest(`.expedition-${focus.area}`)) ?? matches.find(canFocus);
   const picker = 'action' in focus && (focus.action === 'expedition-offer' || focus.action === 'expedition-pair');
-  const fallback = picker ? offers?.querySelector<HTMLElement>('summary') ?? undefined : undefined;
+  // Cooking may retire the useful-cargo link while the player is in the recipe book.
+  // Return to the same settled manifest, never the receipt for a later sailing.
+  const samePaidVoyage = 'action' in focus && focus.action === 'expedition-order-recipe'
+    && panel.dataset.receiptVoyage === focus.value.split(':', 1)[0];
+  const fallback = picker ? offers?.querySelector<HTMLElement>('summary') ?? undefined
+    : samePaidVoyage ? panel.querySelector<HTMLElement>('.expedition-receipt') ?? undefined : undefined;
   const close = panel.querySelector<HTMLElement>('.bay-freight-close') ?? undefined;
   const next = canFocus(target) ? target : canFocus(fallback) ? fallback : canFocus(close) ? close : undefined;
   next?.focus({ preventScroll: true });
   // A changed cargo card may leave the retained picker position clipping its focused choice.
   // Preserve ordinary scroll restoration; reveal only that choice when it no longer fits.
-  const area = picker && next === target ? panel.querySelector<HTMLElement>('.expedition-card-scroll') : undefined;
+  const reveal = (picker && next === target) || (samePaidVoyage && next === fallback);
+  const area = reveal ? panel.querySelector<HTMLElement>('.expedition-card-scroll') : undefined;
   if (area && next) {
     const frame = area.getBoundingClientRect(), control = next.getBoundingClientRect();
-    if (control.top < frame.top || control.bottom > frame.bottom) next.scrollIntoView({ block: 'nearest' });
+    // On narrow screens the desk grows with its content; the workspace, not
+    // the desk, is then the clipping viewport for a receipt.
+    const workspace = samePaidVoyage ? panel.querySelector<HTMLElement>('.bay-freight-workspace')?.getBoundingClientRect() : undefined;
+    if (control.top < Math.max(frame.top, workspace?.top ?? frame.top) || control.bottom > Math.min(frame.bottom, workspace?.bottom ?? frame.bottom))
+      next.scrollIntoView({ block: 'nearest' });
   }
 }

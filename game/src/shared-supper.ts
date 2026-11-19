@@ -1,4 +1,4 @@
-import { fishDefinitions, getSignatureStock, getVillageMeal, type FarmState } from './farm.ts'
+import { fishDefinitions, getSignatureStock, getVillageHomeCount, getVillageMeal, type FarmState } from './farm.ts'
 import { ruCount } from './ru.ts'
 import type { SignatureRecipe } from './culinary.ts'
 
@@ -20,4 +20,15 @@ export function renderSignatureSuppers(farm: FarmState, picture: (recipe: Signat
     <div class="shared-supper-choices">${choices.map(({recipe,count,fish,available}) => `<button type="button" class="shared-supper-choice" data-action="supper-signature" data-value="${escape(recipe.id)}" ${available?'':'disabled'} aria-label="Подать ${escape(recipe.name)}. Расход: 1 порция и 1 рыба — ${fishDefinitions[fish].name.toLowerCase()}. В запасе: ${ruCount(count, 'порция', 'порции', 'порций')}.">
       <span class="shared-supper-picture" aria-hidden="true">${picture(recipe)}</span><strong>${escape(recipe.name)}</strong><span>В запасе: ×${count}</span><small>Подать 1 порцию</small>
     </button>`).join('')}</div></section>`
+}
+
+/** A shared table can point at a free house. Opening it is never an invitation. */
+export function supperCottageReady(farm: FarmState): boolean {
+  return farm.island === 'village' && getVillageMeal(farm).served && getVillageHomeCount(farm) === 2 && !farm.village.residents[1]
+}
+
+export function renderSupperResult(farm: FarmState, cottageArt: string, homeButton: string): string {
+  if (farm.island !== 'village' || !getVillageMeal(farm).served) return ''
+  if (!supperCottageReady(farm)) return `<p class="dialog-status">Сегодня общий ужин уже состоялся. Следующий ужин завтра.</p>${homeButton}`
+  return `<section class="supper-result"><div class="supper-result-head"><span aria-hidden="true">${cottageArt}</span><div><small>Общий ужин состоялся</small><h2 tabindex="-1" data-supper-result>Второй домик свободен</h2></div></div><div class="supper-result-actions"><button type="button" class="dialog-button" data-action="supper-cottage">К домику 2</button>${homeButton}</div></section>`
 }
