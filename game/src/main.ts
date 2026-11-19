@@ -180,6 +180,8 @@ import {
   getFishingTripConfig,
   bakeWorkshop,
   getWorkshopAction,
+  workshopIngredients,
+  getBeaPastryCount,
   workshopDefinitions,
   workshopShapes,
   getVillageProject,
@@ -409,7 +411,8 @@ let cookingMode:'dish'|'signature'='dish'
 const kitchenGroups = ['tart', 'preserves', 'dishes'] as const
 type KitchenGroup = typeof kitchenGroups[number]
 // Unset until a workbench opens; explicit selections and Back retain their own group.
-let kitchenGroup: KitchenGroup | undefined
+type KitchenSelection = KitchenGroup | { ready?: DishId }
+let kitchenGroup: KitchenSelection | undefined
 let kitchenDish: DishId = 'grilledFish'
 let honeyKitchenDish: HoneyKitchenRecipe = 'honeyBiscuits'
 type KitchenTart = 'orchardTart' | 'strawberryTart' | 'blueberryTart' | 'raspberryTart' | 'mixed'
@@ -986,34 +989,51 @@ function recipeCards(recipes: readonly DishId[]) {
   }).join('')}</div>`
 }
 
+function kitchenReadyDishes() {
+  return dishIds.filter(dish => getCookAction(farm, dish, cookingFish).available).slice(0, 3)
+}
+
 function kitchenFamilies() {
-  const labels = { tart: 'Тарты', preserves: 'Варенье', dishes: 'Блюда' } satisfies Record<KitchenGroup, string>
-  const tabs = kitchenGroups.map(group => `<button type="button" class="dialog-button${kitchenGroup === group ? '' : ' secondary'}" data-action="kitchen-group" data-value="${group}" aria-pressed="${kitchenGroup === group}">${labels[group]}</button>`).join('')
-  const familyChoices = (group: KitchenGroup, selected: string, choices: readonly { id: string; image: string; name: string; short?:string }[], extra = '') => `<div class="recipe-family-choices kitchen-menu-choices" role="group" aria-label="${labels[group]}">${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}<span>${choice.short ?? choice.name}</span></button>`).join('')}${extra}</div>`
+  // KitchenSelection is local navigation, never saved to the farm. A landing
+  // visit follows live stock; an explicitly browsed category stays put on Back.
+  const landing = farm.island === 'home' && typeof kitchenGroup === 'object' ? kitchenGroup : undefined
+  const ready = landing ? kitchenReadyDishes() : []
+  const picked = ready.find(dish => dish === landing?.ready) ?? ready[0]
+  const readyShelf = ready.length > 1
+  const group = readyShelf ? 'ready' : picked
+    ? isTartDish(picked) ? 'tart' : picked === 'appleJam' || picked === 'orchardPreserves' ? 'preserves' : 'dishes'
+    : typeof kitchenGroup === 'string' ? kitchenGroup : 'tart'
+  const tart = picked && isTartDish(picked) ? picked : kitchenTart
+  const preserves = picked === 'appleJam' || picked === 'orchardPreserves' ? picked : kitchenPreserves
+  const labels = { tart: 'Тарты', preserves: 'Варенье', dishes: 'Блюда', ready: 'Можно приготовить' }
+  const tabs = kitchenGroups.map(id => `<button type="button" class="dialog-button${group === id ? '' : ' secondary'}" data-action="kitchen-group" data-value="${id}" aria-pressed="${group === id}">${labels[id]}</button>`).join('')
+  const familyChoices = (group: KitchenGroup | 'ready', selected: string, choices: readonly { id: string; image: string; name: string; short?:string }[], extra = '') => `<div class="recipe-family-choices kitchen-menu-choices" role="group" aria-label="${labels[group]}">${group === 'ready' ? `<strong class="kitchen-ready-heading" aria-hidden="true">${labels.ready}</strong>` : ''}${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}<span>${choice.short ?? choice.name}</span></button>`).join('')}${extra}</div>`
   const otherDishes = dishIds.filter(dish => !isTartDish(dish) && dish !== 'appleJam' && dish !== 'orchardPreserves' && !dishDefinitions[dish].capeLevel && (dish !== 'honeyCake' || canSailTo(farm, 'cape')) && (!dishDefinitions[dish].specialization || hasFarmhouseSpecialization(farm, dishDefinitions[dish].specialization!)))
-  const other = otherDishes.find(dish => dish === kitchenDish) ?? otherDishes[0]
-  const choices = kitchenGroup === 'tart'
-    ? familyChoices('tart', kitchenTart, [
+  const other = otherDishes.find(dish => dish === (picked ?? kitchenDish)) ?? otherDishes[0]
+  const choices = readyShelf && picked ? familyChoices('ready', picked, ready.map(id => ({ id, image: dishIcons[id], name: dishDefinitions[id].name }))) : group === 'tart'
+    ? familyChoices('tart', tart, [
       { id: 'orchardTart', image: dishIcons.orchardTart, name: 'Яблочный пирог', short:'Яблоко' },
       { id: 'strawberryTart', image: dishIcons.strawberryTart, name: 'Клубничный тарт', short:'Клубника' },
       { id: 'blueberryTart', image: dishIcons.blueberryTart, name: 'Черничный тарт', short:'Черника' },
       { id: 'raspberryTart', image: dishIcons.raspberryTart, name: 'Малиновый тарт', short:'Малина' },
       { id: 'mixed', image: 'ui-tart', name: 'Ягодный тарт: выбрать сочетание', short:'Смесь ягод' }
-    ], kitchenTart === 'orchardTart' ? button('Выбрать фрукты','new-signature',true,{value:'tart',secondary:true}) : '') : kitchenGroup === 'preserves'
-      ? familyChoices('preserves', kitchenPreserves, [
+    ], tart === 'orchardTart' ? button('Выбрать фрукты','new-signature',true,{value:'tart',secondary:true}) : '') : group === 'preserves'
+      ? familyChoices('preserves', preserves, [
         { id: 'appleJam', image: dishIcons.appleJam, name: 'Яблочное варенье', short:'Яблочное' },
         { id: 'orchardPreserves', image: dishIcons.orchardPreserves, name: 'Садовый конфитюр', short:'Конфитюр' },
         { id: 'custom', image: 'ui-signature-bright', name: 'Варенье: выбрать фрукты', short:'Своя смесь' }
       ])
       : familyChoices('dishes', other, otherDishes.map(id=>({ id, image:dishIcons[id], name:dishDefinitions[id].name })))
-  const recipe = kitchenGroup === 'tart'
+  const recipe = picked ? recipeCards([picked]) : group === 'tart'
     ? kitchenTart === 'mixed' ? `<section class="recipe kitchen-custom"><h2>Ягодный тарт</h2>${button('Выбрать ягоды', 'family-signature', true, { value: 'berries' })}</section>` : recipeCards([kitchenTart])
-    : kitchenGroup === 'preserves'
+    : group === 'preserves'
       ? kitchenPreserves === 'custom' ? `<section class="recipe kitchen-custom"><h2>Фруктовое варенье</h2>${button('Выбрать фрукты', 'family-signature', true, { value: 'preserves' })}</section>` : recipeCards([kitchenPreserves])
       : recipeCards(other ? [other] : [])
-  return `<div class="kitchen-workbench"><nav class="kitchen-menu-tabs panel-tabs" aria-label="Разделы кухни">${tabs}</nav>
-    <div class="kitchen-menu-book">${button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})}</div>
-    ${choices}<div class="kitchen-menu-recipe">${recipe}</div></div>`
+  const browse = `<nav class="kitchen-menu-tabs panel-tabs" aria-label="Разделы кухни">${tabs}</nav>
+    <div class="kitchen-menu-book">${button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})}</div>`
+  const bench = choices + `<div class="kitchen-menu-recipe">${recipe}</div>`
+  return readyShelf ? `<div class="kitchen-workbench kitchen-ready-workbench">${bench}${browse}</div>`
+    : `<div class="kitchen-workbench">${browse}${bench}</div>`
 }
 function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily): string | undefined {
   if (!family) return undefined
@@ -1641,14 +1661,18 @@ function neighboursCard() {
       const def = residentDefinitions[id]
       const service = getResidentService(farm, id, pastryShape)
       const here = resident === id
+      const practice = here && id === 'bea' && !farm.workshopPatterns.includes(pastryShape)
+      const ingredients: readonly StockItem[] = practice ? workshopIngredients : [{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }]
       const pier = here && id === 'finn' ? getFinnFishingRoute(farm) : undefined
       return `<section class="resident-card" data-present="${here}"><header class="resident-heading">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2></header>
         ${here ? '' : `<div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 изделия в день':'+1 место на крючке · крепче снасть'}</span></div>`}
-        <div class="resident-service">${here ? (id === 'bea' ? `<div class="resident-patterns"><div class="resident-pattern-heading"><h3>Форма выпечки</h3><small>✓ Освоено</small></div>${pastryChoices()}</div><ul class="ingredients">${[{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }].map(item => stockTile(item as StockItem)).join('')}</ul>${button(farm.culinary.tastings.bea.bonus||farm.neighbors.bea.helpReady?'Испечь ×4':'Испечь ×3', 'resident-service', service.available, { value: id })}`
+        <div class="resident-service">${here ? (id === 'bea' ? `<div class="resident-patterns"><div class="resident-pattern-heading"><h3>Форма выпечки</h3><small>✓ Освоено</small></div>${pastryChoices()}</div><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>${practice
+          ? button(`Освоить вручную: ${workshopDefinitions[pastryShape].name.toLowerCase()}`, 'practice-pattern', getWorkshopAction(farm).available, { value: pastryShape })
+          : button(`Испечь ×${getBeaPastryCount(farm)}`, 'resident-service', service.available, { value: id })}`
           : pier ? `<div class="finn-hook-ready" tabindex="-1" data-finn-hook>${icon('tool-rod')}<strong>Крючок готов · +1 место</strong></div>${button(pier.label, 'finn-pier', true, { value: pier.island + ':' + pier.panel })}`
           : button('Разведать · +1 место на крючке', 'resident-service', service.available, { value: id }))
         : button('Пригласить', 'invite-resident', true, { value: id })}
-        ${here&&!service.available&&!pier?`<p class="dialog-status">${service.label}</p>${id==='bea'&&!farm.workshopPatterns.includes(pastryShape)?button(`Освоить: ${workshopDefinitions[pastryShape].name.toLowerCase()}`,'practice-pattern',true,{value:pastryShape}):''}`:''}
+        ${here&&!service.available&&!practice&&!pier?`<p class="dialog-status">${service.label}</p>`:''}
         </div>${here ? `<div class="resident-gatherings">${dinner}${nav(button(`Замысел: ${def.name}`, 'open-neighbor', true, { value: id, secondary: true }))}${neighborHelpCard(farm,id)}</div>` : ''}
       </section>`
     }).join('')}</div>`}
@@ -1678,7 +1702,7 @@ type PanelVisit = {
   workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; cookingFish: FishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
   signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;expandedRepeatId:string|undefined;cookingMode:'dish'|'signature';
   communityOrderId:string;communityResident:ResidentId;requestedFood:FoodOfferId|undefined;
-  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenGroup|undefined;kitchenDish:DishId;honeyKitchenDish:HoneyKitchenRecipe;signatureFamily:SignatureFamily;
+  kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenSelection|undefined;kitchenDish:DishId;honeyKitchenDish:HoneyKitchenRecipe;signatureFamily:SignatureFamily;
 }
 const panelHistory: PanelVisit[] = []
 // Identity ties this shortcut to its exact Market visit, never another Orchard entry.
@@ -2508,18 +2532,9 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
   else if (next === 'kitchen' && remember && next !== panel && farm.fish[cookingFish] === 0) cookingFish = getGrillFish(farm)
   if (next === 'kitchen' && kitchenGroup === undefined) {
-    kitchenGroup = 'tart'
     const ordinaryHomeEntry = farm.island === 'home' && remember && next !== panel && !entry && !recipeTarget
       && (!dialog.open || panel === 'rest' || panel === 'guide' || panel === 'boat' || panel === 'upgrades')
-    if (ordinaryHomeEntry && !getCookAction(farm, 'orchardTart').available) {
-      const ready = dishIds.filter(dish => getCookAction(farm, dish, cookingFish).available)
-      if (ready.length === 1) {
-        const dish = ready[0]
-        if (isTartDish(dish)) kitchenTart = dish
-        else if (dish === 'appleJam' || dish === 'orchardPreserves') { kitchenGroup = 'preserves'; kitchenPreserves = dish }
-        else { kitchenGroup = 'dishes'; kitchenDish = dish }
-      }
-    }
+    kitchenGroup = ordinaryHomeEntry ? {} : 'tart'
   }
   if (next === 'recipes') {
     if (recipeTarget) recipeBook.select(farm,recipeTarget)
@@ -3615,11 +3630,17 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'recipe-family': {
-      if (control.dataset.family === 'tart' && (value === 'mixed' || dishIds.some(dish=>dish===value&&isTartDish(dish)))) kitchenTart = value as KitchenTart
-      if (control.dataset.family === 'preserves' && (value === 'appleJam' || value === 'orchardPreserves' || value === 'custom')) kitchenPreserves = value
+      if (control.dataset.family === 'ready') {
+        if (panel !== 'kitchen' || !dialog.open || farm.island !== 'home' || typeof kitchenGroup !== 'object') break
+        const ready = kitchenReadyDishes(), dish = ready.find(id => id === value)
+        if (ready.length > 1 && dish) { kitchenGroup = { ready: dish }; drawPanel() }
+        break
+      }
+      if (control.dataset.family === 'tart' && (value === 'mixed' || dishIds.some(dish=>dish===value&&isTartDish(dish)))) { kitchenTart = value as KitchenTart; kitchenGroup = 'tart' }
+      if (control.dataset.family === 'preserves' && (value === 'appleJam' || value === 'orchardPreserves' || value === 'custom')) { kitchenPreserves = value; kitchenGroup = 'preserves' }
       if (control.dataset.family === 'dishes') {
         const dish = dishIds.find(dish => dish === value)
-        if (dish) kitchenDish = dish
+        if (dish) { kitchenDish = dish; kitchenGroup = 'dishes' }
       }
       drawPanel(); break
     }
@@ -4278,7 +4299,10 @@ app.addEventListener('click', async (event) => {
     }
     case 'practice-pattern': {
       const shape = workshopShapes.find(shape => shape === value)
-      if (shape) { pastryShape = shape; workshopRecipe = 'pastry'; openPanel('workshop') }
+      if (panel === 'village' && farm.village.residents[villageSlot] === 'bea' && shape === pastryShape
+        && !farm.workshopPatterns.includes(shape) && getWorkshopAction(farm).available) {
+        workshopRecipe = 'pastry'; openPanel('workshop')
+      }
       break
     }
     case 'pastry-shape': {

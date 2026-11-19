@@ -101,7 +101,7 @@ test('modifier and handled-event guards are unchanged', () => {
 })
 
 test('the editor remains in normal markup after the five recipes and its intentional handler stays navigation-only', () => {
-  assert.match(source, /kitchenTart === 'orchardTart' \? button\('Выбрать фрукты','new-signature',true,\{value:'tart',secondary:true\}\) : ''/)
+  assert.match(source, /tart === 'orchardTart' \? button\('Выбрать фрукты','new-signature',true,\{value:'tart',secondary:true\}\) : ''/)
   const handler = source.slice(source.indexOf("    case 'new-signature':"), source.indexOf("    case 'signature-base':"))
   assert.match(handler, /signatureSlots=\[null,null\]/)
   assert.match(handler, /openPanel\('signature'\)/)

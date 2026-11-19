@@ -1408,7 +1408,7 @@ export function serveFairGuest(farm: FarmState): ActionResult {
   return { ok: true, message: `${guest.name} благодарит вас. Награда: ${ruCount(guest.reward, 'монета', 'монеты', 'монет')} и семена (${cropDefinitions[guest.seeds.crop].name.toLowerCase()}) × ${guest.seeds.count}.` };
 }
 
-const workshopIngredients: readonly StockItem[] = [
+export const workshopIngredients: readonly StockItem[] = [
   { kind: 'produce', item: 'wheat', quantity: 2 }, { kind: 'eggs', quantity: 1 },
 ];
 

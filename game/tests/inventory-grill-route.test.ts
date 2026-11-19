@@ -13,26 +13,29 @@ import { commissionPlayer } from './fixtures/commission-player.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true)
-const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','recipeCards','kitchenFamilies','openPanel','goBack','focusKey']
+const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','recipeCards','kitchenReadyDishes','kitchenFamilies','openPanel','goBack','focusKey']
 const definitions = names.map(name => {
   const node = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)
   assert.ok(node, name); return node.getText(ast)
 })
 const icons = ast.statements.find(node => ts.isVariableStatement(node) && node.declarationList.declarations.some(d => d.name.getText(ast) === 'dishIcons'))!
 let clause: ts.CaseClause | undefined
+const kitchenCases = new Set(["'kitchen-group'","'recipe-family'","'cook'"]), actions: string[] = []
 const visit = (node: ts.Node) => {
   if (ts.isCaseClause(node) && node.expression.getText(ast) === "'fish-kitchen'") clause = node
+  if (ts.isCaseClause(node) && kitchenCases.has(node.expression.getText(ast))) actions.push(node.getText(ast))
   ts.forEachChild(node, visit)
 }
 visit(ast); assert.ok(clause)
-const code = ts.transpileModule(`${icons.getText(ast)}\n${definitions.join('\n')}\nasync function chooseFish(value) { switch('fish-kitchen') { ${clause.getText(ast)} } }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
+const code = ts.transpileModule(`${icons.getText(ast)}\n${definitions.join('\n')}\nasync function chooseFish(value) { switch('fish-kitchen') { ${clause.getText(ast)} } }
+function choose(action, value, family) { const control={dataset:{family}}; switch(action) {${actions.join('\n')} } }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
 const noop = () => {}
 function screen(farm: F.FarmState, group = 'preserves') {
   const state: Record<string, any> = {
     ...F, farm, getBerryNurserySource, getRequirementHint, escapeHtml: (text: string) => text, icon: (name: string) => `<img data-icon="${name}" alt="">`, fishImage: (id: string) => id,
     numberFormat: new Intl.NumberFormat('ru-RU'), requirementLinks: new Map(), pastryIcons: {},
     kitchenGroups: ['tart','preserves','dishes'], kitchenGroup: group, kitchenTart: 'orchardTart', kitchenPreserves: 'appleJam', kitchenDish: 'honeyCake', cookingFish: 'seaBass',
-    panel: 'inventory', panelHistory: [], marketSaleBrowse: new MarketSaleBrowseMemory(), inventoryGroup: 'shore', marketTab: 'sell', marketCategory: 'trees', selectedWarehouseRequest: undefined,
+    panel: 'inventory', panelHistory: [], marketSaleBrowse: new MarketSaleBrowseMemory(), inventoryGroup: 'shore', marketTab: 'sell', marketCategory: 'trees', selectedWarehouseRequest: undefined, pickedMarketOrder: undefined,
     salePresentation: { place: undefined }, island: { isCrossing: () => false, setViewMode: noop, setCoveFocus: noop, crossIsland: async (fn: () => unknown) => fn() },
     dialog: { open: true, showModal: noop, querySelectorAll: () => [] }, dialogContent: { scrollTop: 19, querySelectorAll: () => [], querySelector: () => null },
     transplantSelection: { reset: noop }, berryNurserySelection: { reset: noop }, berryRenewalSelection: { reset: noop }, gardenEditor: { reset: noop }, recipeSurplusSelection: { reset: noop },
@@ -128,13 +131,13 @@ function visibleCard(s: ReturnType<typeof screen>, dish: F.DishId, enabled: bool
   assert.equal(button[0].includes('disabled'), !enabled)
 }
 
-test('first ordinary Home workbench presents a sole ready dish without changing stocks, with honest defaults for none and ties', () => {
+test('first ordinary Home workbench preserves its sole ready card and empty default, and no longer strands tied recipes', () => {
   const cases: {steps:[string,...unknown[]][]; ready:F.DishId[]; shown:F.DishId; origin?:string}[] = [
     {steps:grillDayOne,ready:['grilledFish'],shown:'grilledFish'},
     {steps:jamDayOne,ready:['appleJam'],shown:'appleJam',origin:'rest'},
     {steps:[['pickFruit',0],['collectEggs'],['workBed',4]],ready:['orchardTart'],shown:'orchardTart'},
     {steps:[],ready:[],shown:'orchardTart'},
-    {steps:[...grillDayOne,['pickFruit',0]],ready:['grilledFish','appleJam'],shown:'orchardTart'},
+    {steps:[...grillDayOne,['pickFruit',0]],ready:['grilledFish','appleJam'],shown:'grilledFish'},
   ]
   for (const {steps, ready, shown, origin} of cases) {
     const {farm,s} = coldWorkbench(steps), before = structuredClone(farm)
@@ -157,14 +160,7 @@ test('explicit fish, source entry, and a deliberately chosen family survive a di
   // A contextual return to the workbench is not the initial Home recommendation.
   s.panel='cookery'; s.openPanel('kitchen'); visibleCard(s,'orchardTart',false)
   // Exercise the actual tab and family choice handlers, not just their field values.
-  function choose(action:string,value:string,family?:string) {
-    let branch:ts.CaseClause|undefined
-    const find=(n:ts.Node)=>{if(ts.isCaseClause(n)&&n.expression.getText(ast)===`'${action}'`)branch=n; ts.forEachChild(n,find)}
-    find(ast); assert.ok(branch)
-    Object.assign(s,{value,control:{dataset:{family}}})
-    runInNewContext(ts.transpileModule(`switch ('${action}') { ${branch.getText(ast)} }`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,s)
-  }
-  choose('kitchen-group','preserves'); choose('kitchen-group','tart'); choose('recipe-family','blueberryTart','tart')
+  s.choose('kitchen-group','preserves'); s.choose('kitchen-group','tart'); s.choose('recipe-family','blueberryTart','tart')
   visibleCard(s,'blueberryTart',false)
   s.openPanel('inventory'); s.goBack(); visibleCard(s,'blueberryTart',false)
   s.closeDialog(); s.openPanel('kitchen'); visibleCard(s,'blueberryTart',false)
@@ -249,4 +245,43 @@ test('only the sole missing grill salt previews its real local or sailing route,
   assert.ok(F.catchFish(farm,true).ok)
   assert.ok(transferBayGoods(farm,'withdraw','home','seaSalt',2).ok); assert.ok(F.sellMarketItem(farm,'seaSalt',2).ok)
   inspect() // today's quota is exhausted; the real next action is rest, not travel.
+})
+
+function dayFourKitchen() {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  return commissionPlayer(opening.slice(0, 38))
+}
+function homeKitchen(farm: F.FarmState) {
+  const s = screen(farm); s.panel = 'rest'; s.kitchenGroup = undefined; s.kitchenDish = 'grilledFish'
+  s.openPanel('kitchen')
+  return s
+}
+const shelf = (html: string) => [...html.matchAll(/data-family="ready" data-value="([^"]+)" aria-pressed="(true|false)"/g)].map(match => [match[1],match[2]])
+test('earned day 4: Home shows jam and cake, selection only previews; cook and Back use that very card', () => {
+  const p=dayFourKitchen(); p.act('sellMarketItem','eggs',p.state.eggs); p.act('pickFruit',0)
+  const f=p.state, before=structuredClone(f), s=homeKitchen(f)
+  assert.equal(p.actions,40); assert.deepEqual([f.day,f.fruit.apple,f.produce.wheat,f.honey,f.eggs],[4,2,2,3,0])
+  assert.deepEqual(shelf(s.html),[['appleJam','true'],['honeyCake','false']]); visibleCard(s,'appleJam',true)
+  assert.match(s.html,/Можно приготовить/); assert.ok(s.html.indexOf('data-family="ready"') < s.html.indexOf('data-action="cook"')); assert.ok(s.html.indexOf('data-action="cook"') < s.html.indexOf('data-action="kitchen-group"'))
+  assert.equal((s.html.match(/data-action="kitchen-group"/g)??[]).length,3); assert.doesNotMatch(s.html,/<details|<summary/)
+  s.choose('recipe-family','honeyCake','ready')
+  assert.equal(s.panel,'kitchen'); assert.deepEqual(shelf(s.html),[['appleJam','false'],['honeyCake','true']]);visibleCard(s,'honeyCake',true)
+  assert.deepEqual(f,before);assert.equal(s.saves,0)
+  s.choose('cook','honeyCake');assert.equal(s.panel,'cookery');assert.equal(s.cookingDish,'honeyCake')
+  s.goBack();assert.equal(s.panel,'kitchen');visibleCard(s,'honeyCake',true);assert.deepEqual(shelf(s.html)[1],['honeyCake','true'])
+  s.choose('kitchen-group','preserves');assert.deepEqual(shelf(s.html),[]);visibleCard(s,'appleJam',true)
+  const visits=s.draws; s.choose('recipe-family','honeyCake','ready');assert.equal(s.draws,visits,'a retired tile cannot override an explicit category')
+  s.choose('cook','appleJam');s.goBack();assert.equal(s.kitchenGroup,'preserves');visibleCard(s,'appleJam',true)
+  assert.equal(s.cookingFish,'seaBass');assert.deepEqual(f,before)
+})
+
+test('four earned recipes never make a second row of ready tiles; unlisted cake remains in its ordinary category and an explicit grill opens the chosen fish', async () => {
+  const p=dayFourKitchen();p.act('pickFruit',0);p.act('catchFish',true);p.visit('grove');p.act('gatherSeaSalt');p.visit('home')
+  const f=p.state, before=structuredClone(f), s=homeKitchen(f)
+  assert.equal(p.actions,43); assert.deepEqual(F.dishIds.filter(dish=>F.getCookAction(f,dish,'perch').available),['orchardTart','grilledFish','appleJam','honeyCake'])
+  assert.deepEqual(shelf(s.html),[['orchardTart','true'],['grilledFish','false'],['appleJam','false']])
+  const draws=s.draws;s.choose('recipe-family','honeyCake','ready');assert.equal(s.draws,draws,'only the three rendered live choices can act')
+  s.choose('kitchen-group','dishes');s.choose('recipe-family','honeyCake','dishes');visibleCard(s,'honeyCake',true)
+  s.openPanel('inventory');await s.chooseFish('perch');grill(s.html,'perch');assert.deepEqual(shelf(s.html),[]);visibleCard(s,'grilledFish',true)
+  assert.deepEqual(f,before)
 })
