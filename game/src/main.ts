@@ -74,7 +74,7 @@ import { renderCoopPanel } from './coop-panel'
 import { groupCoopServices } from './coop-services'
 import './coop-services.css'
 import './coop-panel.css'
-import { mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
+import { canMixBedtimeFeed, mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
 import './chicken-feed.css'
 import { henFriends, henFriendshipStage, refreshHenWalkChoice, renderHenFriendship, treatHen } from './hen-friendship'
 import { henCareResultFocus } from './hen-care-focus'
@@ -919,7 +919,8 @@ function specializationCards() {
 function flockFeedRow() {
   return row('tool-feed', 'Корм для кур', farm.chickensFed ? 'Сегодня накормлены' : 'Корм к утренней кладке', farm.chickensFed ? ''
     : farm.feed > 0 ? button('Покормить', 'feed')
-      : button('Купить корм', 'buy-feed', farm.coins >= feedBagPrice, {cost:{icon:'coin',amount:feedBagPrice}}))
+      : button('Купить корм', 'buy-feed', farm.coins >= feedBagPrice, {cost:{icon:'coin',amount:feedBagPrice}})
+        + (panel === 'rest' && canMixBedtimeFeed(farm) ? button('Смешать из урожая', 'chicken-feed-open', true, {secondary:true}) : ''))
 }
 
 function seedCards() {
@@ -2155,7 +2156,7 @@ function drawPanel() {
       dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable(), selectedFriendHen, icon, island.henFieldTarget(selectedFriendHen))
       break
     case 'chicken-feed':
-      dialogContent.innerHTML = renderChickenFeedMixes(farm, icon)
+      dialogContent.innerHTML = renderChickenFeedMixes(farm, icon, panelHistory.at(-1)?.panel === 'rest')
       break
     case 'coop':
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
@@ -4049,6 +4050,7 @@ app.addEventListener('click', async (event) => {
     }
     case 'chicken-feed-open':
       if (panel === 'coop' && dialog.open && farm.island === 'home' && farm.buildingLevels.coop >= 2) openPanel('chicken-feed')
+      else if (panel === 'rest' && dialog.open && canMixBedtimeFeed(farm)) openPanel('chicken-feed')
       break
     case 'mix-chicken-feed': {
       const keyboardMix = event.detail === 0 && document.activeElement === control
