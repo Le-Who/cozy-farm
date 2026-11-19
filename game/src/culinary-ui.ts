@@ -12,6 +12,7 @@ import {hasLanternfishDepth} from './fishing-model'
 import './culinary-ui.css'
 import {traitLabel} from './ru'
 import {signatureBookCapacity} from './signature-book'
+import {harvestPicnicOffer,renderHarvestPicnicRoute} from './harvest-picnic'
 import {renderPicnicOffer,renderPicnicStatus} from './picnic-guidance'
 import './picnic-guidance.css'
 import {getReadySignatureSuppers} from './shared-supper'
@@ -90,6 +91,8 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
     <section class="recipe-book-uses" aria-label="Применить готовые порции"><h2>Применить</h2>
       <div class="signature-actions">${control('Пикник · 1 порция','use-signature',recipe.id,count>0&&farm.culinary.picnic===null)}${farm.island==='home'?control('Продать…','sell-signature',recipe.id,count>0):''}</div>
       ${farm.culinary.picnic?'<p class="recipe-book-note">Сначала используйте текущий эффект пикника.</p>':!count?'<p class="recipe-book-note">Нет порций с собой.</p>':''}
+      ${recipe.processing==='chunky'&&!farm.culinary.picnic&&count>0?`<p class="recipe-book-note">${harvestPicnicOffer(farm)}</p>`:''}
+      ${recipe.processing==='chunky'?renderHarvestPicnicRoute(farm):''}
       <details data-recipe-disclosure="picnic-offer"${opened('picnic-offer')}><summary>Эффект и расход пикника</summary>${renderPicnicOffer(farm,recipe.processing)}</details>
       ${farm.island==='home'?control('Продать лишние ингредиенты','recipe-surplus-choose',recipe.id):''}
       ${farm.island==='village'&&farm.village.built?`<div class="signature-neighbours">${farm.village.residents.some(Boolean)?`<div class="signature-tastings" aria-label="Угощения соседям"><p>Каждый сосед пробует одно угощение за игровой день.</p>${(['bea','finn'] as const).map(id=>{
