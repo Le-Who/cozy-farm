@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { advanceBayShop, advanceBayShopDay, createBayShop, stockBayShop, setBayShopOpen, setBayShopPrice, restoreBayShop, bayShopVisitors, type BayShopProduct, type BayShopState } from '../src/bay-shop-model.ts'
 import { BayShopCustomerView, renderBayShopCustomers } from '../src/bay-shop-customers.ts'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 
 const pear:BayShopProduct={id:'signature:s1',identity:'pear-silky-a',name:'Грушевое облако',image:'/art/lavender/ui-tart.webp',basePrice:50,tags:['pear','fruit','delicate','silky','sweet'],signature:true}
 const run=(state:BayShopState,ms:number)=>{while(ms>0){const step=Math.min(ms,1000);advanceBayShop(state,step);ms-=step}}
@@ -90,4 +91,31 @@ test('a multi-product shop keeps its totals and selected customer in view; the c
  assert.ok(v.choose('finn'));assert.equal(v.historyOpen,true);assert.equal(v.explanation,false)
  v.historyOpen=false;assert.doesNotMatch(renderBayShopCustomers(s,v),/class="bay-shop-reputation"/)
  assert.deepEqual(s,before)
+})
+
+test('first Buyers visit shows the real customer after an earned sale; browsing profiles never follows a later visitor',()=>{
+ const commands=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+ const p=commissionPlayer(commands.slice(0,commands.findIndex((a:{name:string})=>a.name==='inviteResident')+1))
+ const id=p.cook();p.cook(id);p.shelf(id);p.shelf(id)
+ const shop=p.state.bayShop,price=Math.floor(shop.slots[0]!.product.basePrice*.8),coins=p.state.coins
+ assert.ok(setBayShopPrice(shop,0,price));setBayShopOpen(shop,true)
+ function until(next:'finn'|'mira'){
+   for(let n=0;n<120;n++){
+     if(shop.visitor?.id===next&&shop.visitor.phase==='browsing')return
+     for(const sale of advanceBayShop(shop,250))p.state.coins+=sale.price
+   }
+   assert.fail('Expected the next ordinary visitor')
+ }
+ until('finn')
+ assert.equal(p.state.day,9);assert.equal(shop.sold,1);assert.equal(p.state.coins,coins+price);assert.equal(shop.visitor?.budget,145)
+ const view=new BayShopCustomerView(),before=structuredClone(p.state)
+ view.enter(shop.visitor?.id)
+ assert.equal(view.selected,'finn');assert.match(card(shop,view),/Бюджет этого визита/);assert.match(card(shop,view),/145 монет/);assert.match(card(shop,view),/Что-нибудь сытное/)
+ assert.ok(view.choose('bea'));view.enter(shop.visitor?.id)
+ assert.equal(view.selected,'bea');assert.deepEqual(p.state,before,'opening tabs or selecting a profile is not a transaction')
+ until('mira')
+ view.enter(shop.visitor?.id);assert.equal(view.selected,'bea')
+ const fresh=new BayShopCustomerView();fresh.enter(shop.visitor?.id);assert.equal(fresh.selected,'mira','a new scene starts fresh')
+ const emptyFirst=new BayShopCustomerView();emptyFirst.enter(undefined);emptyFirst.enter('finn');assert.equal(emptyFirst.selected,'bea')
+ const chosenFirst=new BayShopCustomerView();chosenFirst.choose('lina');chosenFirst.enter('finn');assert.equal(chosenFirst.selected,'lina')
 })

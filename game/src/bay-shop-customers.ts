@@ -7,11 +7,20 @@ const money = (n:number) => ruCount(n,'монета','монеты','монет'
 /** View-only selection; looking at a customer does not change visits, stock or sales. */
 export class BayShopCustomerView {
   selected:BayShopVisitorId = 'bea'
+  private initialChoiceMade = false
+
+  // A fresh journal visit can follow the guest on screen, never later animation ticks.
+  enter(visitor:BayShopVisitorId|undefined) {
+    if(this.initialChoiceMade)return
+    this.initialChoiceMade=true
+    if(visitor)this.selected=visitor
+  }
   explanation = false
   historyOpen = false
   choose(id:unknown):boolean {
     const person=bayShopVisitors.find(person=>person.id===id)
     if(!person)return false
+    this.initialChoiceMade=true
     this.selected=person.id
     return true
   }

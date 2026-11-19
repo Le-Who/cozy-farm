@@ -199,7 +199,11 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       setBayShopOpen(state, !state.open); notice = state.open ? 'Лавка открыта' : 'Лавка закрыта'; changed(); return;
     }
     if (button.dataset.slot !== undefined) { pending = undefined; selected = Number(button.dataset.slot); tab = 'stock'; notice = ''; render(); return; }
-    if (button.dataset.tab) { pending = undefined; tab = button.dataset.tab as typeof tab; notice = ''; render(); return; }
+    if (button.dataset.tab) {
+      pending = undefined; tab = button.dataset.tab as typeof tab;
+      if (tab === 'journal') customerView.enter(state.visitor?.id);
+      notice = ''; render(); return;
+    }
     if (button.hasAttribute('data-stock-cancel')) { pending = undefined; render(); return; }
     if (button.hasAttribute('data-return')) {
       const returned = removeBayShopStock(state, selected);
