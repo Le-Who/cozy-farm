@@ -1,8 +1,9 @@
+import type {HenFieldTarget} from './hen-harvest-walk.ts'
 import type { FarmState } from './farm.ts'
 import { isHenGround, projectHenToGround, type HenBuildingLevels, type HenNativePoint } from './hen-roaming.ts'
 
-export type HenCompanionStatus = { id: number; returning: boolean }
-export type HenCompanion = HenCompanionStatus & { point: HenNativePoint; path: HenNativePoint[]; target?: HenNativePoint; planAfter: number }
+export type HenCompanionStatus = { id: number; returning: boolean; guiding?: boolean }
+export type HenCompanion = HenCompanionStatus & { point: HenNativePoint; path: HenNativePoint[]; target?: HenNativePoint; planAfter: number; guide?: {target:HenFieldTarget;stop:HenNativePoint} }
 const distance = (a: HenNativePoint, b: HenNativePoint) => Math.hypot(a.x - b.x, a.y - b.y)
 const stepSize = 16, columns = 101, rows = 63
 type HenGrid = { points: Map<number, HenNativePoint>; edges: Map<number, number[]> }
@@ -104,7 +105,7 @@ export function createHenCompanion(id: number, point: HenNativePoint): HenCompan
 }
 
 export function returnHenCompanion(walk: HenCompanion) {
-  walk.returning = true; walk.path = []; walk.target = undefined; walk.planAfter = 0
+  delete walk.guide; walk.returning = true; walk.path = []; walk.target = undefined; walk.planAfter = 0
 }
 
 /** Runtime-only companionship never changes feed, friendship, saved positions, days or orders. */
@@ -112,8 +113,8 @@ export function stepHenCompanion(walk: HenCompanion, farmer: HenNativePoint, hom
   walk.point = projectHenToGround(walk.point, levels)
   const away = distance(walk.point, farmer)
   if (walk.returning && distance(walk.point, home) < 2) { walk.point = { ...home }; return true }
-  if (!walk.returning && away <= 72) { walk.path = []; return false }
-  const target = walk.returning ? home : projectHenToGround({
+  if (!walk.returning && (walk.guide ? distance(walk.point,walk.guide.stop)<2 : away <= 72)) { walk.path = []; return false }
+  const target = walk.returning ? home : walk.guide?.stop ?? projectHenToGround({
     x: farmer.x + (walk.point.x - farmer.x) / Math.max(1, away) * 52,
     y: farmer.y + (walk.point.y - farmer.y) / Math.max(1, away) * 52,
   }, levels)

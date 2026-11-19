@@ -1,3 +1,4 @@
+import type {HenFieldTarget} from './hen-harvest-walk.ts'
 import { canWalkWithHen, type HenCompanionStatus } from './hen-companion.ts'
 import type { ActionResult, FarmState } from './farm.ts'
 
@@ -71,9 +72,10 @@ export function henFriendshipStage(points: number) {
   return points >= 9 ? 'Близкие друзья' : points >= 6 ? 'Вам доверяет' : points >= 3 ? 'Рада знакомству' : 'Присматривается'
 }
 
+const guideLabel=(favorite:HenTreat)=>`Пойти за курочкой ${{carrot:'к моркови',leafyGreens:'к зелени',apple:'к яблоне'}[favorite]}`
 function henWalkChoice(farm: FarmState, id: number, walk: HenCompanionStatus | null, sceneAvailable: boolean) {
   const walking = walk?.id === id
-  const reason = walking ? walk.returning ? 'Возвращается на своё место.' : 'Идёт с вами.'
+  const reason = walking ? walk.returning ? 'Возвращается на своё место.' : walk.guiding ? 'Показывает, где созрело любимое угощение.' : 'Идёт с вами.'
     : !canWalkWithHen(farm, id) ? 'С 3 шагов дружбы.'
     : !sceneAvailable ? 'Когда отобразится остров.'
     : walk ? walk.returning ? 'Другая курочка возвращается.' : 'Сначала закончите другую прогулку.' : 'Бесплатно.'
@@ -86,7 +88,7 @@ function henWalkChoice(farm: FarmState, id: number, walk: HenCompanionStatus | n
 }
 
 /** A returning hen can arrive while someone reads the open card. Keep its controls and focus in place. */
-export function refreshHenWalkChoice(root: HTMLElement, farm: FarmState, walk: HenCompanionStatus | null, sceneAvailable: boolean) {
+export function refreshHenWalkChoice(root: HTMLElement, farm: FarmState, walk: HenCompanionStatus | null, sceneAvailable: boolean, guide?:HenFieldTarget) {
   const row = root.querySelector('.hen-walk-choice'), button = row?.querySelector('button'), reason = row?.querySelector('small')
   const id = Number(button?.dataset.value)
   if (!button || !reason || !isHen(farm, id)) return
@@ -95,11 +97,17 @@ export function refreshHenWalkChoice(root: HTMLElement, farm: FarmState, walk: H
   button.disabled = !choice.enabled
   button.textContent = choice.label
   reason.textContent = choice.reason
+  const lead=root.querySelector<HTMLButtonElement>('[data-action="hen-guide"]')
+  if (lead) {
+    lead.hidden=lead.disabled=!guide || !!walk || !sceneAvailable
+    lead.textContent=guide ? guideLabel(henFriends[id].favorite) : ''
+    lead.dataset.value=guide ? `${id}:${guide.kind}:${guide.index}` : ''
+  }
 }
 
 /** Selection belongs to this view only; looking at a hen never touches the farm. */
 export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | null = null, sceneAvailable = true,
-  selectedHen = 0, icon: (name: string) => string = () => '') {
+  selectedHen = 0, icon: (name: string) => string = () => '', guide?:HenFieldTarget) {
   if (farm.island !== 'home') return '<p>Курочки ждут вас на Родном острове.</p>'
   const id = isHen(farm, selectedHen) ? selectedHen : 0
   const hen = henFriends[id], bond = farm.henFriendship.hens[id]
@@ -108,6 +116,7 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
   const choices = henTreatIds.map(treat => ({ treat, option: getHenTreat(farm, id, treat) }))
   const hintAtChoice = !known && choices.some(({ option }) => option.available)
   const choice = henWalkChoice(farm, id, walk, sceneAvailable)
+  const guideReady=guide && !walk && sceneAvailable && known && canWalkWithHen(farm,id)
   const avatar = (index: number) => `<span class="hen-friend-avatar" style="--hen-pose:${[0, 2, 7, 4, 6][index]}" aria-hidden="true"></span>`
   return `<section class="hen-friendship">
     <div class="hen-friend-roster" aria-label="Выберите курочку">${henFriends.slice(0, farm.flockSize).map((friend, index) =>
@@ -117,6 +126,7 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
         <div class="hen-friend-progress"><progress value="${bond.points}" max="${maxHenFriendship}" aria-label="Дружба · ${hen.name}"></progress><small>Дружба · ${bond.points}/${maxHenFriendship}</small></div>
         <button type="button" class="dialog-button" data-action="pet" data-value="${id}"${petted ? ' disabled' : ''}>${petted ? 'Сегодня поглажена' : `Погладить${bond.points < maxHenFriendship ? ' · +1' : ''}`}</button>
         <div class="hen-walk-choice"><button type="button" class="dialog-button secondary" data-action="${choice.action}" data-value="${id}"${choice.enabled ? '' : ' disabled'}>${choice.label}</button><small>${choice.reason}</small></div>
+        <button type="button" class="dialog-button secondary hen-field-guide" data-action="hen-guide" data-value="${guideReady ? `${id}:${guide.kind}:${guide.index}` : ''}"${guideReady?'':' disabled hidden'}>${guideReady?guideLabel(hen.favorite):''}</button>
       </div>
       <div class="hen-friend-treats"><h3 id="hen-treat-heading">Угостить · 1 продукт</h3>
         ${hintAtChoice ? `<p id="hen-treat-hint" class="hen-treat-status">${hen.hint}</p>` : ''}
