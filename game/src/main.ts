@@ -1764,7 +1764,7 @@ function openShopScene(host:HTMLElement) {
     onOpenCommissions:customer=>{
       if(customer&&shopCommissionView.current(farm).customer!==customer)shopCommissionView.choose(farm,'customer',customer)
       openPanel('shop-commissions')
-      if(customer)dialogContent.querySelector<HTMLSelectElement>('[data-commission-view="customer"]')?.focus({preventScroll:true})
+      if(customer)dialogContent.querySelector<HTMLElement>('[data-commission-view="customer"], [data-commission-customer]')?.focus({preventScroll:true})
     },
     onOpenMusic:()=>openPanel('bay-music'),
     onGoRest:()=>{void visitPanelAt('home','rest')},
@@ -3190,7 +3190,7 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'commission-cancel':
-      if(panel==='shop-commissions'&&dialog.open&&perform(()=>cancelShopCommission(farm,value),false,true)){dialogContent.scrollTop=0;dialogContent.querySelector<HTMLSelectElement>('[data-commission-view]')?.focus({preventScroll:true})}
+      if(panel==='shop-commissions'&&dialog.open&&perform(()=>cancelShopCommission(farm,value),false,true)){dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('[data-commission-view], [data-commission-customer]')?.focus({preventScroll:true})}
       break
     case 'commission-finish':
       if(panel==='shop-commissions'&&dialog.open&&perform(()=>finishShopCommission(farm,value),false,true)){playBaySound('trade.receive');dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('.commission-receipt summary')?.focus({preventScroll:true})}

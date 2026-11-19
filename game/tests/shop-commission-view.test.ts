@@ -6,6 +6,7 @@ import * as C from '../src/shop-commissions.ts'
 import {ShopCommissionView} from '../src/shop-commission-view.ts'
 import {ShopAssortmentChoice} from '../src/shop-assortment-choice.ts'
 import {renderShopCommissions} from '../src/shop-commissions-ui.ts'
+import {commissionPlayer} from './fixtures/commission-player.ts'
 import {assortmentPlayer} from './fixtures/assortment-player.ts'
 const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
 const earned=assortmentPlayer(opening),fresh=()=>structuredClone(earned.p.state)
@@ -92,4 +93,20 @@ test('successful view transitions reset old scroll; delivery never resets the pa
  const start=main.indexOf("case 'commission-deliver':"),branch=main.slice(start,main.indexOf('break',start));assert.doesNotMatch(branch,/scrollTop/);assert.match(branch,/deliverShopCommission\(farm,value\)/)
  assert.match(branch,/keyboardDelivery = event.detail === 0 && document.activeElement === control/)
  assert.doesNotMatch(branch,/\.click\(|openRecipeBook\(|finishShopCommission\(/)
+})
+
+test('a sole first order has a focusable buyer, one recipe name and one real decision, not two empty choices',()=>{
+ const p=commissionPlayer(opening),id=p.cook();p.shelf(id);p.sale()
+ const offers=C.getShopCommissionOffers(p.state);assert.equal(offers.length,1)
+ const [offer]=offers,before=structuredClone(p.state),html=render(p.state)
+ assert.doesNotMatch(html,/data-commission-view=/)
+ assert.match(html,/<header data-commission-customer tabindex="-1">Покупатель: <strong>Беа<\/strong>/)
+ assert.equal(html.split(offer.recipeName).length-1,1)
+ assert.ok(html.includes(`Нужно ${offer.quantity} порции`));assert.ok(html.includes(`За всю партию: ${offer.total} монеты`))
+ assert.match(html,/Набор 2\+2 после двух заказов · 0\/2/);assert.ok(html.includes(`data-action="commission-accept" data-value="${offer.key}"`))
+ assert.deepEqual(p.state,before)
+ const multiple=render(fresh());assert.match(multiple,/data-commission-view="customer"/);assert.match(multiple,/data-commission-view="request"/)
+ // One known recipe can still have another request mode once sets are unlocked.
+ const repeat=structuredClone(p.state);repeat.shopCommissions.completed.bea=2
+ assert.equal(C.getShopCommissionOffers(repeat).length,1);assert.match(render(repeat),/<option value="set">Набор 2\+2<\/option>/)
 })
