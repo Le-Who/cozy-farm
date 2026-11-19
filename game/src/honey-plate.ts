@@ -13,6 +13,8 @@ export function createHoneyPlateFilm(size = 96) {
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++)
     if (onHoneyPlate({ x: (x + .5) / size, y: (y + .5) / size })) region[y * size + x] = 255
   const film = createHoneyFilm(size, region)
+  // The scene allows 50 ms per frame: 18 dose units/s × 60 film units at full tilt.
+  const maxFrameDose = .05 * 18 * 60
   let poured = 0
   return {
     size, region, height: film.height,
@@ -20,7 +22,7 @@ export function createHoneyPlateFilm(size = 96) {
     deposit(from: HoneyPoint, to: HoneyPoint, amount: number, flow: number, occluded: (point: HoneyPoint) => boolean = () => false): number {
       if (![from.x, from.y, to.x, to.y, amount, flow].every(Number.isFinite) || amount <= 0 || flow <= 0) return 0
       const samples = Math.min(128, Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) * size)))
-      const dose = Math.min(36, amount, Math.max(0, size * size * 4 - poured)) / samples
+      const dose = Math.min(maxFrameDose, amount, Math.max(0, size * size * 4 - poured)) / samples
       let accepted = 0
       for (let i = 1; i <= samples; i++) {
         const point = { x: from.x + (to.x - from.x) * i / samples, y: from.y + (to.y - from.y) * i / samples }

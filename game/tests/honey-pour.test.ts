@@ -60,7 +60,22 @@ test('stationary pour is frame-rate independent and retained plate state stays f
   const before=mass(slow)
   for(const invalid of [NaN,Infinity,-Infinity])slow.deposit({x:invalid,y:.5},point,invalid,invalid)
   assert.equal(mass(slow),before)
-  for(let i=0;i<50;i++) { slow.deposit(point,point,1e9,1);slow.step(.05) }
+  const maxFrameDose = .05 * 18 * 60
+  for(let i=0;i<50;i++) { assert.ok(slow.deposit(point,point,1e9,1) <= maxFrameDose);slow.step(.05) }
   assert.ok(slow.height.every(Number.isFinite))
-  assert.ok(mass(slow)<2000)
+  assert.ok(mass(slow) <= before + 50 * maxFrameDose + .001)
+})
+
+
+test('a full 50ms pear-pour frame preserves the same plate dose per second as 30 and 60Hz',()=>{
+  const point={x:.5,y:.525}
+  for(const tilt of [.35,.8,.85,1]){
+    const rate=18*60*honeyPourFlow(tilt) // controller dose, then plate-film units
+    for(const fps of [20,30,60]){
+      const film=createHoneyPlateFilm()
+      let accepted=0
+      for(let frame=0;frame<fps;frame++)accepted+=film.deposit(point,point,rate/fps,honeyPourFlow(tilt))
+      assert.ok(Math.abs(accepted-rate)<.001, `tilt ${tilt}, ${fps}fps: ${accepted} of ${rate}`)
+    }
+  }
 })
