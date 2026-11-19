@@ -1,3 +1,4 @@
+import { gardenHarvestSeeds } from './garden-harvest-seeds.ts'
 import { cropDefinitions, cropIds, seedPackSize, type CropId, type FarmState } from './farm.ts'
 import { gardenSeedQuote, type GardenSeedScope } from './garden-seed-basket.ts'
 import { ruCount } from './ru.ts'
@@ -81,6 +82,7 @@ export function renderGardenSeedBasket(farm: FarmState, slot: number, scope: Gar
   const quote = gardenSeedQuote(farm, slot, scope), plan = farm.gardenPlans.pages[slot]
   if (!quote || !plan) return `<section class="garden-plans"><p>Откройте сохранённый план заново.</p>${button('К плану', 'garden-shop-back')}</section>`
   const missing = Math.max(0, quote.total - farm.coins)
+  const harvest = missing ? gardenHarvestSeeds(farm,slot,scope) : []
   return `<section class="garden-plans garden-shopping"><h2>Семена для «${escape(plan.name)}»</h2>
     <div class="garden-brushes" role="group" aria-label="Для какого посева купить семена">
     <button type="button" data-action="garden-shop-scope" data-value="open" aria-pressed="${scope === 'open'}">Для свободных грядок</button>
@@ -88,7 +90,8 @@ export function renderGardenSeedBasket(farm: FarmState, slot: number, scope: Gar
     <p>${scope === 'open' ? 'Только места плана без растущих культур. Занятые грядки в список не входят.' : 'На один полный посев всей раскладки, включая занятые места. Растущие культуры остаются на месте; новые семена подождут в запасе.'}</p>
     <p>Имеющиеся семена уже учтены. Обычная цена рынка: пакет содержит ${ruCount(seedPackSize, 'семя', 'семени', 'семян')}. Лишние семена из целого пакета останутся у вас.</p>
     <ul class="garden-shopping-list">${quote.lines.map(line => `<li><strong>${escape(cropDefinitions[line.crop].name)}</strong><span>Мест: ${line.required} · Семян в запасе: ${line.stock}</span><span>${line.packs ? `Докупить: ${ruCount(line.packs, 'пакет', 'пакета', 'пакетов')} (+${ruCount(line.seeds, 'семя', 'семени', 'семян')}) · ${ruCount(line.cost, 'монета', 'монеты', 'монет')}` : 'Докупить не нужно'}</span></li>`).join('')}</ul>
-    <p class="garden-mode-note"><strong>${quote.packs ? `Весь список: ${ruCount(quote.packs, 'пакет', 'пакета', 'пакетов')} · ${ruCount(quote.total, 'монета', 'монеты', 'монет')}` : 'Все семена уже есть'}</strong><br>У вас: ${ruCount(farm.coins, 'монета', 'монеты', 'монет')}.${missing ? `<span>Не хватает ${ruCount(missing, 'монеты', 'монет', 'монет')}. Частичной покупки не будет.</span>` : ''}</p>
+    <p class="garden-mode-note" data-garden-basket-total tabindex="-1"><strong>${quote.packs ? `Весь список: ${ruCount(quote.packs, 'пакет', 'пакета', 'пакетов')} · ${ruCount(quote.total, 'монета', 'монеты', 'монет')}` : 'Все семена уже есть'}</strong><br>У вас: ${ruCount(farm.coins, 'монета', 'монеты', 'монет')}.${missing ? `<span>Не хватает ${ruCount(missing, 'монеты', 'монет', 'монет')}. Частичной покупки не будет.</span>` : ''}</p>
     <p>Оплата только по кнопке ниже. Покупка не сеет, не освобождает грядки и не меняет выбранный режим посева.</p>
+    ${harvest.length ? `<section class="garden-harvest-seeds" aria-label="Семена из своего урожая"><h3>Вместо покупки пакета</h3>${harvest.map(item=>`<div>${button(`Обменять: ${item.name.toLowerCase()} ×1 → ${ruCount(item.pack,'семя','семени','семян')}`,'garden-save-seeds',item.token)}<small>Останется обычного урожая: ${item.remaining}. ${item.after?`Затем к покупке: ${ruCount(item.after,'монета','монеты','монет')}.`:'После обмена весь список собран.'}</small></div>`).join('')}</section>` : ''}
     <div class="dialog-actions">${quote.packs ? button(`Купить список за ${ruCount(quote.total, 'монету', 'монеты', 'монет')}`, 'garden-buy-seeds', quote.token, quote.affordable) : ''}${button('К плану', 'garden-shop-back')}</div></section>`
 }
