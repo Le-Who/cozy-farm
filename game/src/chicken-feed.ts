@@ -19,6 +19,12 @@ export function getChickenFeedMix(farm: FarmState, recipe: ChickenFeedRecipe) {
     total: farm.feed + definition.portions }
 }
 
+// A choice at bedtime only when today's flock still needs feed and the harvest can actually supply it.
+export function canMixBedtimeFeed(farm: FarmState): boolean {
+  return farm.feed === 0 && !farm.chickensFed
+    && (getChickenFeedMix(farm, 'garden').available || getChickenFeedMix(farm, 'orchard').available)
+}
+
 export function mixChickenFeed(farm: FarmState, recipe: unknown): ActionResult {
   if (recipe !== 'garden' && recipe !== 'orchard') return { ok: false, message: 'Выберите кормовую смесь.' }
   const mix = getChickenFeedMix(farm, recipe)
@@ -33,7 +39,7 @@ export function mixChickenFeed(farm: FarmState, recipe: unknown): ActionResult {
   return { ok: true, message: `${mix.name} готова: ${ruCount(mix.portions, 'порция', 'порции', 'порций')} корма. Кормление — отдельное действие.` }
 }
 
-export function renderChickenFeedMixes(farm: FarmState, icon: (name: string) => string = () => '') {
+export function renderChickenFeedMixes(farm: FarmState, icon: (name: string) => string = () => '', fromRest = false) {
   if (farm.island !== 'home') return ''
   if (farm.buildingLevels.coop < 2) return '<section class="feed-choice"><p>Смеси откроются после улучшения курятника. Покупной корм остаётся доступен.</p></section>'
   return `<section class="feed-choice" aria-label="Домашние кормовые смеси">
@@ -47,6 +53,6 @@ export function renderChickenFeedMixes(farm: FarmState, icon: (name: string) => 
         <div class="feed-choice-result"><strong>${ruCount(mix.portions, 'порция', 'порции', 'порций')}</strong>${result ? `<span>${result}</span>` : ''}</div>
         <button type="button" class="dialog-button" data-action="mix-chicken-feed" data-value="${recipe}" aria-label="${mix.name}: смешать ${ruCount(mix.portions, 'порцию', 'порции', 'порций')}"${mix.available ? '' : ' disabled'}>Смешать</button></article>`
     }).join('')}</div>
-    <div class="feed-choice-next"><p>${farm.chickensFed ? 'Стая уже накормлена. Новый корм останется на следующие дни.' : 'Смешивание не кормит стаю. Дайте корм в курятнике.'}</p><button type="button" class="dialog-button secondary" data-action="back">К курятнику</button></div>
+    <div class="feed-choice-next"><p>${farm.chickensFed ? 'Стая уже накормлена. Новый корм останется на следующие дни.' : fromRest ? 'Смешивание не кормит стаю. Дома можно дать корм перед сном.' : 'Смешивание не кормит стаю. Дайте корм в курятнике.'}</p><button type="button" class="dialog-button secondary" data-action="back">${fromRest ? 'К отдыху' : 'К курятнику'}</button></div>
     <details class="feed-choice-notes"><summary>О корме</summary><p>Используются только обычные продукты: необычный урожай сохранится. Количество яиц от вида смеси не меняется.</p><p>Покупной корм: ${feedBagSize} порции за ${feedBagPrice} монеты. Смешивание не требует ежедневного повтора.</p></details></section>`
 }
