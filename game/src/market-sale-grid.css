@@ -104,3 +104,8 @@
 .farm-dialog:has([data-market-sale-empty]) .dialog-panel { height:auto; }
 [data-market-sale-browser]:has([data-market-sale-empty]) { height:auto;min-height:0; }
 [data-market-sale-empty]:focus-visible { outline:3px solid #805789;outline-offset:-3px; }
+
+/* Keep the item action and its price readable on the warm button face. */
+.farm-dialog[data-panel=market] :is(.market-inline-sell,.market-seed-grid .dialog-button,.market-tree-grid .dialog-button,.market-care-grid .dialog-button):enabled {
+ background-image:linear-gradient(#ad553d,#994732);
+}
