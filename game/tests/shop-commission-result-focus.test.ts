@@ -61,7 +61,11 @@ function harness(input:F.FarmState,options:{value?:string;detail?:number;owned?:
   redraw()
   const panel=options.panel??'shop-commissions',dialog={open:options.open??true}
   const perform=(fn:()=>{ok:boolean})=>{
-    const r=fn();if(r.ok){writes.push(structuredClone(farm));const focused=document.activeElement===control?control:undefined;redraw();runInNewContext(actualRecovery,{focused,panel,closeButton,dialogContent})}return r.ok
+    const r=fn();if(r.ok){
+      writes.push(structuredClone(farm));const focused=document.activeElement===control?control:undefined;redraw()
+      // drawPanel captures a crop only for a focused seed-pack purchase, never a commission delivery.
+      runInNewContext(actualRecovery,{focused,focusedSeedCrop:undefined,panel,closeButton,dialogContent})
+    }return r.ok
   }
   runInNewContext(actualHandler,{action:'commission-deliver',value,control,event:{detail:options.detail??0},document,farm,panel,dialog,dialogContent,perform,deliverShopCommission:C.deliverShopCommission,getShopCommissionLine:C.getShopCommissionLine,playBaySound:()=>effects.push('sound')})
   return {farm,effects,writes,active:document.activeElement,ready,lines,buttons}
