@@ -58,7 +58,7 @@ import './market-return.css'
 import { renderFairReturn } from './fair-return'
 import './fair-return.css'
 import { getLocalWarehouseSupply, warehouseRequest, warehouseSupplyCopy, warehouseConfirmation, warehouseConfirmationValue, withdrawWarehouseSupply } from './warehouse-guidance'
-import { getReadySignatureSuppers, renderSignatureSuppers } from './shared-supper'
+import { getReadySignatureSuppers, renderSignatureSuppers, renderSupperResult, supperCottageReady } from './shared-supper'
 import './shared-supper.css'
 import { renderShopRest, closeShopBeforeRest } from './shop-rest'
 import './shop-rest.css'
@@ -147,6 +147,7 @@ import './orchard-market-return.css'
 import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
+import { ferryCommissionUse, openFerryCommissionRecipe } from './ferry-commission-use'
 import { RecipeBookNavigation, recipeBookNarrow, type RecipeBookView } from './recipe-book-view'
 import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
@@ -1583,6 +1584,15 @@ function villageProjectCard() {
     ${nav(button(buildAction ? 'Построить' : 'Внести припасы', 'build-village', project.status === 'ready', buildAction ? { cost: { icon: 'coin', amount: project.coins } } : {}), button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair'), { secondary: true }))}`
 }
 
+function finishSharedSupper(action: () => { ok: boolean; message: string }, pastry = false) {
+  // Keep the earned decision visible. Other cooking/recipe-book contexts retain their own return path.
+  const handoff = panel === 'village-meal' && farm.island === 'village' && farm.village.meals >= 1 && !farm.village.residents[1]
+  if (perform(action, pastry && !handoff, pastry || handoff) && handoff && supperCottageReady(farm)) {
+    dialogContent.scrollTop = 0
+    dialogContent.querySelector<HTMLElement>('[data-supper-result]')?.focus({ preventScroll: true })
+  }
+}
+
 function neighboursCard() {
   const homes = getVillageHomeCount(farm)
   const resident = farm.village.residents[villageSlot]
@@ -1975,7 +1985,7 @@ function drawPanel() {
       reconcileFreightPorts(farm.freight,openedFreightPorts(farm))
       const goods=harbourGoods()
       renderFreightPanelInto(dialogContent,farm.freight,{day:farm.day,harvestTier:farm.festivals.completed.harvest,coins:farm.coins,boatOwned:farm.boatOwned,villageBuilt:farm.village.built,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,playerPort:farm.island,selectedPort:selectedWarehouse,waxAvailable:farm.capeLevel>=2,routeEditorOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? freightPlanOpen,
-        openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),icon})
+        openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),commissionUse:ferryCommissionUse(farm),icon})
       break
     }
     case 'intents': dialogContent.innerHTML = communityBoard(farm, communityArt); break
@@ -2255,7 +2265,7 @@ function drawPanel() {
     case 'village-meal': {
       const meal = getVillageMeal(farm, pastryShape)
       const signatures = getReadySignatureSuppers(farm)
-      dialogContent.innerHTML = meal.served ? `<p class="dialog-status">Сегодня общий ужин уже состоялся. Следующий ужин завтра.</p>${button('Домой','sail',true,{value:'home'})}`
+      dialogContent.innerHTML = meal.served ? renderSupperResult(farm,icon('upgrade-farmhouse-card'),button('Домой','sail',true,{value:'home',secondary:supperCottageReady(farm)}))
         : `<p class="shared-supper-intro">Выберите одно угощение: ручную выпечку или готовое авторское блюдо. Ужин расходует 1 порцию выбранного угощения и 1 рыбу.</p>
           <ul class="ingredients">${meal.items.filter(item=>item.kind==='fish').map(stockTile).join('')}</ul>
           ${farm.fish.perch + farm.fish.seaBass === 0 ? renderHarbourFishChoice(farm,'supper') : '<p>Подойдёт обычный окунь или морской окунь. Выше показано, какая рыба пойдёт к столу.</p>'}
@@ -3357,6 +3367,11 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
+    case 'expedition-order-recipe': {
+      if(panel!=='bay-freight'||!dialog.open)break
+      openFerryCommissionRecipe(farm,value,id=>{openRecipeBook(id,true);focusRecipeAction()})
+      break
+    }
     case 'expedition-claim': {
       const keyboardClaim = event.detail === 0 && document.activeElement === control
       const voyage=farm.freight.expeditions.active
@@ -3635,7 +3650,10 @@ app.addEventListener('click', async (event) => {
     case 'sell-signature':if(value)beginExactSale({kind:'signature',key:value});break
     case 'use-signature':if(value)perform(()=>useSignature(farm,value!),false);break
     case 'taste-signature':{const id=residentIds.find(id=>id===control.dataset.resident);if(value&&id)perform(()=>tasteSignature(farm,value!,id),false);break}
-    case 'supper-signature':if(value)perform(()=>deliverSignature(farm,value!),false);break
+    case 'supper-signature': if(value)finishSharedSupper(()=>deliverSignature(farm,value!)); break
+    case 'supper-cottage':
+      if(panel==='village-meal' && supperCottageReady(farm)) activateTarget({kind:'village-home',index:1})
+      break
     case 'cove-choice':{
       const [key,choice]=(value??'').split(':')
       if((key==='flow'&&['open','sheltered'].includes(choice))||(key==='cover'&&['kelp','meadow'].includes(choice))||(key==='refuge'&&['sand','stones'].includes(choice)))perform(()=>changeCove(farm,{[key]:choice}),false,true)
@@ -4139,7 +4157,7 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
-    case 'share-meal': perform(() => serveVillageMeal(farm, pastryShape), true, true); break
+    case 'share-meal': finishSharedSupper(() => serveVillageMeal(farm, pastryShape), true); break
     case 'resident-service': {
       const id = residentIds.find(id => id === value)
       if (id) perform(() => runResidentService(farm, id, pastryShape), true, id !== 'finn')
