@@ -83,3 +83,20 @@ test('orchard rows identify the tree and open its inspection without harvesting 
   assert.equal(context.treeSlot,index);assert.equal(opened.at(-1),'tree');assert.deepEqual(farm,before)
  }
 })
+
+test('a full orchard names an alternative only when a boat and a free slot exist there',()=>{
+ const f=full();assert.ok(storeTree(f,0).ok);assert.ok(buyAndPlantTree(f,0,'apple').ok)
+ const localOnly='Сначала освободите место в этом саду.'
+ assert.ok(render(f).includes(localOnly));assert.doesNotMatch(render(f),/в Солёной роще/)
+ f.boatOwned=true
+ const homeFull=structuredClone(f),away=render(f)
+ assert.match(away,/Освободите место здесь или верните дерево в Солёной роще\./)
+ assert.match(away,/disabled>Нет места в саду/);assert.deepEqual(f,homeFull)
+ f.trees.grove=f.trees.home.map(tree=>tree&&{...tree})
+ assert.ok(render(f).includes(localOnly));assert.doesNotMatch(render(f),/в Солёной роще/)
+ f.island='grove';assert.ok(render(f).includes(localOnly))
+ f.trees.home[1]=null
+ assert.match(render(f),/Освободите место здесь или верните дерево на Родном острове\./)
+ f.trees.grove[2]=null
+ assert.match(render(f),/Вернуть · место 3/);assert.doesNotMatch(render(f),/tree-storage-availability/)
+})

@@ -1349,13 +1349,17 @@ function nurseryCard(slot?: number) {
   if (farm.island !== 'home' && farm.island !== 'grove' || !farm.treeNursery.length) return ''
   const target = slot ?? farm.trees[farm.island].findIndex(tree => tree === null)
   const available = farm.trees[farm.island][target] === null
+  const otherGarden = farm.island === 'home' ? 'grove' : 'home'
+  const otherHasRoom = farm.boatOwned && farm.trees[otherGarden].includes(null)
   const entry = treeStorageChoice.current(farm)!
   const {id,tree} = entry, definition = treeDefinitions[tree.tree]
   const detail = [nurseryFruitDetail(tree), treeVariantCopy(tree)].filter(Boolean).join(' ')
   return `<section class="tree-storage" aria-label="Деревья на хранении">
     <label class="tree-storage-picker">Деревья на хранении · ${farm.treeNursery.length}<select data-tree-storage-choice aria-label="Выберите дерево на хранении">${farm.treeNursery.map(item=>`<option value="${item.id}"${item.id===id?' selected':''}>${escapeHtml(storedTreeChoiceLabel(item))}</option>`).join('')}</select></label>
     <ul class="dialog-list">${row('ui-tree-' + tree.tree, `${definition.treeName} · №${id}`, detail, button(available ? `Вернуть · место ${target + 1}` : 'Нет места в саду', 'return-nursery-tree', available, { value: id, context: definition.treeName }), tree.trait)}</ul>
-    ${available ? '' : '<p class="tree-storage-availability">Сначала освободите место в этом саду.</p>'}
+    ${available ? '' : `<p class="tree-storage-availability">${otherHasRoom
+      ? `Освободите место здесь или верните дерево ${otherGarden === 'grove' ? 'в Солёной роще' : 'на Родном острове'}.`
+      : 'Сначала освободите место в этом саду.'}</p>`}
     <details class="tree-storage-rules"><summary>Бесплатное хранение: правила</summary><p>Перенос бесплатный. Возраст, готовые плоды и особенность сохраняются. На хранении рост и новые плоды на паузе. После возврата плоды собираются отдельно.</p></details>
   </section>`
 }
@@ -4351,7 +4355,7 @@ dialogContent.addEventListener('focusin', event => {
   if (!(target instanceof HTMLButtonElement) || !target.matches('.seed-picker-tile:focus-visible')) return
   // Check after native Tab scrolling or drawPanel's replacement-focus restoration.
   requestAnimationFrame(() => {
-    if (dialog.open && panel === 'inventory' && bagTab === 'seeds')
+    if (dialog.open && (panel === 'seeds' || panel === 'inventory' && bagTab === 'seeds'))
       revealSeedPickerFocus(dialogContent, target)
   })
 })
