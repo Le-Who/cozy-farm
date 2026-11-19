@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises'
 import { runInNewContext } from 'node:vm'
 import { FerryArrivalPresentation } from '../src/ferry-arrival-presentation.ts'
 import { createFarm, endDay } from '../src/farm.ts'
+import { henFriends } from '../src/hen-friendship.ts'
+import { chickenCarePlayer } from './fixtures/chicken-care-player.ts'
 import { canConfirmRest } from '../src/rest-preview.ts'
 import { receiveFerryExpedition, sendFerryExpedition } from '../src/harbour-economy.ts'
 import { closeShopBeforeRest } from '../src/shop-rest.ts'
@@ -13,11 +15,12 @@ import { SalePresentation } from '../src/sale-presentation.ts'
 import { shopRestFixture } from './fixtures/shop-rest.ts'
 const main = await readFile(new URL('../src/main.ts', import.meta.url),'utf8')
 const sleep = main.slice(main.indexOf("    case 'sleep': {"),main.indexOf("    case 'refill':"))
-function run(farm:any, opts:any={}) {
+function run(farm:any, opts:any={}, inspect?:(state:any)=>void) {
  const events:string[]=[];let hatch=0
- const state={ferryArrival:new FerryArrivalPresentation(),committedRestClose:false,panelHistory:[],farm,panel:'rest',dialog:{open:true},value:String(farm.day),canConfirmRest,endDay,
+ const state={henFriends,selectedFriendHen:0,ferryArrival:new FerryArrivalPresentation(),committedRestClose:false,panelHistory:[],farm,panel:'rest',dialog:{open:true},value:String(farm.day),canConfirmRest,endDay,
   perform:(action:any)=>action().ok,playBaySound:(id:string)=>events.push(id),island:{showHatch:()=>hatch++},notify:()=>{},...opts}
  runInNewContext(`switch('sleep'){${sleep}}`,state)
+ inspect?.(state)
  return {events,hatch,committedRestClose:state.committedRestClose}
 }
 test('exact sleep branch emits one dawn only after successful ordinary sleep',()=>{
@@ -87,9 +90,21 @@ test('the exact close listener consumes committed sleep once and preserves later
  state.dialog.open=false;close();assert.deepEqual(events,['page.fold','page.fold'])
 })
 
-test('a successful hatching night preserves its extra hatch cue without a page fold',()=>{
- const f=createFarm();f.coopSpecialization='hatchery';f.hatchDay=f.day+1
- assert.deepEqual(run(f),{events:['daybreak.shutters','flock.hatch'],hatch:1,committedRestClose:true})
+test('an earned hatch names and preselects the newcomer without opening or petting; the next manual choice wins',()=>{
+ const p=chickenCarePlayer('garden','hatchery');p.day();p.act('endDay');p.day();p.act('endDay');p.day()
+ const f=p.state, expected=structuredClone(f), notices:string[]=[]
+ assert.equal(f.day,3);assert.equal(f.hatchDay,4);assert.ok(endDay(expected).ok)
+ let picked=0
+ const select=main.slice(main.indexOf("    case 'hen-friend-select': {"),main.indexOf("    case 'hen-walk-start':"))
+ const result=run(f,{notify:(s:string)=>notices.push(s)},state=>{
+   assert.equal(state.panel,'rest');assert.equal(state.selectedFriendHen,4)
+   state.panel='hen-friendship';state.value='1';state.drawPanel=()=>{}
+   runInNewContext(`switch('hen-friend-select'){${select}}`,state)
+   picked=state.selectedFriendHen
+ })
+ assert.deepEqual(result,{events:['daybreak.shutters','flock.hatch'],hatch:1,committedRestClose:true})
+ assert.deepEqual(notices,['Из яйца вылупилась Пуговка.']);assert.deepEqual(f,expected);assert.equal(picked,1)
+ run(f,{selectedFriendHen:picked},state=>assert.equal(state.selectedFriendHen,picked))
 })
 
 
