@@ -9,13 +9,15 @@ import * as controls from '../src/workshop-controls.ts'
 
 const read=(file:string)=>readFileSync(new URL(file,import.meta.url),'utf8')
 const source=read('../src/workshop.ts'), css=read('../src/workshop.css'), dialogCss=read('../src/style.css')
-const methods=new Map<string,string>(), wanted=['fitViewport','applyBox','fitItem','positionHandMenu','updateState']
+const methods=new Map<string,string>(), resizeBindings:ts.CallExpression[]=[], wanted=['fitViewport','applyBox','fitItem','positionHandMenu','updateState']
 const ast=ts.createSourceFile('workshop.ts',source,ts.ScriptTarget.Latest,true)
 function visit(node:ts.Node) {
-  if(ts.isFunctionDeclaration(node)&&node.name&&wanted.includes(node.name.text))methods.set(node.name.text,node.getText(ast))
+  if(ts.isFunctionDeclaration(node)&&node.name)methods.set(node.name.text,node.getText(ast))
+  if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='addEventListener'
+    &&node.arguments[0]?.getText(ast)==="'resize'")resizeBindings.push(node)
   ts.forEachChild(node,visit)
 }
-visit(ast);assert.equal(methods.size,wanted.length)
+visit(ast);for(const name of wanted)assert.ok(methods.has(name))
 const compile=(code:string)=>ts.transpileModule(code,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
 const fit=compile(methods.get('fitViewport')!+'\nfitViewport()')
 const place=compile(['applyBox','fitItem','positionHandMenu'].map(name=>methods.get(name)!).join('\n')+
@@ -52,7 +54,7 @@ function workshop(windowWidth:number,windowHeight:number) {
   const ingredientNode={style:ingredients.style}
   const attrs={compact:undefined as string|undefined}
   const menuStyle:Record<string,string>&{setProperty(k:string,v:string):void}={setProperty(k,v){this[k]=v}}
-  const handMenu={style:menuStyle,dataset:attrs}
+  const handMenu={style:menuStyle,dataset:attrs,hidden:false}
   runInNewContext(place,{...context,THREE,HTMLButtonElement:Button,handButton,bakeButton,ingredients:ingredientNode,handMenu,
     view:{getBoundingClientRect:()=>({left:0,top:0})},width,height,layout,artwork,handAsset,containRaster,fitBakeLabel(){}})
   const rail=root.dataset.modeRail==='true'
@@ -77,7 +79,7 @@ function workshop(windowWidth:number,windowHeight:number) {
   const toolWidth=num(menuStyle['--workshop-tool-width']),toolHeight=num(menuStyle['--workshop-tool-height'])
   const gap=num(prop(rule(css,'.workshop-hand-menu'),'gap'))
   const tiles=Array.from({length:6},(_,i)=>({x:num(menuStyle.left)+(i%columns)*(toolWidth+gap),y:num(menuStyle.top)+Math.floor(i/columns)*(toolHeight+gap),width:toolWidth,height:toolHeight}))
-  return {width,height,layout:layout.id,rail,reserve,guideTop,shape,back,ingredients:box(ingredients.style),railStyle,modeRailSelector,modeStyle,tiles,columns,
+  return {live:{root,handMenu,handButton,bakeButton},width,height,layout:layout.id,rail,reserve,guideTop,shape,back,ingredients:box(ingredients.style),railStyle,modeRailSelector,modeStyle,tiles,columns,
     hand:box(handButton.style),bake:box(bakeButton.style),authored:{width:num(style.width),height:num(style.height)},compact:attrs.compact}
 }
 
@@ -124,6 +126,45 @@ test('resizing the live worktop clears the rail without moving focus or rebuildi
   assert.equal(vars['--workshop-mode-rail'],'0px')
   assert.doesNotMatch(methods.get('fitViewport')!,/focus\(|innerHTML|replaceChildren|handMenuExpanded/)
   assert.doesNotMatch(methods.get('positionHandMenu')!,/focus\(|innerHTML|replaceChildren|handMenuExpanded/)
+})
+
+test('height-only visual viewport resize repositions the open palette in both directions before another input',()=>{
+  const shallow=workshop(460,270),tall=workshop(460,360)
+  assert.deepEqual(shallow.authored,tall.authored,'the observed inner worktop does not resize')
+  assert.equal(shallow.rail,false);assert.equal(tall.rail,true)
+  const lowTop=shallow.tiles[0].y,highTop=tall.tiles[0].y
+  assert.ok(lowTop<tall.shape.y+tall.shape.height&&highTop>=tall.shape.y+tall.shape.height)
+
+  // Register the shipped window/visualViewport callbacks, not a test wrapper
+  // that could accidentally position the menu when the game does not.
+  class Events {
+    height=270; width=460; listeners:(()=>void)[]=[]
+    addEventListener(type:string,fn:()=>void){assert.equal(type,'resize');this.listeners.push(fn)}
+    resize(){assert.equal(this.listeners.length,1);this.listeners[0]()}
+  }
+  const visualViewport=new Events(),window=Object.assign(new Events(),{innerWidth:460,innerHeight:360,visualViewport})
+  const {root,handMenu,handButton,bakeButton}=shallow.live
+  const view={clientWidth:shallow.width,clientHeight:shallow.height,getBoundingClientRect:()=>({left:0,top:0})}
+  const names=new Set(['fitViewport','positionHandMenu',...resizeBindings.map(call=>call.arguments[1].getText(ast))])
+  const setup=[...names].map(name=>{assert.ok(methods.has(name));return methods.get(name)!})
+  const listeners=resizeBindings.map(call=>call.getText(ast)+';')
+  runInNewContext(compile([...setup,...listeners].join('\n')),{...controls,window,root,view,handMenu,handButton,bakeButton,
+    width:shallow.width,height:shallow.height,getWorkshopLayout,containArtwork,signal:new AbortController().signal})
+  const readTop=()=>num(handMenu.style.top)
+  assert.equal(readTop(),lowTop)
+  visualViewport.height=360;visualViewport.resize()
+  assert.equal(root.dataset.modeRail,'true');assert.equal(readTop(),highTop,'shape row must clear immediately')
+  window.resize();assert.equal(readTop(),highTop)
+  visualViewport.height=270;visualViewport.resize()
+  assert.equal(root.dataset.modeRail,'false');assert.equal(readTop(),lowTop,'return to unmodified shallow placement')
+  assert.equal(handMenu.hidden,false,'do not close or rebuild the open palette')
+  handMenu.hidden=true;visualViewport.height=360;visualViewport.resize()
+  assert.equal(readTop(),lowTop,'closed controls wait until reopened')
+  handMenu.hidden=false;view.clientWidth=shallow.width-1
+  visualViewport.height=270;visualViewport.resize()
+  // A genuine size change belongs to ResizeObserver, not a stale-dimension position pass.
+  handMenu.style.top='-1px';visualViewport.height=360;visualViewport.resize()
+  assert.equal(readTop(),-1)
 })
 
 test('the existing selected mode remains named and keyboard focus/close routes are unchanged',()=>{

@@ -71,7 +71,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     root.dataset.modeRail=String(modeRail>0)
     root.style.setProperty('--workshop-mode-rail',`${modeRail}px`)
   }
-  fitViewport();window.addEventListener('resize',fitViewport,{signal});window.visualViewport?.addEventListener('resize',fitViewport,{signal})
+  fitViewport()
   const view = root.querySelector<HTMLElement>('.workshop-view')!
   const bakeButton = root.querySelector<HTMLButtonElement>('.workshop-bake')!
   const orderButton = root.querySelector<HTMLButtonElement>('.workshop-order')!
@@ -149,6 +149,14 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     root.setAttribute('aria-busy','false');root.dataset.cutting='false'
   }
   let lastTime = performance.now(), width = Math.max(1, view.clientWidth), height = Math.max(1, view.clientHeight)
+  function onViewportResize(){
+    const oldRail=root.dataset.modeRail
+    fitViewport()
+    // Browser chrome can toggle the guide rail without resizing the observed worktop.
+    // A real worktop resize still positions all controls together in ResizeObserver.
+    if(oldRail!==root.dataset.modeRail&&!handMenu.hidden&&view.clientWidth===width&&view.clientHeight===height)positionHandMenu()
+  }
+  window.addEventListener('resize',onViewportResize,{signal});window.visualViewport?.addEventListener('resize',onViewportResize,{signal})
   let layout = getWorkshopLayout(width, height), artwork = containArtwork(layout, width, height)
   let layoutSerial = 0
   const pieces: DoughPiece[] = []
