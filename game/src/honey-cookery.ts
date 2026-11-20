@@ -344,7 +344,12 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   view.addEventListener('pointerdown', event => { if ((event.target as HTMLElement).closest('button,input,label') || pointer !== null || event.button !== 0) return; pointer = event.pointerId; pointerPressure = event.pointerType === 'mouse' ? .9 : Math.max(.25,event.pressure); keyboard = false; view.setPointerCapture(pointer); view.focus({ preventScroll: true }); start(eventPoint(event)); updateCursor() }, { signal })
   view.addEventListener('pointermove', event => { if (pointer !== event.pointerId) return; pointerPressure = event.pointerType === 'mouse' ? .9 : Math.max(.25,event.pressure); const samples = event.getCoalescedEvents?.(); for (const sample of samples?.length ? samples : [event]) move(eventPoint(sample)) }, { signal })
   view.addEventListener('pointerup', event => { if (pointer !== event.pointerId) return; move(eventPoint(event)); release(); pointer = null; if (view.hasPointerCapture(event.pointerId)) view.releasePointerCapture(event.pointerId) }, { signal })
-  const abandon = () => { pointer = null; release(false) }; view.addEventListener('pointercancel', abandon, { signal }); view.addEventListener('lostpointercapture', () => { if (pointer !== null) abandon() }, { signal }); window.addEventListener('blur', abandon, { signal })
+  const abandon = () => { pointer = null; release(false) }
+  // Other fingers (or a native slider) can lose capture without owning this stroke.
+  const cancelPointer = (event: PointerEvent) => { if (pointer === event.pointerId) abandon() }
+  view.addEventListener('pointercancel', cancelPointer, { signal })
+  view.addEventListener('lostpointercapture', cancelPointer, { signal })
+  window.addEventListener('blur', abandon, { signal })
   function rotateFruit(delta: number) { if((incorporated.get(selected)??0)>.3)return;const fruit = model.fruit.find(value => value.id === selected); if (!fruit) return; placeHoneyFruit(model, fruit.id, fruit, fruit.ingredientId, angle(fruit.angle + delta)); layout() }
   rotate.addEventListener('click', () => rotateFruit(Math.PI / 12), { signal }); view.addEventListener('wheel', event => { if (held && 'tool' in held && held.tool==='honey' && ['honeyPear','windParfait'].includes(family)) { event.preventDefault(); setPourTilt(pourTilt + Math.sign(event.deltaY) * .08); return }; if (model.fruit.some(value => value.id === selected) && !['finished', 'cancelled'].includes(model.stage)) { event.preventDefault(); rotateFruit(Math.sign(event.deltaY) * .13) } }, { signal, passive: false })
   view.addEventListener('keydown', event => {

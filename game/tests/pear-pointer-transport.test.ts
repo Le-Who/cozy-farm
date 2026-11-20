@@ -150,6 +150,28 @@ for (const cancel of ['pointercancel', 'lostpointercapture', 'blur']) test(`${ca
   } finally { k.dispose() }
 })
 
+for (const cancel of ['pointercancel', 'lostpointercapture']) test(`another touch's ${cancel} cannot interrupt the active cut`, () => {
+  const k = kitchen()
+  try {
+    const owner = 7, secondary = 8, touch = { pointerType: 'touch' }
+    const middle = { x: cutStart.x, y: (cutStart.y + cutEnd.y) / 2 }
+    k.send('pointerdown', cutStart, owner, undefined, touch)
+    k.send('pointermove', middle, owner, undefined, touch)
+    const partial = k.model.cutTracks[0].progress
+    assert.ok(partial > 0 && partial < .875)
+    k.send('pointerdown', middle, secondary, undefined, touch)
+    k.send(cancel, middle, secondary, undefined, touch)
+    assert.equal(k.state.pointer, owner, 'cancellation is owned by the tracked pointer')
+    assert.equal(k.model.tool, 'knife')
+    assert.equal(k.model.cutTracks[0].progress, partial)
+    k.send('pointermove', cutEnd, owner, undefined, touch)
+    k.send('pointerup', cutEnd, owner, undefined, touch)
+    assert.deepEqual([...k.model.cuts], [0])
+    assert.deepEqual(k.sounds, ['cook.pear-cut'])
+    assert.equal(k.state.pointer, null); assert.equal(k.model.tool, null); assert.equal(k.view.captured.size, 0)
+  } finally { k.dispose() }
+})
+
 test('pointer identity, controls and right button cannot start or hijack a cut', () => {
   const k = kitchen()
   try {
