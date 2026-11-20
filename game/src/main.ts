@@ -1227,15 +1227,17 @@ function marketBulkSaleControls() {
 }
 function marketInlineCard(item: ReturnType<typeof goods>[number]) {
   const view=marketInlineSales.view(item.key,item.count,item.price), quote=view.quote, receipt=view.receipt
+  // A single item has one quantity. Keep the editor only if an older draft needs correction.
+  const showQuantity = item.count > 1 || (!receipt && !quote.valid)
   const id=`inline-sale-${encodeURIComponent(item.key)}`
   return `<li class="market-inline-card" data-inline-key="${escapeHtml(item.key)}" data-inline-token="${escapeHtml(view.token)}">
     <span class="market-inline-art" aria-hidden="true">${itemIcon(item.image,item.trait)}</span>
     <div class="market-inline-copy"><h2 class="market-inline-name" tabindex="-1">${escapeHtml(item.name)}</h2><p class="market-inline-stock">В запасе: ${item.count}</p><p class="market-inline-price"><span aria-hidden="true">${item.price}</span> ${icon('coin')} <span class="sr-only">${quantity(item.price,'монета')} </span>за штуку</p></div>
-    <div class="market-inline-footer"><div class="market-inline-stepper" role="group" aria-label="Количество: ${escapeHtml(item.name)}">
+    <div class="market-inline-footer">${showQuantity ? `<div class="market-inline-stepper" role="group" aria-label="Количество: ${escapeHtml(item.name)}">
       <span class="market-step-limit" tabindex="-1" role="group" aria-label="Минимум: 1"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button></span>
       <input data-inline-quantity type="number" min="1" max="${item.count}" step="1" inputmode="numeric" value="${escapeHtml(view.raw)}" aria-label="Количество: ${escapeHtml(item.name)}" aria-describedby="${id}"${receipt||view.pending?' disabled':''}>
       <span class="market-step-limit" tabindex="-1" role="group" aria-label="Максимум: ${item.count}"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="more" aria-label="Увеличить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity>=item.count?' disabled':''}>+</button></span>
-    </div><button type="button" class="market-inline-sell" aria-label="${escapeHtml(receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)}" data-action="${receipt?'inline-sale-again':'inline-sale-confirm'}" data-value="${escapeHtml(item.key)}"${view.pending||!receipt&&!quote.valid?' disabled':''}>${receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`}</button></div>
+    </div>` : ''}<button type="button" class="market-inline-sell" aria-label="${escapeHtml(receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)}" data-action="${receipt?'inline-sale-again':'inline-sale-confirm'}" data-value="${escapeHtml(item.key)}"${view.pending||!receipt&&!quote.valid?' disabled':''}>${receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`}</button></div>
     <p class="market-inline-status" id="${id}" role="status" aria-live="${receipt?'off':'polite'}">${receipt?escapeHtml(inlineReceiptText(receipt)):quote.valid?'':`Введите целое число от 1 до ${item.count}.`}</p>
   </li>`
 }
@@ -1255,8 +1257,8 @@ function updateInlineSaleCard(card: HTMLElement) {
   if(!context)return
   const {item}=context, view=marketInlineSales.view(item.key,item.count,item.price), quote=view.quote
   card.dataset.inlineToken=view.token
-  const input=card.querySelector<HTMLInputElement>('[data-inline-quantity]')!
-  input.value=view.raw; input.max=String(item.count); input.disabled=Boolean(view.receipt||view.pending)
+  const input=card.querySelector<HTMLInputElement>('[data-inline-quantity]')
+  if (input) { input.value=view.raw; input.max=String(item.count); input.disabled=Boolean(view.receipt||view.pending) }
   card.querySelectorAll<HTMLButtonElement>('[data-action="inline-sale-step"]').forEach(button=>button.disabled=Boolean(view.receipt||view.pending||quote.valid&&(button.dataset.step==='less'?quote.quantity<=1:quote.quantity>=item.count)))
   const sell=card.querySelector<HTMLButtonElement>('.market-inline-sell')!
   sell.dataset.action=view.receipt?'inline-sale-again':'inline-sale-confirm'
