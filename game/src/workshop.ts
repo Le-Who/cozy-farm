@@ -10,7 +10,7 @@ import { createWorkshopSurface } from './workshop-surface'
 import { createSculptedDough, prewarmSculptedDough } from './workshop-sculpt'
 import { latchDoughHandle, shapeDoughHandle, type DoughHandle, type DoughHandAction } from './workshop-deformation'
 import { artworkToBoard, boardToArtwork, configureWorkshopCamera, containArtwork, containRaster, createArtworkProjector, getWorkshopLayout, type ArtBox } from './workshop-camera'
-import { workshopTools, workshopToolGuide, workshopToolPalette, type WorkshopTool, type WorkshopStage } from './workshop-controls.ts'
+import { workshopTools, workshopToolGuide, workshopToolPalette, workshopModeRail, type WorkshopTool, type WorkshopStage } from './workshop-controls.ts'
 import './workshop.css'
 
 export type WorkshopShape = 'round' | 'folded' | 'long'
@@ -66,7 +66,10 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   function fitViewport(){
     const availableWidth=Math.max(1,Math.min(window.innerWidth,window.visualViewport?.width??Infinity)-20),availableHeight=Math.max(1,Math.min(window.innerHeight,window.visualViewport?.height??Infinity)-20)
     const target=getWorkshopLayout(availableWidth,availableHeight),fit=containArtwork(target,availableWidth,availableHeight)
+    const modeRail=target.id==='landscape'?workshopModeRail(fit,availableHeight):0
     root.style.width=`${fit.width}px`;root.style.height=`${fit.height}px`
+    root.dataset.modeRail=String(modeRail>0)
+    root.style.setProperty('--workshop-mode-rail',`${modeRail}px`)
   }
   fitViewport();window.addEventListener('resize',fitViewport,{signal});window.visualViewport?.addEventListener('resize',fitViewport,{signal})
   const view = root.querySelector<HTMLElement>('.workshop-view')!
@@ -387,7 +390,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   function positionHandMenu(){
     const handRect=handButton.getBoundingClientRect(),viewRect=view.getBoundingClientRect(),bakeRect=bakeButton.getBoundingClientRect()
     const rect=(box:DOMRect)=>({x:box.left-viewRect.left,y:box.top-viewRect.top,width:box.width,height:box.height})
-    const palette=workshopToolPalette({width,height},rect(handRect),rect(bakeRect))
+    const palette=workshopToolPalette({width,height},rect(handRect),rect(bakeRect),root.dataset.modeRail==='true')
     handMenu.style.setProperty('--workshop-tool-width',`${palette.buttonWidth}px`)
     handMenu.style.setProperty('--workshop-tool-height',`${palette.buttonHeight}px`)
     handMenu.style.gridTemplateColumns=`repeat(${palette.columns},var(--workshop-tool-width))`

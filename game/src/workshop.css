@@ -50,6 +50,12 @@
 .dough-workshop[data-layout="landscape"] .workshop-shape-picker button { min-height:44px; padding:2px 4px; font-size:11px; border-radius:11px; }
 .dough-workshop[data-layout="landscape"] .workshop-shape-picker img { height:30px; width:35px; }
 .dough-workshop[data-layout="landscape"] .workshop-result { top:auto; bottom:1.5%; font-size:11px; }
+/* In the narrow two-row landscape palette, keep the authored worktop and
+   targets at their original size by using spare room below for the mode guide. */
+.dough-workshop[data-stage="working"][data-mode-rail="true"] { box-sizing:content-box; padding-bottom:var(--workshop-mode-rail); }
+.dough-workshop[data-stage="working"][data-mode-rail="true"] .workshop-view { overflow:visible; }
+.dough-workshop[data-stage="working"][data-mode-rail="true"] .workshop-mode { top:calc(100% + 4px); }
+.dough-workshop[data-stage="working"][data-mode-rail="true"] .workshop-shape-picker { left:calc(50% - 16px); }
 @media(prefers-reduced-motion:reduce) { .dough-workshop * { scroll-behavior:auto!important; transition:none!important; } }
 
 .dough-workshop .workshop-view:focus-visible { outline:0; box-shadow:none; }

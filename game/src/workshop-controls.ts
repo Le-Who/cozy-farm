@@ -20,10 +20,22 @@ export function workshopToolGuide(stage: WorkshopStage, tool: WorkshopTool, piec
 }
 
 type Rect = { x: number; y: number; width: number; height: number }
+const toolGap = 6, toolMargin = 6, toolWidth = 76, toolHeight = 64
+// The landscape shape row starts at 1.5%, has 44px targets, then a clear gap.
+const belowLandscapeShapes = (height: number) => Math.ceil(height * .015 + 44 + toolGap)
+
+/** Use spare viewport height, not worktop space, for the existing mode guide. */
+export function workshopModeRail(view: { width: number; height: number }, availableHeight: number): number {
+  const rail = 72, width = Math.round(view.width), height = Math.round(view.height)
+  return width >= 440 && width < toolWidth * 6 + toolGap * 5 + toolMargin * 2
+    && belowLandscapeShapes(height) + toolHeight * 2 + toolGap + toolMargin <= height
+    && view.height + rail <= availableHeight ? rail : 0
+}
+
 /** Keep the existing hand and bake controls free. Compact palettes close after selection. */
-export function workshopToolPalette(view: { width: number; height: number }, hand: Rect, bake: Rect) {
-  const gap = 6, margin = 6
-  const buttonWidth = Math.ceil(Math.max(76, hand.width)), buttonHeight = Math.ceil(Math.max(64, hand.height))
+export function workshopToolPalette(view: { width: number; height: number }, hand: Rect, bake: Rect, modeRail = false) {
+  const gap = toolGap, margin = toolMargin
+  const buttonWidth = Math.ceil(Math.max(toolWidth, hand.width)), buttonHeight = Math.ceil(Math.max(toolHeight, hand.height))
   const rowWidth = buttonWidth * 6 + gap * 5
   const besideLeft = hand.x + hand.width + gap
   const beside = bake.x - gap - besideLeft >= rowWidth
@@ -31,6 +43,11 @@ export function workshopToolPalette(view: { width: number; height: number }, han
   const width = columns * buttonWidth + (columns - 1) * gap
   const height = Math.ceil(6 / columns) * buttonHeight + (Math.ceil(6 / columns) - 1) * gap
   const left = beside ? besideLeft : Math.max(margin, Math.min(hand.x + hand.width + gap, view.width - width - margin))
-  const top = beside ? Math.min(view.height - height - margin, hand.y) : Math.max(margin, Math.min(hand.y, bake.y) - height - gap)
+  let top = beside ? Math.min(view.height - height - margin, hand.y) : Math.max(margin, Math.min(hand.y, bake.y) - height - gap)
+  if (modeRail && columns === 3) {
+    const lowerTop = Math.max(top, belowLandscapeShapes(view.height))
+    const clears = (rect: Rect) => left + width <= rect.x || left >= rect.x + rect.width || lowerTop + height <= rect.y || lowerTop >= rect.y + rect.height
+    if (lowerTop + height + margin <= view.height && clears(hand) && clears(bake)) top = lowerTop
+  }
   return { buttonWidth, buttonHeight, columns, width, height, left, top, compact: !beside }
 }
