@@ -29,6 +29,7 @@ const overlap=(a:Rect,b:Rect)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.heigh
 const num=(s:string)=>Number.parseFloat(s)
 const rule=(sheet:string,selector:string)=>sheet.split(selector+' {')[1]?.split('}')[0]??''
 const prop=(s:string,key:string)=>new RegExp('(?:^|;)\\s*'+key+':\\s*([^;]+)').exec(s)?.[1].trim()??''
+const contains=(rect:Rect,x:number,y:number)=>x>=rect.x&&x<rect.x+rect.width&&y>=rect.y&&y<rect.y+rect.height
 function box(style:Record<string,string>) { return {x:num(style.left),y:num(style.top),width:num(style.width),height:num(style.height)} }
 class Button {
   style:Record<string,string>={}
@@ -52,7 +53,7 @@ function workshop(windowWidth:number,windowHeight:number) {
   const handButton=new Button(),bakeButton=new Button(),ingredients=new Button()
   // Real ingredients is a div, so applyBox must not enforce the button minimum on it.
   const ingredientNode={style:ingredients.style}
-  const attrs={compact:undefined as string|undefined}
+  const attrs={compact:undefined as string|undefined,sideGuide:undefined as string|undefined}
   const menuStyle:Record<string,string>&{setProperty(k:string,v:string):void}={setProperty(k,v){this[k]=v}}
   const handMenu={style:menuStyle,dataset:attrs,hidden:false}
   runInNewContext(place,{...context,THREE,HTMLButtonElement:Button,handButton,bakeButton,ingredients:ingredientNode,handMenu,
@@ -61,13 +62,16 @@ function workshop(windowWidth:number,windowHeight:number) {
   const modeRailSelector='.dough-workshop[data-stage="working"][data-mode-rail="true"]'
   const railStyle=rule(css,modeRailSelector)
   const modeStyle=rule(css,modeRailSelector+' .workshop-mode')
-  const shapeRailStyle=rule(css,modeRailSelector+' .workshop-shape-picker')
+  const sideGuide=attrs.sideGuide==='true'
+  const sideSelector='.dough-workshop[data-stage="working"]:has(.workshop-hand-menu[data-side-guide="true"]:not([hidden]))'
+  const sideStyle=rule(css,sideSelector+' .workshop-mode')
+  const shapeOffset=rail?rule(css,modeRailSelector+' .workshop-shape-picker'):sideGuide?rule(css,sideSelector+' .workshop-shape-picker'):''
   const landscapeShape=rule(css,'.dough-workshop[data-layout="landscape"] .workshop-shape-picker')
   const landscapeMode=rule(css,'.dough-workshop[data-layout="landscape"] .workshop-mode')
   const shapeHeight=num(prop(rule(css,'.dough-workshop .workshop-shape-picker button'),'min-height'))
   const shapeCss=layout.id==='landscape'?{top:num(prop(landscapeShape,'top'))/100,width:.55}:layout.id==='portrait'?{top:.09,width:.94}:{top:.02,width:.60}
   const shapeWidth=Math.min(300,width*shapeCss.width)
-  const offset=rail?num(/-\s*(\d+)px/.exec(prop(shapeRailStyle,'left'))?.[1]??'0'):0
+  const offset=num(/-\s*(\d+)px/.exec(prop(shapeOffset,'left'))?.[1]??'0')
   const shape={x:(width-shapeWidth)/2-offset,y:shapeCss.top*height,width:shapeWidth,height:shapeHeight}
   const backCss=rule(dialogCss,'.scene-back')
   const back={x:width-num(prop(backCss,'right'))-num(prop(backCss,'width')),y:num(prop(backCss,'top')),
@@ -79,7 +83,9 @@ function workshop(windowWidth:number,windowHeight:number) {
   const toolWidth=num(menuStyle['--workshop-tool-width']),toolHeight=num(menuStyle['--workshop-tool-height'])
   const gap=num(prop(rule(css,'.workshop-hand-menu'),'gap'))
   const tiles=Array.from({length:6},(_,i)=>({x:num(menuStyle.left)+(i%columns)*(toolWidth+gap),y:num(menuStyle.top)+Math.floor(i/columns)*(toolHeight+gap),width:toolWidth,height:toolHeight}))
-  return {live:{root,handMenu,handButton,bakeButton},width,height,layout:layout.id,rail,reserve,guideTop,shape,back,ingredients:box(ingredients.style),railStyle,modeRailSelector,modeStyle,tiles,columns,
+  const guideLeft=num(style['--workshop-tool-end'])+num(/\+\s*(\d+)px/.exec(prop(sideStyle,'left'))?.[1]??'0')
+  const guide={x:guideLeft,y:num(prop(sideStyle,'top')),width:width-guideLeft-num(prop(sideStyle,'right')),height:95}
+  return {live:{root,handMenu,handButton,bakeButton},width,height,layout:layout.id,rail,reserve,guideTop,shape,back,guide,sideGuide,sideStyle,ingredients:box(ingredients.style),railStyle,modeRailSelector,modeStyle,tiles,columns,
     hand:box(handButton.style),bake:box(bakeButton.style),authored:{width:num(style.width),height:num(style.height)},compact:attrs.compact}
 }
 
@@ -99,6 +105,29 @@ for(const [w,h] of [[460,360],[480,360],[500,360]])test(`short landscape ${w}×$
   assert.ok(p.guideTop>p.height&&p.guideTop+56<=p.height+p.reserve,'room for the guide without hiding a control')
   assert.ok(p.authored.height+p.reserve<=h-20&&p.authored.width<=w-20,'fit inside the existing safe viewport')
   assert.equal(p.columns,3);assert.equal(p.compact,'true')
+})
+
+for(const [w,h] of [[460,270],[480,270],[500,270]])test(`shallow landscape ${w}×${h} leaves each palette tile and shape unobstructed`,()=>{
+  const p=workshop(w,h)
+  assert.equal(p.layout,'landscape');assert.equal(p.rail,false)
+  const shapeLayer=num(prop(rule(css,'.workshop-shape-picker'),'z-index'))
+  const toolLayer=num(prop(rule(css,'.workshop-hand-menu'),'z-index'))
+  const hitBySource=(tile:Rect,label:string)=>{
+    const x=tile.x+tile.width/2,y=tile.y+tile.height/2
+    return shapeLayer>toolLayer&&contains(p.shape,x,y)?'shape picker':label
+  }
+  assert.deepEqual(p.tiles.map((tile,i)=>hitBySource(tile,controls.workshopTools[i].label)),controls.workshopTools.map(t=>t.label),'source geometry predicts the click owner at all six centers')
+  assert.ok(p.tiles.every(t=>!overlap(t,p.shape)&&!overlap(t,p.back)&&!overlap(t,p.hand)&&!overlap(t,p.bake)))
+  assert.ok(p.tiles.every(t=>t.width===76&&t.height===64&&t.x>=0&&t.y>=0&&t.x+t.width<=p.width&&t.y+t.height<=p.height))
+  assert.ok(!overlap(p.shape,p.back)&&!overlap(p.shape,p.ingredients))
+  assert.equal(p.sideGuide,true)
+  assert.ok(p.guide.width>=134)
+  // Reserve 95px for wrapped text; no overlap with the higher shape, Back,
+  // or authored controls. This is a layout envelope, not native text paint.
+  assert.ok(p.guide.y+p.guide.height<=p.bake.y)
+  assert.ok(p.tiles.every(t=>!overlap(t,p.guide))&&!overlap(p.guide,p.back)&&!overlap(p.guide,p.shape))
+  assert.equal(prop(rule(css,'.workshop-mode'),'pointer-events'),'none')
+  assert.equal(prop(p.sideStyle,'transform'),'none')
 })
 
 test('portrait, desktop, known wide landscape and a too-shallow viewport keep their old recipe surface sizing',()=>{
@@ -133,7 +162,9 @@ test('height-only visual viewport resize repositions the open palette in both di
   assert.deepEqual(shallow.authored,tall.authored,'the observed inner worktop does not resize')
   assert.equal(shallow.rail,false);assert.equal(tall.rail,true)
   const lowTop=shallow.tiles[0].y,highTop=tall.tiles[0].y
-  assert.ok(lowTop<tall.shape.y+tall.shape.height&&highTop>=tall.shape.y+tall.shape.height)
+  assert.ok(lowTop>=shallow.shape.y+shallow.shape.height&&highTop>=tall.shape.y+tall.shape.height)
+  assert.equal(shallow.sideGuide,true)
+  assert.equal(tall.sideGuide,false)
 
   // Register the shipped window/visualViewport callbacks, not a test wrapper
   // that could accidentally position the menu when the game does not.
@@ -149,14 +180,16 @@ test('height-only visual viewport resize repositions the open palette in both di
   const setup=[...names].map(name=>{assert.ok(methods.has(name));return methods.get(name)!})
   const listeners=resizeBindings.map(call=>call.getText(ast)+';')
   runInNewContext(compile([...setup,...listeners].join('\n')),{...controls,window,root,view,handMenu,handButton,bakeButton,
-    width:shallow.width,height:shallow.height,getWorkshopLayout,containArtwork,signal:new AbortController().signal})
+    width:shallow.width,height:shallow.height,layout:getWorkshopLayout(shallow.width,shallow.height),getWorkshopLayout,containArtwork,signal:new AbortController().signal})
   const readTop=()=>num(handMenu.style.top)
-  assert.equal(readTop(),lowTop)
+  assert.equal(readTop(),lowTop);assert.equal(handMenu.dataset.sideGuide,'true')
   visualViewport.height=360;visualViewport.resize()
   assert.equal(root.dataset.modeRail,'true');assert.equal(readTop(),highTop,'shape row must clear immediately')
+  assert.equal(handMenu.dataset.sideGuide,'false','do not keep the side guide when there is room below')
   window.resize();assert.equal(readTop(),highTop)
   visualViewport.height=270;visualViewport.resize()
-  assert.equal(root.dataset.modeRail,'false');assert.equal(readTop(),lowTop,'return to unmodified shallow placement')
+  assert.equal(root.dataset.modeRail,'false');assert.equal(readTop(),lowTop,'return to unobstructed shallow placement')
+  assert.equal(handMenu.dataset.sideGuide,'true','restore the side guide immediately')
   assert.equal(handMenu.hidden,false,'do not close or rebuild the open palette')
   handMenu.hidden=true;visualViewport.height=360;visualViewport.resize()
   assert.equal(readTop(),lowTop,'closed controls wait until reopened')

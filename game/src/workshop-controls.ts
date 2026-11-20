@@ -33,7 +33,7 @@ export function workshopModeRail(view: { width: number; height: number }, availa
 }
 
 /** Keep the existing hand and bake controls free. Compact palettes close after selection. */
-export function workshopToolPalette(view: { width: number; height: number }, hand: Rect, bake: Rect, modeRail = false) {
+export function workshopToolPalette(view: { width: number; height: number }, hand: Rect, bake: Rect, modeRail = false, landscape = false) {
   const gap = toolGap, margin = toolMargin
   const buttonWidth = Math.ceil(Math.max(toolWidth, hand.width)), buttonHeight = Math.ceil(Math.max(toolHeight, hand.height))
   const rowWidth = buttonWidth * 6 + gap * 5
@@ -44,10 +44,16 @@ export function workshopToolPalette(view: { width: number; height: number }, han
   const height = Math.ceil(6 / columns) * buttonHeight + (Math.ceil(6 / columns) - 1) * gap
   const left = beside ? besideLeft : Math.max(margin, Math.min(hand.x + hand.width + gap, view.width - width - margin))
   let top = beside ? Math.min(view.height - height - margin, hand.y) : Math.max(margin, Math.min(hand.y, bake.y) - height - gap)
-  if (modeRail && columns === 3) {
+  let sideGuide = false
+  if (columns === 3 && (modeRail || landscape)) {
     const lowerTop = Math.max(top, belowLandscapeShapes(view.height))
     const clears = (rect: Rect) => left + width <= rect.x || left >= rect.x + rect.width || lowerTop + height <= rect.y || lowerTop >= rect.y + rect.height
-    if (lowerTop + height + margin <= view.height && clears(hand) && clears(bake)) top = lowerTop
+    // If the guide has no external rail, keep it in the clear column at right.
+    const fitsSideGuide = landscape && view.width-left-width >= 146 && bake.y >= 151
+    if ((modeRail || fitsSideGuide) && lowerTop + height + margin <= view.height && clears(hand) && clears(bake)) {
+      sideGuide = !modeRail && lowerTop > top
+      top = lowerTop
+    }
   }
-  return { buttonWidth, buttonHeight, columns, width, height, left, top, compact: !beside }
+  return { buttonWidth, buttonHeight, columns, width, height, left, top, sideGuide, compact: !beside }
 }

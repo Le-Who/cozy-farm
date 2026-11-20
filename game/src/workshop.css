@@ -56,6 +56,11 @@
 .dough-workshop[data-stage="working"][data-mode-rail="true"] .workshop-view { overflow:visible; }
 .dough-workshop[data-stage="working"][data-mode-rail="true"] .workshop-mode { top:calc(100% + 4px); }
 .dough-workshop[data-stage="working"][data-mode-rail="true"] .workshop-shape-picker { left:calc(50% - 16px); }
+/* No room for the lower rail: keep the guide alongside the two tool rows.
+   The shape row shares the rail's offset so the Back button stays clear. */
+.dough-workshop[data-stage="working"]:has(.workshop-hand-menu[data-side-guide="true"]:not([hidden])) .workshop-shape-picker { left:calc(50% - 16px); }
+.dough-workshop[data-stage="working"]:has(.workshop-hand-menu[data-side-guide="true"]:not([hidden])) .workshop-mode { top:56px; left:calc(var(--workshop-tool-end) + 6px); right:6px; transform:none; width:auto; max-width:none; padding:3px 6px; font-size:12px; line-height:1.2; }
+.dough-workshop[data-stage="working"]:has(.workshop-hand-menu[data-side-guide="true"]:not([hidden])) .workshop-mode-title { display:block; margin:0; font-size:inherit; }
 @media(prefers-reduced-motion:reduce) { .dough-workshop * { scroll-behavior:auto!important; transition:none!important; } }
 
 .dough-workshop .workshop-view:focus-visible { outline:0; box-shadow:none; }

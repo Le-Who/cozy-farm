@@ -398,12 +398,14 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   function positionHandMenu(){
     const handRect=handButton.getBoundingClientRect(),viewRect=view.getBoundingClientRect(),bakeRect=bakeButton.getBoundingClientRect()
     const rect=(box:DOMRect)=>({x:box.left-viewRect.left,y:box.top-viewRect.top,width:box.width,height:box.height})
-    const palette=workshopToolPalette({width,height},rect(handRect),rect(bakeRect),root.dataset.modeRail==='true')
+    const palette=workshopToolPalette({width,height},rect(handRect),rect(bakeRect),root.dataset.modeRail==='true',layout.id==='landscape')
     handMenu.style.setProperty('--workshop-tool-width',`${palette.buttonWidth}px`)
     handMenu.style.setProperty('--workshop-tool-height',`${palette.buttonHeight}px`)
     handMenu.style.gridTemplateColumns=`repeat(${palette.columns},var(--workshop-tool-width))`
     handMenu.style.left=`${palette.left}px`;handMenu.style.top=`${palette.top}px`
     handMenu.dataset.compact=String(palette.compact)
+    handMenu.dataset.sideGuide=String(palette.sideGuide)
+    if(palette.sideGuide)root.style.setProperty('--workshop-tool-end',`${palette.left+palette.width}px`)
   }
   function updateCue(){
     const cutUnavailable=stage==='working'&&activeTool==='cut'&&(cutPending||pieces.length>=6)
