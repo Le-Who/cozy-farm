@@ -251,6 +251,13 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
       const a = object.dough ? onMesh(from) ?? b : local(from), context = object.context; if(object.dough)depositHoneyPiece(model,foods.indexOf(object),a,b,amount); context.strokeStyle = '#fff'; context.lineCap = context.lineJoin = 'round'; context.globalAlpha = amount; context.lineWidth = Math.max(9, surface.rx / object.rect.width * 192 * (object.dough ? .07 + .11 * coating.value : .10 + .18 * coating.value)); context.shadowColor = '#fff'; context.shadowBlur = 5; context.beginPath(); context.moveTo(a.x * 192, a.y * 192); context.lineTo(b.x * 192, b.y * 192); context.stroke(); context.globalAlpha = 1; object.texture.needsUpdate = true
     }
   }
+  function depositHoneyLanding(point: HoneyPoint, flow: number) {
+    const dose = .38 * flow, pears = pearView
+    // The last drop is already airborne when release moves the plate to settling.
+    // Its residue can wet exposed ceramic without adding fruit coverage.
+    if (model.stage === 'settling' && pears) plateView?.paint(point, point, dose, flow, p => pears.hit(p))
+    else paintGlaze(point, point, dose, flow)
+  }
   function moveHeld(point: HoneyPoint) {
     cursor = point; updateCursor(); if (!held) return
     if ('tool' in held && (held.tool === 'honey' || held.tool === 'spoon') && contactReady) point = { x: contact.x, y: contact.y }
@@ -475,7 +482,7 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
       honeyTube?.update({from:{...strandTip,z:0},to:{...bottom,z:0},velocity:{x:contact.vx,y:contact.vy},radius:Math.max(2,surface.rx*.025),tail:1-strength,flow:coating.value,time:elapsed})
       if(pitcherSurface&&spoutFlow&&spoutTube){const jug=parts.get('honey')!,mouth=imagePoint(jug,.47,.265),inside=imagePoint(jug,.31,.245);pitcherSurface.visible=jug.mesh.visible;pitcherSurface.position.set(mouth.x,mouth.y,21);pitcherSurface.scale.set(jug.rect.width*.205,-jug.rect.height*.075,1);pitcherSurface.rotation.z=jug.mesh.rotation.z;pitcherSurface.material.uniforms.time.value=elapsed;pitcherSurface.material.uniforms.flow.value=pitcherTilt.value;spoutFlow.visible=pouring&&coating.value>.03;spoutFlow.position.z=21;spoutTube.update({from:{...inside,z:0},to:{...strandTip,z:0},velocity:{x:0,y:0},radius:Math.max(1.8,surface.rx*.022),tail:0,flow:pouring?coating.value:0,time:elapsed})}
 
-      if(drop){drop.visible=show||honeyDrop!==null;drop.material.uniforms.alpha.value=1;const radius=Math.max(2,surface.rx*.028)*Math.sqrt(Math.max(.05,coating.value));drop.position.set(bottom.x,bottom.y,22);drop.scale.set(radius,radius*(1.05+(1-strength)*1.6),radius*.7);if(honeyDrop){stepFruitLanding(honeyDrop.body,dt,{gravity:4,restitution:.04,settleSpeed:.04});drop.position.set(honeyDrop.x,honeyDrop.targetY-honeyDrop.body.height*surface.ry,22);const r=Math.max(2,surface.rx*.03);drop.scale.set(r*(1+honeyDrop.fade*5),r*Math.max(.25,1.45-honeyDrop.fade*7),r*.7);if(honeyDrop.body.settled){if(!honeyDrop.hit){const point={x:honeyDrop.x,y:honeyDrop.targetY};paintGlaze(point,point,.38*honeyDrop.flow,honeyDrop.flow);honeyDrop.hit=true;if(pearView?pearView.hit(point)||plateView?.hit(point):onHoneySurface(normalized(point),1.12))playBaySound('cook.honey-end',.35+.35*honeyDrop.flow);if(model.pending&&!held)endHoneyStroke(model)}honeyDrop.fade+=dt;drop.material.uniforms.alpha.value=Math.max(0,1-honeyDrop.fade/.16);if(honeyDrop.fade>=.16)honeyDrop=null}}}
+      if(drop){drop.visible=show||honeyDrop!==null;drop.material.uniforms.alpha.value=1;const radius=Math.max(2,surface.rx*.028)*Math.sqrt(Math.max(.05,coating.value));drop.position.set(bottom.x,bottom.y,22);drop.scale.set(radius,radius*(1.05+(1-strength)*1.6),radius*.7);if(honeyDrop){stepFruitLanding(honeyDrop.body,dt,{gravity:4,restitution:.04,settleSpeed:.04});drop.position.set(honeyDrop.x,honeyDrop.targetY-honeyDrop.body.height*surface.ry,22);const r=Math.max(2,surface.rx*.03);drop.scale.set(r*(1+honeyDrop.fade*5),r*Math.max(.25,1.45-honeyDrop.fade*7),r*.7);if(honeyDrop.body.settled){if(!honeyDrop.hit){const point={x:honeyDrop.x,y:honeyDrop.targetY};depositHoneyLanding(point,honeyDrop.flow);honeyDrop.hit=true;if(pearView?pearView.hit(point)||plateView?.hit(point):onHoneySurface(normalized(point),1.12))playBaySound('cook.honey-end',.35+.35*honeyDrop.flow);if(model.pending&&!held)endHoneyStroke(model)}honeyDrop.fade+=dt;drop.material.uniforms.alpha.value=Math.max(0,1-honeyDrop.fade/.16);if(honeyDrop.fade>=.16)honeyDrop=null}}}
 
 
     }
