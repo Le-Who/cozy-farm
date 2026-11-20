@@ -20,7 +20,10 @@ export function renderSeedPicker(farm: FarmState, previewSeed: CropId, bed: numb
   const buy = !choice.available ? art.button(`Купить ×${seedPackSize}`, 'buy-seeds', affordable, {crop:previewSeed, context:`Семена: ${seed.name.toLowerCase()}, цена: ${ruCount(seed.seedPrice,'монета','монеты','монет')}`, cost:{icon:'coin',amount:seed.seedPrice}}) : ''
   const primary = choice.available ? art.button(label, 'choose-seed', true, {value:choice.token})
     : exchange ? art.button(`Обменять на ${ruCount(exchange.pack,'семя','семени','семян')}`,'save-crop-seeds',true,{value:exchange.token,context:`цена, обычный урожай: ${seed.name.toLowerCase()} ×1`}) : buy
-  const detail = choice.available ? choice.detail : exchange ? `Цена: ${seed.name.toLowerCase()} ×1 из обычного урожая. Посев отдельно.` : 'Покупка пополнит запас. Выбор и посев — отдельно.'
+  const detail = choice.available ? choice.detail
+    : exchange ? `Цена: ${seed.name.toLowerCase()} ×1 из обычного урожая. Посев отдельно.`
+      : !affordable ? `У вас: ${ruCount(farm.coins,'монета','монеты','монет')} · не хватает ${seed.seedPrice - farm.coins}.`
+        : 'Покупка пополнит запас. Выбор и посев — отдельно.'
   return `<section class="seed-picker" aria-label="Выбор культуры">
     <section class="seed-picker-current" aria-label="Просмотр: ${seed.name}">${art.icon(previewSeed)}<div class="seed-picker-current-copy"><h2>${seed.name}</h2><p>${ruCount(seed.days, 'ночь', 'ночи', 'ночей')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p></div>
       <div class="seed-picker-primary">${primary}</div>

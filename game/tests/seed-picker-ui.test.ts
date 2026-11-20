@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
-import { createFarm, cropIds, cropDefinitions, buySeeds, buyFeed, workBed, selectSeed, restoreCurrentFarm } from '../src/farm.ts'
+import { createFarm, cropIds, cropDefinitions, buySeeds, buyFeed, workBed, selectSeed, sellMarketItem, marketKey, restoreCurrentFarm } from '../src/farm.ts'
 import { renderSeedPicker } from '../src/seed-picker-ui.ts'
 import { seedChoice, chooseSeedForBed } from '../src/seed-choice.ts'
 import { seedSavingQuote, saveCropSeeds } from '../src/seed-saving.ts'
@@ -41,13 +41,33 @@ test('ordinary selection from the tool or a bed never consumes seed; the next be
   assert.deepEqual(f.beds[bed??13],{kind:'crop',crop:'cabbage',growth:0,watered:false})
  }
 })
-test('empty packet offers its actual purchase, without disabling browsing or claiming planting',()=>{
- const f=createFarm();f.seeds.blueberry=0;f.coins=0
- const html=renderSeedPicker(f,'blueberry',undefined,art)
- assert.match(html,/data-action="buy-seeds"[^>]*data-crop="blueberry" disabled>Купить ×3 · 7/)
- assert.match(html,/Покупка пополнит запас. Выбор и посев — отдельно/)
- assert.doesNotMatch(html,/data-action="save-crop-seeds"/)
+test('an earned empty berry packet explains an unaffordable purchase in the existing sticky detail',()=>{
+ const f=createFarm(), crop='blueberry'
+ assert.ok(buySeeds(f,'pumpkin').ok)
+ assert.ok(buySeeds(f,'cabbage').ok)
+ assert.equal(f.day,1);assert.equal(f.coins,4);assert.equal(f.seeds[crop],0)
+ const before=structuredClone(f),html=renderSeedPicker(f,crop,undefined,art)
+ const header=html.split('class="seed-picker-grid"')[0]
+ assert.match(header,/data-action="buy-seeds"[^>]*data-crop="blueberry" disabled>Купить ×3 · 7/)
+ assert.match(header,/<p class="seed-picker-contract">У вас: 4 монеты · не хватает 3\.<\/p>/)
+ assert.doesNotMatch(html,/data-action="save-crop-seeds"|data-action="choose-seed"/)
  assert.equal((html.match(/ disabled/g)??[]).length,1)
+ assert.equal((html.match(/class="seed-picker-tile"/g)??[]).length,cropIds.length)
+ assert.equal(buySeeds(f,crop).ok,false);assert.deepEqual(f,before)
+
+ assert.ok(workBed(f,4,0).ok)
+ assert.ok(sellMarketItem(f,marketKey({kind:'produce',item:'wheat',quantity:1})).ok)
+ // Wheat sale and the first sale reward refill the purse. Buy another normal
+ // packet to arrive at the exact blueberry price without editing balances.
+ assert.ok(buySeeds(f,'pumpkin').ok)
+ assert.equal(f.coins,cropDefinitions[crop].seedPrice)
+ const ready=structuredClone(f), enabled=renderSeedPicker(f,crop,undefined,art)
+ assert.match(enabled,/data-action="buy-seeds"[^>]*data-crop="blueberry">Купить ×3 · 7/)
+ assert.match(enabled,/Покупка пополнит запас. Выбор и посев — отдельно/)
+ assert.doesNotMatch(enabled,/не хватает/)
+ assert.deepEqual(f,ready)
+ assert.ok(buySeeds(f,crop).ok);assert.equal(f.coins,0);assert.equal(f.seeds[crop],3)
+ assert.equal(f.selectedSeed,ready.selectedSeed);assert.deepEqual(f.beds,ready.beds)
 })
 test('planned return and explicit manual replacement keep existing guards and wording',()=>{
  const f=createFarm(),crops=Array(16).fill(null);crops[13]='wheat'
