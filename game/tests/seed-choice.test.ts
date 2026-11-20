@@ -7,7 +7,7 @@ import {createFarm,workBed,buySeeds,restoreCurrentFarm,sellMarketItem,endDay,ber
 import {saveGardenPlan,followGardenPlan} from '../src/garden-plans.ts'
 import {seedChoice,chooseSeedForBed} from '../src/seed-choice.ts'
 import {seedSavingQuote,saveCropSeeds} from '../src/seed-saving.ts'
-import {isGuardedAction} from '../src/action-click-guard.ts'
+import {ActivationKeyGuard,isGuardedAction} from '../src/action-click-guard.ts'
 import {renderSeedPicker} from '../src/seed-picker-ui.ts'
 
 function planned(){
@@ -118,14 +118,26 @@ test('real UI routes browsing and buying separately from the guarded explicit ch
   }
 })
 
-test('explicit keyboard preview of the tenth stocked packet reaches its selector without choosing or buying',()=>{
+test('keyboard preview of the tenth stocked packet reaches its sticky selector in both seed pickers',()=>{
   const earned=createFarm()
   assert.ok(workBed(earned,9).ok);assert.ok(sellMarketItem(earned,'produce:carrot',3).ok);assert.ok(endDay(earned).ok)
   for(const crop of berryCropIds)assert.ok(buySeeds(earned,crop).ok)
   assert.equal(cropIds.filter(crop=>earned.seeds[crop]>0).length,10)
   const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
   const branch=stripTypeScriptTypes("switch('preview-seed'){"+main.slice(main.indexOf("    case 'preview-seed':"),main.indexOf("    case 'choose-seed':"))+'}')
-  for(const [panel,detail,owned,stock] of [['seeds',0,true,true],['seeds',1,true,true],['inventory',0,true,true],['seeds',0,false,true],['seeds',0,true,false]] as const){
+  const paths = [
+    ['seeds','harvest',0,true,true,'selector'],
+    ['inventory','seeds',0,true,true,'selector'],
+    ['seeds','seeds',1,true,true,'tile'],
+    ['inventory','seeds',1,true,true,'tile'],
+    ['seeds','seeds',0,false,true,'close'],
+    ['inventory','seeds',0,false,true,'close'],
+    ['seeds','seeds',0,true,false,'tile'],
+    ['inventory','seeds',0,true,false,'tile'],
+    ['inventory','harvest',0,true,true,'original'],
+    ['kitchen','seeds',0,true,true,'original'],
+  ] as const
+  for(const [panel,bagTab,detail,owned,stock,expected] of paths){
     const farm=structuredClone(stock?earned:createFarm()),before=structuredClone(farm),original={},tile={},close={}
     const document={activeElement:owned?original:close}
     const art={icon:()=>'',button:(label:string,action:string,_enabled:boolean,options:{value?:string})=>`<button data-action="${action}" data-value="${options.value??''}">${label}</button>`}
@@ -134,12 +146,20 @@ test('explicit keyboard preview of the tenth stocked packet reaches its selector
     if(stock)assert.equal(selects?.[1],seedChoice(farm,'raspberry').token)
     assert.deepEqual([...html.matchAll(/data-action="preview-seed" data-value="([^"]+)"/g)].map(match=>match[1]),cropIds)
     const selector={focus(options:{preventScroll:boolean}){assert.equal(options.preventScroll,true);document.activeElement=selector}}
-    const context={farm,cropIds,value:'raspberry',previewSeed:'carrot',panel,bagTab:'seeds',dialog:{open:true},event:{detail},control:original,document,
+    const context={farm,cropIds,value:'raspberry',previewSeed:'carrot',panel,bagTab,dialog:{open:true},event:{detail},control:original,document,
       drawPanel(){if(owned)document.activeElement=tile},
-      dialogContent:{querySelector(css:string){assert.match(css,/data-action=["']choose-seed["']/);return selects?selector:null}},
+      dialogContent:{querySelector(css:string){assert.equal(css,'.seed-picker-primary [data-action="choose-seed"]:not(:disabled)');return selects?selector:null}},
     }
     runInNewContext(branch,context)
-    assert.equal(context.previewSeed,'raspberry');assert.deepEqual(farm,before)
-    assert.equal(document.activeElement,!owned?close:panel==='seeds'&&detail===0&&stock?selector:tile)
+    assert.equal(context.previewSeed,expected==='original'?'carrot':'raspberry')
+    assert.deepEqual(farm,before,'preview never purchases, changes sow mode or plants')
+    assert.equal(document.activeElement,{selector,tile,close,original}[expected],[panel,bagTab,detail,owned,stock].join('/'))
+    if(expected==='selector') for(const key of ['Enter',' ']){
+      const guard=new ActivationKeyGuard()
+      assert.equal(guard.blocks({key,repeat:false},isGuardedAction('preview-seed')),false)
+      assert.equal(guard.blocks({key,repeat:true},isGuardedAction('choose-seed')),true,'held preview key may not confirm')
+      guard.release(key)
+      assert.equal(guard.blocks({key,repeat:false},isGuardedAction('choose-seed')),false,'a fresh confirm remains available')
+    }
   }
 })

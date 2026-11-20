@@ -4133,7 +4133,7 @@ app.addEventListener('click', async (event) => {
       break
     case 'preview-seed':
       if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value&&cropIds.includes(value as CropId)) {
-        const keyboardChoice = panel === 'seeds' && event.detail === 0 && document.activeElement === control
+        const keyboardChoice = event.detail === 0 && document.activeElement === control
         previewSeed=value as CropId;drawPanel()
         // The confirm button precedes all ten tiles. Never move focus to a purchase.
         if (keyboardChoice) dialogContent.querySelector<HTMLButtonElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)')?.focus({preventScroll:true})
