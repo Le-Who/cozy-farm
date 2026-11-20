@@ -156,3 +156,45 @@ test('the exact basket shortcut reveals one neutral destination and cannot reuse
   guard.release(key);assert.equal(guard.blocks({key,repeat:false},true),false)
  }
 })
+
+test('an expanded hatchery forecast survives local changes but starts closed on each new visit', () => {
+ const player=chickenCarePlayer('orchard','hatchery')
+ player.act('feedChickens');player.act('endDay');player.act('collectEggs')
+ const day=player.state.day,flock=player.state.flockSize,eggs=player.state.eggs
+ const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+ const from=main.indexOf("    case 'coop':",main.indexOf('function drawPanel()')),to=main.indexOf("    case 'rest':",from)
+ assert.ok(from>=0&&to>from)
+ const branch=stripTypeScriptTypes("switch('coop'){"+main.slice(from,to)+"}")
+ let html='',details:{open:boolean}|null=null
+ const dialogContent={
+  set innerHTML(value:string) { html=value;details=/<details class="coop-forecast"[ >]/.test(value)?{open:/<details class="coop-forecast" open>/.test(value)}:null },
+  querySelector(selector:string) { return selector==='.coop-forecast'?details:null },
+ }
+ const forecast=()=>{ const current=dialogContent.querySelector('.coop-forecast');assert.ok(current);return current }
+ const dialog={open:false}
+ function draw() {
+  const before=structuredClone(player.state)
+  runInNewContext(branch,{farm:player.state,dialog,dialogContent,renderCoopPanel,icon:(id:string)=>id,row,button,
+   flockFeedRow:()=>'',bayAudio:{primeEvents(){}},groupCoopServices:()=>()=>{},disposeCoopServices:undefined})
+  assert.deepEqual(player.state,before,'rendering never feeds, collects, incubates or rests')
+ }
+ draw();dialog.open=true
+ assert.equal(forecast().open,false,'the first visit is collapsed')
+ assert.match(html,/Без корма новой кладки не будет/)
+ forecast().open=true
+ player.act('incubateEgg')
+ draw()
+ assert.equal(forecast().open,true,'inserting an egg must not close the player’s forecast')
+ assert.match(html,/До вылупления: 2 ночи/)
+ if(!player.state.feed) player.act('buyFeed')
+ player.act('feedChickens');draw()
+ assert.equal(forecast().open,true,'the new forecast stays visible after feeding')
+ assert.match(html,/К утру добавится:/);assert.doesNotMatch(html,/Без корма новой кладки не будет/)
+ assert.equal(player.state.day,day);assert.equal(player.state.flockSize,flock);assert.equal(player.state.eggs,eggs-1)
+ forecast().open=false;draw()
+ assert.equal(forecast().open,false,'explicit collapse is preserved too')
+ forecast().open=true;dialog.open=false;draw();dialog.open=true
+ assert.equal(forecast().open,false,'closing and immediately reopening does not inherit stale markup')
+ forecast().open=true;dialogContent.innerHTML='<section>Other menu</section>';draw()
+ assert.equal(forecast().open,false,'returning from a different menu starts collapsed')
+})

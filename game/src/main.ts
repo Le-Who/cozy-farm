@@ -2253,11 +2253,18 @@ function drawPanel() {
     case 'chicken-feed':
       dialogContent.innerHTML = renderChickenFeedMixes(farm, icon, panelHistory.at(-1)?.panel === 'rest')
       break
-    case 'coop':
+    case 'coop': {
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
+      // Feed and collect refresh the numbers, without closing an actively viewed forecast.
+      const forecastOpen = dialog.open && dialogContent.querySelector<HTMLDetailsElement>('.coop-forecast')?.open
       dialogContent.innerHTML = renderCoopPanel(farm, {icon,row,button,feedRow:flockFeedRow})
       disposeCoopServices = groupCoopServices(dialogContent)
+      if (forecastOpen) {
+        const forecast = dialogContent.querySelector<HTMLDetailsElement>('.coop-forecast')
+        if (forecast) forecast.open = true
+      }
       break
+    }
     case 'rest': {
       const hatch = farm.hatchDay === null ? '' : farm.hatchDay === farm.day + 1
         ? 'К утру вылупится курочка.' : `Курочка вылупится утром дня ${farm.hatchDay}.`
