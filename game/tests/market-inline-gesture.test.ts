@@ -139,3 +139,68 @@ test('an older edited quantity remains visible and repairable when only one item
   assert.equal(sales.take(item.key,old,item.count,item.price),undefined)
   assert.deepEqual(farm,before)
 })
+
+const confirmCode = stripTypeScriptTypes(
+  part('function inlineSaleContext(','function updateInlineSaleCard(')
+  + part('function confirmInlineSale(','function updateMarketSaleSearch(')
+  + part('function perform(','\nconst bedTools')
+  + "switch ('inline-sale-confirm') {" + part("    case 'inline-sale-confirm':","    case 'inline-sale-again':") + '}',
+)
+
+for (const hasApples of [true,false]) {
+  test(`the day-one keyboard egg sale announces its result and moves to ${hasApples?'the apples name':'the empty market notice'}`,()=>{
+    const farm=createFarm(),marketInlineSales=new MarketInlineSales(),written:typeof farm[]=[]
+    assert.ok(collectEggs(farm).ok); if (hasApples) assert.ok(pickFruit(farm,0).ok)
+    const before=structuredClone(farm),expected=structuredClone(farm),expectedSale=sellMarketItem(expected,'eggs',1)
+    assert.ok(expectedSale.ok); assert.match(expectedSale.message,/Награда за задание: \+8 монет/)
+    const goods=()=>getMarketStock(farm).filter(item=>item.count>0)
+      .map(item=>({...item,name:item.key==='eggs'?'Яйцо':'Яблоко'}))
+
+    const document={activeElement:undefined as unknown}, grid={scrollTop:hasApples?22:0}
+    let scrolled:string|undefined
+    const focusTarget=(id:string)=>({
+      focus({preventScroll}:{preventScroll:boolean}) {assert.equal(preventScroll,true); document.activeElement=id},
+      scrollIntoView({block,inline}:{block:string;inline:string}) {assert.equal(block,'nearest'); assert.equal(inline,'nearest'); scrolled=id},
+    })
+    const nodes=()=>goods().map(item=>{
+      const key=item.key, html=card(item,marketInlineSales), node={
+        dataset:{inlineKey:key,inlineToken:marketInlineSales.view(key,item.count,item.price).token},
+        querySelector(selector:string) {return focusTarget(selector==='.market-inline-name'?`name:${key}`:`sell:${key}`)},
+      }
+      return {key,html,node}
+    })
+    let cards=nodes()
+    const egg=cards.find(card=>card.key==='eggs')!
+    assert.doesNotMatch(egg.html,/<input/)
+    const control={closest:(selector:string)=>selector==='[data-inline-key]'?egg.node:null}
+    document.activeElement=control
+    const dialogContent={
+      contains: (element:unknown)=>element===control && cards.includes(egg),
+      querySelectorAll:(selector:string)=>{assert.equal(selector,'[data-inline-key]');return cards.map(card=>card.node)},
+      querySelector:(selector:string)=>selector==='#market-sale-results'?(cards.length?grid:null)
+        :selector==='[data-market-sale-empty]'&&!cards.length?focusTarget('empty')
+          :selector==='[data-market-sale-query]'&&cards.length?focusTarget('search'):null,
+    }
+    let srOnly:boolean|undefined
+    const feedback={hidden:true,textContent:'',classList:{toggle:(name:string,value:boolean)=>{assert.equal(name,'sr-only');srOnly=value}},dataset:{tone:''}}
+    const context={farm,document,dialog:{open:true},panel:'market',marketTab:'sell',control,event:{detail:0},dialogContent,
+      marketInlineSales,marketSellGroup:'all',goods,sellMarketItem,island:{isCrossing:()=>false},playBaySound(){},
+      dialogFeedback:feedback,dialogFeedbackTimer:0,window:{setTimeout:()=>1,clearTimeout(){}},
+      saveFarm(){written.push(structuredClone(farm))},refresh(){cards=nodes();document.activeElement=undefined;grid.scrollTop=0}}
+    assert.deepEqual(farm,before)
+    runInNewContext(confirmCode,context)
+    assert.deepEqual(written,[expected]); assert.deepEqual(farm,expected)
+    assert.equal(feedback.hidden,false); assert.equal(srOnly,false)
+    assert.equal(feedback.dataset.tone,'good'); assert.equal(feedback.textContent,expectedSale.message)
+    const next=hasApples?'name:fruit:apple':'empty'
+    assert.equal(document.activeElement,next); assert.equal(scrolled,next)
+    assert.ok(cards.every(card=>card.key!=='eggs'))
+    if (hasApples) {
+      assert.equal(grid.scrollTop,22)
+      const firstEnabled=cards[0].html.match(/<(?:button|input)\b(?![^>]*\bdisabled)[^>]+>/)?.[0]
+      assert.match(firstEnabled!,/data-inline-quantity[^>]*max="2"/,'the next Tab can reach the unchanged two-apple picker')
+    }
+    runInNewContext(confirmCode,context)
+    assert.deepEqual(written,[expected],'the removed sale control cannot run again')
+  })
+}
