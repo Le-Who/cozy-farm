@@ -11,6 +11,8 @@ import {SalePresentation} from '../src/sale-presentation.ts'
 import {MarketInlineSales} from '../src/market-inline-sale.ts'
 import {MarketSaleBrowseMemory} from '../src/market-sale-browse.ts'
 import {searchMarketSales} from '../src/market-sale-search.ts'
+import {marketSaleFamilies} from '../src/market-sale-family.ts'
+import {recipeRepeatReturnFixture} from './fixtures/recipe-repeat-return.ts'
 import {ruPlural} from '../src/ru.ts'
 
 // Source-level route/content test; no DOM, crossing animation or native acceptance.
@@ -20,10 +22,11 @@ const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const source=readFileSync(`${root}/src/main.ts`,'utf8'),ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true)
 function find(predicate){let result;function visit(node){if(!result&&predicate(node))result=node;ts.forEachChild(node,visit)}visit(ast);assert.ok(result);return result.getText(ast)}
 const declaration=name=>find(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name)
-const functions=['button','row','nav','quantity','stockLabel','goods','fishImage','fishSource','inventoryStockRow','marketInlineCard','marketSaleResults','marketSaleSearchStatus','exactSaleCard','beginExactSale','openPanel','marketSellView','rememberClosedMarketSell','closeDialog','perform','refresh','rememberPanel','goBack','focusKey','updateSaleQuote','isSaleSurface']
+const functions=['button','row','nav','quantity','stockLabel','goods','fishImage','fishSource','inventoryStockRow','marketInlineCard','marketSaleResults','marketSaleSearchStatus','marketCards','panelTabs','marketFamilyOptions','marketBulkSaleControls','wholeInventorySaleView','exactSaleCard','beginExactSale','openPanel','rememberClosedMarketSell','closeDialog','perform','refresh','rememberPanel','goBack','focusKey','stockSourceItem','updateSaleQuote','isSaleSurface']
 const icons=find(n=>ts.isVariableStatement(n)&&n.declarationList.declarations.some(d=>d.name.getText(ast)==='dishIcons'))
-const actions=['fish-market','sell-item','fish-kitchen'].map(id=>find(n=>ts.isCaseClause(n)&&n.expression.getText(ast)===`'${id}'`))
-const code=ts.transpileModule(`${icons}\n${functions.map(declaration).join('\n')}\nasync function act(action,value){switch(action){${actions.join('\n')}}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+const sellView=source.slice(source.indexOf('function marketSellView()'),source.indexOf('function rememberClosedMarketSell()'))
+const actions=['fish-market','sell-item','fish-kitchen','open-panel'].map(id=>find(n=>ts.isCaseClause(n)&&n.expression.getText(ast)===`'${id}'`))
+const code=ts.transpileModule(`${icons}\n${sellView}\n${functions.map(declaration).join('\n')}\nasync function act(action,value){switch(action){${actions.join('\n')}}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
 const noop=()=>{}
 
 function earned(destination='grove'){
@@ -42,7 +45,7 @@ function earned(destination='grove'){
 function screen(farm,query='морковь'){
  const saved=[],crossings=[],visits=[]
  const reset={reset:noop},icon=name=>`<img alt="" data-icon="${name}">`
- const state:any={...F,farm,saleStock,exactSaleQuote,searchMarketSales,ruPlural,escapeHtml,icon,itemIcon:icon,pastryIcons:{round:'round',long:'long',folded:'folded'},numberFormat:new Intl.NumberFormat('ru-RU'),
+ const state:any={...F,farm,saleStock,exactSaleQuote,searchMarketSales,marketSaleFamilies,ruPlural,escapeHtml,icon,itemIcon:icon,pastryIcons:{round:'round',long:'long',folded:'folded'},numberFormat:new Intl.NumberFormat('ru-RU'),
   panel:'inventory',panelHistory:[{panel:'guide'}],inventoryGroup:'shore',marketTab:'buy',marketCategory:'trees',marketSellGroup:'harvest',marketSaleQuery:query,marketSaleFamily:'fruit:apple',marketTreeSpaceVisit:undefined,
   salePresentation:new SalePresentation(),marketInlineSales:new MarketInlineSales(),marketSaleBrowse:new MarketSaleBrowseMemory(),selectedSale:undefined,saleQuantity:'',saleReceipt:undefined,
   selectedMarketOrder:undefined,pickedMarketOrder:undefined,hiveFlower:undefined,
@@ -165,4 +168,69 @@ test('the unrelated Grill route continues to carry the selected species without 
  const farm=earned(),before=structuredClone(farm),h=screen(farm)
  await h.state.act('fish-kitchen','seaBass')
  assert.equal(h.state.panel,'kitchen');assert.equal(h.state.kitchenGroup,'dishes');assert.equal(h.state.cookingFish,'seaBass');assertRouteOnly(h,before)
+})
+
+test('Back from My Recipes restores a deep Sell result visit, but not a changed or fresh list', async () => {
+ const {farm,recipeId}=recipeRepeatReturnFixture('ready')
+ farm.fruit.apple=2
+ // A large synthetic stock uses the real market listing and semantic keys.
+ for(const item of F.marketStock) if(item.kind==='variants'){
+  ;(farm.variants[item.item]??={})[item.trait]=1
+  ;(farm.discoveries[item.item]??={})[item.trait]=true
+ }
+ assert.ok(F.restoreCurrentFarm(structuredClone(farm)))
+ const h=screen(farm,''),state=h.state,focus:string[]=[]
+ const footer=Object.assign(new state.HTMLButtonElement(),{
+  dataset:{action:'open-panel',value:'recipes'},getClientRects:()=>[{}],focus:()=>focus.push('recipes footer'),
+ })
+ let grid:{scrollTop:number;querySelectorAll(selector:string):unknown[]}|null=null
+ state.panel='market';state.marketTab='sell';state.marketSellGroup='harvest';state.marketSaleFamily=undefined
+ state.panelTitles={recipes:'Мои рецепты'}
+ state.recipeBook.view={mode:'index'}
+ state.dialog.querySelectorAll=()=>state.panel==='market'?[footer]:[]
+ state.dialogContent.querySelector=(s:string)=>s==='#market-sale-results'?grid:null
+ state.drawPanel=()=>{
+  state.panelRenderVersion++
+  grid=null
+  if(state.panel!=='market')return
+  state.html=state.marketCards()
+  const keys=[...state.html.matchAll(/data-inline-key="([^"]+)"/g)].map(match=>match[1])
+  grid={scrollTop:0,querySelectorAll:selector=>selector==='[data-inline-key]'?keys.map(inlineKey=>({dataset:{inlineKey}})):[]}
+ }
+ state.drawPanel()
+ assert.match(state.html,/data-action="open-panel"[^>]*data-value="recipes"/)
+ const results=()=>{assert.ok(grid);return grid}
+ assert.ok(results().querySelectorAll('[data-inline-key]').length>30)
+
+ async function readRecipeAt(scroll:number) {
+  results().scrollTop=scroll;state.dialogContent.scrollTop=34
+  state.document.activeElement=footer;focus.length=0
+  await state.act('open-panel','recipes')
+  assert.equal(state.panel,'recipes')
+  assert.equal(grid,null)
+ }
+ const before=structuredClone(farm)
+ await readRecipeAt(1400);state.goBack(true)
+ assert.equal(state.marketSellGroup,'harvest')
+ assert.equal(results().scrollTop,1400,'Back should keep the nested listing position')
+ assert.equal(state.dialogContent.scrollTop,34,'outer scroll is separately restored')
+ assert.deepEqual(focus,['recipes footer'],'the existing Back focus does not change')
+ assert.deepEqual(farm,before);assert.equal(h.saved.length,0)
+
+ await readRecipeAt(1400)
+ assert.ok(F.repeatSignature(farm,recipeId).ok) // explicit repeat uses the last two ordinary apples
+ assert.equal(farm.fruit.apple,0)
+ const afterRepeat=structuredClone(farm)
+ state.goBack(true)
+ assert.equal(results().scrollTop,0,'do not reuse an offset after the visible row identities changed')
+ assert.doesNotMatch(state.html,/data-inline-key="fruit:apple"/)
+ assert.equal(state.dialogContent.scrollTop,34)
+ assert.deepEqual(focus,['recipes footer']);assert.deepEqual(farm,afterRepeat);assert.equal(h.saved.length,0)
+
+ await readRecipeAt(900)
+ state.marketSaleQuery='яблоко'
+ state.openPanel('market')
+ assert.equal(state.marketSaleQuery,'яблоко')
+ assert.equal(results().scrollTop,0,'a new filtered visit is not a history return')
+ assert.deepEqual(farm,afterRepeat);assert.equal(h.saved.length,0)
 })

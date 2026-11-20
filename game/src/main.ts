@@ -1181,6 +1181,9 @@ function marketFamilyOptions(selected: string | undefined) {
 function marketSellView() {
   return { island: farm.island, group: marketSellGroup, family: marketSaleFamily, query: marketSaleQuery }
 }
+function marketSaleGridKey(grid: HTMLElement) {
+  return JSON.stringify([marketSellView(), Array.from(grid.querySelectorAll<HTMLElement>('[data-inline-key]'), card => card.dataset.inlineKey)])
+}
 function rememberClosedMarketSell() {
   if (!dialog.open || panel !== 'market' || marketTab !== 'sell' || salePresentation.place) return
   const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
@@ -1709,6 +1712,7 @@ type PanelVisit = {
   ferryView: FerryPanelView | undefined;
   marketNextOpen: string[];
   marketOrder?: {lane:string; pickerScroll:number; source?:string; warehouse:boolean};
+  marketSaleGrid?: {key:string; scroll:number};
   guideGardenOpen: boolean;
   homeServicesOpen: boolean;
   gardenSupplies: {slot: number; revision: number; open: boolean} | undefined;
@@ -1752,7 +1756,9 @@ function rememberPanel(): PanelVisit {
   const marketOrder = panel === 'market' && marketTab === 'orders' && selectedMarketOrder
     ? {lane:selectedMarketOrder, pickerScroll:dialogContent.querySelector<HTMLElement>('.market-order-picker')?.scrollTop ?? 0,
        source:stockSourceItem(focused), warehouse:focused?.dataset.action === 'warehouse-supply'} : undefined
-  return {marketOrder,homeServicesOpen,kitchenSourceItem:panel === 'kitchen' || panel === 'recipes' ? stockSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  const sellGrid = panel === 'market' && marketTab === 'sell' ? dialogContent.querySelector<HTMLElement>('#market-sale-results') : null
+  const marketSaleGrid = sellGrid ? {key:marketSaleGridKey(sellGrid), scroll:sellGrid.scrollTop} : undefined
+  return {marketOrder,marketSaleGrid,homeServicesOpen,kitchenSourceItem:panel === 'kitchen' || panel === 'recipes' ? stockSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,honeyKitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack(keyboard = false) {
@@ -1783,6 +1789,11 @@ function goBack(keyboard = false) {
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;honeyKitchenDish=previous.honeyKitchenDish;signatureFamily=previous.signatureFamily
   if (previous.marketOrder) selectedMarketOrder = previous.marketOrder.lane
   openPanel(previous.panel,false,farm.island,'page.fold')
+  if (previous.marketSaleGrid && dialog.open && panel === 'market' && marketTab === 'sell') {
+    const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+    // Apply only to this exact result set; the browser clamps to its live geometry.
+    if (grid && marketSaleGridKey(grid) === previous.marketSaleGrid.key) grid.scrollTop = previous.marketSaleGrid.scroll
+  }
   restoreFerryPanelView(dialogContent,previous.ferryView)
   const gardenGroup = dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')
   if (gardenGroup) gardenGroup.open = previous.guideGardenOpen
