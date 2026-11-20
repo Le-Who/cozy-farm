@@ -1240,7 +1240,7 @@ function marketInlineCard(item: ReturnType<typeof goods>[number]) {
       <span class="market-step-limit" tabindex="-1" role="group" aria-label="Минимум: 1"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="less" aria-label="Уменьшить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity<=1?' disabled':''}>−</button></span>
       <input data-inline-quantity type="number" min="1" max="${item.count}" step="1" inputmode="numeric" value="${escapeHtml(view.raw)}" aria-label="Количество: ${escapeHtml(item.name)}" aria-describedby="${id}"${receipt||view.pending?' disabled':''}>
       <span class="market-step-limit" tabindex="-1" role="group" aria-label="Максимум: ${item.count}"><button type="button" data-action="inline-sale-step" data-value="${escapeHtml(item.key)}" data-step="more" aria-label="Увеличить количество: ${escapeHtml(item.name)}"${receipt||view.pending||quote.valid&&quote.quantity>=item.count?' disabled':''}>+</button></span>
-    </div>` : ''}<button type="button" class="market-inline-sell" aria-label="${escapeHtml(receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)}" data-action="${receipt?'inline-sale-again':'inline-sale-confirm'}" data-value="${escapeHtml(item.key)}"${view.pending||!receipt&&!quote.valid?' disabled':''}>${receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`}</button></div>
+    </div>` : ''}<button type="button" class="market-inline-sell" aria-label="${escapeHtml(receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)}" data-action="${receipt?'inline-sale-again':'inline-sale-confirm'}" data-value="${escapeHtml(item.key)}"${view.pending||!receipt&&!quote.valid?' disabled':''}>${receipt?'Продать ещё':`Продать${quote.valid?` ${numberFormat.format(quote.quantity)} · ${numberFormat.format(quote.total)}`:' · —'} ${icon('coin')}`}</button></div>
     <p class="market-inline-status" id="${id}" role="status" aria-live="${receipt?'off':'polite'}">${receipt?escapeHtml(inlineReceiptText(receipt)):quote.valid?'':`Введите целое число от 1 до ${item.count}.`}</p>
   </li>`
 }
@@ -1267,7 +1267,7 @@ function updateInlineSaleCard(card: HTMLElement) {
   sell.dataset.action=view.receipt?'inline-sale-again':'inline-sale-confirm'
   sell.disabled=view.pending||!view.receipt&&!quote.valid
   sell.setAttribute('aria-label',view.receipt?`Продать ещё: ${item.name}`:quote.valid?`Продать ${quote.quantity}: ${item.name}, ${quantity(quote.total,'монета')}`:`Продать: ${item.name}`)
-  sell.innerHTML=view.receipt?'Продать ещё':`Продать · ${quote.valid?numberFormat.format(quote.total):'—'} ${icon('coin')}`
+  sell.innerHTML=view.receipt?'Продать ещё':`Продать${quote.valid?` ${numberFormat.format(quote.quantity)} · ${numberFormat.format(quote.total)}`:' · —'} ${icon('coin')}`
   const status=card.querySelector<HTMLElement>('.market-inline-status')!
   // The dialog already announces a completed sale. Keep this persistent receipt readable, not a second live event.
   status.ariaLive=view.receipt?'off':'polite'

@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { ActionClickGuard, ActivationKeyGuard, installActionClickGuard, isGuardedAction } from '../src/action-click-guard.ts'
 import { MarketInlineSales, inlineReceiptText } from '../src/market-inline-sale.ts'
-import { collectEggs, createFarm, getMarketStock, pickFruit, restoreCurrentFarm, sellMarketItem } from '../src/farm.ts'
+import { collectEggs, createFarm, getMarketStock, pickFruit, restoreCurrentFarm, sellMarketItem, workBed } from '../src/farm.ts'
 
 test('inline confirmation and rearming own their gesture; quantity stepping stays repeatable', () => {
   assert.equal(isGuardedAction('inline-sale-confirm'), true)
@@ -103,6 +103,43 @@ test('the first earned egg has only the exact Sell control, while the first two 
   assert.deepEqual(restoreCurrentFarm(structuredClone(farm)),farm)
 })
 
+test('earned stock, unit price, selected amount and batch total remain distinct after live edits',()=>{
+  const farm=createFarm(), sales=new MarketInlineSales()
+  assert.ok(workBed(farm,9,0).ok)
+  const item=row(farm,'produce:carrot','Морковь'), before=structuredClone(farm)
+  assert.equal(farm.day,1);assert.equal(item.count,3);assert.equal(item.price,2)
+  const css=readFileSync(new URL('../src/market-sale-grid.css',import.meta.url),'utf8')
+  const initial=card(item,sales)
+  assert.match(initial,/В запасе: 3<\/p>/)
+  assert.match(initial,/market-inline-price[^>]*>[\s\S]*?за штуку<\/p>/)
+  assert.match(initial,/class="market-inline-sell"[^>]*>Продать 1 · 2\s*<\/button>/)
+  assert.match(css,/\.market-inline-sell\s*\{[^}]*overflow-wrap:anywhere/,'large valid quotes can wrap rather than clip')
+
+  const input={value:'1',max:'3',disabled:false}, sell={dataset:{action:''},innerHTML:'',disabled:false,name:'',setAttribute(_k:string,v:string){this.name=v}}
+  const step=[{dataset:{step:'less'},disabled:true},{dataset:{step:'more'},disabled:false}]
+  const status={textContent:'',ariaLive:''}
+  const node={dataset:{inlineToken:sales.view(item.key,item.count,item.price).token},querySelectorAll:()=>step,
+    querySelector:(q:string)=>q==='[data-inline-quantity]'?input:q==='.market-inline-sell'?sell:status}
+  const script=stripTypeScriptTypes(part('function updateInlineSaleCard(','function confirmInlineSale(')+';updateInlineSaleCard(node)')
+  for(const [raw,count,total] of [['2',2,4],['4',null,null],['1.5',null,null],['3',3,6],['2',2,4]] as const){
+    assert.ok(sales.edit(item.key,node.dataset.inlineToken,raw,item.count,item.price))
+    runInNewContext(script,{...rendering,node,marketInlineSales:sales,inlineReceiptText,inlineSaleContext:()=>({item})})
+    assert.equal(sell.innerHTML.trim(),count===null?'Продать · —':`Продать ${count} · ${total}`)
+    assert.equal(sell.name,count===null?'Продать: Морковь':`Продать ${count}: Морковь, ${total} монеты`)
+    assert.equal(sell.disabled,count===null);assert.equal(input.max,'3')
+    assert.equal(step[1].disabled,count===3)
+    if(count===null)assert.match(status.textContent,/от 1 до 3/)
+    assert.deepEqual(farm,before)
+  }
+  const quote=sales.take(item.key,node.dataset.inlineToken,item.count,item.price)
+  assert.deepEqual(quote,{quantity:2,total:4,remaining:1})
+  const result=sellMarketItem(farm,item.key,quote!.quantity)
+  assert.ok(result.ok);sales.finish(item.key,quote,result.goalRewardText)
+  const receipt=card(row(farm,item.key,item.name),sales)
+  assert.match(receipt,/Продать ещё<\/button>/);assert.match(receipt,/Продано: 2 · 4 монеты\./)
+  assert.equal(farm.produce.carrot,1);assert.equal(farm.coins,before.coins+4+8,'goal reward never enters the quote')
+})
+
 test('a receipt with one left rearms to the singleton sale without expecting a number input',()=>{
   const farm=createFarm(),sales=new MarketInlineSales()
   assert.ok(pickFruit(farm,0).ok)
@@ -121,7 +158,7 @@ test('a receipt with one left rearms to the singleton sale without expecting a n
   const before=structuredClone(farm)
   runInNewContext(rearmCode,{...rendering,event:{detail:1},control:sell,marketInlineSales:sales,
     inlineSaleContext:()=>({item,card:node,token:node.dataset.inlineToken})})
-  assert.equal(sell.dataset.action,'inline-sale-confirm'); assert.match(sell.innerHTML,/Продать · 4/)
+  assert.equal(sell.dataset.action,'inline-sale-confirm'); assert.match(sell.innerHTML,/Продать 1 · 4/)
   assert.equal(sell.disabled,false); assert.deepEqual(farm,before)
 })
 
