@@ -3,7 +3,7 @@ import { addFreightStock, freightStock, takeFreightStock } from './bay-freight-m
 import { noteFestivalDelivery } from './bay-festival.ts'
 import { BAY_MUSIC_EXPANSIONS } from './bay-music-model.ts'
 import { bayProductId } from './bay-product-id.ts'
-import { dispatchExpedition, finishExpedition, quoteExpedition, type ExpeditionWallet } from './ferry-expeditions.ts'
+import { dispatchExpedition, expeditionPortNames, finishExpedition, quoteExpedition, type ExpeditionWallet } from './ferry-expeditions.ts'
 export { bayProductId } from './bay-product-id.ts'
 
 const stockItems = new Map(marketStock.map(item => [bayProductId(item), item]))
@@ -49,7 +49,7 @@ export function receiveFerryExpedition(farm: FarmState) {
   farm.coins += manifest.earnCoins
   const received = manifest.earnCoins > 0
     ? manifest.incoming.length ? 'Груз и выручка получены.' : 'Выручка получена.' : 'Груз получен.'
-  return { ok: true, message: manifest.kind === 'explore' ? 'Новый порт открыт. Выберите его на карте.' : `${received} Можно выбрать следующий рейс.` }
+  return { ok: true, message: manifest.kind === 'explore' ? `Открыт новый торговый порт: ${expeditionPortNames[manifest.port]}.` : `${received} Можно выбрать следующий рейс.` }
 }
 
 function amount(farm: FarmState, id: string): number {

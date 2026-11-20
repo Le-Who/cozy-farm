@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm'
 import { test } from 'node:test'
 import ts from 'typescript'
 import * as F from '../src/farm.ts'
+import { bayProductId } from '../src/bay-product-id.ts'
 import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
 import { getBerryNurserySource } from '../src/berry-nursery.ts'
 import { transferBayGoods } from '../src/harbour-economy.ts'
@@ -284,4 +285,55 @@ test('four earned recipes never make a second row of ready tiles; unlisted cake 
   s.choose('kitchen-group','dishes');s.choose('recipe-family','honeyCake','dishes');visibleCard(s,'honeyCake',true)
   s.openPanel('inventory');await s.chooseFish('perch');grill(s.html,'perch');assert.deepEqual(shelf(s.html),[]);visibleCard(s,'grilledFish',true)
   assert.deepEqual(f,before)
+})
+
+test('the home grill’s missing perch keeps its recipe behind the pier; keeping and releasing lead to different live cards', async () => {
+  const fish: F.StockItem = {kind:'fish',item:'perch',quantity:1}
+  const shoreCode = ['showRequirement','activateTarget','stopFishing','stockSourceItem'].map(name =>
+    ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === name)!.getText(ast)).join('\n')
+  async function setup(salted = true) {
+    // Buy the boat/upgrade and, optionally, collect our own salt before the first cast.
+    const steps = grillDayOne.filter(([name]) => !['beginFishingTrip','finishFishingTrip'].includes(name) &&
+      (salted || !['sail','gatherSeaSalt'].includes(name)))
+    const {farm,s} = coldWorkbench(steps)
+    assert.equal(farm.day,1);assert.equal(farm.fishCaughtToday.home,0)
+    s.dialog.showModal=()=>{s.dialog.open=true}
+    s.openPanel('kitchen',true,'home',undefined,undefined,{grillFish:'perch'})
+    let mapTarget='',focus=''
+    Object.assign(s,{bayProductId,fishingLanding:undefined,fishingGame:undefined,fishingPractice:undefined,fishingToken:undefined,
+      activeTool:undefined,status:noop,fieldViewButton:{getAttribute:()=> 'false'},highlightControl:noop})
+    s.island.visit=noop;s.island.setFishing=noop;s.island.focusTarget=(t:{kind:string})=>{mapTarget=t.kind}
+    s.dialogContent.querySelector=(selector:string)=>selector==='[data-action="recipe-family"][aria-pressed="true"]'&&s.html.includes('data-value="grilledFish" aria-pressed="true"')?{focus(){focus='grilledFish'}}:null
+    function missingPerch() {
+      const key=s.html.match(/data-action="show-requirement" data-value="([^"]+)" aria-label="Где найти: Окунь,/i)?.[1]
+      return key===undefined?[]:[{dataset:{action:'show-requirement',value:key},getClientRects:()=>[{}],focus(){focus='fish:perch'}}]
+    }
+    s.dialog.querySelectorAll=()=>missingPerch()
+    const remember=s.rememberPanel;s.rememberPanel=()=>({...remember(),kitchenSourceItem:s.stockSourceItem(missingPerch()[0])})
+    runInNewContext(ts.transpileModule(shoreCode,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,s)
+    return {farm,s,map:()=>mapTarget,focus:()=>focus}
+  }
+  for (const mode of ['keep','release','no salt']) {
+    const {farm,s,focus}=await setup(mode!=='no salt')
+    grill(s.html,'perch');visibleCard(s,'grilledFish',false)
+    const before=structuredClone(farm)
+    await s.showRequirement({kind:'stock',item:fish})
+    assert.equal(s.panel,'fishing','a local recipe detour should open the pier with Back, not clear the dialog and highlight a map spot')
+    assert.equal(s.panelHistory.at(-1).panel,'kitchen')
+    assert.deepEqual(farm,before)
+    const cast=F.beginFishingTrip(farm);assert.ok(cast.ok)
+    const landed=F.finishFishingTrip(farm,cast.token!,[{kind:'fish',species:'perch',variant:'regular'}],true)
+    assert.ok(landed.landed);s.fishingLanding=landed.landed
+    assert.equal(farm.fish.perch,0,'still on the hook');if(mode==='release')assert.ok(landed.landed.release())
+    s.goBack(true)
+    assert.equal(s.panel,'kitchen');grill(s.html,'perch');visibleCard(s,'grilledFish',mode==='keep')
+    assert.equal(focus(),mode==='release'?'fish:perch':'grilledFish');assert.equal(farm.fish.perch,Number(mode!=='release'))
+    assert.equal(farm.fishCaughtToday.home,1);assert.equal(farm.fishingTripSerial,1)
+    assert.equal(farm.coins,before.coins);assert.equal(farm.seaSalt,before.seaSalt);assert.deepEqual(farm.produce,before.produce)
+    assert.deepEqual(farm.dishes,before.dishes);assert.equal(farm.island,'home')
+    assert.deepEqual(F.restoreCurrentFarm(JSON.parse(JSON.stringify(farm))),farm)
+  }
+  const {farm,s,map}=await setup()
+  await s.showRequirement({kind:'stock',item:{kind:'fish',item:'seaBass',quantity:1}})
+  assert.equal(farm.island,'grove');assert.equal(map(),'pier');assert.equal(s.panelHistory.length,0,'no Home return across water')
 })

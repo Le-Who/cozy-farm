@@ -223,3 +223,29 @@ test('a full book explains only new variants once, for both panes; exact repeats
     assert.deepEqual(farm,before)
   } finally {await server.close()}
 })
+
+test('a saved fruit recipe names the exact missing finish while the ordinary recipe still works',async()=>{
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const p=commissionPlayer(opening.slice(0,19))
+  const harvestUntil=(day:number)=>{
+    while(p.state.day<day){p.night();if(p.state.trees.home[0]!.fruitReady)p.act('pickFruit',0)}
+  }
+  harvestUntil(9)
+  const jam={family:'preserves',processing:'silky',fruit:[],steps:['stir','pour']}
+  const remember=(trait?:'dew')=>p.act('completeSignature',{base:'preserves',ingredients:[{id:'apple',quantity:2,...(trait?{trait}:{})}]},jam).recipeId
+  const ordinary=remember(),dew=remember('dew')
+  harvestUntil(30)
+  assert.equal(p.state.variants.apple?.dew,1); assert.ok(p.state.fruit.apple>2)
+  const before=structuredClone(p.state)
+  const server=await createServer({configFile:false,server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try{
+    const {signatureBook}=await server.ssrLoadModule('/src/culinary-ui.ts')
+    const page=(id:string)=>signatureBook(p.state,art,{selectedId:id,mode:'detail'})
+    assert.match(page(dew),/Не хватает: Росистое яблоко ×1</)
+    assert.match(page(dew),/data-action="make-signature"[^>]*disabled/)
+    assert.doesNotMatch(page(ordinary),/Не хватает:|data-action="make-signature"[^>]*disabled/)
+    assert.deepEqual(p.state,before)
+    p.act('repeatSignature',ordinary)
+    assert.equal(p.state.fruit.apple,before.fruit.apple-2);assert.deepEqual(p.state.variants,before.variants)
+  }finally{await server.close()}
+})

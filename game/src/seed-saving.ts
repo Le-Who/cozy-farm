@@ -17,13 +17,17 @@ export function seedSavingQuote(farm:FarmState,value:unknown){
 }
 
 /** A single choice inside the selected crop detail, not a new panel or seed-selection mode. */
-export function renderSeedSaving(farm:FarmState,crop:unknown,icon:(name:string)=>string=()=> ''):string{
+export function renderSeedSaving(farm:FarmState,crop:unknown,icon:(name:string)=>string=()=> '', unavailablePurchase?:string):string{
   const quote=seedSavingQuote(farm,crop)
   if(!quote)return ''
+  const prices = `<details class="seed-saving-prices"><summary>Сравнить с покупкой</summary><p>Продажа продукта: ${ruCount(quote.saleValue,'монета','монеты','монет')}; такой же пакет на рынке: ${ruCount(quote.marketPrice,'монета','монеты','монет')}.</p></details>`
+  // When the only available exchange is already in the sticky header, keep its
+  // unavailable alternative and price here, not a second spending button.
+  if (unavailablePurchase) return `<section class="seed-saving" aria-label="Покупка семян"><div class="seed-saving-exchange">${icon('coin')}<div><h3>Пакет на рынке</h3><p>У вас: ${ruCount(farm.coins,'монета','монеты','монет')}</p></div>${unavailablePurchase}</div>${prices}</section>`
   return `<section class="seed-saving" aria-label="Получить семена из урожая"><div class="seed-saving-exchange">${icon(quote.crop)}<div><h3>Семена из урожая</h3><p>Только обычный урожай: ${quote.name.toLowerCase()} ×1</p></div>
     <button type="button" class="dialog-button secondary" data-action="save-crop-seeds" data-value="${quote.token}"${quote.available?'':' disabled'}>Обменять урожай на ${ruCount(quote.pack,'семя','семени','семян')}</button></div>
     <p class="seed-saving-stock">${quote.available ? `После обмена: урожай ×${quote.remaining} · семена ×${quote.total}.` : !quote.room ? 'Обмен сейчас недоступен.' : 'Обычного урожая пока нет.'}</p>
-    <details class="seed-saving-prices"><summary>Сравнить с покупкой</summary><p>Продажа продукта: ${ruCount(quote.saleValue,'монета','монеты','монет')}; такой же пакет на рынке: ${ruCount(quote.marketPrice,'монета','монеты','монет')}.</p></details></section>`
+    ${prices}</section>`
 }
 
 export function saveCropSeeds(farm:FarmState,token:unknown):ActionResult{
@@ -36,5 +40,5 @@ export function saveCropSeeds(farm:FarmState,token:unknown):ActionResult{
   farm.produce[quote.crop]--
   farm.seeds[quote.crop]+=seedPackSize
   farm.workToday++
-  return {ok:true,message:`${quote.name}: один продукт оставлен на семена. Получено семян: ${seedPackSize}. Посейте их отдельно.`}
+  return {ok:true,message:`${quote.name}: потрачен 1 обычный продукт, получено ${ruCount(seedPackSize,'семя','семени','семян')}.`}
 }

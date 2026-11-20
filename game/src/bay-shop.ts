@@ -9,12 +9,13 @@ import {
 import './bay-shop.css';
 import { BayShopCustomerView, renderBayShopCustomers } from './bay-shop-customers';
 import './bay-shop-customers.css';
-import { placeShopQuantity, shopQuantityPreview } from './bay-shop-quantity';
+import { placeShopQuantity, shopQuantityPreview, shopStockSlot } from './bay-shop-quantity';
 import { shopRemainderQuote, shopReturnLabel } from './bay-shop-price-copy';
 import { applyIngredientFinishes } from './ingredient-finish';
 
 export type BayShopOptions = {
   state: BayShopState;
+  stockProduct?: string;
   catalog?: readonly BayShopProduct[];
   products(): BayShopStock[];
   takeStock(id: string, quantity: number): boolean;
@@ -43,11 +44,12 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   const state = options.state;
   const canToggleOpen = () => state.open || state.slots.some(slot => slot && slot.quantity > 0);
   const customerView = new BayShopCustomerView();
-  if (options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
+  // Exact entry is only a quote. Defer catalog writes to an explicit placement.
+  if (!options.stockProduct && options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
   let savedShopState = JSON.stringify(state);
   function saveChanges() { options.onChange(); savedShopState = JSON.stringify(state); }
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
-  let pending: { id: string; identity: string; quantity: string } | undefined;
+  let pending: { id: string; identity: string; quantity: string; listScroll: number } | undefined;
   let tab: 'stock' | 'journal' = 'stock', notice = '', noticeTimer = 0, destroyed = false, frame = 0, lastTime = performance.now();
   let lastPhase = !state.open && !state.visitor ? 'idle' : '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -64,6 +66,13 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       return `${person.name}: ${bayShopPurchaseReaction(bought)} «${bought.name}» · ${money(bought.price)} монет`;
     }
     return `${person.name}: ${visitor.outcome ? visitorMessages[visitor.outcome.kind] : 'До встречи!'}`;
+  }
+  function previewStock(product: BayShopStock, preferred: number): boolean {
+    const slot = shopStockSlot(state, product, preferred);
+    if (!shopQuantityPreview(state,slot,product,1).valid) return false;
+    selected = slot;
+    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0 };
+    return true;
   }
   function stockControls(): string {
     const slot = state.slots[selected], products = options.products().filter(p => p.quantity > 0);
@@ -90,17 +99,17 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   function commissionCustomer() {
     return tab === 'journal' ? bayShopVisitors.find(person => person.id === customerView.selected && options.commissionCustomers?.().includes(person.id)) : undefined;
   }
-  function render(): void {
+  function render(returnStock?: { id: string; listScroll: number }): void {
     if (destroyed) return;
     const commission = commissionCustomer();
     const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
     const priceDraft = active instanceof HTMLInputElement && active.hasAttribute('data-price') ? active.value : undefined;
-    const focusAttribute = active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
-    const focusValue = focusAttribute ? active!.getAttribute(focusAttribute)! : '';
-    const scroll = host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
+    const focusAttribute = returnStock ? 'data-stock' : active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
+    const focusValue = returnStock?.id ?? (focusAttribute ? active!.getAttribute(focusAttribute)! : '');
+    const scroll = returnStock?.listScroll ?? host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
     rendering = true;
     host.innerHTML = `<section class="bay-shop" aria-label="Своя лавка у моря">
-      <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button><button type="button" class="bay-shop-close" data-close aria-label="Вернуться в бухту" title="Вернуться в бухту; работа лавки не меняется">×</button></div></header>
+      <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button><button type="button" class="bay-shop-close" data-close aria-label="${options.stockProduct ? 'К рецепту' : 'Вернуться в бухту'}" title="${options.stockProduct ? 'К рецепту' : 'Вернуться в бухту; работа лавки не меняется'}">×</button></div></header>
       <div class="bay-shop-scene"><div class="bay-shop-stage" style="background-image:url('${escape(options.background ?? '/art/lavender/bay/shop.webp')}')">
         <div class="bay-shop-display" aria-label="Четыре места на прилавке">${state.slots.map((slot, index) => `<button type="button" class="bay-shop-shelf ${index === selected ? 'is-selected' : ''}" data-user-text data-slot="${index}" aria-pressed="${index === selected}" aria-label="Место ${index + 1}${slot ? `: ${escape(slot.product.name)}, остаток ${slot.quantity}, цена ${slot.price} монет` : ': свободно'}">
           <span class="bay-shop-shelf-product">${slot && slot.quantity > 0 ? art(slot.product) : `<span class="bay-shop-shelf-empty">${slot ? 'Продано' : '+'}</span>`}</span>${slot ? `<span class="bay-shop-shelf-label">${money(slot.price)} <span aria-hidden="true">●</span><small>×${slot.quantity}</small></span>` : ''}</button>`).join('')}</div>
@@ -204,7 +213,14 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       if (tab === 'journal') customerView.enter(state.visitor?.id);
       notice = ''; render(); return;
     }
-    if (button.hasAttribute('data-stock-cancel')) { pending = undefined; render(); return; }
+    if (button.hasAttribute('data-stock-cancel')) {
+      const origin = pending;
+      pending = undefined;
+      const ownedCancel = (event as MouseEvent).detail === 0 && document.activeElement === button;
+      const available = ownedCancel && origin && options.products().some(p => p.id === origin.id && p.identity === origin.identity && p.quantity > 0);
+      render(available ? origin : undefined);
+      return;
+    }
     if (button.hasAttribute('data-return')) {
       const returned = removeBayShopStock(state, selected);
       if (returned && returned.quantity > 0) options.returnStock(returned.id, returned.quantity);
@@ -218,14 +234,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (button.dataset.stock) {
       const product = options.products().find(p => p.id === button.dataset.stock);
       if (!product || product.quantity < 1) return;
-      const slot = state.slots[selected];
-      if (slot && (slot.product.id !== product.id || slot.product.identity !== product.identity || slot.quantity >= 999)) {
-        const matching = state.slots.findIndex(item => item?.product.id === product.id && item.product.identity === product.identity && item.quantity < 999);
-        const empty = state.slots.findIndex(item => item === null);
-        if (matching < 0 && empty < 0) { playBaySound('menu.blocked',.8); notice = 'Все места заняты. Уберите товар кнопкой ↶.'; render(); return; }
-        selected = matching >= 0 ? matching : empty;
-      }
-      pending = { id: product.id, identity: product.identity, quantity: '1' };
+      if (!previewStock(product, selected)) { playBaySound('menu.blocked',.8); notice = 'Все места заняты. Уберите товар кнопкой ↶.'; render(); return; }
       notice = ''; render();
       host.querySelector<HTMLInputElement>('[data-stock-quantity]')?.focus();
     }
@@ -252,6 +261,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!product || !placeShopQuantity(state, selected, product, quantity, options.takeStock)) {
       playBaySound('menu.blocked',.8); notice = 'Проверьте количество и свободное место на полке.'; render(); return;
     }
+    if (options.stockProduct && options.catalog) syncBayShopProducts(state, options.catalog);
     pending = undefined;
     playBaySound('harbour.crate',.6); notice = `На полку добавлено: ${quantity}.`; changed();
     host.querySelector<HTMLElement>(`[data-slot="${selected}"]`)?.focus({preventScroll:true});
@@ -294,6 +304,10 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   }
   const resizeObserver = new ResizeObserver(fitStage); resizeObserver.observe(host);
   host.addEventListener('input', quantityInput); host.addEventListener('submit', submitStock); host.addEventListener('click', click); host.addEventListener('change', change); host.addEventListener('focusout', change);
+  if (options.stockProduct) {
+    const product = options.products().find(item => item.id === options.stockProduct && item.identity === options.stockProduct && item.quantity === 1);
+    if (product) previewStock(product,-1);
+  }
   render(); frame = requestAnimationFrame(tick);
   return {
     refresh: render,

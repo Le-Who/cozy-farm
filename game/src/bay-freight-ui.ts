@@ -58,6 +58,7 @@ export function freightControl(state: BayFreightState, action: string, value: st
 }
 
 const portArt: Record<ExpeditionPort, string> = { mill: 'mill-port-background', salt: 'salt-port-background', orchard: 'orchard-port-background' };
+const peachOfferIds = ['orchard-peaches', 'orchard-buns'];
 const primaryStock: Record<ExpeditionPort, string> = { mill: 'handmade:round', salt: 'seaSalt', orchard: 'peach' };
 const demandLabels = { shortage: 'Высокий спрос', balanced: 'Припасов достаточно', surplus: 'Пока есть запас' };
 const demandNeeds: Record<string,string> = { wheat:'Нужно зерно', eggs:'Нужны яйца', carrot:'Нужны овощи', seaBass:'Нужен улов', apple:'Нужны яблоки', 'handmade:round':'Ждут булочки' };
@@ -73,7 +74,12 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const open = world.discovered.includes(selected), choices = expeditionTrades(world, selected);
   const requested = ctx.expeditionOffer ?? choices[0].id, selectedIds = expeditionOfferIds(requested);
   const id = open ? selectedIds.length && selectedIds.every(value => choices.some(trade => trade.id === value)) ? requested : choices[0].id : 'explore-' + selected;
-  const quote = quoteExpedition(world, id, { bag: ctx.carried, harvestTier: ctx.harvestTier, coins: ctx.coins ?? 0, boatOwned: ctx.boatOwned ?? true })!;
+  const wallet = { bag: ctx.carried, harvestTier: ctx.harvestTier, coins: ctx.coins ?? 0, boatOwned: ctx.boatOwned ?? true };
+  const quote = quoteExpedition(world, id, wallet)!;
+  const peachPayments = !active && peachOfferIds.includes(id)
+    ? peachOfferIds.map(offer => offer === id ? quote : quoteExpedition(world, offer, wallet)!) : [];
+  const comparePeaches = peachPayments.length === 2 && peachPayments.every(payment => payment.available);
+  const coins = (amount: number) => ruCount(amount, 'монета', 'монеты', 'монет');
   const manifest: ExpeditionManifest = active ?? quote;
   const orderIds = expeditionOfferIds(manifest.id), combined = orderIds.length === 2;
   const port = manifest.port, phase = active?.phase ?? 'planning', exploring = manifest.kind === 'explore';
@@ -155,7 +161,15 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
         <div class="expedition-card-scroll">
           ${cargoUse ? receipt + cargoUse : ''}
           <div class="expedition-eyebrow">${phase === 'ready' ? 'РЕЙС ЗАВЕРШЁН' : exploring ? 'РАЗВЕДКА НОВОГО БЕРЕГА' : 'ТОРГОВАЯ ЭКСПЕДИЦИЯ'}</div>
-          <h3>${combined ? 'Два заказа в одном рейсе' : esc(manifest.name)}</h3>
+          <h3>${comparePeaches ? esc(peachPayments[0].name) : combined ? 'Два заказа в одном рейсе' : esc(manifest.name)}</h3>
+          ${comparePeaches ? `<div class="expedition-peach-payments" role="group" aria-label="Как получить два персика">${peachPayments.map(payment => {
+            const buns = payment.outgoing.find(item => item.id === 'handmade:round')?.quantity ?? 0;
+            const label = payment.payCoins ? `−${coins(payment.payCoins)}` :
+              `−${ruCount(buns, 'булочка', 'булочки', 'булочек')}${payment.earnCoins ? ` <small>+${coins(payment.earnCoins)}</small>` : ''}`;
+            const description = payment.payCoins ? `Заплатить ${coins(payment.payCoins)}` :
+              `Отдать булочку${payment.earnCoins ? ` и получить ${coins(payment.earnCoins)}` : ''}`;
+            return button(label, 'expedition-offer', payment.id, `aria-pressed="${id === payment.id}" aria-label="${description}"`);
+          }).join('')}</div>` : ''}
           ${combined ? `<section class="expedition-selection" aria-label="Выбранные заказы"><ol>${manifest.name.split(' + ').map(name => `<li>${esc(name)}</li>`).join('')}</ol>${!active ? button('Оставить только первый заказ','expedition-offer',orderIds[0]) : ''}</section>` : ''}
           <p class="expedition-destination">⌖ ${esc(displayPort)}</p>
           ${!exploring ? `<div class="expedition-market-status"><span data-demand="${demand}">${demandText}</span><span>${picture(stockId, ctx)} ${expeditionStock(world, port, stockId)} в порту${phase === 'sailing' ? ' · ваш груз отложен' : ''}</span></div>` : ''}
@@ -165,7 +179,10 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
           <p class="expedition-effect">${projectEffect || esc(effect)}${manifest.harvestBonus ? ` Включена доплата за урожай: ${manifest.harvestBonus} монет.` : ''}</p>
           ${!exploring ? `<details class="expedition-port-details"><summary>${projectProgress ? 'О порте' : `${esc(project.name)} <span>${projectHave}/${projectTotal}${projectDone ? ' · готово' : ''}</span>`}</summary><p>${esc(project.benefit)}</p><p>Благодаря нашим поставкам:</p>${project.needs.map(item => `<div class="expedition-project-item">${picture(item.id, ctx)}<span>${esc(product(item.id, ctx).name)}</span><b>${Math.min(item.quantity,world.markets[port].supplied[item.id] ?? 0)}/${item.quantity}</b></div>`).join('')}<p>${esc(expeditionPortDescriptions[port])}</p>${production.length ? `<p>Сегодня приготовлено: ${production.map(item => `${esc(product(item.id, ctx).name)} ×${item.quantity}`).join(', ')}.</p>` : ''}<p>Спрос и остатки меняются после поставок и игровых утр. Условия отправленного рейса не меняются.</p></details>` : ''}
         ${!active && open ? `<details class="expedition-offers"><summary>Выбрать один или два заказа <span>${orderIds.length}/2</span></summary><div>${choices.map(trade => {
-          const offer = quoteExpedition(world, trade.id, { bag: ctx.carried, harvestTier: ctx.harvestTier, coins: ctx.coins ?? 0, boatOwned: true })!;
+          // When the payments are already next to the cargo, keep just the optional pairing here.
+          if (comparePeaches && peachOfferIds.includes(trade.id)) return trade.id === id ? '' :
+            `<div class="expedition-offer-choice">${button(`Добавить вторым: ${esc(trade.name)}`, 'expedition-pair', trade.id, 'class="expedition-add-order" aria-pressed="false"')}</div>`;
+          const offer = quoteExpedition(world, trade.id, { ...wallet, boatOwned: true })!;
           return `<div class="expedition-offer-choice">${button(`${esc(trade.name)}<small>${offer.incoming.map(item => `${esc(product(item.id, ctx).name)} ×${item.quantity}`).join(' + ')}${offer.earnCoins ? ` + ${offer.earnCoins} монет` : offer.payCoins ? ` · доплата ${offer.payCoins}` : ''}</small><small>Выбрать только этот заказ</small>`, 'expedition-offer', trade.id, `aria-pressed="${orderIds.includes(trade.id)}"`)}${trade.id !== orderIds[0] ? button(orderIds[1] === trade.id ? 'Убрать второй' : combined ? 'Заменить второй' : 'Добавить вторым', 'expedition-pair', trade.id, `class="expedition-add-order" aria-pressed="${orderIds[1] === trade.id}"`) : ''}</div>`;
         }).join('')}</div></details>` : ''}
           ${cargoUse ? '' : receipt}

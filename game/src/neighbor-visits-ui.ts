@@ -1,3 +1,4 @@
+import { standingVisitCrop } from './standing-crop-visit.ts'
 import { cropDefinitions, getBedStage, getWorkshopAction, treeDefinitions, type FarmState } from './farm.ts'
 import { henFriends } from './hen-friendship.ts'
 import { canInviteNeighbor, getActiveVisitMemory, visitActivities, visitActivityIds, visitName, type VisitActivityId } from './neighbor-visits.ts'
@@ -16,19 +17,23 @@ function readiness(farm:FarmState,id:VisitActivityId){
     }
   }
 }
-export function renderNeighborVisits(farm:FarmState,icon:(key:string)=>string){
+export function renderNeighborVisits(farm:FarmState,icon:(key:string)=>string, pastrySupplies?:()=>string){
   const active=farm.neighborVisits.active,activity=active&&visitActivities[active.activity]
+  const standing=standingVisitCrop(farm)
+  const waitingForPastry=active?.activity==='beaHands' && !active.observation && !getWorkshopAction(farm).available
   const harvestReady=activity?.kind==='fruit'?!!ripeHomeTree(farm):activity?.kind!=='crop'||farm.beds.some(b=>b.kind==='crop'&&getBedStage(b)==='ripe')
   const targetLabel=activity?.kind==='pastry'?'В кондитерскую'
     :activity?.kind==='fruit'?(harvestReady?'К дереву':'Нет спелых плодов')
     :harvestReady?'К зрелой грядке':'Нет зрелых грядок'
+  const nextStep=!active || !activity || active.observation ? '' : waitingForPastry ? (pastrySupplies?.() ?? `<p>${readiness(farm,active.activity)}</p>`) : `<p>${readiness(farm,active.activity)}</p>
+        ${activity.kind==='hen'?`<div class="home-visit-hens">${henFriends.slice(0,farm.flockSize).map((hen,id)=>button(`Познакомить: ${hen.name}`,'visit-introduce-hen',`${active.serial}:${id}`)).join('')}</div><small>Знакомство с гостем не даёт дополнительных шагов дружбы с курочкой.</small>`:button(targetLabel,'visit-do',String(active.serial),harvestReady)}${standing?button(`Показать на грядке · ${escape(standing.name)}`,'visit-show-crop',standing.token):''}`
   const memories=farm.neighborVisits.memories,recordedThisVisit=active?.observation && getActiveVisitMemory(farm)
   const archived=recordedThisVisit ? memories.filter(memory=>memory.serial!==recordedThisVisit.serial) : memories
   const present=active&&activity?`<article class="home-visit-active" aria-label="Гость на ферме"><header>${icon(`ui-${activity.resident}`)}<div><small>Сегодня в гостях</small><h2>${visitName(activity.resident)} · ${activity.title}</h2></div></header>
     ${active.observation?`${recordedThisVisit?`<p>${activity.memory}</p>`:''}<aside class="home-visit-memory"><strong>${recordedThisVisit?'':'Сегодня: '}${escape(active.observation.subject)}</strong><p>${escape(active.observation.detail)}</p><small>${recordedThisVisit?'Воспоминание добавлено в книгу.':'В книге осталась ваша первая встреча за этим занятием.'} Урожай, выпечка и припасы остались у вас.</small></aside><p>О чём поговорим перед уходом?</p>
       <div class="home-visit-replies">${button('О тихих радостях','visit-reply',`${active.serial}:quiet`)}<p>${activity.quiet}</p>${button('О новых идеях','visit-reply',`${active.serial}:curious`)}<p>${activity.curious}</p></div>`
-      :`<p>${activity.invitation}</p><p class="home-visit-goal"><strong>${activity.goal}</strong></p><p>${readiness(farm,active.activity)}</p>
-        ${activity.kind==='hen'?`<div class="home-visit-hens">${henFriends.slice(0,farm.flockSize).map((hen,id)=>button(`Познакомить: ${hen.name}`,'visit-introduce-hen',`${active.serial}:${id}`)).join('')}</div><small>Знакомство с гостем не даёт дополнительных шагов дружбы с курочкой.</small>`:button(targetLabel,'visit-do',String(active.serial),harvestReady)}`}
+      :`<p>${activity.invitation}</p><p class="home-visit-goal"><strong>${standing?'Покажите растение или соберите урожай.':activity.goal}</strong></p>
+        ${nextStep}`}
     <p class="home-visit-note">После отдыха или поездки гость уйдёт, а записи в книге останутся.</p>
     <div class="dialog-actions">${button('Побыть на ферме','close')}${button(active.observation?'Попрощаться':'Завершить визит','visit-finish',String(active.serial))}</div></article>`:''
   const history=archived.length?`<div class="home-visit-memories">${archived.map(m=>{const a=visitActivities[m.activity];return `<article><header>${icon(`ui-${a.resident}`)}<div><h3>${a.title}</h3><small>${visitName(a.resident)} · День ${m.day}</small></div></header><strong>${escape(m.subject)}</strong><p>${a.memory}</p><p>${escape(m.detail)}</p>${m.reply?`<p class="home-visit-note">${a[m.reply]}</p>`:''}</article>`}).join('')}</div>`:memories.length?'':'<p>Здесь останутся первые встречи: урожай, выпечка и знакомства с вашими курочками. Можно собирать их в любом порядке.</p>'

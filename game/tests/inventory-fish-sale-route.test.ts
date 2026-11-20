@@ -20,7 +20,7 @@ const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const source=readFileSync(`${root}/src/main.ts`,'utf8'),ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true)
 function find(predicate){let result;function visit(node){if(!result&&predicate(node))result=node;ts.forEachChild(node,visit)}visit(ast);assert.ok(result);return result.getText(ast)}
 const declaration=name=>find(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name)
-const functions=['button','row','nav','quantity','stockLabel','goods','fishImage','fishSource','inventoryStockRow','marketInlineCard','marketSaleResults','marketSaleSearchStatus','exactSaleCard','beginExactSale','openPanel','closeDialog','perform','refresh','rememberPanel','goBack','focusKey','updateSaleQuote','isSaleSurface']
+const functions=['button','row','nav','quantity','stockLabel','goods','fishImage','fishSource','inventoryStockRow','marketInlineCard','marketSaleResults','marketSaleSearchStatus','exactSaleCard','beginExactSale','openPanel','marketSellView','rememberClosedMarketSell','closeDialog','perform','refresh','rememberPanel','goBack','focusKey','updateSaleQuote','isSaleSurface']
 const icons=find(n=>ts.isVariableStatement(n)&&n.declarationList.declarations.some(d=>d.name.getText(ast)==='dishIcons'))
 const actions=['fish-market','sell-item','fish-kitchen'].map(id=>find(n=>ts.isCaseClause(n)&&n.expression.getText(ast)===`'${id}'`))
 const code=ts.transpileModule(`${icons}\n${functions.map(declaration).join('\n')}\nasync function act(action,value){switch(action){${actions.join('\n')}}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
@@ -45,6 +45,7 @@ function screen(farm,query='морковь'){
  const state:any={...F,farm,saleStock,exactSaleQuote,searchMarketSales,ruPlural,escapeHtml,icon,itemIcon:icon,pastryIcons:{round:'round',long:'long',folded:'folded'},numberFormat:new Intl.NumberFormat('ru-RU'),
   panel:'inventory',panelHistory:[{panel:'guide'}],inventoryGroup:'shore',marketTab:'buy',marketCategory:'trees',marketSellGroup:'harvest',marketSaleQuery:query,marketSaleFamily:'fruit:apple',marketTreeSpaceVisit:undefined,
   salePresentation:new SalePresentation(),marketInlineSales:new MarketInlineSales(),marketSaleBrowse:new MarketSaleBrowseMemory(),selectedSale:undefined,saleQuantity:'',saleReceipt:undefined,
+  selectedMarketOrder:undefined,pickedMarketOrder:undefined,hiveFlower:undefined,
   kitchenGroup:'preserves',kitchenDish:'honeyCake',cookingFish:'perch',
   transplantSelection:reset,berryNurserySelection:reset,berryRenewalSelection:reset,gardenEditor:reset,recipeSurplusSelection:reset,seedPickerBed:undefined,celebratedFestival:undefined,
   stopHarbour:noop,stopFishing:noop,stopWorkshop:noop,stopCookery:noop,stopArrangement:noop,playBaySound:noop,updateCommunityReturn:noop,status:noop,notify:noop,

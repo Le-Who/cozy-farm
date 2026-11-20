@@ -1,0 +1,12 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Музыкальный сад · Беа</title>
+<style>html,body,main{height:100%;margin:0}main{position:relative}</style><main></main>
+<script type="module">
+import {commissionPlayer} from '../fixtures/commission-player.ts'
+import {createBayMusic} from '../../src/bay-music.ts'
+import {canPlayWithBea} from '../../src/bea-duet.ts'
+import {bayAudio} from '../../src/bay-audio.ts'
+// Public earned actions; this disposable farm is not the player's local save.
+const p=commissionPlayer(await(await fetch('../fixtures/market-order-selection-commands.json')).json());p.visit('village')
+await bayAudio.preload('/audio/bay-samples.json')
+let scene;function open(){scene=createBayMusic(document.querySelector('main'),{state:p.state.musicGarden,beaAvailable:canPlayWithBea(p.state),onClose(){scene.destroy();open()}})}open()
+</script></html>

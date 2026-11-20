@@ -26,6 +26,7 @@ test('every original action and enabled guard remains in basic, hatchery, pendin
   const a=actions(render(f)),expect:{action:string;value:string;disabled:boolean}[]=[],add=(action:string,enabled=true,value='')=>expect.push({action,value,disabled:!enabled})
   if(!f.chickensFed)add(f.feed?'feed':'buy-feed',!!f.feed||f.coins>=F.feedBagPrice)
   add('collect',f.eggsReady>0);if(f.coopSpecialization==='hatchery'&&f.flockSize<F.maxFlockSize&&f.hatchDay===null)add('incubate-egg',f.eggs>0)
+  if(f.hatchDay!==null)add('visit-rest')
   add('upgrades');add('hen-friendship-open');if(f.buildingLevels.coop>=2)add('chicken-feed-open')
   if(f.coopSpecialization==='packing'){add('pack-egg-crate',f.eggs>=F.eggsPerCrate);add('unpack-egg-crate',F.getEggUnpackAction(f,'crate').available)}
   if(f.buildingLevels.coop>=2||f.eggBaskets>0){add('pack-egg-basket',f.buildingLevels.coop>=2&&f.eggs>=F.eggsPerBasket);add('unpack-egg-basket',F.getEggUnpackAction(f,'basket').available)}
@@ -76,7 +77,7 @@ test('main delegates only the coop view and keeps child screens and canonical ac
  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),start=main.indexOf("    case 'coop':",main.indexOf('function drawPanel()')),end=main.indexOf("    case 'rest':",start),branch=main.slice(start,end)
  assert.match(branch,/renderCoopPanel\(farm, \{icon,row,button,feedRow:flockFeedRow\}\)/)
  assert.doesNotMatch(branch,/perform\(|saveFarm\(|incubateEgg\(|collectEggs\(/)
- assert.match(main,/renderHenFriendship\(farm, island.henWalkStatus\(\)/);assert.match(main,/renderChickenFeedMixes\(farm, icon\)/)
+ assert.match(main,/renderHenFriendship\(farm, island.henWalkStatus\(\)/);assert.match(main,/renderChickenFeedMixes\(farm, icon, panelHistory\.at\(-1\)\?\.panel === 'rest'\)/)
  assert.match(main,/case 'incubate-egg': perform\(\(\) => incubateEgg\(farm\)\)/)
 })
 
@@ -84,4 +85,19 @@ test('main delegates only the coop view and keeps child screens and canonical ac
 test('legacy level-one baskets remain unpackable but do not unlock new packing or feed mixes',()=>{
  const f=F.createFarm();f.eggBaskets=1;const before=structuredClone(f),a=actions(render(f))
  assert.ok(a.find(x=>x.action==='pack-egg-basket')!.disabled);assert.equal(a.find(x=>x.action==='unpack-egg-basket')!.disabled,false);assert.equal(a.some(x=>x.action==='chicken-feed-open'),false);assert.deepEqual(f,before)
+})
+
+test('a pending egg gives a route to the explicit bedtime decision on both nights, not another spend', () => {
+ const f=structuredClone(earned), day=f.day, eggs=f.eggs, flock=f.flockSize
+ const before=structuredClone(f);assert.doesNotMatch(render(f),/data-action="visit-rest"/);assert.deepEqual(f,before)
+ assert.ok(F.incubateEgg(f).ok)
+ for(let nights=2;nights>=1;nights--){
+  const saved=structuredClone(f),html=render(f),row=html.match(/<li data-row="Инкубатор">.*?<\/li>/)?.[0]??''
+  assert.match(row,/data-action="visit-rest"[^>]*>К отдыху дома/);assert.doesNotMatch(row,/data-action="(?:incubate-egg|sleep)"/)
+  assert.deepEqual(f,saved)
+  assert.equal(f.eggs,eggs-1);assert.equal(f.flockSize,flock)
+  assert.ok(F.endDay(f).ok)
+ }
+ assert.equal(f.day,day+2);assert.equal(f.flockSize,flock+1);assert.equal(f.eggs,eggs-1)
+ assert.doesNotMatch(render(f),/data-action="visit-rest"|data-row="Инкубатор"/)
 })

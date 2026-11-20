@@ -19,7 +19,7 @@ test('new Home has an immediate harvest and a separate free planting choice, wit
  const f=createFarm(),before=structuredClone(f)
  assert.equal(f.day,1);assert.equal(f.saplings.apple,1);assert.equal(f.treeNursery.length,0)
  assert.match(render(f,0),/Плодов к сбору: 2/)
- assert.match(render(f,0),/data-action="visit-tree" data-value="0">Собрать плоды/)
+ assert.match(render(f,0),/data-action="visit-tree" data-value="0">Осмотреть дерево/)
  for(const i of [1,2])assert.match(render(f,i),new RegExp(`data-action="visit-tree" data-value="${i}">Посадить дерево`))
  assert.deepEqual(f,before)
 })

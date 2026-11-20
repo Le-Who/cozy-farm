@@ -1,4 +1,6 @@
-import {getBeaPastryCount, getResidentService, type FarmState, type ResidentId} from './farm.ts'
+import {getBeaPastryCount, getResidentService, residentIds, type FarmState, type ResidentId} from './farm.ts'
+import { freightStock } from './bay-freight-model.ts'
+import { shopStockSlot } from './bay-shop-quantity.ts'
 
 /** Describe only the existing tasting history, never predict an undiscovered preference. */
 export function signatureTastingGuide(farm:FarmState,recipeId:string,resident:ResidentId){
@@ -18,4 +20,15 @@ export function signatureTastingGuide(farm:FarmState,recipeId:string,resident:Re
     label:`Угостить ${resident==='bea'?'Беа':'Финна'} · 1 порция`,reason,knownFavorite,
     favoriteNote:knownFavorite?`Это блюдо уже понравилось ${resident==='bea'?'Беа':'Финну'}.`:'',
   }
+}
+
+/** Expose only a real last-portion decision, not a new sale or reserve. */
+export function lastPortionShopStock(farm: FarmState, recipeId: string): string | undefined {
+  if (farm.island !== 'village' || !farm.village.built || farm.culinary.stock[recipeId] !== 1) return
+  const id = 'signature:' + recipeId
+  // Stocking draws from the local warehouse first; that would not use this jar.
+  if (!farm.bayShop.reputation[id]?.sold || freightStock(farm.freight, 'village', id) > 0
+    || shopStockSlot(farm.bayShop, { id, identity: id }) < 0
+    || !residentIds.some(resident => signatureTastingGuide(farm, recipeId, resident)?.available)) return
+  return id
 }

@@ -11,7 +11,7 @@ function section(start: string, end: string) {
   assert.ok(a >= 0 && b > a)
   return source.slice(a, b)
 }
-const layoutSource = section('  function layout() {', '  function pointerRay(')
+const layoutSource = section('  let roomRevision =', '  function pointerRay(')
 const readySource = section('    while (!destroyed) {', '  }).catch(')
 
 // Execute the real layout/camera and image-readiness callback, with inert DOM
@@ -19,6 +19,7 @@ const readySource = section('    while (!destroyed) {', '  }).catch(')
 function scene(documentBase: string, size = { width: 1080, height: 740 }, base = './') {
   const styles = new Map<string, string>(), assignments: string[] = [], sizes: unknown[][] = []
   let src = '', wakes = 0, focuses = 0
+  const abort = new AbortController()
   const room = {
     getAttribute(name: string) { assert.equal(name, 'src'); return src },
     get src() { return new URL(src, documentBase).href },
@@ -31,13 +32,14 @@ function scene(documentBase: string, size = { width: 1080, height: 740 }, base =
     root: { dataset: {} as Record<string, string> },
     view: { getBoundingClientRect: () => size, style: { setProperty(name: string, value: string) { styles.set(name, value) } }, focus() { focuses++ } },
     width: 1, height: 1, portraitSetup: size.width / size.height < .85,
-    base, document: { baseURI: documentBase }, URL, room, camera, THREE,
+    signal: abort.signal, base, document: { baseURI: documentBase }, URL, room, camera, THREE,
     renderer: { setSize(...args: unknown[]) { sizes.push(args) } },
     options: { mode: 'eggs' }, wake() { wakes++ }, destroyed: false, loaded: false, status: { hidden: false },
     layout: () => {}, ready: async () => {},
   }
   runInNewContext(stripTypeScriptTypes(layoutSource + '\nasync function ready(){' + readySource + '}'), context)
   return { context, room, camera, styles, assignments, sizes, layout: () => context.layout(),
+    dispose: () => { context.destroyed = true; abort.abort() },
     ready: () => context.ready(), wakes: () => wakes, focuses: () => focuses }
 }
 
@@ -91,6 +93,6 @@ test('decoding still gates loaded status and focus without replacing the intende
 test('disposal does not load or refocus a scene after pending image decode', async () => {
   const h = scene('https://game.example/'); h.layout()
   let finish = () => {}; h.room.decode = () => new Promise<void>(resolve => { finish = resolve })
-  const pending = h.ready(); h.context.destroyed = true; finish(); await pending
+  const pending = h.ready(); h.dispose(); finish(); await pending
   assert.equal(h.context.loaded, false); assert.equal(h.context.status.hidden, false); assert.equal(h.focuses(), 0); assert.equal(h.wakes(), 1)
 })

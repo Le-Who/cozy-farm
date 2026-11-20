@@ -16,7 +16,10 @@ assert.ok(start>0&&end>start)
 const actualHandler=stripTypeScriptTypes(`switch(action){${source.slice(start,end)}}`)
 const focusStart=source.indexOf("  if (focused && panel !== 'bay-freight' && panel !== 'recipes')"),focusEnd=source.indexOf('\n}\n\n// A map shortcut',focusStart)
 const focusKey=source.slice(source.indexOf('function focusKey('),source.indexOf('\nfunction leaveScene'))
-const actualRecovery=stripTypeScriptTypes(focusKey+'\n'+source.slice(focusStart,focusEnd))
+const seedFocusStart=source.indexOf('  const focusedSeedCrop =')
+assert.ok(seedFocusStart>0 && seedFocusStart<focusStart)
+const capturedSeedFocus=source.slice(seedFocusStart,source.indexOf('\n',seedFocusStart))
+const actualRecovery=stripTypeScriptTypes(focusKey+'\n'+capturedSeedFocus+'\n'+source.slice(focusStart,focusEnd))
 const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
 const p=commissionPlayer(opening.slice(0,78)),id=p.cook();p.shelf(id);p.sale();p.cook(id);p.cook(id)
 p.act('acceptShopCommission',C.getShopCommissionOffers(p.state).find(o=>o.customer==='bea')!.key)
@@ -38,6 +41,8 @@ function harness(input:F.FarmState,options:{value?:string;detail?:number;owned?:
   class Element {
     dataset:Record<string,string>;className:string;tagName:string;tabIndex:number;disabled=false;ready?:Element;recipe?:Element
     constructor(cls:string,tag='DIV',dataset:Record<string,string>={}){this.className=cls;this.tagName=tag;this.dataset=dataset;this.tabIndex=tag==='BUTTON'?0:-1}
+    // Commission controls are not market seed-pack buttons. Run the same pre-redraw capture as drawPanel.
+    matches(selector:string){assert.equal(selector,'[data-seed-pack] [data-action="buy-seeds"]:focus-visible');return false}
     getAttribute(){return null} textContent=''
     focus(){document.activeElement=this;effects.push('focus:'+(this.dataset.action??this.className))}
     scrollIntoView(){effects.push('reveal:'+this.className)}

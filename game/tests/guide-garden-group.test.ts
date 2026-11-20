@@ -31,10 +31,11 @@ test('grouping preserves every current destination, label and unlock condition a
   const home=island==='home',village=island==='village',expected:string[]=[]
   const add=(...items:string[])=>expected.push(...items.map(item=>'open-panel|'+item))
   if(home)add(...garden,'Дом|rest','Курятник|coop','Рынок|market','Улучшения|upgrades','Рыбалка|fishing')
-  if(home&&flags.fair)add('Гость ярмарки|guest','Просьбы соседей|intents','Кондитерская|workshop')
+  if(home&&flags.fair)add('Гость ярмарки|guest','Просьбы соседей|intents')
   if(island==='grove'){add('Сад|orchard','Рыбалка|fishing','Живая заводь|cove');if(flags.shoal)add('Лунная отмель|shoal')}
   if(island==='cape'){add('Пасека|hive');if(flags.cape>=3)add('Медовая кухня|honey-kitchen')}
-  if(village)add('Своя лавка|bay-shop','Музыкальный сад|bay-music','Соседи|village','|village-meal','Кондитерская|workshop','Заказы лавки|shop-commissions','Праздники гавани|festival')
+  if(village)add('Своя лавка|bay-shop','Музыкальный сад|bay-music','Соседи|village','|village-meal','Заказы лавки|shop-commissions','Праздники гавани|festival')
+  if(village||home&&flags.fair)expected.push('workshop|Кондитерская|workshop')
   if(flags.boat)add('Грузовой паром|bay-freight')
   if(!home)expected.push('travel-panel|Рынок дома|market')
   if(!village&&flags.festival)add('Праздники гавани|festival')
@@ -65,4 +66,18 @@ test('the village map offers supper until served and restores the route only the
  assert.deepEqual(routes(renderFarm(p.state)),before.filter(route=>route!==supper))
  p.night();p.visit('village')
  assert.deepEqual(routes(renderFarm(p.state)),before)
+})
+
+test('the fresh guide pastry destination clears a previous bread recipe without baking or losing its chosen shape',()=>{
+ const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8')) as {name:string;args:unknown[]}[]
+ const player=commissionPlayer(opening.slice(0,opening.findIndex(step=>step.name==='bakeWorkshop')))
+ player.act('specializeFarmhouse','bakery')
+ assert.equal(player.state.day,8);assert.equal(player.state.produce.wheat,4);assert.equal(player.state.eggs,3)
+ const before=structuredClone(player.state)
+ const action=routes(renderFarm(player.state)).find(route=>route.includes('|Кондитерская|'))!.split('|')[0]
+ const handler=main.slice(main.indexOf("    case 'workshop': {",main.indexOf("    case 'build-specialization':")),main.indexOf("    case 'open-village':"))
+ const generic=main.slice(main.indexOf("    case 'open-panel':"),main.indexOf("    case 'harbour-view':"))
+ const entered:string[]=[],ctx={action,value:'workshop',panelTitles:{workshop:'Кондитерская'},workshopRecipe:'bread',pastryShape:'folded',workshopShapes:['round','long','folded'],openPanel:(target:string)=>entered.push(target)}
+ runInNewContext(stripTypeScriptTypes('switch(action){'+generic+handler+'}'),ctx)
+ assert.deepEqual(entered,['workshop']);assert.equal(ctx.workshopRecipe,'pastry');assert.equal(ctx.pastryShape,'folded');assert.deepEqual(player.state,before)
 })

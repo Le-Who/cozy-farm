@@ -1,5 +1,14 @@
 import { canStockBayShop, stockBayShop, type BayShopState, type BayShopStock } from './bay-shop-model.ts'
 
+/** Keep an explicitly selected compatible shelf; exact recipe entry reuses its own shelf first. */
+export function shopStockSlot(state: BayShopState, product: Pick<BayShopStock, 'id' | 'identity'>, selected = -1) {
+  const matches = (slot: BayShopState['slots'][number]) => !!slot && slot.quantity < 999
+    && slot.product.id === product.id && slot.product.identity === product.identity
+  if (state.slots[selected] === null || matches(state.slots[selected])) return selected
+  const matching = state.slots.findIndex(matches)
+  return matching >= 0 ? matching : state.slots.indexOf(null)
+}
+
 export function shopQuantityPreview(state: BayShopState, index: number, product: BayShopStock, quantity: number) {
   const slot = state.slots[index]
   const compatible = Number.isSafeInteger(index) && index >= 0 && index < state.slots.length

@@ -42,7 +42,9 @@ test('one-click repeat preserves the exact saved recipe, placement, name and fav
 test('full book blocks new variants before manual work but exact repeats and ordinary cooking remain possible', () => {
   const farm = fullBook(), id = farm.culinary.recipes[0].id
   assert.equal(signatureBookCapacity(farm.culinary).canCreate, false)
-  assert.match(signatureBookCapacity(farm.culinary).message, /24 из 24/)
+  assert.equal(signatureBookCapacity(farm.culinary).count, 24)
+  assert.equal(signatureBookCapacity(farm.culinary).limit, 24)
+  assert.match(signatureBookCapacity(farm.culinary).message, /Повторы ×1 и ×3 не требуют места/)
   assert.equal(repeatSignature(farm, id, undefined, 1).ok, true)
   assert.equal(repeatSignature(farm, id, undefined, 3).ok, true)
   assert.equal(cookDish(farm, 'orchardTart').ok, true)
@@ -84,7 +86,9 @@ test('book and studio visibly explain capacity, separate exact and manual repeat
     const farm = fullBook(), id = farm.culinary.recipes[0].id
     const art = { icon: () => '<img alt="">', stock: () => '<li>Продукты</li>' }
     const html = signatureBook(farm, art, {selectedId:id,mode:"detail"})
-    assert.match(html, /role="status">Книга рецептов заполнена: 24 из 24/)
+    assert.match(html, /role="status">Книга заполнена/)
+    assert.match(html, /aria-label="Рецептов в книге: 24 из 24">24\/24/)
+    assert.match(html, /id="recipe-capacity-note"[^>]*role="status"[^>]*>[^<]*Повторы ×1 и ×3 не требуют места/)
     assert.match(html, new RegExp(`data-action="make-signature" data-value="${id}"[^>]*>Повторить ×1`))
     assert.doesNotMatch(html, new RegExp(`data-action="make-signature" data-value="${id}"[^>]*disabled`))
     assert.match(html, /data-action="batch-signature"[^>]*>Партия ×3/)
@@ -96,7 +100,7 @@ test('book and studio visibly explain capacity, separate exact and manual repeat
     favoriteSignature(farm, id)
     assert.doesNotMatch(signatureBook(farm, art, {selectedId:id,mode:"detail"}), new RegExp(`data-action="forget-signature" data-value="${id}"`))
     const studio = signatureStudio(farm, draft.base, draft.ingredients, 0, art)
-    assert.match(studio, /Книга рецептов заполнена/)
+    assert.match(studio, /role="status">Книга заполнена/)
     assert.match(studio, /data-action="start-signature"[^>]*disabled/)
     assert.match(studio, /data-action="recipe-book-return"/)
   } finally { await server.close() }

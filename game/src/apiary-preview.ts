@@ -23,6 +23,7 @@ export function getApiaryCopy(farm: FarmState) {
     heading: preview.planted ? `${waiting ? 'Завтра' : 'Сегодня'} · день ${waiting ? preview.tomorrow.day : farm.day}` : '',
     summary: !preview.planted ? 'Сначала посадите цветы на клумбах мыса. Пустые клумбы не дадут мёда после отдыха.'
       : preview.harvested ? 'Сегодня мёд уже собран. Новый сбор после отдыха дома.'
+      : !preview.now.blooms && farm.capeBouquet ? 'Цветы срезаны. После ночи дома клумба снова зацветёт.'
       : !preview.now.blooms ? 'Цветы посажены. Они распустятся после отдыха дома.'
       : `Цветущие клумбы: ${preview.now.blooms}/${farm.capeFlowers.length}. Мёд можно собрать один раз за день.`,
     note: preview.planted && waiting ? 'Прогноз по нынешним клумбам и уровню пасеки. Сбор на мысе вручную.' : '',

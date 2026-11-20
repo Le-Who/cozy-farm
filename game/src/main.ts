@@ -1,3 +1,6 @@
+import { canPlayWithBea } from './bea-duet'
+import { finnPicnicRide, sailHomeWithFinn } from './finn-picnic-ride'
+import { standingVisitCrop, showStandingVisitCrop } from './standing-crop-visit'
 import { projectContributionCopy, projectLevelCopy, projectRewardLabel } from './project-readiness-copy'
 import './market-project-readiness.css'
 import { MarketInlineSales, inlineReceiptText } from './market-inline-sale'
@@ -56,7 +59,7 @@ import { canVisitMarketRest, getNextMarketOrders, renderNextMarketOrder } from '
 import { getMarketOrderBoard, renderMarketOrderPicker } from './market-orders-view'
 import './market-orders-view.css'
 import './market-return.css'
-import { renderFairReturn } from './fair-return'
+import { fairJamPicnicChoice, renderFairReturn } from './fair-return'
 import './fair-return.css'
 import { getLocalWarehouseSupply, warehouseRequest, warehouseSupplyCopy, warehouseConfirmation, warehouseConfirmationValue, withdrawWarehouseSupply } from './warehouse-guidance'
 import { getReadySignatureSuppers, renderSignatureSuppers, renderSupperResult, supperCottageReady } from './shared-supper'
@@ -151,8 +154,8 @@ import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
 import { ferryCommissionUse, openFerryCommissionRecipe } from './ferry-commission-use'
-import { signatureTastingGuide } from './signature-tasting-guidance'
-import { RecipeBookNavigation, recipeBookNarrow, selectedBookId, type RecipeBookView } from './recipe-book-view'
+import { lastPortionShopStock, signatureTastingGuide } from './signature-tasting-guidance'
+import { RecipeBookNavigation, recipeBookNarrow, selectedBookId, sortedBookRecipes, type RecipeBookView } from './recipe-book-view'
 import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
 import { communityBoard, communityIntent, neighborDetail, neighborHelpCard, type CommunityArt } from './community-ui'
@@ -222,7 +225,7 @@ import {
   gatherSeaSalt,
   getBedAction,
   getBedStage,
-  getCapeBloom,
+  getCapeBloom, getCapeBouquetPreview, cutCapeBouquet,
   getCapeHoney,
   getCapeUpgrade,
   getCookAction,
@@ -366,6 +369,7 @@ const berryNurserySelection = new BerryNurserySelection()
 const berryRenewalSelection = new BerryRenewalSelection()
 const recipeSurplusSelection = new RecipeSurplusSelection()
 let activeTool: Tool = 'seeds'
+let hiveFlower: number | undefined
 let panel: Panel | undefined
 // Consume the successful sleep close once; ordinary close/back keeps its cue.
 let committedRestClose = false
@@ -426,6 +430,7 @@ type CommunityRequest = { kind: 'intent'; orderId: string } | { kind: 'neighbor'
 let communityRequest: CommunityRequest | undefined
 let communityOrderId = ''
 let communityResident: ResidentId = 'bea'
+let freshFinnRide:string|undefined
 let selectedFriendHen = 0
 let requestedFood: FoodOfferId | undefined
 let arrangementRequest: { kind: 'neighbor'; id: string } | { kind: 'packing'; mode: 'eggs' | 'crate' } | undefined
@@ -700,24 +705,25 @@ function status() {
     const definition = tools.find(tool => tool.id === toolId)!
     const atVillage = farm.island === 'village'
     button.hidden = atVillage && toolId !== 'basket' && toolId !== 'coop' && toolId !== 'boat'
-    const label = toolId === 'basket' ? basketHotbarLabels[farm.island] : atVillage && toolId === 'coop' ? 'Соседи' : definition.label
-    const groveBlocked = farm.island === 'grove' && !('inGrove' in definition)
-    const title = toolId === 'seeds' ? atHome && sowingPlan ? `Посев по плану: ${sowingPlan.name}` : `${label} · ${cropDefinitions[farm.selectedSeed].name}` : label
+    const capeFlowers = farm.island === 'cape' && toolId === 'seeds'
+    const label = capeFlowers ? 'Клумбы мыса' : toolId === 'basket' ? basketHotbarLabels[farm.island] : atVillage && toolId === 'coop' ? 'Соседи' : definition.label
+    const homeOnly = (farm.island === 'grove' && !('inGrove' in definition)) || (farm.island === 'cape' && toolId === 'coop')
+    const title = toolId === 'seeds' && !capeFlowers ? atHome && sowingPlan ? `Посев по плану: ${sowingPlan.name}` : `${label} · ${cropDefinitions[farm.selectedSeed].name}` : label
     button.setAttribute('aria-label', label)
-    button.title = groveBlocked ? `${title} · Родной остров` : `${title} (${definition.key})`
-    if (groveBlocked) button.removeAttribute('aria-keyshortcuts')
+    button.title = homeOnly ? `${title} · Родной остров` : `${title} (${definition.key})`
+    if (homeOnly) button.removeAttribute('aria-keyshortcuts')
     else button.setAttribute('aria-keyshortcuts', definition.key)
     const image = button.querySelector<HTMLImageElement>('.slot-icon img')!
     const source = iconUrl(toolId === 'basket' ? basketHotbarIcons[farm.island] : atVillage && toolId === 'coop' ? 'ui-bea' : `tool-${definition.image}`)
     if (image.getAttribute('src') !== source) image.src = source
-    button.disabled = groveBlocked || farm.island === 'cape' && toolId === 'rod'
-    const count = counts[toolId]
+    button.disabled = homeOnly || farm.island === 'cape' && toolId === 'rod'
+    const count = capeFlowers ? undefined : counts[toolId]
     const badge = button.querySelector<HTMLElement>('.slot-count')!
     if (toolId === 'basket' && atHome) {
       button.removeAttribute('aria-pressed')
       button.setAttribute('aria-haspopup', 'dialog')
     } else {
-      button.setAttribute('aria-pressed', String(!groveBlocked && toolId === activeTool))
+      button.setAttribute('aria-pressed', String(!homeOnly && toolId === activeTool))
       if (toolId === 'basket') button.removeAttribute('aria-haspopup')
     }
     badge.hidden = atVillage || count === undefined
@@ -1461,8 +1467,12 @@ function updateCommunityReturn() {
   const request = currentCommunityRequest()
   const route = currentCommunityRoute('recipe', request)
   communityResume.hidden = !communityRequest || dialog.open || island.isCrossing()
-  communityResume.querySelector('span')!.textContent = route.label
-  communityResume.setAttribute('aria-label', request ? `Вернуться: ${request.title}. ${route.label}` : 'Вернуться к соседям')
+  if(freshFinnRide&&(dialog.open||communityRequest?.kind!=='neighbor'||communityRequest.resident!=='finn'||finnPicnicRide(farm)!==freshFinnRide))freshFinnRide=undefined
+  communityResume.dataset.action=freshFinnRide?'finn-picnic-ride':'resume-community'
+  if(freshFinnRide)communityResume.dataset.value=freshFinnRide
+  else delete communityResume.dataset.value
+  communityResume.querySelector('span')!.textContent = freshFinnRide?'Домой с Финном':route.label
+  communityResume.setAttribute('aria-label', freshFinnRide?'Домой с Финном':request ? `Вернуться: ${request.title}. ${route.label}` : 'Вернуться к соседям')
 }
 async function resumeCommunityRequest(mode: 'request' | 'recipe' = 'request') {
   const request = communityRequest
@@ -1688,6 +1698,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  commissionRecipe?: { line:string; prepared:boolean }; // This exact order line opened the book.
   tastingBakery?: string; // An explicit stop from this particular saved recipe.
   neighborComposerPlan?: string; // Only set by this visit's explicit “Свой рецепт” button.
   ferryMorning?: number; // This ferry visit's explicit trip to the Home forecast.
@@ -1695,6 +1706,7 @@ type PanelVisit = {
   kitchenSourceItem?: string;
   ferryView: FerryPanelView | undefined;
   marketNextOpen: string[];
+  marketOrder?: {lane:string; pickerScroll:number; source?:string; warehouse:boolean};
   guideGardenOpen: boolean;
   homeServicesOpen: boolean;
   gardenSupplies: {slot: number; revision: number; open: boolean} | undefined;
@@ -1725,8 +1737,8 @@ function focusKey(button: HTMLButtonElement) {
   const controls = Object.entries(button.dataset).filter(([key])=> !['selected','active','ready'].includes(key))
   return JSON.stringify(controls.length ? controls : [button.className,button.getAttribute('aria-label') ?? button.textContent?.trim()])
 }
-// The route key is rebuilt per render; only the ingredient ID survives a warehouse withdrawal.
-function kitchenSourceItem(button: HTMLButtonElement | null) {
+// The route key is rebuilt per render; only the product ID survives a warehouse withdrawal.
+function stockSourceItem(button: HTMLButtonElement | null) {
   const requirement = button?.dataset.action === 'show-requirement' ? requirementLinks.get(button.dataset.value ?? '') : undefined
   return requirement?.kind === 'stock' ? bayProductId(requirement.item) : undefined
 }
@@ -1735,7 +1747,10 @@ function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
   const supplies = panel === 'garden-plans' ? dialogContent.querySelector<HTMLDetailsElement>('.garden-supplies') : null
   const homeServicesOpen = panel === 'rest' && dialogContent.querySelector<HTMLDetailsElement>('.home-rest-services')?.open === true
-  return {homeServicesOpen,kitchenSourceItem:panel === 'kitchen' || panel === 'recipes' ? kitchenSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  const marketOrder = panel === 'market' && marketTab === 'orders' && selectedMarketOrder
+    ? {lane:selectedMarketOrder, pickerScroll:dialogContent.querySelector<HTMLElement>('.market-order-picker')?.scrollTop ?? 0,
+       source:stockSourceItem(focused), warehouse:focused?.dataset.action === 'warehouse-supply'} : undefined
+  return {marketOrder,homeServicesOpen,kitchenSourceItem:panel === 'kitchen' || panel === 'recipes' ? stockSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,honeyKitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack(keyboard = false) {
@@ -1745,6 +1760,10 @@ function goBack(keyboard = false) {
   const supperCottage = previous.panel === 'village' && panel === 'village-meal' && getVillageMeal(farm).served
   const suppliedRecipe = keyboard && previous.panel === 'recipes' && (panel === 'tree' || panel === 'warehouse-supply' &&
     selectedWarehouseRequest && previous.kitchenSourceItem === bayProductId(selectedWarehouseRequest)) ? previous.recipeBook.selectedId : undefined
+  const preparedLine = keyboard && panel === 'recipes' && previous.panel === 'shop-commissions' && previous.commissionRecipe?.prepared
+    ? getShopCommissionLine(farm,previous.commissionRecipe.line) : undefined
+  const reserveOnReturn = preparedLine?.canDeliver && preparedLine.recipeId === recipeBook.view.selectedId && recipeBook.view.mode === 'detail'
+    && preparedLine.inBag + preparedLine.warehouse >= preparedLine.remaining ? preparedLine.actionValue : undefined
   recipeBook.load(previous.recipeBook)
   journeyDetailsOpen=previous.journeyDetailsOpen
   journalDetailsOpen=previous.journalDetailsOpen
@@ -1760,6 +1779,7 @@ function goBack(keyboard = false) {
   signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;expandedRepeatId=previous.expandedRepeatId;cookingMode=previous.cookingMode
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;honeyKitchenDish=previous.honeyKitchenDish;signatureFamily=previous.signatureFamily
+  if (previous.marketOrder) selectedMarketOrder = previous.marketOrder.lane
   openPanel(previous.panel,false,farm.island,'page.fold')
   restoreFerryPanelView(dialogContent,previous.ferryView)
   const gardenGroup = dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')
@@ -1785,8 +1805,13 @@ function goBack(keyboard = false) {
     // A newer selection or dismissal must not receive an old page’s scroll or focus.
     if (!dialog.open || panel !== previous.panel || panelRenderVersion !== restoredVersion) return
     dialogContent.scrollTop=previous.scroll
+    if (previous.marketOrder) {
+      const picker = dialogContent.querySelector<HTMLElement>('.market-order-picker')
+      if (picker) picker.scrollTop = previous.marketOrder.pickerScroll
+    }
+    const sourceItem = previous.marketOrder?.source ?? previous.kitchenSourceItem
     const target=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')).find(button=>
-      (previous.kitchenSourceItem ? kitchenSourceItem(button)===previous.kitchenSourceItem : focusKey(button)===previous.focus) && button.getClientRects().length>0)
+      (sourceItem ? stockSourceItem(button)===sourceItem : focusKey(button)===previous.focus) && button.getClientRects().length>0)
     if (previous.panel === 'recipes') {
       recipeBook.restore(dialogContent,true,suppliedRecipe)
       const offer = previous.tastingBakery && signatureTastingGuide(farm,previous.tastingBakery,'bea')
@@ -1797,7 +1822,16 @@ function goBack(keyboard = false) {
         }
       }
     }
+    else if (reserveOnReturn) {
+      const reserve = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('[data-action="commission-deliver"]:not(:disabled)')).find(button=>button.dataset.value===reserveOnReturn)
+      ;(reserve ?? target)?.focus({preventScroll:true})
+      reserve?.scrollIntoView({block:'nearest'})
+    }
     else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
+    else if (previous.marketOrder?.source || previous.marketOrder?.warehouse) {
+      // Satisfied row or changed withdrawal: read the same crate, never arm a new ingredient or delivery.
+      dialogContent.querySelector<HTMLElement>('.market-order-detail')?.focus({preventScroll:true})
+    }
     else if (supperCottage) dialogContent.querySelector<HTMLButtonElement>('[data-action="village-slot"][aria-pressed="true"]')?.focus({preventScroll:true})
     else if (previous.kitchenSourceItem) dialogContent.querySelector<HTMLButtonElement>('[data-action="recipe-family"][aria-pressed="true"]')?.focus({preventScroll:true})
     else if (previous.panel === 'market' && marketTab === 'sell') {
@@ -1807,6 +1841,7 @@ function goBack(keyboard = false) {
   })
 }
 let harbourScene: {destroy():void} | undefined
+let nextShopStock: string | undefined
 let selectedWarehouse = farm.island
 const ferryArrival = new FerryArrivalPresentation()
 let {port:selectedExpeditionPort,offer:selectedExpeditionOffer} = initialExpeditionPreview(farm.freight.expeditions)
@@ -1846,7 +1881,7 @@ function openShopScene(host:HTMLElement) {
   const catalog = harbourGoods(), byId = new Map(catalog.map(row => [row.id,row]))
   const products = ():BayShopStock[] => harbourGoods().map(row => ({...row,
     quantity:row.quantity+(farm.freight.warehouses.village[row.id] ?? 0)})).filter(row => row.quantity>0)
-  const options:BayShopOptions = {state:farm.bayShop,products,catalog,
+  const options:BayShopOptions = {state:farm.bayShop,products,catalog,stockProduct:nextShopStock,
     takeStock:(id,n)=>{ const reserved=reserveShopGoods(farm,id,n); if(reserved)status(); return reserved },
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
@@ -1876,7 +1911,7 @@ function openShopScene(host:HTMLElement) {
   applyIngredientFinishes(host)
 }
 function openMusicScene(host:HTMLElement) {
-  harbourScene=createBayMusic(host,{state:farm.musicGarden,viewState:musicView,onViewChange:view=>{ musicView=view },getMaterialStock:()=>gardenMaterialStock(farm),getMaterialSources:()=>getMusicMaterialGuidance(farm).sources,
+  harbourScene=createBayMusic(host,{beaAvailable:canPlayWithBea(farm),state:farm.musicGarden,viewState:musicView,onViewChange:view=>{ musicView=view },getMaterialStock:()=>gardenMaterialStock(farm),getMaterialSources:()=>getMusicMaterialGuidance(farm).sources,
     onSave:state=>{farm.musicGarden=state;saveHarbour()},onClose:leaveScene,
     onPerformance:()=>{
       if(farm.concertDay===farm.day)return false
@@ -2096,7 +2131,10 @@ function drawPanel() {
             : request.mode === 'eggs' ? packEggBasket(farm, result as PackingResult) : packEggCrate(farm, result as PackingResult), false, true)
           if (completed) queueMicrotask(() => {
             if (panel !== 'arrangement' || arrangementRequest !== request) return
-            if (request.kind === 'neighbor') closeDialog()
+            if (request.kind === 'neighbor') {
+              freshFinnRide=plan!.resident==='finn'?finnPicnicRide(farm):undefined
+              closeDialog()
+            }
             else { panelHistory.length = 0; openPanel('coop', false) }
           })
           return completed
@@ -2135,6 +2173,7 @@ function drawPanel() {
     case 'hive': {
       const preview = getApiaryCopy(farm)
       const wind = getWindHoneySource(farm)
+      const bunch = hiveFlower === undefined ? undefined : getCapeBouquetPreview(farm,hiveFlower)
       const harvest = preview.harvest
       const upgrade = getCapeUpgrade(farm)
       dialogTitle.textContent = farm.capeLevel >= 2 ? 'Цветочная пасека' : 'Улей мыса'
@@ -2145,6 +2184,7 @@ function drawPanel() {
             ${harvest.windHoney ? row('ui-wind-honey', 'Мёд ветров', `×${harvest.windHoney}`) : ''}
             ${harvest.wax ? row('ui-beeswax', 'Пчелиный воск', `×${harvest.wax}`) : ''}</ul>
           ${harvest.windHoney ? '<p class="dialog-intro">Мёд ветров заменяет одну обычную порцию.</p>' : ''}</section>` : ''}
+        ${bunch ? nav(button(`Срезать букет · ${bunch.cost}`, 'cape-bouquet', true, {value:bunch.token, secondary:true})) : ''}
         ${preview.note ? `<p class="dialog-intro">${preview.note}</p>` : ''}
         <section aria-label="Мёд ветров"><h2 class="dialog-status">Мёд ветров</h2><p class="dialog-intro">${wind.detail}</p></section>
         ${wind.kind === 'wait' && !preview.waiting ? nav(button('Домой к отдыху', 'visit-rest', true, {secondary:true})) : ''}
@@ -2193,15 +2233,17 @@ function drawPanel() {
       dialogTitle.textContent = guest.name
       dialogTitle.setAttribute('aria-label', `${guest.name}, гость ярмарки`)
       const ready = ingredientCount(farm, guest.item) >= guest.item.quantity
+      const picnic = ready && !guest.served ? fairJamPicnicChoice(farm) : undefined
       dialogContent.innerHTML = (guest.served ? `<p class="dialog-status">Сегодняшний гость уже угощён.</p>${button('К отдыху дома','visit-rest')}`
         : `<ul class="ingredients">${stockTile(guest.item)}</ul>
           <ul class="dialog-list">${row('coin', 'Монеты', `+${guest.reward}`)}
             ${row(`ui-seed-${guest.seeds.crop}`, `Семена: ${cropDefinitions[guest.seeds.crop].name.toLowerCase()}`, `+${guest.seeds.count}`)}</ul>
-          ${nav(button('Угостить', 'serve-guest', ready))}`) + renderFairReturn(farm,stockTile)
+          ${nav(button(picnic ? 'Угостить · открыть стройку гавани' : 'Угостить', 'serve-guest', ready),
+            picnic ? button(`К пикнику · ${quantity(picnic.reward,'монета')}`, 'fair-jam-picnic', true, {value:picnic.id,secondary:true}) : '')}`) + renderFairReturn(farm,stockTile)
       break
     }
     case 'neighbor-visits':
-      dialogContent.innerHTML = renderNeighborVisits(farm, icon)
+      dialogContent.innerHTML = renderNeighborVisits(farm, icon, () => `<ul class="ingredients">${workshopIngredients.map(stockTile).join('')}</ul>`)
       break
     case 'hen-friendship':
       dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable(), selectedFriendHen, icon, island.henFieldTarget(selectedFriendHen))
@@ -2214,14 +2256,17 @@ function drawPanel() {
       dialogContent.innerHTML = renderCoopPanel(farm, {icon,row,button,feedRow:flockFeedRow})
       disposeCoopServices = groupCoopServices(dialogContent)
       break
-    case 'rest':
-      dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра">${renderSelectedIntentRest(farm,communityRequest)}<header class="rest-morning"><div><strong>Сейчас · день ${farm.day}</strong><span>Утром · день ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}</span></div>${button('До утра', 'sleep', true, {value:farm.day})}</header><p class="rest-commit-note">Сон завершит этот день. Вернуться назад нельзя.</p>${renderShopRest(farm)}</section>
+    case 'rest': {
+      const hatch = farm.hatchDay === null ? '' : farm.hatchDay === farm.day + 1
+        ? 'К утру вылупится курочка.' : `Курочка вылупится утром дня ${farm.hatchDay}.`
+      dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра">${renderSelectedIntentRest(farm,communityRequest)}<header class="rest-morning"><div><strong>Сейчас · день ${farm.day}</strong><span>Утром · день ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}</span>${hatch ? `<span>${hatch}</span>` : ''}</div>${button('До утра', 'sleep', true, {value:farm.day})}</header><p class="rest-commit-note">Сон завершит этот день. Вернуться назад нельзя.</p>${renderShopRest(farm)}</section>
         <div class="home-morning-preview">${renderRestPreview(farm,true)}${renderFerryReturn(farm,harbourGoods(),true)}</div>
         <div class="rest-before-morning">${renderVisitRest(farm)}${farm.neighborVisits.active?nav(button('Поговорить с гостем', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${renderPicnicStatus(farm,true)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}</div>
         <details class="home-rest-details home-rest-services"><summary>${farm.village.built&&!farm.neighborVisits.active?'Кухня, гости и улучшения':'Кухня и улучшения'}</summary><div>${farm.village.built&&!farm.neighborVisits.active?nav(button('Гостевая книга', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}</div></details>`
       if (farm.freight.expeditions.active?.phase === 'sailing' && panelHistory.at(-1)?.ferryMorning === farm.freight.expeditions.active.serial)
         dialogContent.querySelector<HTMLButtonElement>('[data-action="sleep"]')!.textContent = 'До утра · к парому'
       break
+    }
     case 'journal': {
       const goal = currentTask(), journal = getDiscoveryJournal(farm)
       const guidance = renderDiscoveryGuidance(farm.discoveryPreferences, getDiscoveryTask(farm, farm.orientation), goal)
@@ -2276,7 +2321,7 @@ function drawPanel() {
         places.push(tile('Живая заводь','ui-shell','cove'))
         if (hasShoal(farm)) places.push(tile('Лунная отмель','ui-moon-pearl','shoal'))
       }
-      if (village || home && isProjectComplete(farm,'fair')) places.push(tile('Кондитерская','ui-handmade-round','workshop'))
+      if (village || home && isProjectComplete(farm,'fair')) places.push(tile('Кондитерская','ui-handmade-round','workshop','workshop'))
       if (village) places.push(tile('Заказы лавки','ui-signature-bright','shop-commissions'),tile('Праздники гавани','festivals/lights','festival'))
       if (farm.boatOwned) places.push(tile('Грузовой паром','bay/ferry','bay-freight'))
       const away = [
@@ -2502,7 +2547,9 @@ function drawPanel() {
       .find(candidate => focusKey(candidate) === focusKey(focused))
       // A spent pack keeps a neutral result at the old button's position, even on a clipped shelf.
       ?? (focusedSeedCrop ? dialogContent.querySelector<HTMLElement>(`[data-seed-pack="${CSS.escape(focusedSeedCrop)}"] .market-seed-limit`) : null)
-    const nextFocus = replacement ?? (panel === 'hen-friendship' ? henCareResultFocus(dialogContent, focused) : undefined) ?? closeButton
+    const incubatorRoute = panel === 'coop' && focused.dataset.action === 'incubate-egg'
+      ? dialogContent.querySelector<HTMLButtonElement>('.coop-primary [data-action="visit-rest"]') : null
+    const nextFocus = replacement ?? incubatorRoute ?? (panel === 'hen-friendship' ? henCareResultFocus(dialogContent, focused) : undefined) ?? closeButton
     nextFocus.focus({ preventScroll: true })
   }
 }
@@ -2533,7 +2580,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryM
 function openGuidedMarket(tab?: string) {
   openPanel('market',true,farm.island,'page.unfold',undefined,{readyOrder:tab==='orders'})
 }
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean }) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
@@ -2549,6 +2596,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next === 'honey-kitchen' && farm.capeLevel < 3) return
   if(next==='cove'&&farm.island!=='grove')return
   if ((next === 'transplant' || next === 'garden-plans' || next === 'recipe-surplus') && farm.island !== 'home') return
+  hiveFlower = next === 'hive' ? entry?.hiveFlower : undefined
   // An automatic order belongs to this visit. A manual pick also survives an ordinary reopen.
   if (entry?.readyOrder || !dialog.open && remember) selectedMarketOrder = entry?.readyOrder ? undefined : pickedMarketOrder
   const reopenScroll = !dialog.open && remember && next === 'market' && marketTab === 'sell'
@@ -2606,7 +2654,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   }
   if (next === 'bay-freight' && ferryArrival.take(farm.freight.expeditions.active,dialog.open)) presentFerryArrival(dialogContent)
   updateCommunityReturn()
-  const sceneEntry = next === 'bay-shop' ? dialogContent.querySelector<HTMLElement>('.bay-shop-close')
+  const sceneEntry = next === 'bay-shop' ? (nextShopStock ? dialogContent.querySelector<HTMLInputElement>('[data-stock-quantity]') : null) ?? dialogContent.querySelector<HTMLElement>('.bay-shop-close')
     : next === 'bay-freight' ? dialogContent.querySelector<HTMLElement>('.bay-freight [data-action="close"]')
     : next === 'bay-music' ? dialogContent.querySelector<HTMLElement>(musicView?.sheet ? '.bay-music-sheet-close' : '.bay-music-close')
     : next === 'workshop' ? dialogContent.querySelector<HTMLElement>('.workshop-close')
@@ -2805,9 +2853,11 @@ const island = createIsland(canvas, {
     if (target.kind === 'tree') {
       if (farm.island !== 'home' && farm.island !== 'grove') return ''
       const slot = farm.trees[farm.island][target.index]
-      const name = slot ? treeDefinitions[slot.tree].treeName : `Место для дерева ${target.index + 1}`
-      const action = getTreeAction(farm, target.index)
-      return action.kind === 'pick' ? `${name} · Собрать плоды` : `${name} · ${action.label}`
+      if (slot === undefined) return ''
+      if (!slot) return `Место ${target.index + 1} · ${farm.treeNursery.length ? 'К деревьям на хранении' : 'Посмотреть саженцы'}`
+      const name = treeDefinitions[slot.tree].treeName
+      if (slot.fruitReady) return `${name} · Плодов: ${slot.fruitReady} · Осмотреть`
+      return `${name} · ${getTreeAction(farm, target.index).label}`
     }
     if (target.kind === 'village-home') {
       const resident = farm.village.residents[target.index]
@@ -2901,7 +2951,7 @@ function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 
       island.workCape({ kind: 'flower', index: target.index }, () => { const done = perform(() => plantCapeFlower(farm, target.index)); if (done) playBaySound('field.seed', 1, 0); return done })
     } else {
       island.visit(target)
-      openPanel('hive')
+      openPanel('hive',true,farm.island,undefined,undefined,{hiveFlower:target.index})
     }
     return
   }
@@ -2993,7 +3043,7 @@ function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 
   }
 }
 
-function useHotbar(tool: Tool) {
+function useHotbar(tool: Tool, keyboard = false) {
   if (farm.island === 'village' && tool !== 'boat') {
     workshopRecipe = 'pastry'
     openPanel(tool === 'basket' || tool === 'seeds' ? 'workshop' : 'village')
@@ -3001,8 +3051,16 @@ function useHotbar(tool: Tool) {
   }
   if (farm.island === 'cape') {
     if (tool === 'basket') { activeTool = tool; status(); activateTarget({ kind: 'hive' }); return }
+    if (tool === 'seeds') {
+      const empty = farm.capeFlowers.indexOf(null)
+      if (empty >= 0) island.focusTarget({kind:'flower', index:empty})
+      else notify(getCapeHoney(farm).available ? 'Все клумбы засеяны. В улье можно собрать мёд.'
+        : farm.capeHoneyOn === farm.day ? 'Все клумбы засеяны. Сегодня мёд уже собран.'
+        : 'Все клумбы засеяны. Цветы распустятся после ночи дома.')
+      return
+    }
     if (tool !== 'boat') {
-      notify(tool === 'seeds' ? 'Выберите пустую клумбу и посадите цветы.' : 'Подойдите к клумбам или улью.')
+      notify('Подойдите к клумбам или улью.')
       return
     }
   }
@@ -3020,7 +3078,8 @@ function useHotbar(tool: Tool) {
         activateTarget({ kind: 'well' })
         break
       }
-      canvas.focus({ preventScroll: true })
+      if (keyboard && !farm.water && farm.island === 'home') island.focusTarget({ kind: 'well' })
+      else canvas.focus({ preventScroll: true })
       notify(!farm.water ? 'Наберите воду в колодце.'
         : farm.beds.some((_, index) => getBedAction(farm, index).kind === 'water')
           ? 'Выберите растение, которому нужна вода.' : 'Сейчас поливать нечего.')
@@ -3030,6 +3089,11 @@ function useHotbar(tool: Tool) {
       break
     case 'feed':
       island.visit({ kind: 'coop' })
+      if (canMixBedtimeFeed(farm)) {
+        openPanel('coop')
+        highlightControl(dialogContent.querySelector('[data-action="chicken-feed-open"]'))
+        break
+      }
       if(perform(() => feedChickens(farm)))playBaySound('flock.feed', 1, 0)
       break
     case 'basket':
@@ -3062,6 +3126,12 @@ function highlightControl(element: HTMLElement | null) {
 async function showRequirement(requirement: Requirement, origin?: HTMLElement, depth = 0): Promise<void> {
   const hint = getRequirementHint(farm, requirement, panel === 'recipes' && origin?.closest('.signature-page') ? 'saved-recipe' : undefined)
   const {target,value} = hint.action
+  // Keep the local grill recipe on Back. Sailing still leaves the old shore behind.
+  if (target === 'visit-pier' && panel === 'kitchen' && farm.island === 'home'
+      && requirement.kind === 'stock' && requirement.item.kind === 'fish') {
+    activateTarget({kind:'pier'})
+    return
+  }
   if (target === 'sail') {
     const destination = islandIds.find(id => id === value)
     if (!destination || !canSailTo(farm,destination) || destination === farm.island || depth >= 3) { openPanel('boat'); return }
@@ -3086,8 +3156,9 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
     place = {kind:target==='focus-bed'?'bed':target==='focus-flower'?'flower':target==='focus-shell'?'shell':'tree',index:Number(value)}
   } else if (target === 'focus-shoal' && (value === 'glass' || value === 'pearl')) place = {kind:'shoal-find',id:value}
   else if (target === 'focus-place') place = {kind:value as 'farmhouse'|'well'|'boat'|'salt'|'harbor'}
+  else if (target === 'kitchen') place = {kind:farm.buildingLevels.farmhouse >= 2 ? 'kitchen' : 'farmhouse'}
   else {
-    const places: Record<string, IslandTarget['kind']> = {'visit-coop':'coop','visit-pier':'pier','visit-hive':'hive','visit-guest':'guest',kitchen:'farmhouse',workshop:'workshop'}
+    const places: Record<string, IslandTarget['kind']> = {'visit-coop':'coop','visit-pier':'pier','visit-hive':'hive','visit-guest':'guest',workshop:'workshop'}
     if (places[target]) place = {kind:places[target]} as IslandTarget
   }
   if (place) {
@@ -3188,7 +3259,7 @@ app.addEventListener('click', async (event) => {
     return
   }
   if (control.dataset.tool && control.closest('.hotbar')) {
-    useHotbar(control.dataset.tool as Tool)
+    useHotbar(control.dataset.tool as Tool, event.detail === 0 && document.activeElement === control)
     return
   }
   if (control.dataset.action === 'save-recovery') { saveRecovery?.show(); return }
@@ -3199,6 +3270,14 @@ app.addEventListener('click', async (event) => {
     const task = currentTask()
     if (!task || !('action' in task)) { openPanel('journal'); return }
     action = task.action.target; value = task.action.value
+    if (action === 'open-panel' && value === 'archive' && 'id' in task && task.id === 'collections' && !farm.orientation.collections) {
+      openPanel('archive')
+      if (dialog.open && panel === 'archive') {
+        const find = dialogContent.querySelector('.archive-slot[data-discovered="true"]')
+        highlightControl(find?.closest('.archive-series')?.querySelector<HTMLElement>('.archive-series-name') ?? null)
+      }
+      return
+    }
     if (action === 'visit-market' && (value === 'buy' || value === 'sell' || value === 'orders')) {marketTab=value;if(value==='buy')marketCategory=('id' in task && task.id.includes('feed'))?'care':'seeds'}
   }
   switch (action) {
@@ -3321,6 +3400,8 @@ app.addEventListener('click', async (event) => {
       const line=getShopCommissionLine(farm,value)
       if(panel==='shop-commissions'&&dialog.open&&line){
         openRecipeBook(line.recipeId,true)
+        const source=panelHistory.at(-1)
+        if(source?.panel==='shop-commissions' && recipeBook.view.selectedId===line.recipeId) source.commissionRecipe={line:line.actionValue,prepared:false}
         focusRecipeAction()
       }
       break
@@ -3525,9 +3606,11 @@ app.addEventListener('click', async (event) => {
       if(perform(()=>freightControl(farm.freight,action!,value??'',farm.day,openedFreightPorts(farm))??{ok:false,message:'Выберите рейс.'}) && action==='freight-start')bayAudio.playEvent('harbour.castoff')
       break
     }
+    case 'fair-jam-picnic':
     case 'open-intent': {
-      const order = getCommunityOrders(farm).find(order => order.id === value)
-      if (order) { communityOrderId = order.id; requestedFood = undefined; communityRequest = { kind: 'intent', orderId: order.id }; openPanel('intent') }
+      const order = action === 'open-intent' ? getCommunityOrders(farm).find(order => order.id === value)
+        : panel === 'guest' && dialog.open ? fairJamPicnicChoice(farm) : undefined
+      if (order && order.id === value) { communityOrderId = order.id; requestedFood = undefined; communityRequest = { kind: 'intent', orderId: order.id }; openPanel('intent') }
       break
     }
     case 'open-neighbor': {
@@ -3599,6 +3682,20 @@ app.addEventListener('click', async (event) => {
         if (getNeighborFoodRecovery(farm, plan.id)?.state !== 'ready') { openPanel('neighbor'); break }
         arrangementRequest = { kind: 'neighbor', id: plan.id }; openPanel('arrangement')
       }
+      break
+    }
+    case 'finn-picnic-ride': {
+      if(control!==communityResume||dialog.open||island.isCrossing()||!value||value!==freshFinnRide||finnPicnicRide(farm)!==value)break
+      freshFinnRide=undefined
+      if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
+      island.focusTarget({kind:'boat'})
+      await island.crossIsland(()=>{
+        const sailed=perform(()=>sailHomeWithFinn(farm,value),false,true)
+        if(sailed){communityRequest=undefined;requestedFood=undefined}
+        return sailed
+      },'finn')
+      updateCommunityReturn()
+      canvas.focus({preventScroll:true})
       break
     }
     case 'ack-neighbor': {
@@ -3742,7 +3839,19 @@ app.addEventListener('click', async (event) => {
     case 'recipe-warehouse-withdraw':
       if(dialog.open&&panel==='recipes'&&perform(()=>withdrawStoredSignature(farm,value),false,true))bayAudio.playEvent('harbour.crate')
       break
-    case 'make-signature':if(value)perform(()=>repeatSignature(farm,value!,undefined,1),false,true);break
+    case 'make-signature': {
+      const source = panel === 'recipes' && dialog.open && event.detail === 0 && document.activeElement === control
+        ? panelHistory.at(-1)?.commissionRecipe : undefined
+      const line = source && getShopCommissionLine(farm,source.line)
+      if (!value || !perform(()=>repeatSignature(farm,value!,undefined,1),false,true)) break
+      // Only a newly filled line hands Back to the order; a picnic can yield an extra portion.
+      if (source && line?.recipeId === value && recipeBook.view.selectedId === value && line.inBag + line.warehouse < line.remaining
+          && (farm.culinary.stock[value] ?? 0) + line.warehouse >= line.remaining && !backButton.hidden && backButton.dataset.recipeIndex === 'false') {
+        source.prepared = true
+        backButton.focus({preventScroll:true})
+      }
+      break
+    }
     case 'manual-signature':{
       signatureFamily=undefined
       const recipe=farm.culinary.recipes.find(recipe=>recipe.id===value)
@@ -3782,6 +3891,25 @@ app.addEventListener('click', async (event) => {
       break
     case 'sell-signature':if(value)beginExactSale({kind:'signature',key:value});break
     case 'use-signature':if(value)perform(()=>useSignature(farm,value!),false);break
+    case 'visit-first-tasting': {
+      const resident = residentIds.find(id => id === value)
+      if (!resident || farm.culinary.tastings[resident].visits !== 0) break
+      const selected = selectedBookId(farm,recipeBook.view)
+      const dish = selected && farm.culinary.stock[selected] > 0 ? selected
+        : sortedBookRecipes(farm).find(recipe => farm.culinary.stock[recipe.id] > 0)?.id
+      if (!dish || !signatureTastingGuide(farm,dish,resident)?.available) break
+      openRecipeBook(dish)
+      highlightControl(dialogContent.querySelector(`[data-action="taste-signature"][data-resident="${resident}"]:not(:disabled)`))
+      break
+    }
+    case 'recipe-shop-stock': {
+      if (panel !== 'recipes' || !dialog.open || !value || selectedBookId(farm,recipeBook.view) !== value || island.isCrossing()) break
+      const stock = lastPortionShopStock(farm,value)
+      if (!stock) break
+      nextShopStock = stock
+      try { openPanel('bay-shop') } finally { nextShopStock = undefined }
+      break
+    }
     case 'tasting-bakery': {
       if (panel !== 'recipes' || !dialog.open || !value || selectedBookId(farm,recipeBook.view) !== value || island.isCrossing()) break
       const route = signatureTastingGuide(farm,value,'bea')?.bakeFirst
@@ -3959,11 +4087,12 @@ app.addEventListener('click', async (event) => {
     case 'save-crop-seeds':
       if(dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&seedSavingQuote(farm,previewSeed)?.token===value) {
         const origin = panel
+        const fromPrimary = control.parentElement?.classList.contains('seed-picker-primary')
         const ownedFocus = document.activeElement===control && (origin==='seeds' || event.detail===0)
         const saved = perform(()=>saveCropSeeds(farm,value),false,true)
         if(saved&&ownedFocus&&dialog.open&&panel===origin&&(panel!=='inventory'||bagTab==='seeds')) {
           seedProductionFocus(dialogContent.querySelectorAll<HTMLButtonElement>('button'), {
-            crop: previewSeed, exchangeToken: seedSavingQuote(farm,previewSeed)?.token,
+            crop: previewSeed, exchangeToken: fromPrimary ? undefined : seedSavingQuote(farm,previewSeed)?.token,
             selectionToken: seedChoice(farm,previewSeed,seedPickerBed).token,
           })?.focus({preventScroll:true})
         }
@@ -4017,7 +4146,9 @@ app.addEventListener('click', async (event) => {
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
     case 'buy-seeds': {
       const scroll = control.closest('.market-seed-grid')?.scrollTop
-      const keyboardPicker = control.closest('.seed-picker-primary') && panel === 'seeds' && dialog.open
+      const origin = control.closest('.seed-picker-primary') ? panel : undefined
+      const samePicker = () => dialog.open && panel === origin && (panel === 'seeds' || panel === 'inventory' && bagTab === 'seeds')
+      const keyboardPicker = origin !== undefined && samePicker()
         && event.detail === 0 && document.activeElement === control && crop === previewSeed
       if (crop && perform(() => buySeeds(farm,crop))) {
         // The purchase redraw replaces the scrolling shelf, even when focus returns to the same pack.
@@ -4025,7 +4156,7 @@ app.addEventListener('click', async (event) => {
           const grid = dialogContent.querySelector<HTMLElement>('.market-seed-grid')
           if (grid) grid.scrollTop = scroll
         }
-        if (keyboardPicker && panel === 'seeds' && dialog.open && previewSeed === crop) {
+        if (keyboardPicker && samePicker() && previewSeed === crop) {
           const next = dialogContent.querySelector<HTMLButtonElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)')
           if (next?.dataset.value === seedChoice(farm,crop,seedPickerBed).token) next.focus({preventScroll:true})
         }
@@ -4092,10 +4223,25 @@ app.addEventListener('click', async (event) => {
       perform(()=>introduceHenToVisitor(farm,Number(parts[2])),false,true)
       break
     }
+    case 'visit-show-crop': {
+      if(panel!=='neighbor-visits'||!dialog.open)break
+      const crop=standingVisitCrop(farm)
+      if(!crop||crop.token!==value){drawPanel();break}
+      closeDialog()
+      if(perform(()=>showStandingVisitCrop(farm,crop.token))){
+        if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
+        island.guideHomeVisitorToBed(crop.index)
+        island.focusTarget({kind:'bed',index:crop.index})
+      }
+      break
+    }
     case 'visit-do': {
       if(panel!=='neighbor-visits'||!dialog.open||!farm.neighborVisits.active||farm.neighborVisits.active.observation||String(farm.neighborVisits.active.serial)!==value)break
       const kind=visitActivities[farm.neighborVisits.active.activity].kind
-      if(kind==='pastry'){workshopRecipe='pastry';openPanel('workshop');break}
+      if(kind==='pastry'){
+        if(!getWorkshopAction(farm).available){drawPanel();break}
+        workshopRecipe='pastry';openPanel('workshop');break
+      }
       if(kind!=='crop'&&kind!=='fruit')break
       const index=kind==='crop'?farm.beds.findIndex(b=>b.kind==='crop'&&getBedStage(b)==='ripe'):farm.trees.home.findIndex(t=>t&&t.fruitReady>0)
       if(index<0){notify(kind==='crop'?'Зрелых грядок пока нет. Гость пока останется на ферме.':'Спелых плодов пока нет. Гость останется на ферме.');drawPanel();break}
@@ -4231,6 +4377,13 @@ app.addEventListener('click', async (event) => {
     case 'build-cape-upgrade': if(perform(()=>upgradeCape(farm),true))playBaySound('build.finish'); break
     case 'visit-guest': activateTarget({ kind: 'guest' }); break
     case 'bay-display': activateTarget({ kind: 'bay-display' }); break
+    case 'cape-bouquet': {
+      const bed=hiveFlower
+      if(panel!=='hive'||bed===undefined||!value||getCapeBouquetPreview(farm,bed)?.token!==value)break
+      closeDialog()
+      island.workCape({kind:'flower',index:bed},()=>perform(()=>cutCapeBouquet(farm,bed,value)))
+      break
+    }
     case 'collect-honey':
       closeDialog()
       island.workCape({ kind: 'hive' }, () => {const done=perform(() => collectCapeHoney(farm));if(done)playBaySound('apiary.frame', 1, 0);return done})
@@ -4628,9 +4781,10 @@ window.addEventListener('keydown', (event) => {
     return
   }
   const tool = tools.find((entry) => entry.key === key)?.id
+  if (tool === 'coop' && farm.island === 'cape') return
   if (tool) {
     event.preventDefault()
-    useHotbar(tool)
+    useHotbar(tool, true)
   }
 })
 

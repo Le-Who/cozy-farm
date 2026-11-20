@@ -8,6 +8,7 @@ import { basketHotbarIcons, basketHotbarLabels } from '../src/basket-hotbar.ts'
 import * as bedIntent from '../src/bed-work-intent.ts'
 import { bedWorkSound } from '../src/farm-sounds.ts'
 import { earlyFerryFarm } from './fixtures/early-ferry.ts'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 import { communityReturnFixture } from './fixtures/community-return.ts'
 
 const main = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
@@ -19,8 +20,7 @@ const activation = main.slice(main.indexOf('function activateTarget('), main.ind
 const statusLoop = main.slice(main.indexOf('  for (const button of hotbarButtons) {'), main.indexOf('  updateFieldContext(contextBed)'))
 const keyboard = main.slice(main.indexOf("window.addEventListener('keydown', (event) => {"), main.indexOf('\nsaveRecovery ='))
 
-function run(at: farmApi.IslandId, key = false) {
-  const {farm} = communityReturnFixture('meeting')
+function run(at: farmApi.IslandId, key = false, tool = 'basket', farm = communityReturnFixture('meeting').farm) {
   if (at !== farm.island) assert.ok(farmApi.sail(farm, at).ok)
   assert.ok(farmApi.restoreFarm(farm))
   const before = JSON.stringify(farm), calls: string[] = [], state: any = {
@@ -32,8 +32,9 @@ function run(at: farmApi.IslandId, key = false) {
   runInNewContext(js(hotbar), state)
   if (key) {
     runInNewContext(js(keyboard), state)
-    state.keydown({key:'5',code:'Digit5',preventDefault(){},defaultPrevented:false,repeat:false})
-  } else runInNewContext("useHotbar('basket')", state)
+    const digit=tools.find((entry:{id:string})=>entry.id===tool)!.key;
+    state.keydown({key:digit,code:'Digit'+digit,preventDefault(){state.prevented=true},defaultPrevented:false,repeat:false})
+  } else runInNewContext('useHotbar('+JSON.stringify(tool)+')', state)
   assert.equal(JSON.stringify(farm), before, 'opening a destination neither gathers nor changes the farm')
   return {calls,state}
 }
@@ -137,3 +138,50 @@ test('first Grove landing enables only its three working shortcuts; returning Ho
   state.keydown({key:'3',code:'Digit3',preventDefault(){}});
   assert.equal(events.at(-1),'seeds');
 });
+
+
+test('first Cape landing has no coop shortcut; the same key still leads to Home care and Village neighbors',()=>{
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const player=commissionPlayer(opening.slice(0,30));assert.equal(player.state.day,3);assert.equal(player.state.island,'cape')
+  const cape=run('cape',true,'coop',player.state);assert.deepEqual(cape.calls,[]);assert.equal(cape.state.prevented,undefined)
+  const attrs:Record<string,string>={},img={getAttribute:()=>'',src:''},badge={}
+  const button={dataset:{tool:'coop'},disabled:false,title:'',setAttribute:(k:string,v:string)=>attrs[k]=v,removeAttribute:(k:string)=>delete attrs[k],querySelector:(s:string)=>s==='.slot-icon img'?img:badge}
+  const paint=(farm:farmApi.FarmState)=>runInNewContext(js(statusLoop),{...cape.state,farm,atHome:farm.island==='home',hotbarButtons:[button],activeTool:'coop',counts:{},iconUrl:(s:string)=>s,basketHotbarLabels,basketHotbarIcons})
+  paint(player.state);assert.ok(button.disabled);assert.equal(attrs['aria-pressed'],'false');assert.equal(attrs['aria-keyshortcuts'],undefined);assert.equal(button.title,'Курятник · Родной остров')
+  for(const [island,title,panel] of [['home','Курятник','coop'],['village','Соседи','village']] as const){
+    const available=run(island,true,'coop');paint(available.state.farm)
+    assert.equal(button.disabled,false);assert.equal(attrs['aria-keyshortcuts'],'6');assert.equal(attrs['aria-label'],title)
+    assert.deepEqual(available.calls,[panel]);assert.equal(available.state.prevented,true)
+  }
+})
+
+test('Cape seed button and 3 never send a player to plant in an occupied meadow',()=>{
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const player=commissionPlayer(opening.slice(0,30))
+  assert.equal(player.state.island,'cape');assert.equal(player.state.capeLevel,1)
+  const action=(key:boolean)=>{
+    const farm=player.state,before=structuredClone(farm),effects:string[]=[]
+    const state:any={farm,tools,dialog:{open:false},getCapeHoney:farmApi.getCapeHoney,
+      window:{addEventListener:(_:string,fn:Function)=>state.keydown=fn},notify:(s:string)=>effects.push(s),
+      island:{isCrossing:()=>false,focusTarget:(t:{kind:string;index:number})=>effects.push(t.kind+':'+t.index)}}
+    runInNewContext(js(hotbar+keyboard),state)
+    if(key) state.keydown({key:'3',code:'Digit3',preventDefault(){},defaultPrevented:false,repeat:false})
+    else state.useHotbar('seeds')
+    assert.deepEqual(farm,before)
+    return effects
+  }
+  const check=(want:string)=>{for(const key of [false,true])assert.deepEqual(action(key),[want])}
+  const seeds=player.state.seeds[player.state.selectedSeed]
+  for(let i=0;i<3;i++){check('flower:'+i);player.act('plantCapeFlower',i)}
+  assert.equal(player.state.seeds[player.state.selectedSeed],seeds)
+  check('Все клумбы засеяны. Цветы распустятся после ночи дома.')
+  player.night();player.visit('cape')
+  check('Все клумбы засеяны. В улье можно собрать мёд.')
+  player.act('collectCapeHoney');check('Все клумбы засеяны. Сегодня мёд уже собран.')
+  const attrs:Record<string,string>={},img={getAttribute:()=>'',src:''},badge:any={}
+  const slot:any={dataset:{tool:'seeds'},setAttribute:(k:string,v:string)=>attrs[k]=v,removeAttribute:(k:string)=>delete attrs[k],querySelector:(s:string)=>s==='.slot-icon img'?img:badge}
+  const draw=()=>runInNewContext(js(statusLoop),{farm:player.state,tools,atHome:player.state.island==='home',sowingPlan:null,hotbarButtons:[slot],activeTool:'boat',
+    counts:{seeds},iconUrl:(s:string)=>s,cropDefinitions:farmApi.cropDefinitions})
+  draw();assert.equal(slot.title,'Клумбы мыса (3)');assert.equal(attrs['aria-label'],'Клумбы мыса');assert.ok(badge.hidden)
+  player.visit('home');draw();assert.match(slot.title,new RegExp(farmApi.cropDefinitions[player.state.selectedSeed].name));assert.equal(badge.hidden,false)
+})

@@ -16,7 +16,7 @@ export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopCom
   const capacity=morning.blockedIfFed?' · соберите до отдыха':''
   const incubation=farm.coopSpecialization==='hatchery'&&farm.flockSize<maxFlockSize
     ?row('egg','Инкубатор',farm.hatchDay===null?`1 обычное яйцо · в запасе ${farm.eggs} · ${ruCount(incubationDays,'ночь','ночи','ночей')}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
-      farm.hatchDay===null?button('Положить яйцо','incubate-egg',farm.eggs>0):''):''
+      farm.hatchDay===null?button('Положить яйцо','incubate-egg',farm.eggs>0):button('К отдыху дома','visit-rest',true,{secondary:true})):''
   const packing=(farm.coopSpecialization==='packing'?row('ui-egg-crate',`Ящики яиц · ${farm.eggCrates}`,`Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,
     button('Упаковать','pack-egg-crate',farm.eggs>=eggsPerCrate,{context:'ящик яиц'})+button(`Распаковать · +${eggsPerCrate}`,'unpack-egg-crate',getEggUnpackAction(farm,'crate').available,{secondary:true})):'')
     +(farm.buildingLevels.coop >= 2 || farm.eggBaskets > 0 ? row('ui-egg-basket',`Корзины яиц · ${farm.eggBaskets}`,`Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,

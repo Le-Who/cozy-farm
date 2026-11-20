@@ -84,3 +84,48 @@ test('on the settled two-cottage farm, a preview can be left without losing the 
   assert.equal(p.x.panel,'recipes');assert.deepEqual(farm,before);assert.equal(p.focus.length,0)
   p.click('tasting-bakery');assert.deepEqual(p.visits,[0,0]);assert.deepEqual(farm,before)
 })
+
+test('first tasting opens a carried recipe for the named neighbor without handing it over',async()=>{
+  const {getDiscoveryTask}=await import('../src/discovery-path.ts')
+  const {RecipeBookNavigation,sortedBookRecipes}=await import('../src/recipe-book-view.ts')
+  const steps=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const p=commissionPlayer(steps),food=p.cook();p.cook(food)
+  p.fruit('apple',2);p.visit('village')
+  const empty=p.act('completeSignature',{base:'preserves',ingredients:[{id:'apple',quantity:2}]},
+    {family:'preserves',processing:'bright',fruit:[],steps:['stir','pour']}).recipeId as string
+  p.shelf(empty);p.sale()
+  const book=new RecipeBookNavigation(),task=()=>getDiscoveryTask(p.state,p.state.orientation)!
+  assert.equal(task().id,'first-tasting');assert.equal(selectedBookId(p.state,book.view),empty)
+  assert.equal(p.state.culinary.stock[empty],0);assert.equal(p.state.culinary.stock[food],2)
+  const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom'})
+  try{
+    const {signatureBook}=await server.ssrLoadModule('/src/culinary-ui.ts')
+    let focus:string|undefined,html=''
+    const route=runInNewContext(stripTypeScriptTypes('(action,value)=>{switch(action){'+
+      part("    case 'visit-first-tasting':","    case 'tasting-bakery':")+'}}'),{
+      get farm(){return p.state},residentIds:F.residentIds,recipeBook:book,selectedBookId,sortedBookRecipes,signatureTastingGuide,
+      openRecipeBook(id:string){assert.ok(book.select(p.state,id));html=signatureBook(p.state,{icon:()=>'',stock:()=>''},book.view)},
+      dialogContent:{querySelector:(q:string)=>q},highlightControl:(q:string)=>{focus=q},
+    })
+    function follow(resident:F.ResidentId,expected:string){
+      const before=structuredClone(p.state),action=task().action
+      assert.deepEqual([action.target,action.value],['visit-first-tasting',resident])
+      route(action.target,action.value)
+      assert.equal(book.view.selectedId,expected);assert.equal(book.view.mode,'detail')
+      assert.equal(focus,`[data-action="taste-signature"][data-resident="${resident}"]:not(:disabled)`)
+      assert.match(html,new RegExp(`<button[^>]+data-action="taste-signature" data-value="${expected}"(?![^>]* disabled)[^>]*data-resident="${resident}"`))
+      assert.deepEqual(p.state,before,'arrival and repeated preview do not travel or spend')
+    }
+    follow('bea',food);follow('bea',food)
+    // This separate user gesture is the only one that spends. The next suggestion belongs to Finn.
+    const explicit=table(p.state,food);explicit.click('taste-signature');p.reload()
+    assert.equal(p.state.culinary.stock[food],1);assert.equal(p.state.culinary.tastings.bea.visits,1)
+    const before=structuredClone(p.state);focus=undefined;route('visit-first-tasting','bea')
+    assert.equal(focus,undefined);assert.deepEqual(p.state,before)
+    follow('finn',food)
+    p.visit('home')
+    assert.deepEqual(task().action,{label:'В Лавандовую гавань',target:'sail',value:'village'})
+    const home=structuredClone(p.state);focus=undefined;route('visit-first-tasting','finn')
+    assert.equal(focus,undefined);assert.deepEqual(p.state,home)
+  }finally{await server.close()}
+})

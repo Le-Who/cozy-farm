@@ -1,4 +1,6 @@
-import { syncHomeVisitor, stepHomeVisitor, type HomeVisitor } from './neighbor-visit-scene';
+import { bouquetCarrySheet } from './cape-bouquet-art';
+import { finnBoatSeat } from './finn-boat-seat';
+import { syncHomeVisitor, guideHomeVisitor, stepHomeVisitor, type HomeVisitor } from './neighbor-visit-scene';
 import {guideKey,henFieldRoute,refreshHenFieldWalk,type HenFieldTarget} from './hen-harvest-walk';
 import { canWalkWithHen, createHenCompanion, returnHenCompanion, stepHenCompanion, type HenCompanion, type HenCompanionStatus } from './hen-companion';
 import { playBaySound } from './game-sound'
@@ -411,6 +413,7 @@ export function createIsland(
   const flowerPlanted = new Map<number, number>();
   let crossing = false;
   let departure = 0;
+  let finnAboard=false, seatedFinn:HTMLCanvasElement|undefined;
   const coveMotion = createCoveMotion();
   const hens = defaultHenPositions.map((point) => {
     const { x, y } = scenePoint(point.x,point.y);
@@ -801,10 +804,10 @@ export function createIsland(
     }
     const gatheringPlan = getNeighborPlans(farm).find(plan => plan.phase === 'celebrating' || plan.phase === 'arranging');
     const mealActive = villageMealCelebration && moment - villageMealCelebration < 24000;
-    if (farm.village.mealOn === farm.day && !getNeighborPlans(farm).some(plan => plan.memory?.day === farm.day)) {
-      const shape = farm.workshopPatterns.find((id) => farm.handmade[id] > 0) ?? farm.workshopPatterns[0] ?? 'round';
+    if (farm.village.mealOn === farm.day && (farm.village.supperDish || !getNeighborPlans(farm).some(plan => plan.memory?.day === farm.day))) {
+      // Old saves know the shared fish, but not which pastry or signature dish was served.
       const meal = [
-        { key: `ui-handmade-${shape}`, point: scenePoint(930, 607), width: 24, height: 22 },
+        ...(farm.village.supperDish ? [{ key: `ui-${farm.village.supperDish}`, point: scenePoint(930, 607), width: 24, height: 22 }] : []),
         { key: 'ui-grilled-fish', point: scenePoint(1020, 597), width: 27, height: 22 },
       ];
       for (const { key, point, width, height } of meal) {
@@ -907,6 +910,7 @@ export function createIsland(
     }
     actors.sort((a,b) => a.point.y - b.point.y);
     for (const actor of actors) {
+      if(finnAboard&&actor.id==='finn')continue;
       const walking = actor.route.length > 0 && !motion.matches;
       const serving = !walking && (actor.serviceRequested && actor.serviceUntil > moment || actor.gathering && actor.mealUntil > moment);
       const scene = actor.plan && getNeighborSceneState(actor.plan);
@@ -1358,7 +1362,9 @@ export function createIsland(
       const bob=motion.matches?0:Math.sin(time*1.1)*1.2
       art.draw(world,'bay-ferry',center.x,center.y+h*.5+bob,w,h,{baseline:1})
     }
-    art.draw(world, 'boat', boatX, boatY, 160 * sceneScale, 87 * sceneScale, { fullCell: true, angle: boatAngle });
+    if(finnAboard&&island==='village'&&seatedFinn) {
+      world.sprite(seatedFinn,{x:0,y:0,w:160,h:132},boatX,boatY,160*sceneScale,132*sceneScale,{baseline:1,angle:boatAngle})
+    } else art.draw(world, 'boat', boatX, boatY, 160 * sceneScale, 87 * sceneScale, { fullCell: true, angle: boatAngle });
     const selected = hovered ?? (showFocus && focused
       ? currentSites().find((area) => sameTarget(area.target, focused!.target))
       : undefined);
@@ -1493,7 +1499,7 @@ export function createIsland(
         work.hit = true;
         if (work.commit() && !motion.matches) {
           if (work.target.kind === 'hive') honeyReward = moment;
-          else if (work.target.kind === 'flower') flowerPlanted.set(work.target.index, moment);
+          else if (work.target.kind === 'flower' && state?.capeBouquet?.bed !== work.target.index) flowerPlanted.set(work.target.index, moment);
           else if (work.reward) kitchenReward = { icon: work.reward, began: moment };
         }
       }
@@ -1548,11 +1554,13 @@ export function createIsland(
       const scaleY = moving ? 1 + Math.sin(stride * Math.PI * 4) * 0.016
         : pose || pickupProgress || capeProgress ? 1 - Math.sin((progress || pickupProgress || capeProgress) * Math.PI) * 0.029 : 1 + Math.sin(time * 2.4) * 0.009;
       const options = { frame, fullCell: true, baseline: 0.9, angle: moving ? lean : 0, scaleY };
+      const carried = state?.capeBouquet && !pose && !bobber && !capeProgress && !pickupProgress
+        ? bouquetCarrySheet(key,art.image(key),art.image('cape-flowers')) : undefined;
       const height = 105;
       const width = height * (moving ? 192 : 224) / 160;
       world.shape('shade', farmer.x, farmer.y, 14, 5, '#63523f', 0.22);
-      art.draw(world, key, farmer.x, farmer.y, width, height, { ...options, shadow: true, lift: bob });
-      if (!art.draw(world, key, farmer.x, farmer.y - bob, width, height, { ...options, footY: farmer.y })) {
+      art.draw(world, key, farmer.x, farmer.y, width, height, { ...options, shadow: true, lift: bob }, carried);
+      if (!art.draw(world, key, farmer.x, farmer.y - bob, width, height, { ...options, footY: farmer.y }, carried)) {
         const fallback = animated ? pose.kind === 'water' ? 3 : 1 : 0;
         art.draw(world, 'farmer-actions', farmer.x, farmer.y - bob, height * 224 / 160, height,
           { ...options, frame: fallback, footY: farmer.y });
@@ -1606,7 +1614,7 @@ export function createIsland(
     }
     if(atHome&&homeVisitor){
       const visitor=homeVisitor;
-      const finished=stepHomeVisitor(visitor,viewMode==='world'?dt:0,motion.matches);
+      const finished=stepHomeVisitor(visitor,viewMode==='world'&&!finnAboard?dt:0,motion.matches);
       const point=scenePoint(visitor.point.x,visitor.point.y),walking=visitor.route.length>0&&!motion.matches;
       const options={frame:walking?1+Math.floor(visitor.stride*4)%4:state?.neighborVisits.active?.observation?5:0,fullCell:true,baseline:236/256,flip:!visitor.facingRight,footY:point.y};
       world.shape('shade',point.x,point.y,12,4,'#62543b',.18);
@@ -2015,6 +2023,7 @@ export function createIsland(
     landscape[island].occluders.forEach((bounds, index) => art.loadUrl(`${island}-occluder-${index}`, bounds.url));
     load('boat', 1, 'home-boat');
     load('farmer-actions', 6);
+    if (next.capeBouquet && island !== 'cape') load('cape-flowers', 1);
     for (const direction of ['left', 'right', 'back']) {
       load(`walk-${direction}`, 4);
       load(`walk-${direction}-smooth`, 8);
@@ -2101,6 +2110,10 @@ export function createIsland(
       viewMode = next;
       reconcileFrames();
     },
+    guideHomeVisitorToBed(index:number): void {
+      const plot=plots[index]
+      if(state&&homeVisitor&&plot)guideHomeVisitor(homeVisitor,state,nativeHenPoint({x:plot.stop.x+18,y:plot.stop.y}))
+    },
     focusTarget(target: IslandTarget): void {
       const site = currentSites().find(area => sameTarget(area.target, target));
       if (!site) return;
@@ -2149,11 +2162,16 @@ export function createIsland(
       if (motion.matches) commit();
       else capeWork = { target, commit, reward, hit: false };
     },
-    async crossIsland(commit: () => boolean): Promise<void> {
+    async crossIsland(commit: () => boolean, passenger?:'finn'): Promise<void> {
       if (crossing || abort.signal.aborted) return;
       cancelHenGrip();
       bayAudio.stopEffects(farmSoundEvents);
       if (motion.matches) { commit(); return; }
+      if(passenger==='finn'&&state?.island==='village'){
+        const boat=art.image('boat'),finn=art.image('village-finn')
+        if(boat&&finn)seatedFinn??=finnBoatSeat(boat,finn)
+        finnAboard=!!seatedFinn
+      }
       crossing = true;
       capeWork = undefined;
       departure = performance.now();
@@ -2187,6 +2205,7 @@ export function createIsland(
       } finally {
         fade?.cancel();
         crossing = false;
+        finnAboard=false;
         departure = 0;
         crossingVeil.hidden = true;
         requestPaint();

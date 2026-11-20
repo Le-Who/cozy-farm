@@ -348,8 +348,11 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
   function rotateFruit(delta: number) { if((incorporated.get(selected)??0)>.3)return;const fruit = model.fruit.find(value => value.id === selected); if (!fruit) return; placeHoneyFruit(model, fruit.id, fruit, fruit.ingredientId, angle(fruit.angle + delta)); layout() }
   rotate.addEventListener('click', () => rotateFruit(Math.PI / 12), { signal }); view.addEventListener('wheel', event => { if (held && 'tool' in held && held.tool==='honey' && ['honeyPear','windParfait'].includes(family)) { event.preventDefault(); setPourTilt(pourTilt + Math.sign(event.deltaY) * .08); return }; if (model.fruit.some(value => value.id === selected) && !['finished', 'cancelled'].includes(model.stage)) { event.preventDefault(); rotateFruit(Math.sign(event.deltaY) * .13) } }, { signal, passive: false })
   view.addEventListener('keydown', event => {
+    if (event.defaultPrevented) return
+    if (event.key === 'Escape' && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      event.preventDefault(); if (!event.repeat) cancel(); return
+    }
     if ((event.target as HTMLElement).closest('button,input,label')) return
-    if (event.key === 'Escape') { event.preventDefault(); cancel(); return }
     if (!loaded || lost) return
     const key = /^Key[SFQE]$/.test(event.code) ? event.code.slice(3).toLowerCase() : event.key.toLowerCase(); if (!['s', 'f', ' ', 'enter', 'q', 'e', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return
     event.preventDefault(); keyboard = true

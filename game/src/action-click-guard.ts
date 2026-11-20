@@ -19,7 +19,7 @@ const guardedActions = new Set([
   'signature-base', 'signature-slot', 'signature-fruit', 'start-signature',
   'recipe-surplus-choose', 'recipe-surplus-quantity', 'recipe-surplus-refresh', 'recipe-surplus-reset', 'recipe-surplus-confirm', 'recipe-surplus-recipe',
   'berry-renewal-seeds', 'berry-renewal-source', 'berry-renewal-reset', 'berry-renewal-bed', 'berry-renewal-confirm',
-  'picnic-field',
+  'picnic-field', 'cape-bouquet',
   'garden-shop', 'garden-shop-scope', 'garden-shop-back', 'garden-buy-seeds', 'garden-save-seeds',
   'garden-slot', 'garden-edit', 'garden-copy', 'garden-cancel', 'garden-brush', 'garden-paint', 'garden-save', 'garden-follow', 'garden-delete', 'garden-remove', 'garden-bed',
   'visit-invite', 'visit-finish', 'visit-reply', 'visit-introduce-hen', 'visit-do', 'visit-book-home',
@@ -29,13 +29,13 @@ const guardedActions = new Set([
   'harbour-fish-trade', 'harbour-fish-catch', 'invite-resident', 'resident-service', 'finn-pier', 'tasting-bakery',
   'berry-nursery-ingredient', 'berry-nursery-source', 'berry-nursery-destination', 'berry-nursery-confirm', 'berry-nursery-reset',
   'commission-accept', 'commission-deliver', 'commission-cancel', 'commission-finish', 'commission-recipe', 'commission-rest', 'expedition-order-recipe',
-  'sleep', 'ferry-return', 'expedition-rest', 'expedition-discovery', 'expedition-restock', 'expedition-source', 'work-context', 'resume-recipe-draft', 'reset-recipe-draft',
+  'incubate-egg', 'visit-rest', 'sleep', 'ferry-return', 'expedition-rest', 'expedition-discovery', 'expedition-restock', 'expedition-source', 'work-context', 'resume-recipe-draft', 'reset-recipe-draft',
   'forget-signature', 'follow-task', 'buy-feed', 'festival-contribute', 'market-next-rest', 'market-order-select', 'bread-basket-review', 'deliver-order', 'deliver-harbor', 'withdraw-harbor', 'harbor-next-rest',
   'show-requirement', 'warehouse-supply', 'warehouse-supply-withdraw', 'recipe-repeat-home', 'recipe-warehouse-withdraw',
-  'return-nursery-tree', 'nursery-sail-plot', 'supper-signature', 'share-meal', 'supper-cottage', 'serve-guest',
+  'store-tree', 'return-nursery-tree', 'nursery-sail-plot', 'supper-signature', 'share-meal', 'supper-cottage', 'serve-guest', 'fair-jam-picnic',
   'sell-item', 'sell-signature', 'sale-again', 'confirm-sale', 'sell', 'make-signature', 'batch-signature',
   'inline-sale-confirm', 'inline-sale-again',
-  'rest-intent-request', 'rest-close-shop', 'shop-stock-select', 'shop-stock-confirm', 'freight-withdraw',
+  'rest-intent-request', 'rest-close-shop', 'shop-stock-select', 'shop-stock-confirm', 'recipe-shop-stock', 'freight-withdraw',
   'neighbor-repeat-food', 'neighbor-shelf-food', 'neighbor-stored-food', 'request-repeat-exact', 'request-bea-batch', 'choose-neighbor-food',
   'transplant-source', 'transplant-destination', 'transplant-reset',
   'unpack-egg-basket', 'unpack-egg-crate', 'finish-egg-packing', 'expedition-claim', 'expedition-send', 'expedition-offer', 'expedition-pair',
@@ -62,6 +62,11 @@ export class ActivationKeyGuard {
   reset() { this.held.clear() }
 }
 
+// The feed shortcut may open the coop underneath the same pointer or held key.
+function guardedControl(control: HTMLButtonElement) {
+  return isGuardedAction(control.dataset.action) || control.dataset.tool === 'feed'
+}
+
 export function installActionClickGuard(root: HTMLElement) {
   const guard = new ActionClickGuard()
   const keys = new ActivationKeyGuard()
@@ -72,14 +77,14 @@ export function installActionClickGuard(root: HTMLElement) {
       return
     }
     const control = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null
-    if (control && !control.disabled && isGuardedAction(control.dataset.action)) guard.remember(event)
+    if (control && !control.disabled && guardedControl(control)) guard.remember(event)
   }, true)
   // A removed button may send keyup/repeat to the dialog, body or close button.
   // Listen on the document so release is always seen, not only inside the app.
   root.ownerDocument.addEventListener('keydown', event => {
     const target = event.target instanceof Element && root.contains(event.target) ? event.target : null
     const button = target?.closest<HTMLButtonElement>('button')
-    const guarded = !!target?.closest('[data-sale-quantity],[data-stock-quantity],[data-inline-quantity]') || !!button && !button.disabled && (isGuardedAction(button.dataset.action) || button.matches('.workshop-bake'))
+    const guarded = !!target?.closest('[data-sale-quantity],[data-stock-quantity],[data-inline-quantity]') || !!button && !button.disabled && (guardedControl(button) || button.matches('.workshop-bake'))
     if (keys.blocks(event, guarded)) {
       event.preventDefault()
       event.stopImmediatePropagation()

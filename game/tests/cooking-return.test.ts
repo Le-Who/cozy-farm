@@ -190,3 +190,49 @@ test('only the live unfinished recipe from Bea returns to its saved ingredient s
     }
   }
 })
+
+test('Escape on a focused receipt button follows the finished home recipe, not old composer history',async()=>{
+  const {commissionPlayer}=await import('./fixtures/commission-player.ts')
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const farm=commissionPlayer(opening.slice(0,12)).state
+  const {state,calls}=setup('home',true,'signature')
+  Object.assign(state,{farm,communityRequest:undefined,panelHistory:[{panel:'kitchen'},{panel:'signature'}],
+    getSignatureAction:farmApi.getSignatureAction,perform:(fn:()=>{ok:boolean})=>fn().ok,
+    openRecipeBook:(id:string)=>{calls.push('book:'+id);state.panel='recipes'}})
+  mount(state)
+  assert.ok(state.options.onComplete({family:'decorate',fruit:[{ingredientId:'apple',x:0,y:0,angle:0}],steps:['fruit','dust','bake']}))
+  const id=farm.culinary.recipes.at(-1)!.id, paid=structuredClone(farm)
+  assert.equal(state.options.returnLabel,'Мои рецепты')
+  const scene=readFileSync(new URL('../src/cookery.ts',import.meta.url),'utf8')
+  const listen=(source:string,start:string,end:string)=>source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)))
+  const viewKey=listen(scene,"  view.addEventListener('keydown'","  function updateSugar()")
+  const dialogKey=listen(main,"dialog.addEventListener('keydown', event => {\n  if (event.key !== 'Escape'","dialog.addEventListener('keydown',event=>{if(event.altKey")
+  const runKey=(key:string,repeat=false)=>{
+    const event={key,repeat,defaultPrevented:false,type:'keydown',target:{closest:(s:string)=>s==='button'},preventDefault(){this.defaultPrevented=true}}
+    state.event=event;state.view={addEventListener:(_:string,fn:Function)=>fn(event)}
+    state.dialog.addEventListener=(_:string,fn:Function)=>fn(event)
+    Object.assign(state,{signal:new AbortController().signal,cancel:()=>state.options.onCancel()})
+    runInNewContext(js(viewKey+'\n'+closeSale+back+dialogKey),state)
+    return event.defaultPrevented
+  }
+  assert.equal(runKey('Enter'),false,'native button activation stays native')
+  assert.equal(runKey('Escape',true),true);assert.deepEqual(calls,[])
+  assert.equal(runKey('Escape'),true)
+  assert.deepEqual(calls,['book:'+id]);assert.equal(state.panel,'recipes');assert.deepEqual(state.panelHistory,[])
+  assert.deepEqual(farm,paid);assert.deepEqual(farmApi.restoreCurrentFarm(JSON.parse(JSON.stringify(farm))),paid)
+})
+
+test('Escape belongs to the honey station even on its tilt slider; native slider and button keys still pass through',()=>{
+  const source=readFileSync(new URL('../src/honey-cookery.ts',import.meta.url),'utf8')
+  const listener=source.slice(source.indexOf("  view.addEventListener('keydown'"),source.indexOf('  async function load()',source.indexOf("  view.addEventListener('keydown'")))
+  let returns=0
+  const key=(key:string,repeat=false,altKey=false)=>{
+    const event={key,repeat,altKey,defaultPrevented:false,target:{closest:()=>true},preventDefault(){this.defaultPrevented=true}}
+    runInNewContext(js(listener),{view:{addEventListener:(_:string,fn:Function)=>fn(event)},signal:new AbortController().signal,cancel:()=>returns++})
+    return event.defaultPrevented
+  }
+  for(const native of ['ArrowLeft','ArrowRight','Enter',' '])assert.equal(key(native),false)
+  assert.equal(key('Escape',false,true),false)
+  assert.equal(key('Escape',true),true);assert.equal(returns,0)
+  assert.equal(key('Escape'),true);assert.equal(returns,1)
+})

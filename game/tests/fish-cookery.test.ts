@@ -98,4 +98,20 @@ test('grill keyboard shortcuts belong to the focused worktop, not to the control
   assert.deepEqual([finishes, returns, releases, scope.cursor.x], [0, 0, 0, 0])
   for (const code of ['ArrowRight','ArrowRight','Space','Enter','Escape']) assert.equal(key(view, code, code === 'ArrowRight'), true)
   assert.deepEqual([finishes, returns, releases, scope.cursor.x], [1, 1, 1, .36])
+  for(const button of [close,finish]){assert.ok(key(button,'Escape',true));assert.ok(key(button,'Escape'))}
+  assert.equal(returns,3)
+})
+
+test('leaving the finished grill receipt is navigation, not cancelling the committed fish',async()=>{
+  const {readFileSync}=await import('node:fs'),{runInNewContext}=await import('node:vm')
+  const main=readFileSync(new URL('../src/fish-cookery.ts',import.meta.url),'utf8')
+  const cancel=main.slice(main.indexOf('  function cancel()'),main.indexOf('  function complete()'))
+  const model=cooked()
+  for(let i=0;i<3;i++)assert.ok(placeFishGarnish(model,i,{x:(i-1)*.4,y:.35},0))
+  for(let i=0;i<5;i++)settleFish(model,.1,true)
+  let commits=0,returns=0
+  assert.ok(completeFish(model,()=>{commits++;return true}))
+  const paid=structuredClone(model)
+  runInNewContext(cancel+';cancel()',{model,cancelFish,release:()=>{},options:{onCancel:()=>returns++}})
+  assert.equal(returns,1);assert.deepEqual(model,paid);assert.equal(commits,1)
 })

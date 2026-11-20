@@ -1,12 +1,12 @@
-id|seconds|gain|direction
+id|seconds|gain|direction|mode|runtimeUse
 instrument.ceramic-low|1.55|0.74|One single soft center hand strike on a small low ceramic udu, warm hollow resonant rounded low D3, audible pot body resonance after skin-like transient. Close dry studio one-shot at the very start, silence after the tail.
 instrument.ceramic-high|1.35|0.72|One single light fingertip rim slap on a glazed ceramic hand drum, a bright but rounded higher pitched tok with warm clay resonance. Natural release.
 instrument.marimba-low|2.2|0.82|One isolated single wooden marimba note, played in the middle register C4 261.63 Hz with a soft yarn mallet, low warm woody resonator and striking bar ringing freely into silence. Dry studio single hit onset immediate. No phrase.
 instrument.marimba-high|2.1|0.78|One isolated wooden concert marimba E5 note, 659 Hz, one soft felt mallet tap followed by woody decaying resonance. Clean warm strike, absolutely no additional notes.
 instrument.handpan-low|2.9|0.75|An isolated single pitched D4 note, one gentle thumb strike on a mellow bronze handpan, rich fundamental and tuned metal overtones, beautiful decaying tail. Very close dry recording. Single hit only.
 instrument.handpan-high|2.8|0.73|A single isolated A4 note played once on a small bronze handpan with a fingertip, warm copper resonance with a soft attack and natural tail, no phrase or other notes.
-instrument.harp-low|2.7|0.78|One clear isolated plucked gut string on a Celtic folk harp tuned to C4 (261.6 Hz). One delicate finger pluck at start, mellow body resonances and long naturally decaying harmonics, clean dry recording, no strum or song.
-instrument.harp-high|2.4|0.72|Single high Celtic harp string plucked by a finger, E5, soft silvery attack with a warm wooden body and natural tail into silence. Just one note once, intimate studio.
+instrument.harp-low|2.7|0.78|One clear isolated plucked gut string on a Celtic folk harp tuned to C4 (261.6 Hz). One delicate finger pluck at start, mellow body resonances and long naturally decaying harmonics, clean dry recording, no strum or song.||Manual garden harp and optional Bea duet response; unchanged sample and gain.
+instrument.harp-high|2.4|0.72|Single high Celtic harp string plucked by a finger, E5, soft silvery attack with a warm wooden body and natural tail into silence. Just one note once, intimate studio.||Manual garden harp and optional Bea duet response; unchanged sample and gain.
 instrument.shaker-low|0.65|0.48|A single gentle downward shake of one small seed pod gourd, a very brief rush of tiny real seeds across a hollow shell then silence. Dry intimate organic percussion sample.
 instrument.shaker-high|0.65|0.47|One short light upward stroke of a small gourd shaker with tiny seeds. Soft delicate airy rattle then immediate silence, no rhythm sequence.
 instrument.bass-low|2.3|0.82|One plucked D2 note on a rustic acoustic double bass, 73.4 Hz fundamental, a single rounded pizzicato attack, warm woody string and soundboard resonance decaying to silence. Isolated note, no groove.

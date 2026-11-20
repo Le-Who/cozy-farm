@@ -88,9 +88,17 @@ export class RecipeBookNavigation {
       if (repeat && repeat.dataset.value===suppliedRecipe && repeat.getClientRects().length) {
         repeat.focus({preventScroll:true});repeat.scrollIntoView({block:'nearest'});return
       }
+      const exact=[...root.querySelectorAll<HTMLElement>(focusable)].find(element=>focusId(element)===this.view.focus&&element.getClientRects().length>0)
+      // A placed last jar removes its own shortcut. Keep focus in the same decision section.
+      const stockFocus = 'detail:'+JSON.stringify(['recipe-shop-stock',this.view.selectedId,undefined])
+      if (!exact && this.view.mode === 'detail' && this.view.focus === stockFocus) {
+        const uses = detail?.querySelector<HTMLElement>('[data-recipe-focus="uses"]')
+        if (uses?.getClientRects().length) {
+          uses.focus({preventScroll:true});uses.scrollIntoView({block:'nearest'});return
+        }
+      }
       const search = this.view.mode === 'index' && this.view.query ? root.querySelector<HTMLElement>('[data-recipe-query]') : null
-      const target=[...root.querySelectorAll<HTMLElement>(focusable)].find(element=>focusId(element)===this.view.focus&&element.getClientRects().length>0)
-        ?? (search?.getClientRects().length ? search : undefined)
+      const target=exact ?? (search?.getClientRects().length ? search : undefined)
         ?? [...root.querySelectorAll<HTMLElement>('[data-recipe-focus="cooking"], .recipe-book-index [data-action="select-recipe"], .recipe-book-index [data-action="new-signature"]')].find(element=>element.getClientRects().length>0)
       target?.focus({preventScroll:true})
     }

@@ -1,3 +1,4 @@
+import { isSupperDish, signatureTableDish, type SupperDish } from './supper-dish.ts';
 import { createGardenPlans, restoreGardenPlans, seedForBed, type GardenPlans } from './garden-plans.ts';
 import { createNeighborVisits, restoreNeighborVisits, noteNeighborVisit, visitActivities, type NeighborVisits } from './neighbor-visits.ts';
 import { createHenFriendship, restoreHenFriendship, befriendPettedHen, henFriends, type HenFriendship } from './hen-friendship.ts';
@@ -221,6 +222,7 @@ export type VillageState = {
   residents: [ResidentId | null, ResidentId | null];
   meals: number;
   mealOn: number;
+  supperDish?: SupperDish;
   serviceOn: Record<ResidentId, number>;
   scouting: boolean;
 };
@@ -531,6 +533,7 @@ export type FarmState = {
   capeFlowers: (number | null)[];
   capeLevel: CapeLevel;
   capeHoneyOn: number;
+  capeBouquet?: { day: number; bed: number };
   honey: number;
   windHoney: number;
   beeswax: number;
@@ -1179,6 +1182,11 @@ export function cancelFishingTrip(farm: FarmState, token?: number): ActionResult
   return { ok: true, message: 'Удочка убрана.' };
 }
 
+/** A planted tree fills the same fruit slots at dawn; stored trees never call this. */
+export function treeFruitAtDawn(tree: TreeSlot): number {
+  return tree.age + 1 >= treeDefinitions[tree.tree].days ? fruitPerHarvest : 0;
+}
+
 export function getTreeAction(farm: FarmState, slot: number): { kind: 'pick' | 'plant' | 'wait'; available: boolean; label: string } {
   if (!isId(orchardIslandIds, farm.island)) return { kind: 'wait', available: false, label: 'Посетите сад на Родном острове или в Солёной роще.' };
   const tree = farm.trees[farm.island][slot];
@@ -1301,10 +1309,11 @@ export function isHoneyWind(day: number): boolean {
   return Number.isSafeInteger(day) && day >= 8 && (day - 8) % 5 === 0;
 }
 
-export function getCapeBloom(farm: Pick<FarmState, 'day' | 'capeFlowers'>, index: number): 'empty' | 'growing' | 'bloom' {
+export function getCapeBloom(farm: Pick<FarmState, 'day' | 'capeFlowers' | 'capeBouquet'>, index: number): 'empty' | 'growing' | 'bloom' {
   const plantedOn = farm.capeFlowers[index];
   if (plantedOn === null || plantedOn === undefined) return 'empty';
-  return farm.day > plantedOn ? 'bloom' : 'growing';
+  const cut = farm.capeBouquet?.day === farm.day && farm.capeBouquet.bed === index;
+  return farm.day > plantedOn && !cut ? 'bloom' : 'growing';
 }
 
 export function plantCapeFlower(farm: FarmState, index: number): ActionResult {
@@ -1329,6 +1338,26 @@ export function getCapeHoney(farm: FarmState): { available: boolean; blooms: num
 
 export function getCapeWax(farm: FarmState): number {
   return Number(farm.capeLevel >= 2 && getCapeHoney(farm).blooms > 0);
+}
+
+/** Quote the actual pre-collection tradeoff of this bed, including full-meadow bonuses. */
+export function getCapeBouquetPreview(farm: FarmState, bed: number) {
+  if (!Number.isInteger(bed) || farm.capeBouquet?.day === farm.day || getCapeBloom(farm, bed) !== 'bloom') return;
+  const now = getCapeHoney(farm);
+  if (!now.available) return;
+  const clipped = { ...farm, capeBouquet: { day: farm.day, bed } };
+  const then = getCapeHoney(clipped);
+  const changes = [['мёд', now.honey, then.honey], ['мёд ветров', now.windHoney, then.windHoney],
+    ['воск', getCapeWax(farm), getCapeWax(clipped)]] as const;
+  const cost = changes.filter(([,a,b]) => a !== b).map(([name,a,b]) => `${name} ${a} → ${b}`).join(', ');
+  return { token: [farm.day, bed, now.honey, now.windHoney, getCapeWax(farm), then.honey, then.windHoney, getCapeWax(clipped)].join(':'), cost };
+}
+
+export function cutCapeBouquet(farm: FarmState, bed: number, token: string): ActionResult {
+  const quote = getCapeBouquetPreview(farm, bed);
+  if (!quote || token !== quote.token) return failure('Эта клумба или сегодняшний сбор уже изменились.');
+  farm.capeBouquet = { day: farm.day, bed };
+  return { ok: true, message: 'Букет в руках. К утру клумба снова зацветёт.' };
 }
 
 export function getCapeUpgrade(farm: FarmState) {
@@ -1532,6 +1561,7 @@ export function serveVillageMeal(farm: FarmState, shape: WorkshopShape): ActionR
   for (const item of meal.items) removeStock(farm, item);
   farm.village.meals += 1;
   farm.village.mealOn = farm.day;
+  farm.village.supperDish = `handmade-${shape}`;
   farm.workToday += 1;
   return { ok: true, message: `Вы поужинали с соседями.${farm.village.meals === 2 ? ' Второй домик готов!' : ''}` };
 }
@@ -1826,7 +1856,7 @@ export function deliverSignature(farm:FarmState,id:string):ActionResult{
   const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id),fish=getVillageMeal(farm).fish;
   if(!recipe||farm.island!=='village'||!farm.village.built||farm.village.mealOn===farm.day||(farm.culinary.stock[id]??0)<1||farm.fish[fish]<1)return failure('Принесите к общему столу гавани одно авторское блюдо и одну рыбу.');
   if(!Number.isSafeInteger(farm.workToday+1)||!Number.isSafeInteger(farm.village.meals+1))return failure('Журнал ужинов заполнен.');
-  farm.culinary.stock[id]--;farm.fish[fish]--;farm.village.meals++;farm.village.mealOn=farm.day;farm.workToday++;return {ok:true,message:`Блюдо «${recipe.name}» подано к общему ужину. ${farm.village.meals===2?'Второй домик готов!':''}`};
+  farm.culinary.stock[id]--;farm.fish[fish]--;farm.village.meals++;farm.village.mealOn=farm.day;farm.village.supperDish=signatureTableDish(recipe);farm.workToday++;return {ok:true,message:`Блюдо «${recipe.name}» подано к общему ужину. ${farm.village.meals===2?'Второй домик готов!':''}`};
 }
 
 export function foodDescriptors(farm: FarmState): FoodDescriptor[] {
@@ -2299,6 +2329,8 @@ export function endDay(farm: FarmState): ActionResult {
   if (farm.island !== 'home') return failure('Вернитесь на Родной остров, чтобы отдохнуть в доме.');
   farm.pendingFishingTrip = null;
   farm.neighborVisits.active = null;
+  delete farm.village.supperDish;
+  delete farm.capeBouquet;
   const tomorrow = farm.day + 1;
   for (const resident of residentIds) if (farm.neighbors[resident].current?.phase === 'remembered') farm.neighbors[resident].current = prepareNeighbor(farm.neighbors[resident], tomorrow);
   const { weather } = getClimate(tomorrow);
@@ -2319,10 +2351,10 @@ export function endDay(farm: FarmState): ActionResult {
     farm.fishCaughtToday[island] = 0;
     for (const [index, tree] of farm.trees[island].entries()) {
       if (!tree) continue;
-      const maturity = treeDefinitions[tree.tree].days;
+      const maturity = treeDefinitions[tree.tree].days, readyAtDawn = treeFruitAtDawn(tree);
       tree.age = Math.min(maturity, tree.age + 1);
-      if (tree.age === maturity) {
-        tree.fruitReady = fruitPerHarvest;
+      if (readyAtDawn) {
+        tree.fruitReady = readyAtDawn;
         const trait = exposedTrait(tomorrow, weather, 100 + islandIndex * treeSlotCount + index);
         if (!tree.trait && trait) tree.trait = trait;
       }
@@ -2563,6 +2595,7 @@ function restoreLivingBay(value: Record<string, unknown>, day: number, fairCompl
   if (village.scouting && village.serviceOn.finn === 0) return undefined;
   const restoredVillage: VillageState = {
     built: village.built, supplies, residents: [residents[0], residents[1]], meals: village.meals,
+    ...(village.mealOn===day&&isSupperDish(village.supperDish)?{supperDish:village.supperDish}:{}),
     mealOn: village.mealOn, serviceOn: { bea: village.serviceOn.bea as number, finn: village.serviceOn.finn as number }, scouting: village.scouting,
   };
   if (!isQuantity(fishingTripSerial)) return undefined;
@@ -2704,6 +2737,14 @@ export function restoreFarm(value: unknown): FarmState | undefined {
   const capeUnlocked = canSailTo({ boatOwned, orders, projects }, 'cape');
   if (!Array.isArray(capeFlowers) || capeFlowers.length !== capeFlowerSlotCount
     || !Array.from(capeFlowers).every((plantedOn) => plantedOn === null || isQuantity(plantedOn) && plantedOn > 0 && plantedOn <= day)) return undefined;
+  const bunch = value.capeBouquet;
+  let capeBouquet: FarmState['capeBouquet'];
+  if (bunch !== undefined) {
+    if (!capeUnlocked || !isRecord(bunch) || bunch.day !== day || !isQuantity(bunch.bed) || bunch.bed >= capeFlowers.length) return undefined;
+    const planted = capeFlowers[bunch.bed];
+    if (planted === null || planted >= day) return undefined;
+    capeBouquet = { day, bed: bunch.bed };
+  }
   if (capeLevel !== 1 && capeLevel !== 2 && capeLevel !== 3) return undefined;
   if (!isQuantity(capeHoneyOn) || capeHoneyOn > day || !isQuantity(honey) || !isQuantity(windHoney) || !isQuantity(beeswax)) return undefined;
   if (capeHoneyOn > 0 && !capeFlowers.some((plantedOn) => plantedOn !== null && plantedOn < capeHoneyOn)) return undefined;
@@ -2829,6 +2870,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     fish: { ...fish },
     fishCaughtToday: { ...fishCaughtToday },
     capeFlowers: [...capeFlowers],
+    ...(capeBouquet ? { capeBouquet } : {}),
     capeLevel,
     capeHoneyOn,
     honey,

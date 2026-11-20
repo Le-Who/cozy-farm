@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { runInNewContext } from 'node:vm'
+import { stripTypeScriptTypes } from 'node:module'
+import { commissionPlayer } from './fixtures/commission-player.ts'
+import { getRequirementHint } from '../src/requirement-guidance.ts'
+import { getCookAction, type FarmState, type StockItem } from '../src/farm.ts'
 import { createFarm, endDay, getFairGuest, restoreFarm, serveFairGuest } from '../src/farm.ts'
 import { getNextFairGuest, renderFairReturn } from '../src/fair-return.ts'
 import { isGuardedAction, ActionClickGuard } from '../src/action-click-guard.ts'
@@ -103,4 +108,34 @@ test('the map keeps the daily guest separate from community requests and the ser
   const guard=new ActionClickGuard()
   guard.remember({detail:1,timeStamp:100,clientX:120,clientY:220})
   assert.equal(guard.blocks({detail:2,timeStamp:150,clientX:120,clientY:220}),true)
+})
+
+test('Bea’s first cake request points at the unlocked kitchen, not the overnight rest door',async()=>{
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const section=(start:string,end:string)=>main.slice(main.indexOf(start),main.indexOf(end,main.indexOf(start)))
+  const route=stripTypeScriptTypes(section('async function showRequirement(', '// Scene handlers'))
+  const activate=stripTypeScriptTypes(section('function activateTarget(', 'function useHotbar('))
+  async function follow(farm:FarmState,item:StockItem,panel:string){
+    const before=structuredClone(farm),events:string[]=[]
+    const state={farm,panel,item,getRequirementHint,fieldViewButton:{getAttribute:()=> 'false'},closeDialog:()=>events.push('close'),
+      island:{isCrossing:()=>false,focusTarget:({kind}:{kind:string})=>events.push('focus:'+kind),visit:()=>{}},openPanel:(next:string)=>events.push(next)}
+    await runInNewContext(route+";showRequirement({kind:'stock',item})",state)
+    assert.equal(events.length,2);assert.equal(events[0],'close');assert.match(events[1],/^focus:/)
+    runInNewContext(activate+';activateTarget('+JSON.stringify({kind:events[1].slice(6)})+')',state)
+    assert.deepEqual(farm,before,'locating and opening a station do not cook, rest or serve')
+    return events
+  }
+  const p=commissionPlayer(opening.slice(0,53))
+  p.act('selectSeed','wheat');p.act('workBed',0);p.act('workBed',0);p.night();p.night();p.act('workBed',0);p.night()
+  const farm=p.state,guest=getFairGuest(farm)!
+  assert.equal(farm.day,8);assert.equal(farm.fairGuestsServed,0);assert.equal(guest.name,'Беа')
+  assert.deepEqual(guest.item,{kind:'dishes',item:'honeyCake',quantity:1})
+  assert.equal(farm.buildingLevels.farmhouse,2);assert.equal(farm.dishes.honeyCake,0);assert.ok(getCookAction(farm,'honeyCake').available)
+  assert.deepEqual(await follow(farm,guest.item,'guest'),['close','focus:kitchen','kitchen'])
+  p.act('cookDish','honeyCake');assert.equal(p.state.fairGuestsServed,0)
+  p.act('serveFairGuest');assert.equal(p.state.fairGuestsServed,1);assert.equal(p.state.dishes.honeyCake,0)
+  const basic=commissionPlayer(opening.slice(0,12)).state
+  assert.equal(basic.buildingLevels.farmhouse,1);assert.ok(getCookAction(basic,'orchardTart').available)
+  assert.deepEqual(await follow(basic,{kind:'dishes',item:'orchardTart',quantity:1},'market'),['close','focus:farmhouse','rest'])
 })

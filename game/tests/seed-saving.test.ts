@@ -8,7 +8,7 @@ test('one harvested ordinary carrot becomes three seeds without planting or chan
   const before=structuredClone(farm),quote=seedSavingQuote(farm,'carrot')!
   assert.equal(quote.available,true);assert.equal(quote.produce,3);assert.equal(quote.remaining,2)
   assert.equal(quote.seeds,3);assert.equal(quote.total,6);assert.deepEqual(farm,before)
-  assert.ok(saveCropSeeds(farm,quote.token).ok)
+  assert.deepEqual(saveCropSeeds(farm,quote.token),{ok:true,message:'Морковь: потрачен 1 обычный продукт, получено 3 семени.'})
   const expected=structuredClone(before);expected.produce.carrot=2;expected.seeds.carrot=6;expected.workToday++
   assert.deepEqual(farm,expected)
   assert.deepEqual(restoreCurrentFarm(JSON.parse(JSON.stringify(farm))),expected)

@@ -132,3 +132,26 @@ test('the watering can suggests a plant only while a bed actually needs water',(
   assert.equal(farm.day,1);assert.equal(farm.water,5);assert.deepEqual(choose(),['canvas','Сейчас поливать нечего.'])
   assert.ok(upgradeBuilding(farm,'well').ok);assert.deepEqual(choose(),['well'])
 })
+
+test('choosing Water by keyboard with an empty basic can targets the well without using it',()=>{
+  const farm=createFarm()
+  const originalDry=farm.beds.flatMap((_,i)=>getBedAction(farm,i).kind==='water'?[i]:[])
+  assert.equal(originalDry.length,6)
+  assert.ok(workBed(farm,13).ok,'plant a seventh thirsty crop on the prepared bed')
+  for(const i of originalDry)assert.ok(workBed(farm,i).ok)
+  assert.equal(farm.day,1);assert.equal(farm.water,0)
+  assert.equal(getBedAction(farm,13).kind,'water');assert.equal(getBedAction(farm,13).available,false)
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const action=stripTypeScriptTypes(main.slice(main.indexOf('function useHotbar('),main.indexOf('function highlightControl('))+";useHotbar('water',keyboard)")
+  function choose(keyboard:boolean){
+    const calls:string[]=[],before=structuredClone(farm)
+    runInNewContext(action,{farm,keyboard,getBedAction,activeTool:'seeds',status(){},notify(){},
+      canvas:{focus:()=>calls.push('canvas')},island:{focusTarget:(t:{kind:string})=>calls.push('focus:'+t.kind)},
+      activateTarget:(t:{kind:string})=>calls.push('use:'+t.kind)})
+    assert.deepEqual(farm,before,'selecting Water does not refill, move the farmer or work a bed')
+    return calls
+  }
+  assert.deepEqual(choose(true),['focus:well']);assert.deepEqual(choose(false),['canvas'])
+  assert.ok(refillWater(farm).ok);assert.deepEqual(choose(true),['canvas'])
+  assert.ok(upgradeBuilding(farm,'well').ok);assert.deepEqual(choose(true),['use:well'])
+})

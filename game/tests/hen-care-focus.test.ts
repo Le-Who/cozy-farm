@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
 import { henCareResultFocus } from '../src/hen-care-focus.ts'
 
 const setup = (action = 'pet', value = '0') => {
@@ -41,7 +43,39 @@ test('focus-only wiring is a scoped fallback after fresh enabled identity, with 
   const read=(file:string)=>readFileSync(new URL(file,import.meta.url),'utf8')
   const source=read('../src/hen-care-focus.ts'), main=read('../src/main.ts'), css=read('../src/hen-friendship.css')
   assert.doesNotMatch(source,/innerHTML|textContent|createElement|addEventListener|localStorage|saveFarm|perform\(|\.click\(|disabled\s*=/)
-  assert.match(main,/replacement \?\? \(panel === 'hen-friendship' \? henCareResultFocus\(dialogContent, focused\) : undefined\) \?\? closeButton/)
+  assert.match(main,/replacement \?\? incubatorRoute \?\? \(panel === 'hen-friendship' \? henCareResultFocus\(dialogContent, focused\) : undefined\) \?\? closeButton/)
   assert.match(main,/nextFocus\.focus\(\{ preventScroll: true \}\)/)
   assert.match(css,/\.hen-friend-progress \.hen-care-focus:focus-visible\{outline:3px solid var\(--plum\);outline-offset:2px\}/)
+})
+
+test('redraw keeps an enabled identity before any panel fallback and never activates the recovered control', () => {
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const start=main.indexOf("  if (focused && panel !== 'bay-freight'")
+  assert.ok(start>0)
+  const recovery=stripTypeScriptTypes(main.slice(start,main.indexOf('\n}\n',start)))
+  assert.doesNotMatch(recovery,/\.click\(|perform\(|saveFarm|endDay\(/)
+  for(const [panel,action,replacement,hasRoute,hasProgress,expected] of [
+    ['hen-friendship','pet',true,false,true,'same'],
+    ['hen-friendship','pet',false,false,true,'progress'],
+    ['hen-friendship','pet',false,false,false,'close'],
+    ['coop','incubate-egg',true,true,true,'same'],
+    ['coop','incubate-egg',false,true,true,'route'],
+    ['coop','incubate-egg',false,false,true,'close'],
+    ['coop','feed',false,true,true,'close'],
+    ['rest','pet',false,true,true,'close'],
+  ] as const){
+    const effects:string[]=[]
+    const control=(label:string)=>({dataset:{action},focus(options:{preventScroll:boolean}){
+      assert.equal(options.preventScroll,true);effects.push(label)
+    },click(){assert.fail('focus recovery must not activate anything')}})
+    const current=control('same'),progress=control('progress'),route=control('route')
+    let careQueries=0,routeQueries=0
+    const dialogContent={querySelectorAll:(selector:string)=>{assert.equal(selector,'button:not(:disabled)');return replacement?[current]:[]},
+      querySelector:(selector:string)=>{assert.equal(selector,'.coop-primary [data-action="visit-rest"]');routeQueries++;return hasRoute?route:null}}
+    runInNewContext(recovery,{panel,focused:control('previous'),focusedSeedCrop:undefined,focusKey:(b:ReturnType<typeof control>)=>b.dataset.action,
+      closeButton:control('close'),dialogContent,henCareResultFocus(){careQueries++;return hasProgress?progress:undefined}})
+    assert.deepEqual(effects,[expected]);assert.equal(careQueries,panel==='hen-friendship'&&!replacement?1:0)
+    if(panel!=='coop'||action!=='incubate-egg')assert.equal(routeQueries,0)
+    else if(!replacement)assert.equal(routeQueries,1)
+  }
 })

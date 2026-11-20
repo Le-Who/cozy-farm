@@ -57,7 +57,7 @@ test('actual HUD handler selects every guided shape but preserves manual or malf
 test('actual requirement route sets the shape before focusing the workshop, without baking or saving',async()=>{
   for(const shape of workshopShapes){
     const farm=pastryGuidanceFixture(),before=structuredClone(farm),focused:unknown[]=[],calls:string[]=[];
-    const state={farm,pastryShape:'folded',workshopShapes,getRequirementHint:()=>({action:{target:'workshop',value:shape}}),
+    const state={farm,panel:'village-meal',pastryShape:'folded',workshopShapes,getRequirementHint:()=>({action:{target:'workshop',value:shape}}),
       fieldViewButton:{getAttribute:()=> 'false'},closeDialog:()=>calls.push('close'),
       island:{focusTarget:(place:unknown)=>focused.push([place,state.pastryShape])}};
     await runInNewContext(js(`${show.getText(main)}\nshowRequirement({})`),state);
@@ -83,7 +83,7 @@ test('explicit baking still spends only the existing recipe and grants the selec
 
 test('an unknown requirement shape keeps the current choice and cannot become an executable command',async()=>{
   for(const value of [undefined,'unknown','long; bakeWorkshop(farm,"long")']){
-    const farm=pastryGuidanceFixture(),before=structuredClone(farm),state={farm,pastryShape:'folded',workshopShapes,
+    const farm=pastryGuidanceFixture(),before=structuredClone(farm),state={farm,panel:'village-meal',pastryShape:'folded',workshopShapes,
       getRequirementHint:()=>({action:{target:'workshop',value}}),fieldViewButton:{getAttribute:()=> 'false'},
       closeDialog:()=>{},island:{focusTarget:()=>{}}};
     await runInNewContext(js(`${show.getText(main)}\nshowRequirement({})`),state);

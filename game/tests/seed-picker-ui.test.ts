@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
-import { createFarm, cropIds, cropDefinitions, buySeeds, workBed, selectSeed, restoreCurrentFarm } from '../src/farm.ts'
+import { createFarm, cropIds, cropDefinitions, buySeeds, buyFeed, workBed, selectSeed, restoreCurrentFarm } from '../src/farm.ts'
 import { renderSeedPicker } from '../src/seed-picker-ui.ts'
 import { seedChoice, chooseSeedForBed } from '../src/seed-choice.ts'
 import { seedSavingQuote, saveCropSeeds } from '../src/seed-saving.ts'
@@ -83,4 +83,27 @@ test('the primary purchase names the actual coin cost as well as the seed gain, 
  }
  const selected=renderSeedPicker(f,'carrot',undefined,{...art,button})
  assert.doesNotMatch(selected,/data-action="buy-seeds"/);assert.match(selected,/Обменять урожай на 3 семени/)
+})
+
+test('an earned empty packet puts the only affordable refill before all ten choices without spending on preview',()=>{
+ const f=createFarm(), bed=2, crop='wheat'
+ // Harvest wheat, sow the two remaining seeds, prepare another bed, then spend down to two coins.
+ for(const result of [workBed(f,4,0),selectSeed(f,crop),workBed(f,4,0),workBed(f,13,0),workBed(f,bed,0),buySeeds(f,'pumpkin'),buySeeds(f,'blueberry')]) assert.ok(result.ok,result.message)
+ const primary=(html:string)=>html.match(/<div class="seed-picker-primary">([\s\S]*?)<\/div>/)![1]
+ assert.match(primary(renderSeedPicker(f,crop,bed,art)),/data-action="buy-seeds"/,'buy stays first while affordable')
+ assert.ok(buyFeed(f).ok);assert.equal(f.coins,2);assert.equal(f.seeds.wheat,0);assert.equal(f.produce.wheat,3)
+ const before=structuredClone(f),html=renderSeedPicker(f,crop,bed,art),quote=seedSavingQuote(f,crop)!
+ assert.deepEqual(f,before);assert.equal((html.match(/class="seed-picker-tile"/g)??[]).length,10)
+ assert.match(primary(html),/data-action="save-crop-seeds"/);assert.ok(primary(html).includes(quote.token))
+ assert.ok(html.indexOf('data-action="save-crop-seeds"')<html.indexOf('class="seed-picker-grid"'))
+ assert.equal((html.match(/data-action="save-crop-seeds"/g)??[]).length,1)
+ assert.match(html,/Цена: пшеница ×1 из обычного урожая/);assert.match(html,/data-action="buy-seeds"[^>]* disabled>Купить ×3 · 4/)
+ assert.ok(saveCropSeeds(f,quote.token).ok)
+ const after=structuredClone(before);after.produce.wheat--;after.seeds.wheat+=3;after.workToday++
+ assert.deepEqual(f,after);assert.equal(saveCropSeeds(f,quote.token).ok,false)
+ assert.match(primary(renderSeedPicker(f,crop,bed,art)),/data-action="choose-seed"/)
+ assert.ok(chooseSeedForBed(f,crop,bed,seedChoice(f,crop,bed).token).ok)
+ assert.equal(f.beds[bed].kind,'tilled');assert.equal(f.seeds.wheat,3)
+ assert.ok(workBed(f,bed,0).ok);assert.equal(f.seeds.wheat,2);assert.equal(f.beds[bed].kind,'crop')
+ assert.deepEqual(restoreCurrentFarm(structuredClone(f)),f)
 })

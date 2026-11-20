@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import {readFileSync} from 'node:fs'
+import {stripTypeScriptTypes} from 'node:module'
+import {runInNewContext} from 'node:vm'
 import { fileURLToPath } from 'node:url'
 import { createServer, type ViteDevServer } from 'vite'
 import { createFarm, endDay, restoreCurrentFarm, type FarmState } from '../src/farm.ts'
-import { quoteExpedition } from '../src/ferry-expeditions.ts'
+import { expeditionOfferAfterClaim, quoteExpedition } from '../src/ferry-expeditions.ts'
 import { expeditionWallet, receiveFerryExpedition, sendFerryExpedition } from '../src/harbour-economy.ts'
+import {earlyFerryFarm,tendEarlyFerryFarm} from './fixtures/early-ferry.ts'
 import type { renderFreightPanel } from '../src/bay-freight-ui.ts'
 
 let server: ViteDevServer, renderPanel: typeof renderFreightPanel
@@ -31,7 +35,7 @@ for (const [offer, expected, confirmation] of [
   ['mill-buy','Получить груз','Груз получен. Можно выбрать следующий рейс.'],
   ['mill-grain','Получить груз и выручку','Груз и выручка получены. Можно выбрать следующий рейс.'],
   ['pair:mill-sale+mill-buy','Получить груз','Груз получен. Можно выбрать следующий рейс.'],
-  ['explore-salt','Открыть новый порт','Новый порт открыт. Выберите его на карте.'],
+  ['explore-salt','Открыть новый порт','Открыт новый торговый порт: Соляной маяк.'],
 ] as const) test(`${offer} ready action describes only its frozen rewards and claims exactly once`,()=>{
   let farm=setup()
   if (offer==='explore-salt') farm.freight.expeditions.markets.mill.visits=1
@@ -68,4 +72,32 @@ test('a mixed frozen voyage keeps its label when a fresh quote would have goods 
   assert.equal(farm.freight.expeditions.active!.earnCoins,frozen.earnCoins)
   const before=structuredClone(farm);assert.equal(label(farm),'Получить груз и выручку');assert.deepEqual(farm,before)
   const result=receiveFerryExpedition(farm);assert.ok(result.ok);assert.equal(result.message,'Груз и выручка получены. Можно выбрать следующий рейс.')
+})
+
+test('claiming each earned scouting voyage already opens that port’s first trade, without another map click or dispatch',()=>{
+  const farm=earlyFerryFarm(),main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const claim=stripTypeScriptTypes("switch('expedition-claim'){"+main.slice(main.indexOf("    case 'expedition-claim':"),main.indexOf("    case 'music-warehouse-visit':"))+'}')
+  for(const offer of ['mill-sale','explore-salt','salt-carrots','explore-orchard']){
+    assert.ok(sendFerryExpedition(farm,offer).ok);assert.ok(endDay(farm).ok)
+    if(!offer.startsWith('explore-')){assert.ok(receiveFerryExpedition(farm).ok);tendEarlyFerryFarm(farm);continue}
+    const world=farm.freight.expeditions,voyage=world.active!,port=voyage.port
+    const [name,trade,day]=port==='salt'?['Соляной маяк','salt-carrots',3]:['Садовая пристань','orchard-apples',5]
+    assert.equal(farm.day,day);assert.equal(voyage.phase,'ready');assert.ok(!world.discovered.includes(port))
+    const wallet=expeditionWallet(farm),serial=world.serial,visits=world.markets[port].visits
+    let feedback=''
+    const ui={farm,event:{detail:1},selectedExpeditionPort:port,selectedExpeditionOffer:offer,expeditionOfferAfterClaim,receiveFerryExpedition,
+      perform(action:()=>{ok:boolean;message:string}){const result=action();feedback=result.message;return result.ok},bayAudio:{playEvent(){}}}
+    runInNewContext(claim,ui)
+    const after=structuredClone(farm)
+    const html=renderPanel(farm.freight,{day:farm.day,coins:farm.coins,boatOwned:true,expeditionPort:ui.selectedExpeditionPort,
+      expeditionOffer:ui.selectedExpeditionOffer,playerPort:'home',openedPorts:['home','grove'],products:[],carried:expeditionWallet(farm).bag,icon:()=>''})
+    assert.match(html,new RegExp('data-action="expedition-port" data-value="'+port+'"[^>]*aria-pressed="true"'))
+    assert.match(html,new RegExp('data-action="expedition-offer" data-value="'+trade+'"[^>]*aria-pressed="true"'))
+    assert.match(html,new RegExp('data-action="expedition-send" data-value="'+trade+'"'));assert.doesNotMatch(html,/data-action="expedition-claim"/)
+    assert.equal(feedback,'Открыт новый торговый порт: '+name+'.')
+    assert.equal(world.active,null);assert.equal(world.serial,serial);assert.equal(world.markets[port].visits,visits)
+    assert.deepEqual(expeditionWallet(farm),wallet);assert.equal(receiveFerryExpedition(farm).ok,false);assert.deepEqual(farm,after)
+    assert.deepEqual(restoreCurrentFarm(after),farm)
+    tendEarlyFerryFarm(farm)
+  }
 })

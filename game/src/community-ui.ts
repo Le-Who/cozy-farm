@@ -93,7 +93,9 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
         : recovery.state === 'spent' && offer ? offer.source === 'signature' && offer.canCook
         ? control('Повторить точно ×1', 'neighbor-repeat-food', plan.id)
         : control(offer.canCook ? 'Приготовить ещё' : 'К рецепту', 'cook-intent-offer', offer.id, `data-plan="${escape(plan.id)}"`) : '';
-      const arrangeLabel = plan.episode === 'beaTea' ? 'Накрыть стол к чаю' : plan.arrangement === 'table' ? 'Накрыть стол' : 'Собрать корзинку';
+      const arrangeLabel = plan.episode === 'beaTea' ? 'Накрыть стол к чаю'
+        : plan.episode === 'finnLantern' ? 'К столу у фонариков'
+        : plan.arrangement === 'table' ? 'Накрыть стол' : 'Собрать корзинку';
       content = `<div class="community-selected"><span class="community-selected-picture">${offer ? art.offerIcon(offer) : prop(plan.arrangement)}</span><strong>${escape(plan.food!.name)}</strong>${ready ? control(arrangeLabel, 'arrange-neighbor', plan.id) : `<p class="community-note" role="status">${recovery.message}</p>${repair}`}</div>
         <details class="community-alternatives" ${!ready && !recovery.warehouse && !recovery.shelved ? 'open' : ''}><summary>Выбрать другое угощение</summary>${offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id })}</details>`;
       break;

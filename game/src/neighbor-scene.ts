@@ -1,3 +1,4 @@
+import { signatureTableDish } from './supper-dish.ts';
 type Point = { x: number; y: number };
 export type NeighborScenePlan = {
   resident: 'bea' | 'finn';
@@ -94,7 +95,5 @@ export function neighborFoodArt(id: string, signature?: { base: 'tart' | 'preser
     const dish = id.slice(5);
     return dish === 'orchardTart' ? 'ui-tart' : `ui-${dish.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}`;
   }
-  if (signature?.base === 'preserves') return 'ui-orchard-preserves';
-  const berry = ['strawberry', 'blueberry', 'raspberry'].find(id => signature?.ingredients.some(part => part.id === id));
-  return berry ? `ui-${berry}-tart` : 'ui-tart';
+  return `ui-${signatureTableDish(signature)}`;
 }

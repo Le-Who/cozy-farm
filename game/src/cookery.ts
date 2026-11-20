@@ -503,8 +503,11 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   view.addEventListener('pointercancel', abandon, { signal }); view.addEventListener('lostpointercapture', event => { if (pointerId === event.pointerId && touches.size <= 1) abandon() }, { signal })
   window.addEventListener('blur', abandon, { signal })
   view.addEventListener('keydown', event => {
+    if (event.defaultPrevented) return
+    if (event.key === 'Escape' && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      event.preventDefault(); if (!event.repeat) cancel(); return
+    }
     if ((event.target as HTMLElement).closest('button')) return
-    if (event.key === 'Escape') { event.preventDefault(); cancel(); return }
     if (!loaded || contextLost) return
     const key = /^Key[FSQE]$/.test(event.code) ? event.code.slice(3).toLowerCase() : event.key.toLowerCase()
     if (key === 'enter') { event.preventDefault(); doFinish(); return }
