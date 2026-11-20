@@ -10,13 +10,20 @@ type CoopComponents = {
   feedRow():string
 }
 
+export function hasIncubatorBasketSource(farm:FarmState):boolean {
+  return farm.coopSpecialization==='hatchery' && farm.flockSize<maxFlockSize && farm.hatchDay===null
+    && farm.eggs===0 && farm.eggsReady===0 && getEggUnpackAction(farm,'basket').available
+}
+
 /** Existing actions, grouped by current daily work before optional services. No saved UI state. */
 export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopComponents):string {
   const morning=getCoopMorning(farm)
   const capacity=morning.blockedIfFed?' · соберите до отдыха':''
   const incubation=farm.coopSpecialization==='hatchery'&&farm.flockSize<maxFlockSize
     ?row('egg','Инкубатор',farm.hatchDay===null?`1 обычное яйцо · в запасе ${farm.eggs} · ${ruCount(incubationDays,'ночь','ночи','ночей')}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
-      farm.hatchDay===null?button('Положить яйцо','incubate-egg',farm.eggs>0):button('К отдыху дома','visit-rest',true,{secondary:true})):''
+      farm.hatchDay!==null?button('К отдыху дома','visit-rest',true,{secondary:true})
+        :hasIncubatorBasketSource(farm)?button('К корзине яиц','incubator-basket',true,{secondary:true})
+        :button('Положить яйцо','incubate-egg',farm.eggs>0)):''
   const packing=(farm.coopSpecialization==='packing'?row('ui-egg-crate',`Ящики яиц · ${farm.eggCrates}`,`Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,
     button('Упаковать','pack-egg-crate',farm.eggs>=eggsPerCrate,{context:'ящик яиц'})+button(`Распаковать · +${eggsPerCrate}`,'unpack-egg-crate',getEggUnpackAction(farm,'crate').available,{secondary:true})):'')
     +(farm.buildingLevels.coop >= 2 || farm.eggBaskets > 0 ? row('ui-egg-basket',`Корзины яиц · ${farm.eggBaskets}`,`Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,

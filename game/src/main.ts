@@ -73,7 +73,7 @@ import './apiary-preview.css'
 import { activeHarvestPicnic } from './harvest-picnic'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopCapacityWarning } from './coop-preview'
-import { renderCoopPanel } from './coop-panel'
+import { hasIncubatorBasketSource, renderCoopPanel } from './coop-panel'
 import { groupCoopServices } from './coop-services'
 import './coop-services.css'
 import './coop-panel.css'
@@ -4312,6 +4312,10 @@ app.addEventListener('click', async (event) => {
     case 'unpack-egg-crate':perform(()=>unpackEggCrate(farm),false,true);break
     case 'pack-egg-basket': arrangementRequest = { kind: 'packing', mode: 'eggs' }; openPanel('arrangement'); break
     case 'pack-egg-crate': arrangementRequest = { kind: 'packing', mode: 'crate' }; openPanel('arrangement'); break
+    case 'incubator-basket':
+      if (panel==='coop' && dialog.open && hasIncubatorBasketSource(farm))
+        highlightControl(dialogContent.querySelector('.coop-packing [data-action="unpack-egg-basket"]:not(:disabled)')?.closest<HTMLElement>('.dialog-row') ?? null)
+      break
     case 'incubate-egg': perform(() => incubateEgg(farm)); break
     case 'rest-close-shop':
       if (panel === 'rest' && dialog.open) perform(() => closeShopBeforeRest(farm, value), false, true)

@@ -1,10 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
+import {stripTypeScriptTypes} from 'node:module'
+import {runInNewContext} from 'node:vm'
 import * as F from '../src/farm.ts'
-import {renderCoopPanel} from '../src/coop-panel.ts'
+import * as Coop from '../src/coop-panel.ts'
 import {renderCoopMorning} from '../src/coop-preview.ts'
+import {ActivationKeyGuard,isGuardedAction} from '../src/action-click-guard.ts'
 import {chickenCarePlayer} from './fixtures/chicken-care-player.ts'
+const {renderCoopPanel}=Coop
 const button=(label:string,action:string,enabled=true,options:{value?:string|number}={})=>`<button data-action="${action}"${options.value!==undefined?` data-value="${options.value}"`:''}${!enabled?' disabled':''}>${label}</button>`
 const row=(image:string,name:string,detail:string,actions='')=>`<li data-row="${name}"><i>${image}</i><strong>${name}</strong><small>${detail}</small>${actions}</li>`
 const render=(f:F.FarmState)=>renderCoopPanel(f,{icon:id=>`<i>${id}</i>`,row,button,feedRow:()=>row('tool-feed','Корм для кур',f.chickensFed?'Сегодня накормлены':'Корм к утренней кладке',f.chickensFed?'':f.feed>0?button('Покормить','feed'):button('Купить корм','buy-feed',f.coins>=F.feedBagPrice))})
@@ -100,4 +104,55 @@ test('a pending egg gives a route to the explicit bedtime decision on both night
  }
  assert.equal(f.day,day+2);assert.equal(f.flockSize,flock+1);assert.equal(f.eggs,eggs-1)
  assert.doesNotMatch(render(f),/data-action="visit-rest"|data-row="Инкубатор"/)
+})
+
+function firstHatcheryWithBasket() {
+ const player=chickenCarePlayer('orchard','basic')
+ player.act('feedChickens');player.act('endDay');player.act('collectEggs');player.act('packEggBasket')
+ assert.equal(player.state.eggs,1);player.act('sellMarketItem','eggs',1)
+ player.act('specializeFacility','hatchery')
+ assert.equal(player.state.day,2);assert.equal(player.state.eggs,0);assert.equal(player.state.eggsReady,0)
+ assert.equal(player.state.eggBaskets,1);assert.equal(player.state.hatchDay,null)
+ return player
+}
+
+test('a first hatchery with all loose eggs packed points to its existing basket rather than just disabling incubation',()=>{
+ const p=firstHatcheryWithBasket(),before=structuredClone(p.state),html=render(p.state)
+ const primary=html.slice(0,html.indexOf('coop-forecast'))
+ assert.match(primary,/data-row="Инкубатор"[^\n]*data-action="incubator-basket"[^>]*>К корзине яиц/)
+ assert.doesNotMatch(primary,/data-action="incubate-egg"|data-action="unpack-egg-basket"/)
+ assert.equal(actions(html).filter(a=>a.action==='unpack-egg-basket'&&!a.disabled).length,1)
+ assert.deepEqual(p.state,before)
+ p.act('unpackEggBasket')
+ assert.equal(p.state.eggs,3);assert.equal(p.state.hatchDay,null);assert.equal(p.state.day,2)
+ assert.match(render(p.state),/data-action="incubate-egg">Положить яйцо/)
+ assert.doesNotMatch(render(p.state),/data-action="incubator-basket"/)
+ p.act('incubateEgg');assert.equal(p.state.eggs,2);assert.equal(p.state.hatchDay,4)
+})
+
+test('the exact basket shortcut reveals one neutral destination and cannot reuse a held or stale activation',()=>{
+ const p=firstHatcheryWithBasket(),target={},visits:unknown[]=[]
+ const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+ const from=main.indexOf("    case 'incubator-basket':"),to=main.indexOf("    case 'incubate-egg':",from)
+ assert.ok(from>=0&&to>from)
+ const script=stripTypeScriptTypes("switch('incubator-basket'){"+main.slice(from,to)+'}')
+ const go=(farm:F.FarmState,panel='coop',open=true)=>{
+  const before=structuredClone(farm),button={closest:(s:string)=>s==='.dialog-row'?target:null}
+  runInNewContext(script,{farm,panel,dialog:{open},hasIncubatorBasketSource:Coop.hasIncubatorBasketSource,
+   dialogContent:{querySelector:(s:string)=>s==='.coop-packing [data-action="unpack-egg-basket"]:not(:disabled)'?button:null},
+   highlightControl:(node:unknown)=>visits.push(node)})
+  assert.deepEqual(farm,before)
+ }
+ go(p.state);assert.deepEqual(visits,[target])
+ go(p.state,'rest');go(p.state,'coop',false)
+ p.act('feedChickens');p.act('endDay');assert.ok(p.state.eggsReady>0)
+ go(p.state);assert.doesNotMatch(render(p.state),/data-action="incubator-basket"/)
+ assert.deepEqual(visits,[target])
+ for (const key of ['Enter',' ']) {
+  const guard=new ActivationKeyGuard()
+  assert.equal(isGuardedAction('incubator-basket'),true)
+  assert.equal(guard.blocks({key,repeat:false},true),false)
+  assert.equal(guard.blocks({key,repeat:true},false),true)
+  guard.release(key);assert.equal(guard.blocks({key,repeat:false},true),false)
+ }
 })
