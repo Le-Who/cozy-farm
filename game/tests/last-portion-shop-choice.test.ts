@@ -34,9 +34,10 @@ function earned(){
 
 function scene(farm:FarmState,product:model.BayShopProduct,stockProduct?:string){
   const events:Record<string,Function>={},preview={textContent:''},confirm={disabled:false},stableProduct=product.id.slice('signature:'.length)
-  let transfers=0, saves=0
+  let transfers=0, saves=0, leaves=0
+  const exit={disabled:false,hasAttribute:(name:string)=>name==='data-close'}
   class Element { matches(selector:string){return selector==='[data-stock-form]'} }
-  const host={innerHTML:'',contains:()=>false,querySelector:(selector:string)=>{
+  const host={innerHTML:'',contains:(node:unknown)=>node===exit,querySelector:(selector:string)=>{
     if(!host.innerHTML.includes('data-stock-form'))return null
     return selector==='[data-stock-preview]'?preview:selector==='[data-stock-confirm]'?confirm:null
   },querySelectorAll:()=>[],addEventListener:(type:string,fn:Function)=>{events[type]=fn},removeEventListener(){}}
@@ -45,11 +46,30 @@ function scene(farm:FarmState,product:model.BayShopProduct,stockProduct?:string)
     ResizeObserver:class{observe(){}disconnect(){}},HTMLElement:Element,HTMLInputElement:Element,matchMedia:()=>({matches:true}),requestAnimationFrame:()=>1,
     performance,document:{activeElement:null},window:{setTimeout:()=>1},clearTimeout(){},playBaySound(){},applyIngredientFinishes(){},host,
     options:{stockProduct,state:farm.bayShop,catalog:[product],products:()=>[{...product,quantity:farm.culinary.stock[stableProduct]}],
-      takeStock:(id:string,n:number)=>{transfers++;return reserveShopGoods(farm,id,n)},onEarn:()=>assert.fail('preview is not a purchase'),onChange:()=>{saves++}}}
+      takeStock:(id:string,n:number)=>{transfers++;return reserveShopGoods(farm,id,n)},onEarn:()=>assert.fail('preview is not a purchase'),onChange:()=>{saves++},onClose:()=>{leaves++}}}
   runInNewContext(stripTypeScriptTypes(code+'\nmountBayShop(host,options)'),ctx)
-  return {host,preview,confirm,get transfers(){return transfers},get saves(){return saves},
+  return {host,preview,confirm,get transfers(){return transfers},get saves(){return saves},get leaves(){return leaves},
+    leave(){events.click({target:{closest:(selector:string)=>selector==='button'?exit:null}})},
     submit(){events.submit({target:new Element(),preventDefault(){}})}}
 }
+
+test('leaving an open shop names the actual destination without closing the business',()=>{
+  const {farm,id,product}=earned()
+  model.setBayShopOpen(farm.bayShop,true)
+  assert.deepEqual(restoreCurrentFarm(farm),farm)
+  for (const [stockProduct,label] of [[undefined,'Вернуться в бухту'],[id,'К рецепту']] as const) {
+    const before=structuredClone(farm),view=scene(farm,product,stockProduct)
+    const buttons=view.host.innerHTML.match(/<button\b[^>]*\bdata-close(?=\s|>)[^>]*>/g)??[]
+    assert.equal(buttons.length,1)
+    assert.ok(buttons[0].includes(`aria-label="${label}"`))
+    assert.doesNotMatch(buttons[0],/Закрыть лавку/i)
+    assert.match(view.host.innerHTML,/<button[^>]+data-open[^>]+aria-pressed="true">Закрыть лавку<\/button>/)
+    if (stockProduct) assert.match(view.host.innerHTML,/data-stock-form/)
+    view.leave()
+    assert.equal(view.leaves,1); assert.equal(view.transfers,0); assert.equal(view.saves,0)
+    assert.deepEqual(farm,before)
+  }
+})
 
 test('the last jar after an actual sale enters the exact quantity preview without committing a shelf or a gift',()=>{
   const {farm,recipe,id,product}=earned(),before=structuredClone(farm)

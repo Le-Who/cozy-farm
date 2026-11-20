@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { readFileSync } from 'node:fs'
 import { endDay, getShopRestForecast, restoreFarm } from '../src/farm.ts'
 import { advanceBayShop, advanceBayShopDay, setBayShopOpen, setBayShopPrice, stockBayShop } from '../src/bay-shop-model.ts'
 import { closeShopBeforeRest, renderShopRest } from '../src/shop-rest.ts'
@@ -151,10 +150,4 @@ test('the rest sales quantity, revenue and close action stay outside the optiona
   assert.match(html,/Прогноз по нынешним полкам и ценам/)
   assert.match(html,/оставшихся гостей сегодняшнего дня/)
   assert.deepEqual(farm,before)
-})
-
-test('leaving the shop screen no longer claims to close the business', () => {
-  const source = readFileSync(new URL('../src/bay-shop.ts', import.meta.url), 'utf8')
-  assert.match(source, /data-close aria-label="Вернуться в бухту"/)
-  assert.doesNotMatch(source, /Закрыть лавку и вернуться/)
 })
