@@ -3,6 +3,7 @@ import { getOrdinaryHoneyWait } from './ordinary-honey-guidance.ts';
 import { seaSaltRestNotice } from './salt-guidance.ts';
 import { getWindHoneySource } from './wind-honey-guidance.ts';
 import { getNextCropBed, getNextHarvestBed } from './crop-guidance.ts';
+import { plannedCropAt, seedForBed } from './garden-plans.ts';
 import { getLocalWarehouseSupply, warehouseRequestValue } from './warehouse-guidance.ts';
 import { getReadySignatureSuppers } from './shared-supper.ts';
 import { getFishSource, rareFishClue } from './fish-guidance.ts';
@@ -79,11 +80,14 @@ function cropSource(farm: FarmState, crop: CropId, purpose: string): DiscoveryTa
     return {...rest(farm,purpose),detail:`Ближайшая посадка (${cropDefinitions[crop].name.toLowerCase()}) уже полита и подрастёт этой ночью. Цель: ${purpose}.`};
   }
   const empty = farm.beds.findIndex(bed => bed.kind === 'empty');
-  const tilled = farm.beds.findIndex(bed => bed.kind === 'tilled');
-  if (tilled >= 0 && farm.selectedSeed === crop && farm.seeds[crop] > 0) return bedTask(farm, tilled, purpose);
+  const tilled = farm.beds.flatMap((bed, index) => bed.kind === 'tilled' ? [index] : []);
+  // Prefer a bed assigned to this crop by the player's active sowing plan.
+  const ready = tilled.find(index => plannedCropAt(farm, index) === crop)
+    ?? tilled.find(index => seedForBed(farm, index) === crop);
+  if (ready !== undefined && farm.seeds[crop] > 0) return bedTask(farm, ready, purpose);
   if (farm.seeds[crop] === 0) return farm.coins < cropDefinitions[crop].seedPrice ? coins(farm, cropDefinitions[crop].seedPrice, `семена: ${cropDefinitions[crop].name.toLowerCase()}`)
     : task(`${purpose}-${crop}`, `Купите семена: ${cropDefinitions[crop].name.toLowerCase()}`, `Купите семена, чтобы получить нужный урожай. Цель: ${purpose}.`, crop, { label: 'На рынок', target: 'visit-market', value: 'buy' });
-  if (tilled >= 0) return task(`${purpose}-${crop}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}, затем засейте подготовленную грядку.`, crop, { label: 'Выбрать семена', target: 'open-panel', value: 'seeds' });
+  if (tilled.length) return task(`${purpose}-${crop}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}, затем засейте подготовленную грядку.`, crop, { label: 'Выбрать семена', target: 'open-panel', value: 'seeds' });
   if (empty >= 0) return bedTask(farm, empty, purpose);
   const space = getNextHarvestBed(farm);
   const bed = space === undefined ? undefined : farm.beds[space];
