@@ -2038,6 +2038,10 @@ function drawPanel() {
   stopCoopServices()
   if (panel === 'recipes') { recipeBook.capture(dialogContent); recipeBook.reconcile(farm) }
   const guideGardenOpen = panel === 'guide' && (dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false)
+  // Keep an open note only on the same hen's mounted card, not on a new visit.
+  const henNotesOpen = panel === 'hen-friendship' && dialog.open
+    && dialogContent.querySelector<HTMLButtonElement>('.hen-friend-select[aria-pressed="true"]')?.dataset.value === String(selectedFriendHen)
+    && dialogContent.querySelector<HTMLDetailsElement>('.hen-friend-notes')?.open
   panelRenderVersion++
   requirementLinks.clear()
   const sceneBack=dialog.querySelector<HTMLButtonElement>('.scene-back')!
@@ -2273,6 +2277,10 @@ function drawPanel() {
       break
     case 'hen-friendship':
       dialogContent.innerHTML = renderHenFriendship(farm, island.henWalkStatus(), island.henWalkAvailable(), selectedFriendHen, icon, island.henFieldTarget(selectedFriendHen))
+      if (henNotesOpen) {
+        const notes = dialogContent.querySelector<HTMLDetailsElement>('.hen-friend-notes')
+        if (notes) notes.open = true
+      }
       break
     case 'chicken-feed':
       dialogContent.innerHTML = renderChickenFeedMixes(farm, icon, panelHistory.at(-1)?.panel === 'rest')
