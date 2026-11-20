@@ -21,6 +21,7 @@ export type FishingGameOptions = {
   fish: 'perch' | 'seaBass';
   habitat?: FishingHabitat;
   practiceOnly?: boolean;
+  resumed?: boolean;
   onCast?: () => boolean | void;
   /** Return false when the cast used the last available attempt. */
   onFinish: (result: { count: number; depth: number; catches: FishingLoot[] }) => HookChoice | boolean | void;
@@ -360,6 +361,8 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     if (contextLost || destroyed) return;
     if (model.phase === 'ready') {
       if (options.onCast?.() === false) return;
+      // Ready animates the fish. A paid restart begins at its seed, not at preview time.
+      if (options.resumed) model.time = 0;
       castFishing(model); intro.hidden = true; stage.focus({ preventScroll: true });
     } else if (model.phase === 'descending') reelFishing(model);
     // Keep a quick cast / early-retrieve pair audible even between animation frames.

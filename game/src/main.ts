@@ -180,7 +180,7 @@ import {
   beginFishingTrip,
   finishFishingTrip, type LandedFish,
   cancelFishingTrip,
-  getFishingTripConfig,
+  getFishingTripConfig, getResumableFishingTrip,
   bakeWorkshop,
   getWorkshopAction,
   workshopIngredients,
@@ -1433,9 +1433,9 @@ function stopFishing() {
   fishingGame?.destroy()
   fishingGame = undefined
   if (fishingToken !== undefined) {
-    cancelFishingTrip(farm, fishingToken)
+    const cancelled = cancelFishingTrip(farm, fishingToken)
     fishingToken = undefined
-    saveFarm()
+    if (cancelled.ok) saveFarm()
   }
   island.setFishing(false)
 }
@@ -1575,61 +1575,74 @@ function repeatRequestedFood() {
 
 function mountFishing(practiceOnly = false) {
   stopFishing()
-  let castToken: number | undefined
+  let castToken: number | undefined, finished = false
   const practice = practiceOnly ? createFishingPractice(farm) : undefined
   if (practiceOnly ? !practice : !getFishAction(farm).available) return
   fishingPractice = practice
-  const config = practice?.config ?? getFishingTripConfig(farm)
-  const remaining = getFishLimit(farm) - (farm.island === 'grove' ? farm.fishCaughtToday.grove : farm.fishCaughtToday.home)
+  const paid = practice ? undefined : getResumableFishingTrip(farm)
+  const config = practice?.config ?? paid?.config ?? getFishingTripConfig(farm)
+  const remaining = () => getFishLimit(farm) - (farm.island === 'grove' ? farm.fishCaughtToday.grove : farm.fishCaughtToday.home)
+  const capacity = practice ? config.capacity : Math.min(config.capacity, remaining())
+  const layoutToken = paid?.token ?? farm.fishingTripSerial + 1
   dialogContent.innerHTML = '<div class="fishing-host"></div>'
   const host = dialogContent.querySelector<HTMLElement>('.fishing-host')!
-  fishingGame = createFishingGame(host, {
-    practiceOnly,
-    seed: practice?.seed ?? farm.day*1009+(farm.fishingTripSerial+1)*9176+(farm.island==='grove'?71:17),
-    capacity: practice ? config.capacity : Math.min(config.capacity, remaining), maxDepth: config.depth, resilience: config.resilience,
-    habitat:config.habitat,
+  // A result can outlive its token. Use the mounted scene, not a token, to own its controls.
+  const current = (): boolean => fishingGame === scene
+  const scene: ReturnType<typeof createFishingGame> = createFishingGame(host, {
+    practiceOnly, resumed: !!paid,
+    seed: practice?.seed ?? farm.day*1009+layoutToken*9176+(farm.island==='grove'?71:17),
+    capacity, maxDepth: config.depth, resilience: config.resilience,
+    habitat: config.habitat && { ...config.habitat },
     fish: practice?.fish ?? (farm.island === 'grove' ? 'seaBass' : 'perch'),
     onCast() {
+      if (!current() || castToken !== undefined || finished) return false
       if (practice) {
-        if (practice !== fishingPractice || !practice.cast()) return false
-        island.setFishing(true)
-        return true
+        if (!practice.cast()) return false
+      } else if (paid) {
+        if (getResumableFishingTrip(farm) !== paid || Math.min(config.capacity, remaining()) !== capacity) return false
+        castToken = fishingToken = paid.token
+      } else {
+        const trip = beginFishingTrip(farm)
+        if (!trip.ok || trip.token === undefined) { notify(trip.message, false); return false }
+        castToken = fishingToken = trip.token
+        saveFarm()
       }
-      const trip = beginFishingTrip(farm)
-      if (!trip.ok || trip.token === undefined) { notify(trip.message, false); return false }
-      castToken = fishingToken = trip.token
       island.setFishing(true)
-      saveFarm()
       return true
     },
-    onCancel: () => { if (!practice || practice === fishingPractice) closeDialog() },
-    onAgain: () => { if (!practice || practice === fishingPractice) mountFishing(practiceOnly) },
-    onPractice: practiceOnly ? undefined : () => mountFishing(true),
+    onCancel: () => { if (current()) closeDialog() },
+    onAgain: () => { if (current() && finished) mountFishing(practiceOnly) },
+    onPractice: practiceOnly ? undefined : () => { if (current() && finished) mountFishing(true) },
     onFinish({ catches }) {
+      if (!current() || finished) return false
       if (practice) {
-        if (practice !== fishingPractice) return false
+        if (!practice.finish(catches)) return false
+        finished = true
         island.setFishing(false)
-        return practice.finish(catches)
+        return true
       }
       const token = castToken
-      if (token === undefined || fishingToken !== token) return false
-      castToken = fishingToken = undefined
-      island.setFishing(false)
-      perform(() => {
+      if (token === undefined || fishingToken !== token || getResumableFishingTrip(farm)?.token !== token) return false
+      const settled = perform(() => {
         const result = finishFishingTrip(farm, token, catches, true)
-        fishingLanding = result.landed
+        if (result.ok) fishingLanding = result.landed
         return result
       }, false, true)
+      if (!settled) return false
+      castToken = fishingToken = undefined
+      finished = true
+      island.setFishing(false)
       const landed = fishingLanding, canRecast = getFishAction(farm).available
       if (!landed) return canRecast
       return { canRecast, index: landed.index, release() {
-        if (landed !== fishingLanding || !landed.release()) return false
+        if (!current() || landed !== fishingLanding || !landed.release()) return false
         fishingLanding = undefined
         saveFarm()
         return true
       } }
     },
   })
+  fishingGame = scene
   host.querySelector<HTMLButtonElement>('.fishing-practice-shore, .fishing-controls .fishing-action')?.focus({ preventScroll: true })
 }
 

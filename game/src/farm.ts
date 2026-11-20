@@ -1104,6 +1104,13 @@ export function getFishingTripConfig(farm: FarmState): FishingTripConfig {
 }
 function copyFishingTripConfig(config:FishingTripConfig):FishingTripConfig{return {...config,...(config.habitat?{habitat:copyCoveFishingHabitat(config.habitat)}:{})}}
 
+/** A pending cast stays paid while visiting another shore, but only reopens here. */
+export function getResumableFishingTrip(farm: FarmState) {
+  const trip = farm.pendingFishingTrip;
+  return trip && trip.day === farm.day && trip.island === farm.island && trip.token === farm.fishingTripSerial
+    && getFishAction(farm).available ? trip : undefined;
+}
+
 export function beginFishingTrip(farm: FarmState): ActionResult & { token?: number; config?: FishingTripConfig } {
   const action = getFishAction(farm);
   if (!action.available || !isId(orchardIslandIds, farm.island)) return failure(action.label);
