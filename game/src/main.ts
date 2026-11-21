@@ -451,7 +451,10 @@ try {
       const active = communityRequest
       const current = active?.kind === 'intent' ? getCommunityOrders(farm).find(order => order.id === active.orderId)
         : active?.kind === 'neighbor' ? getNeighborPlans(farm).find(plan => plan.resident === active.resident) : undefined
-      if (current && typeof selection.food === 'string') requestedFood = getIntentOffers(farm, current.intentId).find(offer => offer.id === selection.food && offer.eligible)?.id
+      // Keep the neighbour shortcut across meetings, but never carry the previous meeting’s recipe.
+      if (current && typeof selection.food === 'string' && (request.kind !== 'neighbor' || request.planId === current.id)) {
+        requestedFood = getIntentOffers(farm, current.intentId).find(offer => offer.id === selection.food && offer.eligible)?.id
+      }
     }
   }
 } catch { /* A stale menu selection never prevents loading the farm. */ }
