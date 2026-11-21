@@ -39,10 +39,23 @@ test('only actual liked purchase becomes a remembered taste, exact recipe identi
  v.choose('finn');assert.doesNotMatch(card(s,v),/Грушевое облако|Понравилось/)
 })
 
-test('a real neutral purchase never becomes a favourite even after repeat sales',()=>{
+test('a repeat neutral purchase is not a favourite or a first encounter in the customer ledger',()=>{
  const s=createBayShop(),v=new BayShopCustomerView(),plain={...pear,identity:'plain-a',name:'Простая булочка',tags:['bread']}
- stockBayShop(s,0,plain,30);setBayShopOpen(s,true);run(s,7400);assert.equal(s.memories.bea.purchases[plain.identity].liked,0)
- advanceBayShopDay(s,2);run(s,7400);const html=card(s,v);assert.match(html,/Куплено: 2/);assert.doesNotMatch(html,/Понравилось:/)
+ assert.ok(stockBayShop(s,0,plain,1));setBayShopOpen(s,true);run(s,7400)
+ assert.equal(s.revenue,50);assert.equal(s.visitor?.outcome?.kind,'bought')
+ assert.equal(s.visitor?.outcome?.kind==='bought'&&s.visitor.outcome.returning,false)
+ assert.deepEqual(advanceBayShopDay(s,2),[]);assert.ok(stockBayShop(s,0,plain,1));assert.ok(setBayShopPrice(s,0,48));run(s,7400)
+ assert.equal(s.visitor?.budget,103);assert.equal(s.visitor?.outcome?.kind,'bought')
+ assert.equal(s.visitor?.outcome?.kind==='bought'&&s.visitor.outcome.returning,true)
+ assert.equal(s.visitor?.outcome?.kind==='bought'&&s.visitor.outcome.price,48)
+ assert.deepEqual(s.memories.bea.purchases[plain.identity],{bought:2,liked:0})
+ const html=card(s,v);assert.match(html,/103 монеты/);assert.match(html,/Куплено: 2/);assert.doesNotMatch(html,/Понравилось:/)
+ const before=structuredClone(s);assert.ok(v.choose('finn'))
+ const ledger=renderBayShopCustomers(s,v)
+ assert.match(ledger,/Выручка: <strong>98 монет<\/strong>/)
+ assert.match(ledger,/Купили: 2 · понравилось: 0/)
+ assert.doesNotMatch(ledger,/Помнят вкус:|Первое знакомство с вашим товаром/)
+ assert.deepEqual(s,before)
 })
 
 test('budget is not willingness or a guaranteed price; observed rejected visit creates no favourite',()=>{

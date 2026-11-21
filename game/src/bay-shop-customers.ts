@@ -55,7 +55,7 @@ export function renderBayShopCustomers(state:BayShopState, view:BayShopCustomerV
       ${reputation.length&&!repeatsBuyer?`<h3>${manyProducts?`<button class="bay-shop-customer-help" type="button" data-customer-history aria-expanded="${view.historyOpen}" aria-controls="bay-shop-product-sales">Продажи по товарам · ${reputation.length}</button>`:'Продажи по товарам'}</h3>
       <div id="bay-shop-product-sales"${showProducts?'':' hidden'}>${showProducts?reputation.map(([key,rep])=>{
         const fans=bayShopVisitors.filter(customer=>(state.memories[customer.id].purchases[key]?.liked??0)>0).map(customer=>customer.name)
-        return `<div class="bay-shop-reputation"><strong data-user-text>${escape(productName(key))}</strong><span>Купили: ${rep.sold} · понравилось: ${rep.liked}</span><small>${fans.length?`Помнят вкус: ${fans.join(', ')}`:'Первое знакомство с вашим товаром'}</small></div>`
+        return `<div class="bay-shop-reputation"><strong data-user-text>${escape(productName(key))}</strong><span>Купили: ${rep.sold} · понравилось: ${rep.liked}</span>${fans.length?`<small>Помнят вкус: ${fans.join(', ')}</small>`:''}</div>`
       }).join(''):''}</div>`:''}
     </section>
   </div>`
