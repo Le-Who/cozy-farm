@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createFarm, feedChickens, restoreCurrentFarm } from '../src/farm.ts'
 import { mixChickenFeed, renderChickenFeedMixes } from '../src/chicken-feed.ts'
+import { ActionClickGuard, isGuardedAction } from '../src/action-click-guard.ts'
 
 function ready() { const f = createFarm(); f.buildingLevels.coop = 2; f.produce.wheat = 2; f.produce.carrot = 1; f.fruit.apple = 1; return f }
 
@@ -27,6 +28,39 @@ test('missing ingredient is named at its choice, with no impossible total or ena
  assert.match(html, /data-value="orchard"[^>]* disabled/)
  assert.doesNotMatch(html, /Запас: /)
  const before = structuredClone(f); assert.equal(mixChickenFeed(f, 'orchard').ok, false); assert.deepEqual(f, before)
+})
+
+function mixButtons(f: ReturnType<typeof createFarm>) {
+ return [...renderChickenFeedMixes(f).matchAll(/<button[^>]+data-action="mix-chicken-feed" data-value="(garden|orchard)"([^>]*)>/g)]
+   .map(([,value,attrs]) => ({ value, disabled: /\bdisabled\b/.test(attrs) }))
+}
+
+test('the mix you can make is listed first with both choices still present and ties in familiar order', () => {
+ for (const [carrot,apple,order] of [
+   [0,1,['orchard','garden']], [1,0,['garden','orchard']],
+   [1,1,['garden','orchard']], [0,0,['garden','orchard']],
+ ] as const) {
+  const f=ready(); f.produce.carrot=carrot; f.fruit.apple=apple
+  const before=structuredClone(f), buttons=mixButtons(f)
+  assert.deepEqual(buttons.map(button=>button.value),order)
+  assert.deepEqual(buttons.map(({value,disabled})=>[value,disabled]),order.map(value=>[value,value==='garden'?carrot===0:apple===0]))
+  assert.deepEqual(f,before)
+ }
+})
+
+test('after the first mix runs out, the other moves up but the same fast pointer gesture cannot buy it', () => {
+ const f=ready(), guard=new ActionClickGuard()
+ const clickLeading=(timeStamp:number,detail:number)=>{
+  const action='mix-chicken-feed',event={timeStamp,detail,clientX:230,clientY:220},btn=mixButtons(f)[0]
+  if (btn.disabled || guard.blocks(event)) return false
+  if (isGuardedAction(action)) guard.remember(event)
+  return mixChickenFeed(f,btn.value).ok
+ }
+ assert.equal(clickLeading(1000,1),true)
+ assert.deepEqual(mixButtons(f),[{value:'orchard',disabled:false},{value:'garden',disabled:true}])
+ const after=structuredClone(f)
+ assert.equal(clickLeading(1120,2),false); assert.deepEqual(f,after)
+ assert.equal(clickLeading(1601,1),true); assert.equal(f.feed,after.feed+4)
 })
 
 test('one deliberate mix changes only original stock/work; return and feeding remain separate', () => {
