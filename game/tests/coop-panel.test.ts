@@ -198,3 +198,67 @@ test('an expanded hatchery forecast survives local changes but starts closed on 
  forecast().open=true;dialogContent.innerHTML='<section>Other menu</section>';draw()
  assert.equal(forecast().open,false,'returning from a different menu starts collapsed')
 })
+
+test('unpacking through the incubator shortcut returns to the newly available egg slot without inserting',()=>{
+ const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+ const between=(a:string,b:string)=>{const from=source.indexOf(a),to=source.indexOf(b,from+1);assert.ok(from>=0&&to>from);return source.slice(from,to)}
+ const focus=between("  if (focused && panel !== 'bay-freight'","\n}\n")
+ const buttonGuard=between("    case 'unpack-egg-basket':","    case 'unpack-egg-crate':")
+ const route=between("    case 'incubator-basket':","    case 'incubate-egg':")
+ const highlight=between('function highlightControl(','async function showRequirement(')
+ const code=stripTypeScriptTypes(`${highlight}\nfunction dispatch(action){switch(action){${buttonGuard}${route}}}\nfunction restoreOnRedraw(focused){${focus}}`)
+ for(const guided of [true,false]){
+  const farm=firstHatcheryWithBasket().state
+  let active='',scrollTarget=''
+  class Row {
+   tabIndex?:number
+   classes=new Set<string>()
+   classList={add:(value:string)=>this.classes.add(value),remove:(value:string)=>this.classes.delete(value)}
+   name:string
+   constructor(name:string){this.name=name}
+   matches(){return this.tabIndex!==undefined}
+   focus(){active=this.name}
+   scrollIntoView(){scrollTarget=this.name}
+  }
+  class Button {
+   disabled=false
+   dataset:{action:string}
+   row?:Row
+   constructor(action:string,row?:Row){this.dataset={action};this.row=row}
+   focus(){active=this.dataset.action}
+   closest(selector:string){return selector==='.dialog-row'?this.row
+    : selector==='.coop-packing .dialog-row.guidance-target'&&this.row?.classes.has('guidance-target')?this.row:null}
+  }
+  const basket=new Row('корзина'),incubator=new Row('инкубатор'),closeButton=new Button('close')
+  const control=new Button('unpack-egg-basket',basket),insert=new Button('incubate-egg',incubator)
+  const can=(action:string)=>actions(render(farm)).some(button=>button.action===action&&!button.disabled)
+  const dialogContent={
+   querySelector(selector:string){return selector==='.coop-packing [data-action="unpack-egg-basket"]:not(:disabled)'&&can('unpack-egg-basket')?control
+    :selector==='.coop-primary [data-action="incubate-egg"]:not(:disabled)'&&can('incubate-egg')?insert:null},
+   querySelectorAll(selector:string){return selector==='.guidance-target'?[basket,incubator].filter(row=>row.classes.has('guidance-target')):[control,insert].filter(button=>can(button.dataset.action))},
+  }
+  const ctx={
+   panel:'coop',dialog:{open:true},farm,control,closeButton,dialogContent,HTMLButtonElement:Button,
+   hasIncubatorBasketSource:Coop.hasIncubatorBasketSource,unpackEggBasket:F.unpackEggBasket,
+   focusKey:(button:Button)=>button.dataset.action,focusedSeedCrop:undefined,
+   dispatch:(_action:string)=>{},restoreOnRedraw:(_button:Button)=>{},
+   perform(action:()=>F.ActionResult){
+    const result=action()
+    if(result.ok){basket.classes.clear();incubator.classes.clear();ctx.restoreOnRedraw(control)}
+    return result.ok
+   },
+  }
+  runInNewContext(code,ctx)
+  const before=structuredClone(farm)
+  if(guided){
+   ctx.dispatch('incubator-basket')
+   assert.equal(active,'корзина');assert.equal(scrollTarget,'корзина');assert.deepEqual(farm,before)
+  }
+  control.focus();ctx.dispatch('unpack-egg-basket')
+  assert.equal(active,guided?'инкубатор':'close')
+  assert.equal(scrollTarget,guided?'инкубатор':'')
+  assert.equal(incubator.tabIndex,guided?-1:undefined)
+  before.eggs+=F.eggsPerBasket;before.eggBaskets--
+  assert.deepEqual(farm,before,'unpacking alone must not start the hatch, advance a day or change a visit')
+ }
+})

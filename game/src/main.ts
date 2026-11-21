@@ -4347,7 +4347,15 @@ app.addEventListener('click', async (event) => {
     }
     case 'feed': if(perform(() => feedChickens(farm), false, farm.progress.feed > 0))playBaySound('flock.feed', 1, 0); break
     case 'collect': if(perform(() => collectEggs(farm)))playBaySound('flock.eggs', 1, 0); break
-    case 'unpack-egg-basket':perform(()=>unpackEggBasket(farm),false,true);break
+    case 'unpack-egg-basket': {
+      const fromIncubator = panel === 'coop' && dialog.open && hasIncubatorBasketSource(farm)
+        && !!control.closest('.coop-packing .dialog-row.guidance-target')
+      if (perform(() => unpackEggBasket(farm), false, true) && fromIncubator) {
+        // Return to the now-usable incubator row without arming egg insertion.
+        highlightControl(dialogContent.querySelector('.coop-primary [data-action="incubate-egg"]:not(:disabled)')?.closest<HTMLElement>('.dialog-row') ?? null)
+      }
+      break
+    }
     case 'unpack-egg-crate':perform(()=>unpackEggCrate(farm),false,true);break
     case 'pack-egg-basket': arrangementRequest = { kind: 'packing', mode: 'eggs' }; openPanel('arrangement'); break
     case 'pack-egg-crate': arrangementRequest = { kind: 'packing', mode: 'crate' }; openPanel('arrangement'); break
