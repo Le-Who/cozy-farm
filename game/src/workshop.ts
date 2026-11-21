@@ -724,7 +724,8 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     announce(`На доске: ${ruCount(pieces.length, 'кусочек', 'кусочка', 'кусочков')}. Выберите один, чтобы придать форму.`)
   }
   function tool(action: Tool, keyboard = false) {
-    if (stage !== 'working'||layoutChanging||cutPending) return
+    // A palette click only selects a mode; board shortcuts also act on the dough.
+    if (stage !== 'working'||cutPending||(layoutChanging&&keyboard)) return
     if(hand.down)release(undefined,true)
     activeTool = action
     const piece = activePiece()

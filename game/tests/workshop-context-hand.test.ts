@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import * as THREE from 'three'
+import {getWorkshopLayout, containArtwork} from '../src/workshop-camera.ts'
 import { workshopTools, workshopToolGuide } from '../src/workshop-controls.ts'
 
 // Actual loss/restore and hand callbacks with inert graphics/DOM adapters.
@@ -129,4 +130,38 @@ test('a refused renderer replaces the inert board with its focused, named exit',
   assert.ok(closeButton.className.includes('workshop-close'), 'warm scene-entry selector still finds the same exit')
   assert.match(status.textContent,/Не удалось открыть мастерскую/); assert.ok(status.id); assert.equal(closeButton.description,status.id)
   scene.destroy();assert.equal(focus,'entry');assert.equal(disposed,1)
+})
+
+test('shape and tool clicks keep their separate selections while a rotated worktop is loading',()=>{
+  const h=fixture(),s=h.state
+  const clickListeners=new Map<object,Function[]>()
+  for(const target of [...s.shapeButtons,...s.toolButtons]){
+    const handlers:Function[]=[];clickListeners.set(target,handlers)
+    target.addEventListener=(type:string,fn:Function)=>{assert.equal(type,'click');handlers.push(fn)}
+  }
+  const shape=s.shapeButtons[0],tile=s.toolButtons.find((b:any)=>b.dataset.tool==='fold')
+  let focus=shape,resize!:()=>void,pendingLayout=''
+  Object.assign(s,{chosenShape:'round',shapeNames:{round:'Булочка',long:'Батон'},options:{recipe:'pastry'},
+    layout:getWorkshopLayout(310,500),width:310,height:500,layoutChanging:false,
+    view:{clientWidth:460,clientHeight:212,focus(){focus=s.view}},renderer:null,camera:{},
+    ResizeObserver:class { constructor(fn:()=>void){resize=fn} },getWorkshopLayout,containArtwork,configureWorkshopCamera(){},
+    loadLayout(next:{id:string}){pendingLayout=next.id},activePiece:()=>h.piece,announce(){}})
+  s.root.style={setProperty(){}};s.handMenu.dataset.compact='true';s.handMenu.querySelectorAll=()=>s.toolButtons
+  const bind=(prefix:string)=>find(n=>ts.isExpressionStatement(n)&&n.getText(source).startsWith(prefix))
+  const resizeObserver=find(n=>ts.isNewExpression(n)&&n.expression.getText(source)==='ResizeObserver')
+  runInNewContext(ts.transpileModule([declaration('tool'),bind('shapeButtons.forEach(button=>button.addEventListener'),
+    bind('toolButtons.filter(button=>button!==handButton)'),bind("handMenu.querySelectorAll('button')"),resizeObserver].join('\n'),
+    {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,s)
+  const click=(target:object)=>clickListeners.get(target)!.forEach(fn=>fn())
+  s.updateState();resize()
+  assert.equal(pendingLayout,'landscape');assert.equal(s.layoutChanging,true)
+  click(shape)
+  assert.equal(focus,shape);assert.equal(s.chosenShape,'long');assert.equal(shape.attributes['aria-pressed'],'true')
+  assert.equal(s.activeTool,'roll');assert.equal(s.handMenu.hidden,false)
+  s.tool('cut',true);assert.equal(s.activeTool,'roll','board shortcut must still wait for the new layout')
+  focus=tile;assert.equal(tile.disabled,false);click(tile)
+  assert.equal(s.activeTool,'fold','an enabled palette selection must not be silently dropped')
+  assert.equal(s.modeTitle.textContent,'Режим: Сложить');assert.equal(s.hint.textContent,workshopToolGuide('working','fold',1).hint)
+  assert.equal(tile.attributes['aria-pressed'],'true');assert.equal(s.handMenu.hidden,true);assert.equal(focus,s.view)
+  assert.equal(s.chosenShape,'long');assert.equal(s.pieces[0],h.piece);assert.equal(s.work,.2)
 })
