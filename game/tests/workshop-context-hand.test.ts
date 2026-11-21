@@ -110,6 +110,35 @@ test('the board only invites another cut while it is available, without hiding t
   s.activeTool='move';draw();assert.equal(s.cue.hidden,false);assert.match(s.cue.textContent,/Перетащите/);assert.equal(shown.hidden,true)
 })
 
+test('Escape restores the selected board gesture after inspecting tools, but never offers a blocked cut',()=>{
+  for (const scenario of ['roll','move','last cut','cut pending','context lost']) {
+    const h=fixture(false),s=h.state
+    s.activeTool=['roll','move'].includes(scenario)?scenario:'cut'
+    if(scenario==='last cut')while(s.pieces.length<6)s.pieces.push(h.piece)
+    let keydown!: (event:unknown)=>void,focus='palette',closes=0
+    Object.assign(s,{cue:{},layout:{id:'portrait'},applyBox(){},close(){closes++}})
+    s.root.addEventListener=(_type:string,fn:typeof keydown)=>{keydown=fn}
+    h.hand.focus=()=>{focus='hand'}
+    runInNewContext(ts.transpileModule([declaration('updateCue'),listener('root','keydown')].join('\n'),
+      {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,s)
+    s.updateState()
+    h.activateHand()
+    assert.equal(s.handMenu.hidden,false);assert.equal(s.cue.hidden,true)
+    if(scenario==='cut pending'){s.cutPending=true;s.updateState()}
+    if(scenario==='context lost')h.lose()
+    const key=()=>keydown({key:'Escape',repeat:false,preventDefault(){}})
+    key()
+    assert.equal(s.handMenu.hidden,true);assert.equal(h.hand.attributes['aria-expanded'],'false')
+    assert.equal(closes,0)
+    if(scenario==='roll'||scenario==='move') {
+      assert.equal(focus,'hand')
+      assert.equal(s.cue.hidden,false,'Escape must restore the active gesture without another board input: '+scenario)
+      assert.match(s.cue.textContent,scenario==='roll'?/Раскатайте/:/Перетащите/)
+      assert.equal(s.activeTool,scenario)
+    } else assert.equal(s.cue.hidden,true,scenario)
+  }
+})
+
 test('a refused renderer replaces the inert board with its focused, named exit', () => {
   const start = find(n => ts.isTryStatement(n) && n.tryBlock.getText(source).includes('view.prepend(renderer.domElement)'))
   const mount = ts.transpileModule(`function mount(){${start}};globalThis.mount=mount`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText

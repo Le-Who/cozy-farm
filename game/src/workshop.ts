@@ -122,7 +122,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   const resultLabel = root.querySelector<HTMLElement>('.workshop-result')!
   const handButton=hotspots.find(button=>button.dataset.prop==='hand')!
   let handMenuExpanded=true
-  function closeHandMenu(restore=false){handMenuExpanded=false;handMenu.hidden=true;handButton.setAttribute('aria-expanded','false');if(restore)handButton.focus({preventScroll:true})}
+  function closeHandMenu(restore=false){handMenuExpanded=false;handMenu.hidden=true;handButton.setAttribute('aria-expanded','false');updateCue();if(restore)handButton.focus({preventScroll:true})}
   let stage: Stage = 'ingredients', activeTool: Tool = 'knead'
   let work = 0, mixed = 0, stirring = 0, selected = 0, frame = 0, elapsed = 0, bakeElapsed = 0, bakeStartedAt = 0
   let bakeKeyboardFocus = false
@@ -409,7 +409,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   }
   function updateCue(){
     const cutUnavailable=stage==='working'&&activeTool==='cut'&&(cutPending||pieces.length>=6)
-    cue.hidden=!assetsReady||!handMenu.hidden||stage==='finished'||stage==='baking'||stage==='mixing'&&mixed>.2||cutUnavailable
+    cue.hidden=!assetsReady||contextLost||!handMenu.hidden||stage==='finished'||stage==='baking'||stage==='mixing'&&mixed>.2||cutUnavailable
     if(stage==='ingredients'||stage==='mixing')cue.textContent='↻ Мешайте по кругу'
     else if(stage==='transferring')cue.textContent='На доску…'
     else if(stage==='finished')cue.textContent=''
@@ -750,9 +750,9 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     if(hand.down)release(undefined,true)
     updateState();announce(`${shapeNames[chosenShape]}. ${stage==='working'?'Продолжайте лепить: ваши изменения сохранены.':'Замесите тесто в миске.'}`)
   },{signal}))
-  toolButtons.filter(button=>button!==handButton).forEach(button => button.addEventListener('click', () => { tool(button.dataset.tool as Tool);if(handMenu.dataset.compact==='true')closeHandMenu();updateCue() }, { signal }))
+  toolButtons.filter(button=>button!==handButton).forEach(button => button.addEventListener('click', () => { tool(button.dataset.tool as Tool);if(handMenu.dataset.compact==='true')closeHandMenu() }, { signal }))
   hotspots.filter(button=>button.dataset.prop==='bowl'||button.dataset.prop==='spoon').forEach(button=>button.addEventListener('click',()=>{if(stage==='ingredients'||stage==='mixing'){mix(.1);view.focus({preventScroll:true})}},{signal}))
-  handButton.addEventListener('click',()=>{if(contextLost||cutPending||stage!=='working')return;if(hand.down)release(undefined,true);if(!handMenu.hidden){closeHandMenu();updateCue();return}handMenuExpanded=true;handMenu.hidden=false;handButton.setAttribute('aria-expanded','true');positionHandMenu();updateCue()},{signal})
+  handButton.addEventListener('click',()=>{if(contextLost||cutPending||stage!=='working')return;if(hand.down)release(undefined,true);if(!handMenu.hidden){closeHandMenu();return}handMenuExpanded=true;handMenu.hidden=false;handButton.setAttribute('aria-expanded','true');positionHandMenu();updateCue()},{signal})
   handMenu.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{view.focus({preventScroll:true})},{signal}))
   const raycaster = new THREE.Raycaster()
   const down=new THREE.Vector3(0,-1,0)
