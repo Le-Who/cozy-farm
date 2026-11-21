@@ -6,6 +6,7 @@ import {runInNewContext} from 'node:vm'
 import ts from 'typescript'
 import {createParfaitTransfer} from '../src/parfait-transfer.ts'
 import {beginHoneyStroke,createHoneyModel,depositParfaitCustard,depositParfaitHoney,endHoneyStroke,honeyProgress,moveHoneyStroke,onHoneySurface,placeHoneyFruit,settleHoney} from '../src/honey-cookery-model.ts'
+import {honeyPourFlow} from '../src/honey-pour.ts'
 import * as motion from '../src/food-motion.ts'
 
 test('an empty spoon cannot fill the glass, and carried cream survives a long trip or release',()=>{
@@ -81,7 +82,10 @@ function scoopScene(){
  const audio=read('game-sound.ts').split('\n').slice(1).join('\n').split('/** Decode')[0]
   .replaceAll('lastContact','lastSoundContact').replaceAll('export ','').replace('function playBaySound(','function forwardBaySound(')
  const slice=(from:string,to:string)=>source.slice(source.indexOf(from),source.indexOf(to,source.indexOf(from)))
- const code=stripTypeScriptTypes([audio,...methods,slice('  const normalized =','\n  function '),slice('  const eventPoint =','  function rotateFruit('),'this.tick=advanceMaterial'].join('\n'))
+ // Run the same visibility assignment layout uses, without a GPU or texture fixtures.
+ const toolLayout=slice('    const current = currentTool();',"    if (parts.has('fruit-dish'))")
+ assert.ok(toolLayout.includes('mesh.visible'),'real layout tool visibility')
+ const code=stripTypeScriptTypes(['this.refreshTools=function(){'+toolLayout+'}',audio,...methods,slice('  const normalized =','\n  function '),slice('  const eventPoint =','  function rotateFruit('),'this.tick=advanceMaterial'].join('\n'))
  const abort=new AbortController(),view=new(class extends EventTarget{
   captures=new Set<number>()
   closest(){return null} setPointerCapture(id:number){this.captures.add(id)} hasPointerCapture(id:number){return this.captures.has(id)}
@@ -109,8 +113,8 @@ function scoopScene(){
   moveHeld(point:{x:number;y:number}){state.cursor=point}
  }
  runInNewContext(code,state)
- function pointer(type:string,point:{x:number;y:number}){
-  view.dispatchEvent(Object.assign(new Event('pointer'+type),{button:0,pointerId:1,pointerType:'mouse',clientX:point.x,clientY:point.y}))
+ function pointer(type:string,point:{x:number;y:number},pointerType='mouse'){
+  view.dispatchEvent(Object.assign(new Event('pointer'+type),{button:0,pointerId:1,pointerType,pressure:.6,clientX:point.x,clientY:point.y}))
  }
  function key(key:string,code:string){
   const event=Object.assign(new Event('keydown',{cancelable:true}),{key,code})
@@ -162,5 +166,42 @@ test('keyboard S scoops once, goes to the glass with no new scoop, then scoops a
   h.frames(25);assert.equal(h.cream.load,0);assert.equal(h.model.parfaitCustard,.34);assert.ok(h.flow.includes(true))
   h.key('s','KeyS');assert.equal(h.cream.load,.34);assert.equal(h.sounds.length,2)
   assert.deepEqual(h.requests,['cook.cream-scoop','cook.cream-scoop'])
+ }finally{h.close()}
+})
+
+test('parfait touch has no pitcher on the peach layer; the same glass gesture pours after three peaches',()=>{
+ const h=scoopScene(),s=h.state,holder={x:540,y:330}
+ const jug={mesh:{position:holder,rotation:{z:0},visible:false},rect:{x:520,y:310,width:40,height:40}}
+ s.parts.set('honey',jug)
+ Object.assign(s,{fruitFollow:motion.createViscousFollower(),landingXY:new Map(),selected:-1,fruitAngle:0,reduced:{matches:false},
+   placeHoneyFruit,honeyPourFlow,pourTilt:.85,paintGlaze(){},launchHoneyDrop(){}})
+ const peaches=[{x:40,y:260},{x:100,y:275},{x:160,y:290}]
+ for(const [id,p] of peaches.entries())s.fruitParts.set(id,{mesh:{position:p,rotation:{z:0},visible:true},rect:{x:p.x-12,y:p.y-12,width:24,height:24}})
+ const touch=(type:string,p:{x:number;y:number})=>h.pointer(type,p,'touch')
+ try{
+   s.refreshTools();assert.equal(s.parts.get('spoon').mesh.visible,true);assert.equal(jug.mesh.visible,false)
+   for(let i=0;i<3;i++){touch('down',h.bowl);touch('move',h.glass);h.frames(60);touch('up',h.glass);h.frames(2)}
+   assert.equal(h.model.stage,'fruit')
+   s.refreshTools()
+   const beforeGlaze={pitcher:jug.mesh.visible,grips:[] as (string|null)[],honey:0}
+   for(const p of [holder,h.glass]){
+     touch('down',p);h.frames(12);beforeGlaze.grips.push(s.held?.tool??null)
+     touch('up',p)
+   }
+   beforeGlaze.honey=h.model.parfaitHoney
+   assert.deepEqual(beforeGlaze,{pitcher:false,grips:[null,null],honey:0},'neither holder nor glass should offer a pitcher that cannot pour')
+   for(const [id,p] of peaches.entries()){
+     touch('down',p);assert.equal(s.held?.fruit,id)
+     if(id===0){h.key('s','KeyS');assert.equal(s.held?.fruit,0,'tool shortcut cannot drop the peach')}
+     touch('move',h.glass);touch('up',h.glass)
+   }
+   assert.equal(h.model.stage,'glaze');s.refreshTools();assert.equal(jug.mesh.visible,true)
+   touch('down',holder);assert.equal(s.held?.tool,'honey');touch('up',holder)
+   h.key('s','KeyS');assert.equal(s.held?.tool,'honey');assert.deepEqual({...s.cursor},h.glass);h.key(' ','Space')
+   touch('down',h.glass);assert.equal(s.held?.tool,'honey');h.frames(20)
+   assert.ok(h.model.parfaitHoney>0,'this same touch now deposits actual honey')
+   h.frames(160);touch('up',h.glass)
+   assert.equal(h.model.stage,'settling');touch('down',holder);assert.equal(s.held,null);touch('up',holder)
+   h.frames(120);assert.equal(h.model.stage,'ready');s.refreshTools();assert.equal(jug.mesh.visible,false)
  }finally{h.close()}
 })

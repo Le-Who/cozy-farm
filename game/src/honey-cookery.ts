@@ -195,7 +195,11 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(width, height, false); camera.left = 0; camera.right = width; camera.top = 0; camera.bottom = height; camera.updateProjectionMatrix(); layout()
   }
   window.addEventListener('resize', resize, { signal }); visualViewport?.addEventListener('resize', resize, { signal }); const observer = new ResizeObserver(() => { if (!destroyed) resize() }); observer.observe(host)
-  function currentTool(): HoneyTool { return model.stage === 'cut' ? 'knife' : ['shape', 'bake-ready'].includes(model.stage) && family === 'honeyBiscuits' ? 'hand' : ['mix', 'custard', 'bake-ready'].includes(model.stage) ? 'spoon' : 'honey' }
+  function currentTool(): HoneyTool | null {
+    // On the peach layer the fruit is the tool. The pitcher only works during glazing.
+    if (family === 'windParfait') return model.stage === 'custard' ? 'spoon' : model.stage === 'glaze' ? 'honey' : null
+    return model.stage === 'cut' ? 'knife' : ['shape', 'bake-ready'].includes(model.stage) && family === 'honeyBiscuits' ? 'hand' : ['mix', 'bake-ready'].includes(model.stage) ? 'spoon' : 'honey'
+  }
   function parfaitBowlContact(point:HoneyPoint){const bowl=parts.get('custard-bowl');if(!bowl)return false;const p=imagePoint(bowl,.5,.43);return((point.x-p.x)/(bowl.rect.width*.39))**2+((point.y-p.y)/(bowl.rect.height*.24))**2<=1}
   function parfaitReceivingPoint(point:HoneyPoint){
     const r=foods[0].rect,n=normalized(point),x=THREE.MathUtils.clamp(n.x,-.83,.83),finish=THREE.MathUtils.smoothstep(parfaitTopping.value,0,.98)
@@ -338,7 +342,9 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     }
     cursor = point
     if (family === 'windParfait' && ['fruit', 'glaze', 'ready'].includes(model.stage)) for (const [id, object] of [...fruitParts].reverse()) if ((model.stage==='fruit'||!model.fruit.some(fruit=>fruit.id===id))&&object.mesh.visible && contains(object, point, 5)) { held = { fruit: id }; fruitFollow.x = point.x; fruitFollow.y = point.y; fruitFollow.vx = fruitFollow.vy = 0; selected = id; fruitAngle = model.fruit.find(value => value.id === id)?.angle ?? 0; moveHeld(point); return }
-    const tool = currentTool(), object = parts.get(tool)
+    const tool = currentTool()
+    if (!tool) return
+    const object = parts.get(tool)
     const knifeOnFood = tool === 'knife' && !!pearView?.wholeHit(point)
     const knifeFromHolder = tool === 'knife' && !knifeOnFood && !!object && !toolReturns.has(tool) && contains(object, point, 8)
     // A swipe may start just beside the silhouette. Only real mesh contact
@@ -446,7 +452,18 @@ export function createHoneyCookery(host: HTMLElement, options: CookeryOptions): 
     if (key === 'enter') finishRecipe()
     else if (key === 'q' || key === 'e') { if(['honeyPear','windParfait'].includes(family)&&model.stage==='glaze'&&!(held&&'fruit'in held))setPourTilt(pourTilt+(key==='q'?-.08:.08));else rotateFruit(key === 'q' ? -.13 : .13) }
     else if (key === 'f' && family === 'windParfait') { release(); const id = [...fruitParts.keys()].find(value => !model.fruit.some(fruit => fruit.id === value)) ?? 0; cursor = fruitSource(id); start(cursor) }
-    else if (key === 's') { release(); const tool = currentTool(), object = parts.get(tool); cursor = family==='windParfait'&&model.stage==='custard'?(parfaitTransfer.load>.025?pixel({x:0,y:0}):imagePoint(parts.get('custard-bowl')!,.5,.43)):family==='windParfait'&&model.stage==='glaze'?pixel({x:0,y:0}):tool === 'knife' ? pearView?.knifeStart() ?? cursor : object ? { x: object.mesh.position.x, y: object.mesh.position.y } : pixel(honeyBiscuitCenters[0]); start(cursor) }
+    else if (key === 's') {
+      if (!currentTool()) { updateCursor(); return }
+      release()
+      const tool = currentTool() // Releasing the last spoonful can hand the table to the peaches.
+      if (tool) {
+        const object = parts.get(tool)
+        cursor = family==='windParfait' && tool==='spoon' ? (parfaitTransfer.load>.025 ? pixel({x:0,y:0}) : imagePoint(parts.get('custard-bowl')!,.5,.43))
+          : family==='windParfait' ? pixel({x:0,y:0}) : tool==='knife' ? pearView?.knifeStart() ?? cursor
+          : object ? {x:object.mesh.position.x,y:object.mesh.position.y} : pixel(honeyBiscuitCenters[0])
+        start(cursor)
+      }
+    }
     else if (key === ' ') { if (held) release(); else start(cursor.x || cursor.y ? cursor : pixel({ x: 0, y: 0 })) }
     else { const step = Math.max(5, Math.min(surface.rx, surface.ry) * .18); const next = { x: Math.max(8, Math.min(width - 8, cursor.x + (key === 'arrowleft' ? -step : key === 'arrowright' ? step : 0))), y: Math.max(65, Math.min(height - 65, cursor.y + (key === 'arrowup' ? -step : key === 'arrowdown' ? step : 0))) }; if (held) move(next); else cursor = next }
     updateCursor()
