@@ -2089,7 +2089,11 @@ function drawPanel() {
   const focusedSaleSearch = panel === 'market' && marketTab === 'sell' && activeInput instanceof HTMLInputElement
     && activeInput.matches('[data-market-sale-query]') && dialogContent.contains(activeInput)
     ? {start:activeInput.selectionStart, end:activeInput.selectionEnd, direction:activeInput.selectionDirection} : undefined
-  const focusedInlineKey=document.activeElement instanceof HTMLInputElement&&document.activeElement.matches('[data-inline-quantity]')?document.activeElement.closest<HTMLElement>('[data-inline-key]')?.dataset.inlineKey:undefined
+  const focusedInlineKey = panel === 'market' && marketTab === 'sell' && activeInput instanceof HTMLInputElement
+    && activeInput.matches('[data-inline-quantity]') && dialogContent.contains(activeInput)
+    ? activeInput.closest<HTMLElement>('[data-inline-key]')?.dataset.inlineKey : undefined
+  const oldSaleGrid = focusedInlineKey ? dialogContent.querySelector<HTMLElement>('#market-sale-results') : null
+  const inlineEditorTop = oldSaleGrid && activeInput ? activeInput.getBoundingClientRect().top - oldSaleGrid.getBoundingClientRect().top : undefined
   const focusedStorageChoice = document.activeElement instanceof HTMLSelectElement && document.activeElement.matches('[data-tree-storage-choice]') && dialogContent.contains(document.activeElement)
   const focused = document.activeElement instanceof HTMLButtonElement && dialogContent.contains(document.activeElement)
     ? document.activeElement
@@ -2599,7 +2603,15 @@ function drawPanel() {
     if (input && focusedSaleSearch.start !== null && focusedSaleSearch.end !== null)
       input.setSelectionRange(focusedSaleSearch.start, focusedSaleSearch.end, focusedSaleSearch.direction ?? undefined)
   }
-  if(focusedInlineKey)Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).find(card=>card.dataset.inlineKey===focusedInlineKey)?.querySelector<HTMLInputElement>('[data-inline-quantity]')?.focus({preventScroll:true})
+  if (focusedInlineKey) {
+    const card = Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).find(card => card.dataset.inlineKey === focusedInlineKey)
+    const input = card?.querySelector<HTMLInputElement>('[data-inline-quantity]:not(:disabled)')
+    input?.focus({preventScroll:true})
+    const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+    // Anchor the actual editor, not a scroll offset that could point at a new row.
+    if (input && grid && inlineEditorTop !== undefined)
+      grid.scrollTop += input.getBoundingClientRect().top - grid.getBoundingClientRect().top - inlineEditorTop
+  }
   if (focusedStorageChoice) dialogContent.querySelector<HTMLSelectElement>('[data-tree-storage-choice]')?.focus({preventScroll:true})
   if(panel==='market'&&salePresentation.place)updateSaleQuote()
   if (panel === 'recipes') recipeBook.restore(dialogContent,true)

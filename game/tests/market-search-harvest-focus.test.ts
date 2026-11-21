@@ -75,3 +75,77 @@ test('a queued harvest updates the normal Sell results without taking focus from
   replacement.value='морковь';ctx.type({target:replacement});assert.equal(rows.innerHTML,'produce:carrot')
   assert.deepEqual(saves,[expected],'a search update never performs a second action')
 })
+
+test('a newly stocked row must not push an edited quantity and its current quote out of the visible sale grid',async()=>{
+  const {MarketInlineSales,inlineReceiptText}=await import('../src/market-inline-sale.ts')
+  const saleCode=stripTypeScriptTypes(part(main,'function marketInlineCard(', 'function confirmInlineSale('))
+  const farm=F.createFarm(),key='fruit:apple'
+  assert.ok(F.workBed(farm,3).ok);assert.ok(F.pickFruit(farm,0).ok)
+  assert.equal(farm.produce.carrot,0)
+  const before=structuredClone(farm),expected=structuredClone(farm);assert.ok(F.workBed(expected,9).ok)
+  const document={activeElement:null as Input|null},marketInlineSales=new MarketInlineSales(),saves:typeof farm[]=[]
+  const gridTop=270,viewport=144,rowStride=190
+  let grid:{scrollTop:number;getBoundingClientRect():{top:number}}|null=null, cards:Card[]=[]
+  class Input {
+    value:string;disabled=false
+    constructor(readonlyCard:Card,value:string){this.card=readonlyCard;this.value=value}
+    card:Card
+    matches(s:string){return s==='[data-inline-quantity]'}
+    closest(s:string){return s==='[data-inline-key]'?this.card:null}
+    focus({preventScroll}:{preventScroll:boolean}){assert.equal(preventScroll,true);document.activeElement=this}
+    getBoundingClientRect(){return {top:gridTop+cards.indexOf(this.card)*rowStride+95-grid!.scrollTop}}
+  }
+  class Card {
+    dataset:{inlineKey:string;inlineToken:string};input:Input
+    status={textContent:''};sale={dataset:{action:''},innerHTML:'',setAttribute(){},disabled:false}
+    constructor(key:string,token:string,raw:string){this.dataset={inlineKey:key,inlineToken:token};this.input=new Input(this,raw)}
+    querySelector(s:string){return s.startsWith('[data-inline-quantity]')?this.input:s==='.market-inline-sell'?this.sale:this.status}
+    querySelectorAll(){return []}
+    closest(){return this}
+  }
+  const goods=()=>F.getMarketStock(farm).map(row=>({...row,group:'harvest',name:row.key===key?'Яблоко':row.key,image:''}))
+  const encode=(s:string)=>s.replaceAll('"','&quot;')
+  const rows=()=>searchMarketSales(goods(),'harvest','').items
+  const activeCard=()=>cards.find(c=>c.dataset.inlineKey===key)!
+  const dialogContent={
+    contains:(el:unknown)=>cards.some(c=>c===el||c.input===el),
+    querySelectorAll:(selector:string)=>selector==='[data-inline-key]'?cards:[],
+    querySelector:(s:string)=>s==='#market-sale-results'?grid:null,
+    set innerHTML(text:string) {
+      document.activeElement=null
+      grid={scrollTop:0,getBoundingClientRect:()=>({top:gridTop})}
+      cards=[...text.matchAll(/data-inline-key="([^"]+)" data-inline-token="([^"]+)">([\s\S]*?)<\/li>/g)].filter(m=>m[3].includes('data-inline-quantity'))
+        .map(([,product,token,body])=>new Card(product,token.replaceAll('&quot;','"'),body.match(/data-inline-quantity[^>]*value="([^"]*)"/)![1]))
+    },
+  }
+  const workOrders:unknown[]=[],silent=()=>{}
+  const ctx:any={
+    ...F,farm,dialog:{open:false},panel:undefined,marketTab:'sell',marketSellGroup:'harvest',marketSaleQuery:'',marketSaleFamily:undefined,dialogContent,document,
+    HTMLInputElement:Input,HTMLButtonElement:class{},HTMLSelectElement:class{},salePresentation:{},app:{addEventListener:(name:string,fn:Function)=>{assert.equal(name,'input');ctx.type=fn}},
+    marketInlineSales,inlineReceiptText,goods,searchMarketSales,bedWorkKind,planBedWork,isCurrentBedWork,bedWorkSound:silent,bayAudio:{primeEvents:silent},playBaySound:silent,
+    viewMode:'world',reconcileFrames:silent,farmer:{x:0,y:0},state:farm,workOrders,gesture:undefined,areas:Array(21).fill({center:{x:0,y:0},stop:{x:0,y:0}}),
+    WORK_MS:{harvest:200},bursts:[],impactByBed:new Map(),island:{isCrossing:()=>false,render:silent,workBed(index:number,next:Function,commit:Function){workOrders.push({index,next,commit})}},
+    numberFormat:new Intl.NumberFormat('ru'),quantity:String,icon:()=>'',itemIcon:()=>'',panelTabs:()=>'',escapeHtml:encode,button:()=>'',nav:()=>'',marketFamilyOptions:()=>'',marketSaleSearchStatus:()=>'',marketBulkSaleControls:()=>'',applyIngredientFinishes:silent,
+    status:silent,saveFarm(){saves.push(structuredClone(farm))},dialogFeedback:{classList:{toggle:silent},dataset:{}},dialogFeedbackTimer:0,window:{clearTimeout:silent,setTimeout(){return 1}},
+  }
+  runInNewContext(saleCode+'\n'+script,ctx)
+  ctx.activateTarget({kind:'bed',index:9});ctx.advanceWork(0,false)
+  ctx.setViewMode('dialog');assert.equal(ctx.gesture.kind,'harvest')
+  ctx.panel='market';ctx.dialog.open=true;ctx.drawPanel()
+  const previous=activeCard(),oldIndex=cards.indexOf(previous)
+  assert.ok(oldIndex>0,'the apple editor begins below another stocked row')
+  grid!.scrollTop=oldIndex*rowStride+43
+  const y=previous.input.getBoundingClientRect().top
+  assert.ok(y>=gridTop&&y<gridTop+viewport)
+  previous.input.focus({preventScroll:true});previous.input.value='2';ctx.type({target:previous.input})
+  assert.match(previous.sale.innerHTML,/Продать 2 · 8/);assert.deepEqual(farm,before)
+  ctx.advanceWork(120,false)
+  const next=activeCard()
+  assert.ok(rows().some(row=>row.key==='produce:carrot'));assert.ok(cards.indexOf(next)>oldIndex,'the incoming crop inserts a row ahead of the apples')
+  assert.equal(next.input.value,'2');assert.equal(document.activeElement,next.input)
+  assert.deepEqual(farm,expected);assert.deepEqual(saves,[expected])
+  assert.equal(next.input.getBoundingClientRect().top,y,'the still-focused amount and its quote must stay in view')
+  next.input.value='1';ctx.type({target:next.input})
+  assert.match(next.sale.innerHTML,/Продать 1 · 4/)
+  assert.deepEqual(saves,[expected],'editing again still does not transact')
+})
