@@ -1,8 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import { runInNewContext } from 'node:vm';
+import * as THREE from 'three';
 import { Vector3, type BufferGeometry } from 'three';
-import { createPearCut } from '../src/pear-cut.ts';
+import { createPearCut, type PearCutResult } from '../src/pear-cut.ts';
 import { doughVolume } from '../src/workshop-geometry.ts';
+import { createKnifeTrace, releaseKnifeTrace, traceKnife } from '../src/knife-trace.ts';
+import { stepSpring } from '../src/food-motion.ts';
+import * as honey from '../src/honey-cookery-model.ts';
 
 function assertClosed(geometry: BufferGeometry): void {
   const p = geometry.getAttribute('position'), index = geometry.index!, edges = new Map<string, number>();
@@ -123,4 +130,82 @@ test('offset cuts keep the real plane and partial kerfs do not destroy the close
   assert.ok(Math.abs(cut.center.dot(cut.normal) - .04) < 1e-8);
   assert.ok(Math.abs(cut.halves.reduce((sum, half) => sum + doughVolume(half.geometry), 0) / cut.volume - 1) < .00002);
   pear.dispose();
+});
+
+test('two thin swipes through the rendered pear are not snapped to the same slice', () => {
+  // Run the actual contact, cut and placement callbacks without a GPU.
+  const source = readFileSync(new URL('../src/honey-pear-view.ts', import.meta.url), 'utf8');
+  const viewCode = stripTypeScriptTypes(source.slice(source.indexOf('type Resources=')).replace('export function createHoneyPears','function createHoneyPears') + '\ncreateHoneyPears');
+  const slices: number[][] = [[],[]];
+  for (const index of [0,1]) for (const y of [445,475,495]) {
+    const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(0,1000,0,700,.1,2000);
+    camera.position.z = 1000;
+    const texture = new THREE.Texture(), resources = { geometries:new Set<THREE.BufferGeometry>(), materials:new Set<THREE.Material>(), textures:new Set<THREE.Texture>() };
+    const bodies: ReturnType<typeof createPearCut>[] = [];
+    const completions: { offset:number; cut:PearCutResult }[] = [];
+    let attempts = 0;
+    const observedCut = (dimensions: Parameters<typeof createPearCut>[0]) => {
+      const body = createPearCut(dimensions), cut = body.cut;
+      bodies.push(body);
+      return {...body,cut(angle:number,offset:number) {
+        attempts++;
+        const result = cut(angle,offset);
+        if (result && !completions.some(entry=>entry.cut===result)) completions.push({offset,cut:result});
+        return result;
+      }};
+    };
+    // With no honey deposited, a blank mask isolates the real solid poses from liquid rasterization.
+    const document = {createElement:()=>({getContext:()=>({beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},
+      getImageData:(_x:number,_y:number,w:number,h:number)=>({data:new Uint8Array(w*h*4)})})})};
+    const createView = runInNewContext(viewCode,{THREE,...honey,createPearCut:observedCut,createKnifeTrace,releaseKnifeTrace,traceKnife,stepSpring,document}) as typeof import('../src/honey-pear-view.ts').createHoneyPears;
+    const view = createView(scene,camera,{skin:texture,flesh:texture,honey:texture,crown:texture},resources);
+    view.layout({x:500,y:420,rx:240,ry:120},1000,700);
+    const model = honey.createHoneyModel('honeyPear'), point = (i:number) => ({x:index?523+217*i/25:260+224*i/25,y});
+    const record = (index:number,angle:number,bins:Iterable<number>,offset:number) => honey.recordHoneyKnife(model,index,angle,bins,offset);
+    try {
+      assert.equal(view.wholeHit(point(0)),false); assert.equal(view.wholeHit(point(25)),false);
+      assert.ok(Array.from({length:24},(_,i)=>point(i+1)).some(p=>view.wholeHit(p)),'both thin and hair-thin swipes really touch the mesh');
+      honey.beginHoneyStroke(model,'knife',{x:0,y:0});
+      view.trace(point(0),point(0),record);
+      for(let i=1;i<=25;i++) {
+        view.trace(point(i-1),point(i),record);
+        if(!model.cuts.size)view.update(model,1/60);
+      }
+      view.trace(point(25),point(25),record,true); view.releaseTrace(); honey.endHoneyStroke(model);
+      if (y===495) {
+        if(index===0)assert.ok(attempts>0,'the left hair-thin swipe reached the geometry check');
+        assert.equal(completions.length,0,'the existing minimum-volume guard still rejects a hair-thin swath');
+        assert.equal(model.cuts.size,0);
+        assert.ok(scene.children.filter(mesh=>mesh.renderOrder===4).every(mesh=>mesh.visible));
+      } else {
+        assert.deepEqual([...model.cuts],[index],'the off-centre swipe cuts only its own pear');
+        assert.equal(completions.length,1);
+        const {cut,offset} = completions[0];
+        assert.ok(Math.abs(offset)>.32*.72,'this stripe lies beyond the old artificial inset');
+        assert.ok(Math.abs(cut.center.dot(cut.normal)-offset)<1e-8,'the reveal must split along the same measured knife plane');
+        const shares=cut.halves.map(half=>doughVolume(half.geometry)/cut.volume);
+        assert.ok(Math.abs(shares[0]+shares[1]-1)<.00002);
+        assert.ok(Math.min(...shares)>.025);
+        cut.halves.forEach(half=>assertClosed(half.geometry));
+        slices[index].push(Math.min(...shares));
+        for(let tick=0;tick<60;tick++)view.update(model,1/60);
+        assert.deepEqual(scene.children.filter(mesh=>mesh.renderOrder===4).map(mesh=>mesh.visible),[index!==0,index!==1]);
+        const halves = scene.children.filter(mesh=>mesh.renderOrder===5) as THREE.Mesh<THREE.BufferGeometry>[];
+        assert.equal(halves.length,2);
+        const centers = halves.map(mesh=>{
+          const {geometry,matrixWorld}=mesh,cap=geometry.groups.find(group=>group.materialIndex===1)!;
+          const vertex=(i:number)=>new Vector3().fromBufferAttribute(geometry.getAttribute('position'),geometry.index!.getX(i)).applyMatrix4(matrixWorld);
+          const a=vertex(cap.start),b=vertex(cap.start+1),c=vertex(cap.start+2);
+          assert.ok(b.sub(a).cross(c.sub(a)).normalize().z>.5,'the actual moved flesh faces the camera');
+          return new THREE.Box3().setFromObject(mesh,true).getCenter(new Vector3()).project(camera);
+        });
+        assert.ok(centers.every(center=>center.toArray().every(Number.isFinite)));
+        assert.ok(Math.abs(centers[0].y-centers[1].y)>.2,'the thin and thick slices move to different presentation rows');
+      }
+    } finally {
+      for(const items of Object.values(resources))for(const resource of items)resource.dispose();
+      bodies.forEach(body=>body.dispose()); texture.dispose();
+    }
+  }
+  for(const shares of slices)assert.ok(shares[0]-shares[1]>.08,'different valid lines must produce clearly different slice sizes');
 });

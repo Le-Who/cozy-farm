@@ -56,7 +56,10 @@ export function createPearCut(options: { radiusX?: number; radiusZ?: number; hei
   function axes(angle: number, offset: number) {
     const a = safe(angle, 0), tangent = new Vector3(Math.cos(a), 0, -Math.sin(a));
     const normal = new Vector3(Math.sin(a), 0, Math.cos(a));
-    const center = normal.clone().multiplyScalar(clamp(safe(offset, 0), -Math.min(rx, rz) * .72, Math.min(rx, rz) * .72));
+    // Keep the blade's plane anywhere inside the pear's outer bounds. The
+    // minimum-volume check, not an inset based on its narrow axis, rejects slivers.
+    const reach = Math.abs(normal.x) * rx + Math.abs(normal.z) * rz;
+    const center = normal.clone().multiplyScalar(clamp(safe(offset, 0), -reach, reach));
     return { tangent, normal, center };
   }
   return {
