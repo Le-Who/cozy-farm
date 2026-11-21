@@ -2792,7 +2792,6 @@ const bedTools = {
   till: 'hoe',
   plant: 'seeds',
   water: 'water',
-  harvest: 'basket',
 } as const
 
 const locationLabels = {
@@ -3016,7 +3015,8 @@ function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 
       if (!isCurrentBedWork(farm, intent)) return
       if (needsSeedChoice(farm,index)) { requestSeedChoice(index); return }
       const action = getBedAction(farm, index)
-      if (action.kind !== 'wait' && action.available) activeTool = bedTools[action.kind]
+      // Picking from a bed is direct; the home basket opens supplies, not a tool mode.
+      if (action.kind !== 'wait' && action.kind !== 'harvest' && action.available) activeTool = bedTools[action.kind]
       const sound = bedWorkSound(farm.beds[index], action.kind)
       if(perform(() => workBed(farm,index)) && sound)playBaySound(sound, 1, 0)
     })
@@ -3378,7 +3378,6 @@ app.addEventListener('click', async (event) => {
       if (sound) void bayAudio.primeEvents([sound])
       closeDialog()
       island.workBed(index, () => getBerryRenewalPreview(farm, index)?.token === token ? 'harvest' : 'wait', () => {
-        activeTool = bedTools.harvest
         if (perform(() => harvestBerryAndKeep(farm, token)) && sound) playBaySound(sound, 1, 0)
       })
       break

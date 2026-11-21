@@ -7,6 +7,7 @@ import * as farmApi from '../src/farm.ts'
 import { basketHotbarIcons, basketHotbarLabels } from '../src/basket-hotbar.ts'
 import * as bedIntent from '../src/bed-work-intent.ts'
 import { bedWorkSound } from '../src/farm-sounds.ts'
+import { saveGardenPlan, followGardenPlan } from '../src/garden-plans.ts'
 import { earlyFerryFarm } from './fixtures/early-ferry.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 import { communityReturnFixture } from './fixtures/community-return.ts'
@@ -77,6 +78,42 @@ test('ripe-bed harvesting never requires selecting the basket beforehand', () =>
     runInNewContext(js(activation)+`;activateTarget({kind:'bed',index:${index}})`,state)
     assert.deepEqual(farm,expected,`direct bed activation still harvests with ${tool.id} selected`)
   }
+})
+
+for (const keep of [false,true]) test(`${keep?'keep-berry':'ordinary'} harvest keeps the real tool readout instead of selecting the inventory shortcut`,()=>{
+  const farm=farmApi.createFarm(),index=0,crop='blueberry'
+  farm.beds[index]={kind:'crop',crop,growth:farmApi.cropDefinitions[crop].days,watered:false,trait:'dew'}
+  const crops=Array(16).fill(null);crops[index]=crop
+  assert.ok(saveGardenPlan(farm,0,{name:'Ягодный уголок',crops},0).ok)
+  assert.ok(followGardenPlan(farm,0,1).ok)
+  const selected=farmApi.getBerryRenewalPreview(farm,index)!
+  assert.ok(selected)
+  const expected=structuredClone(farm)
+  assert.ok((keep?farmApi.harvestBerryAndKeep(expected,selected.token):farmApi.workBed(expected,index)).ok)
+  const slice=(a:string,b:string)=>{const start=main.indexOf(a),end=main.indexOf(b,start+1);assert.ok(start>=0&&end>start);return main.slice(start,end)}
+  const activeDefinition=slice('  const tool = tools.find(({ id }) => id === activeTool)!','  const goal = currentTask()')
+  const readout=slice("  textAt('status-tool',","\n")
+  const code=js(slice('const bedTools =','const locationLabels =')+activation+
+    `\nfunction statusTool(){${activeDefinition}${readout}}\nfunction keepBerries(){switch('berry-renewal-confirm'){${slice("    case 'berry-renewal-confirm':","    case 'berry-nursery-ingredient':")}}}`)
+  const readouts:string[]=[],opened:string[]=[],sounds:string[]=[]
+  const ctx={
+    ...farmApi,...bedIntent,farm,tools,basketHotbarLabels,activeTool:'water',bedWorkSound,
+    value:selected.token,berryRenewalSelection:{selected},panel:'berry-renewal',dialog:{open:keep},
+    activateTarget:(_target:unknown)=>{},keepBerries(){},statusTool(){},
+    bayAudio:{primeEvents:()=>Promise.resolve()},playBaySound:(sound:string)=>sounds.push(sound),
+    textAt:(key:string,text:string)=>{assert.equal(key,'status-tool');readouts.push(text)},
+    perform:(action:()=>{ok:boolean})=>{const result=action();if(result.ok)ctx.statusTool();return result.ok},
+    openPanel:(panel:string)=>opened.push(panel),closeDialog(){ctx.dialog.open=false},
+    island:{isCrossing:()=>false,workBed:(at:number,kind:()=>string,commit:()=>void)=>{assert.equal(at,index);assert.equal(kind(),'harvest');commit()}},
+  }
+  runInNewContext(code,ctx)
+  if(keep)ctx.keepBerries()
+  else ctx.activateTarget({kind:'bed',index})
+  assert.deepEqual(farm,expected,'yield, cost, growth and the active garden plan must match the real harvest')
+  assert.deepEqual(opened,[],'neither harvest opens inventory')
+  assert.deepEqual(sounds,['field.berry-pick'])
+  assert.deepEqual(readouts,['Лейка'])
+  assert.equal(ctx.activeTool,'water')
 })
 
 test('existing pointer, Enter/Space and compact contextual harvesting still activate the bed directly', () => {
