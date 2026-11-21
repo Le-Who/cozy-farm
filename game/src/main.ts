@@ -4387,7 +4387,16 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'feed': if(perform(() => feedChickens(farm), false, farm.progress.feed > 0))playBaySound('flock.feed', 1, 0); break
-    case 'collect': if(perform(() => collectEggs(farm)))playBaySound('flock.eggs', 1, 0); break
+    case 'collect': {
+      const firstIncubatorEgg = panel === 'coop' && dialog.open && farm.coopSpecialization === 'hatchery'
+        && farm.hatchDay === null && farm.eggs === 0 && event.detail === 0 && document.activeElement === control
+      if (perform(() => collectEggs(farm))) {
+        playBaySound('flock.eggs', 1, 0)
+        if (firstIncubatorEgg)
+          highlightControl(dialogContent.querySelector('.coop-primary [data-action="incubate-egg"]:not(:disabled)')?.closest<HTMLElement>('.dialog-row') ?? null)
+      }
+      break
+    }
     case 'unpack-egg-basket': {
       const fromIncubator = panel === 'coop' && dialog.open && hasIncubatorBasketSource(farm)
         && !!control.closest('.coop-packing .dialog-row.guidance-target')

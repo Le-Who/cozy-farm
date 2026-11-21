@@ -262,3 +262,54 @@ test('unpacking through the incubator shortcut returns to the newly available eg
   assert.deepEqual(farm,before,'unpacking alone must not start the hatch, advance a day or change a visit')
  }
 })
+
+test('collecting the first loose egg by keyboard reveals the incubator without starting it',()=>{
+ const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+ const part=(a:string,b:string)=>{const i=source.indexOf(a),j=source.indexOf(b,i+1);assert.ok(i>=0&&j>i);return source.slice(i,j)}
+ const code=stripTypeScriptTypes(part('function highlightControl(','async function showRequirement(')
+  +'\nfunction dispatch(action){switch(action){'+part("    case 'collect':","    case 'unpack-egg-basket':")
+  +part("    case 'incubate-egg':","    case 'rest-close-shop':")+'}}'
+  +'\nfunction restore(focused){'+part("  if (focused && panel !== 'bay-freight'","\n}\n")+'}')
+ const p=chickenCarePlayer('orchard','hatchery');p.act('feedChickens');p.act('endDay')
+ assert.equal(p.state.eggs,0);assert.ok(p.state.eggsReady>0);assert.equal(p.state.hatchDay,null)
+ for(const mode of ['owned-keyboard','pointer','focus-elsewhere','already-stocked'] as const){
+  const farm=structuredClone(p.state)
+  if(mode==='already-stocked'){
+   assert.ok(F.collectEggs(farm).ok);assert.ok(F.buyFeed(farm).ok);assert.ok(F.feedChickens(farm).ok);assert.ok(F.endDay(farm).ok)
+   assert.ok(farm.eggs>0);assert.ok(farm.eggsReady>0)
+  }
+  assert.equal(actions(render(farm)).find(a=>a.action==='incubate-egg')?.disabled,mode!=='already-stocked')
+  const before=structuredClone(farm),expected=structuredClone(farm)
+  assert.ok(F.collectEggs(expected).ok)
+  const sounds:string[]=[],document={activeElement:null as unknown}
+  let revealed=false
+  const classes=new Set<string>()
+  const incubator={tabIndex:undefined as number|undefined,classList:{add:(value:string)=>classes.add(value)},matches:()=>false,
+    focus({preventScroll}:{preventScroll:boolean}){assert.ok(preventScroll);document.activeElement=this},
+    scrollIntoView({block}:{block:string}){assert.equal(block,'center');revealed=true}}
+  class Button {
+   dataset:{action:string};disabled=false
+   constructor(action:string){this.dataset={action}}
+   focus(){document.activeElement=this}
+   closest(selector:string){return selector==='.dialog-row'&&this.dataset.action==='incubate-egg'?incubator:null}
+  }
+  const control=new Button('collect'),insert=new Button('incubate-egg'),closeButton=new Button('close')
+  document.activeElement=mode==='focus-elsewhere'?closeButton:control
+  const available=()=>actions(render(farm)).some(a=>a.action==='incubate-egg'&&!a.disabled)
+  const dialogContent={querySelector:(s:string)=>s==='.coop-primary [data-action="incubate-egg"]:not(:disabled)'&&available()?insert:null,
+   querySelectorAll:(s:string)=>s==='button:not(:disabled)'&&available()?[insert]:[]}
+  const ctx:any={...F,farm,panel:'coop',dialog:{open:true},dialogContent,control,document,event:{detail:mode==='pointer'?1:0},
+   closeButton,HTMLButtonElement:Button,focusedSeedCrop:undefined,focusKey:(item:Button)=>item.dataset.action,playBaySound:(id:string)=>sounds.push(id),
+   perform(action:()=>{ok:boolean}){const focused=document.activeElement;const result=action();if(result.ok)ctx.restore(focused instanceof Button?focused:undefined);return result.ok}}
+  runInNewContext(code,ctx);ctx.dispatch('collect')
+  assert.deepEqual(farm,expected);assert.equal(farm.hatchDay,null);assert.equal(farm.day,before.day)
+  assert.deepEqual(sounds,['flock.eggs']);assert.equal(available(),true)
+  assert.equal(revealed,mode==='owned-keyboard',mode)
+  assert.equal(document.activeElement,mode==='owned-keyboard'?incubator:closeButton)
+  if(mode==='owned-keyboard'){
+   assert.equal(incubator.tabIndex,-1);assert.ok(classes.has('guidance-target'))
+   ctx.dispatch('incubate-egg')
+   assert.equal(farm.eggs,expected.eggs-1);assert.equal(farm.hatchDay,before.day+F.incubationDays)
+  }
+ }
+})
