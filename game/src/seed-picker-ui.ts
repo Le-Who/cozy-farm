@@ -18,7 +18,7 @@ export function renderSeedPicker(farm: FarmState, previewSeed: CropId, bed: numb
   const quote = !choice.available && !affordable ? seedSavingQuote(farm,previewSeed) : undefined
   const exchange = quote?.available ? quote : undefined
   const buy = !choice.available ? art.button(`Купить ×${seedPackSize}`, 'buy-seeds', affordable, {crop:previewSeed, context:`Семена: ${seed.name.toLowerCase()}, цена: ${ruCount(seed.seedPrice,'монета','монеты','монет')}`, cost:{icon:'coin',amount:seed.seedPrice}}) : ''
-  const primary = choice.available ? art.button(label, 'choose-seed', true, {value:choice.token})
+  const primary = choice.available ? art.button(label, 'choose-seed', true, {value:choice.token, crop:previewSeed, context:''})
     : exchange ? art.button(`Обменять на ${ruCount(exchange.pack,'семя','семени','семян')}`,'save-crop-seeds',true,{value:exchange.token,context:`цена, обычный урожай: ${seed.name.toLowerCase()} ×1`}) : buy
   const detail = choice.available ? choice.detail
     : exchange ? `Цена: ${seed.name.toLowerCase()} ×1 из обычного урожая. Посев отдельно.`

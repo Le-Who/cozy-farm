@@ -2599,7 +2599,13 @@ function drawPanel() {
       ?? (focusedSeedCrop ? dialogContent.querySelector<HTMLElement>(`[data-seed-pack="${CSS.escape(focusedSeedCrop)}"] .market-seed-limit`) : null)
     const incubatorRoute = panel === 'coop' && focused.dataset.action === 'incubate-egg'
       ? dialogContent.querySelector<HTMLButtonElement>('.coop-primary [data-action="visit-rest"]') : null
-    const nextFocus = replacement ?? incubatorRoute ?? (panel === 'hen-friendship' ? henCareResultFocus(dialogContent, focused) : undefined) ?? closeButton
+    // A queued planting can spend the last seed while the picker is already open.
+    // Keep its crop in focus without moving the old confirmation onto the buy action.
+    const depletedSeedTile = !replacement && focused.dataset.action === 'choose-seed'
+      && (panel === 'seeds' || panel === 'inventory' && bagTab === 'seeds')
+      && focused.dataset.crop === previewSeed && farm.seeds[previewSeed] === 0
+      ? dialogContent.querySelector<HTMLButtonElement>('.seed-picker-tile[aria-pressed="true"]') : null
+    const nextFocus = replacement ?? depletedSeedTile ?? incubatorRoute ?? (panel === 'hen-friendship' ? henCareResultFocus(dialogContent, focused) : undefined) ?? closeButton
     nextFocus.focus({ preventScroll: true })
   }
 }
