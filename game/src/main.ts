@@ -1799,7 +1799,9 @@ function goBack(keyboard = false) {
   previewSeed=previous.previewSeed;specializationBuilding=previous.specializationBuilding;previewSpecialization=previous.previewSpecialization
   irrigationMode=previous.irrigationMode;villageSlot=previous.villageSlot;pastryShape=previous.pastryShape
   workshopRecipe=previous.workshopRecipe;cookingDish=previous.cookingDish;cookingFish=previous.cookingFish
-  seedPickerBed=previous.seedPickerBed
+  // A side trip can fill the plot. Restore browsing, not a dead-end bed return.
+  const seedBed = previous.seedPickerBed === undefined ? undefined : farm.beds[previous.seedPickerBed]
+  seedPickerBed = farm.island === 'home' && seedBed && seedBed.kind !== 'crop' ? previous.seedPickerBed : undefined
   signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;expandedRepeatId=previous.expandedRepeatId;cookingMode=previous.cookingMode
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;honeyKitchenDish=previous.honeyKitchenDish;signatureFamily=previous.signatureFamily

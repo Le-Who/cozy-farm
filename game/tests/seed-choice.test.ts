@@ -3,7 +3,7 @@ import {test} from 'node:test'
 import {readFileSync} from 'node:fs'
 import {stripTypeScriptTypes} from 'node:module'
 import {runInNewContext} from 'node:vm'
-import {createFarm,workBed,buySeeds,restoreCurrentFarm,sellMarketItem,endDay,berryCropIds,cropIds} from '../src/farm.ts'
+import {createFarm,workBed,buySeeds,restoreCurrentFarm,sellMarketItem,endDay,berryCropIds,cropIds,needsSeedChoice,transplantCrop} from '../src/farm.ts'
 import {saveGardenPlan,followGardenPlan} from '../src/garden-plans.ts'
 import {seedChoice,chooseSeedForBed} from '../src/seed-choice.ts'
 import {seedSavingQuote,saveCropSeeds} from '../src/seed-saving.ts'
@@ -161,5 +161,45 @@ test('keyboard preview of the tenth stocked packet reaches its sticky selector i
       guard.release(key)
       assert.equal(guard.blocks({key,repeat:false},isGuardedAction('choose-seed')),false,'a fresh confirm remains available')
     }
+  }
+})
+
+test('Back from transplant cannot restore a stale planned seed shortcut to the now-occupied bed',()=>{
+  const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const between=(a:string,b:string)=>{const start=source.indexOf(a),end=source.indexOf(b,start+1);assert.ok(start>=0&&end>start);return source.slice(start,end)}
+  const script=stripTypeScriptTypes(between('function goBack(', 'let harbourScene:')
+    +between('function chooseSeed(', 'function activateTarget(')
+    +"\n;({goBack,choose(value){switch('choose-seed'){"+between("    case 'choose-seed':","    case 'sell':")+"}}})")
+  for(const occupied of [true,false]){
+    const farm=createFarm(),bed=13,crop='blueberry',crops=Array(16).fill(null);crops[bed]=crop
+    assert.ok(saveGardenPlan(farm,0,{name:'Ягодный уголок',crops},0).ok)
+    assert.ok(followGardenPlan(farm,0,1).ok);assert.equal(needsSeedChoice(farm,bed),true)
+    assert.ok(buySeeds(farm,crop).ok);assert.equal(farm.beds[bed].kind,'tilled')
+    const oldToken=seedChoice(farm,crop,bed).token
+    const beforeTab=renderSeedPicker(farm,crop,bed,{icon:()=>'',button:(label:string)=>label})
+    assert.match(beforeTab,/К грядке по плану/)
+    if(occupied)assert.ok(transplantCrop(farm,9,bed).ok)
+    const before=structuredClone(farm),history=[{panel:'seeds',seedPickerBed:bed,previewSeed:crop,signatureSlots:[],marketNextOpen:[],scroll:94}]
+    let closed=0,markup='';const visits:number[]=[]
+    const ctx={farm,panel:'transplant',panelHistory:history,panelRenderVersion:1,dialog:{open:true,querySelectorAll:()=>[]},
+      dialogContent:{scrollTop:0,querySelector:()=>null,querySelectorAll:()=>[]},seedPickerBed:undefined as number|undefined,previewSeed:'carrot' as typeof crop|'carrot',
+      recipeBook:{load(){}},restoreFerryPanelView(){},requestAnimationFrame:(f:()=>void)=>f(),
+      openPanel(panel:string){
+        ctx.panel=panel
+        markup=renderSeedPicker(farm,ctx.previewSeed,ctx.seedPickerBed,{icon:()=>'',button:(label:string)=>label})
+      },
+      seedChoice,chooseSeedForBed,perform:(act:()=>{ok:boolean})=>act().ok,closeDialog(){closed++;ctx.dialog.open=false},
+      island:{focusTarget:(target:{index:number})=>visits.push(target.index)},
+    }
+    const ui=runInNewContext(script,ctx)
+    ui.goBack(true)
+    assert.equal(ctx.panel,'seeds');assert.equal(ctx.dialogContent.scrollTop,94)
+    assert.deepEqual(farm,before,'Back is only navigation')
+    ui.choose(oldToken)
+    assert.equal(closed,occupied?0:1,'the old choice must not send the player to an occupied bed')
+    assert.deepEqual(visits,occupied?[]:[bed])
+    assert.equal(ctx.seedPickerBed,occupied?undefined:bed)
+    assert.equal(markup.includes('К грядке по плану'),!occupied)
+    assert.deepEqual(farm,before,'a stale or planned return never selects or sows')
   }
 })
