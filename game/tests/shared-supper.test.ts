@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
-import { completeSignature, deliverSignature, endDay, forgetSignature, getVillageHomeCount, inviteResident, restoreFarm, serveVillageMeal } from '../src/farm.ts'
+import { completeSignature, deliverSignature, endDay, forgetSignature, getVillageHomeCount, inviteResident, restoreFarm, serveVillageMeal, bakeWorkshop, sellSignature, sail, getVillageMeal, workshopShapes, workshopDefinitions, residentIds, residentDefinitions, getResidentService, getBeaPastryCount, getWorkshopAction, workshopIngredients } from '../src/farm.ts'
 import { getDiscoveryTask } from '../src/discovery-path.ts'
 import { getReadySignatureSuppers, renderSignatureSuppers, renderSupperResult, supperCottageReady } from '../src/shared-supper.ts'
 import { isGuardedAction, ActionClickGuard, ActivationKeyGuard } from '../src/action-click-guard.ts'
@@ -184,4 +184,54 @@ test('both real dinner commands keep the earned choice; only a separate visit op
     runInNewContext(code,context); assert.equal(visits.length,1,'occupied house is no longer offered')
     assert.doesNotMatch(renderSupperResult(farm,'',home),/supper-cottage/); assert.ok(renderSupperResult(farm,'',home).includes(home))
   }
+})
+
+test('tomorrow’s cottage table starts on the ready pastry, not yesterday’s spent shape',()=>{
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const between=(a:string,b:string)=>{const from=main.indexOf(a),to=main.indexOf(b,from+a.length);assert.ok(from>=0&&to>from);return main.slice(from,to)}
+  const js=stripTypeScriptTypes(between('function pastryChoices()', 'function villageProjectCard()')
+    +between('function neighboursCard()','let selectedWarehouseRequest')
+    +between('function openPanel(', 'function openRecipeBook(')
+    +between('function goBack(', 'let harbourScene:')
+    +"\nfunction draw(){switch(panel){"+between("    case 'village': dialogContent.innerHTML = neighboursCard()", "    case 'fishing': {")+"}}"
+    +"\n;({draw,goBack,openDinner(){switch('village-meal'){"+between("    case 'village-meal':\n      if (value", "    case 'build-village':")+"}}})")
+  const farm=sharedSupperFixture('manual'),noop=()=>{},slot=0
+  const history:unknown[]=[],reset={reset:noop}
+  const ctx:any={farm,panel:'village',value:undefined,pastryShape:'round',villageSlot:slot,dialog:{open:true,querySelectorAll:()=>[]},
+    panelHistory:history,panelRenderVersion:1,dialogContent:{innerHTML:'',scrollTop:30,querySelector:()=>null,querySelectorAll:()=>[]},
+    getVillageMeal,getVillageHomeCount,workshopShapes,workshopDefinitions,residentIds,residentDefinitions,getResidentService,getBeaPastryCount,getWorkshopAction,workshopIngredients,getFinnFishingRoute:noop,
+    getReadySignatureSuppers,renderSignatureSuppers,renderSupperResult,supperCottageReady,
+    signatureResultPicture:()=>'',renderHarbourFishChoice:()=>'',pastryIcons:{},villageHomeProgress:()=>'',neighborHelpCard:()=>'',
+    icon:()=>'',stockTile:()=>'',button:(label:string,action:string,enabled=true)=>`<button data-action="${action}"${enabled?'':' disabled'}>${label}</button>`,
+    nav:(...parts:string[])=>parts.join(''),app:{dataset:{}},toast:{},dialogFeedback:{},island:{isCrossing:()=>false,setViewMode:noop,setCoveFocus:noop},
+    salePresentation:{},transplantSelection:reset,berryNurserySelection:reset,berryRenewalSelection:reset,gardenEditor:reset,recipeSurplusSelection:reset,
+    stopHarbour:noop,stopFishing:noop,stopWorkshop:noop,stopCookery:noop,stopArrangement:noop,playBaySound:noop,updateCommunityReturn:noop,
+    closeButton:{focus:noop},recipeBook:{load:noop},restoreFerryPanelView:noop,requestAnimationFrame:(f:()=>void)=>f(),
+    rememberPanel(){return {panel:ctx.panel,pastryShape:ctx.pastryShape,villageSlot:slot,signatureSlots:[],marketNextOpen:[],scroll:ctx.dialogContent.scrollTop}},
+    drawPanel(){ui.draw()},
+  }
+  const ui=runInNewContext(js,ctx)
+  assert.ok(bakeWorkshop(farm,'folded').ok)
+  assert.ok(serveVillageMeal(farm,'round').ok)
+  ui.draw()
+  assert.match(ctx.dialogContent.innerHTML,/Ужин завтра/)
+  assert.doesNotMatch(ctx.dialogContent.innerHTML,/data-action="village-meal"/,'the served-day cottage has no dinner action')
+
+  assert.ok(sail(farm,'home').ok)
+  const recipe=farm.culinary.recipes[0]
+  assert.ok(sellSignature(farm,recipe.id,farm.culinary.stock[recipe.id]).ok,'only manual pastry remains')
+  assert.ok(endDay(farm).ok);assert.ok(sail(farm,'village').ok)
+  assert.equal(getVillageMeal(farm,'round').available,false);assert.equal(getVillageMeal(farm,'folded').available,true)
+  assert.equal(getVillageMeal(farm).served,false)
+  const before=structuredClone(farm)
+  ui.draw()
+  assert.match(ctx.dialogContent.innerHTML,/data-action="village-meal">Накрыть стол/)
+  ui.openDinner()
+  assert.equal(ctx.panel,'village-meal')
+  assert.match(ctx.dialogContent.innerHTML,/<button data-action="share-meal">Подать выпечку/)
+  assert.match(ctx.dialogContent.innerHTML,/data-action="pastry-shape" data-value="folded" aria-pressed="true"/)
+  assert.deepEqual(farm,before,'opening the table consumes neither a pastry nor a fish')
+  ui.goBack(true)
+  assert.equal(ctx.panel,'village');assert.equal(ctx.pastryShape,'round','restore the cottage’s own shape')
+  assert.deepEqual(farm,before)
 })

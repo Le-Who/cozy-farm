@@ -2649,6 +2649,10 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     ? marketSaleBrowse.takeClosed(marketSellView()) : undefined
   if (!dialog.open) marketSaleBrowse.reset()
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
+  if (remember && next === 'village-meal' && panel === 'village' && !getVillageMeal(farm, pastryShape).available) {
+    // Snapshot the cottage's choice first; the table can start with stock that is ready.
+    pastryShape = workshopShapes.find(shape => getVillageMeal(farm, shape).available) ?? pastryShape
+  }
   if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
   else if (next === 'kitchen' && remember && next !== panel && farm.fish[cookingFish] === 0) cookingFish = getGrillFish(farm)
   if (next === 'kitchen' && kitchenGroup === undefined) {
