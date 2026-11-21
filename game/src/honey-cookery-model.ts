@@ -226,4 +226,4 @@ export function completeHoney(model: HoneyModel, commit: () => boolean): boolean
   try { const accepted = commit(); model.stage = accepted ? 'finished' : 'ready'; return accepted }
   catch (error) { model.stage = 'ready'; throw error }
 }
-export function cancelHoney(model: HoneyModel): void { if (!['finished', 'committing'].includes(model.stage)) { model.stage = 'cancelled'; endHoneyStroke(model) } }
+export function cancelHoney(model: HoneyModel): void { if (!['finished', 'committing'].includes(model.stage)) { model.stage = 'cancelled'; model.pending = null; endHoneyStroke(model) } }
