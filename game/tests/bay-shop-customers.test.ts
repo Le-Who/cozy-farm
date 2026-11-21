@@ -18,14 +18,14 @@ test('all six visual choices expose exactly one active card, without touching st
 
 test('unvisited customers reveal no hidden likes or unobserved request',()=>{
  const s=createBayShop(),v=new BayShopCustomerView(),html=card(s,v)
- assert.match(html,/Любимые товары ещё неизвестны/);assert.doesNotMatch(html,/Нежное к чаю|груш|шёлк|silky|delicate|pear|Просит/)
- assert.match(html,/Базовый бюджет визита/);assert.match(html,/95 монет/);assert.doesNotMatch(html,/Не цена товара и не оценка качества/)
+ assert.match(html,/Любимые товары ещё неизвестны/);assert.doesNotMatch(html,/Нежное к чаю|груш|шёлк|silky|delicate|pear|Пожелание/)
+ assert.match(html,/Базовый лимит/);assert.match(html,/95 монет/);assert.doesNotMatch(html,/купить одну штуку по цене на полке/)
  assert.doesNotMatch(readFileSync(new URL('../src/bay-shop-customers.ts',import.meta.url),'utf8'),/\.likes|bayShopInterest/)
 })
 
 test('real arrival reveals only spoken request and exact actual visit budget, including later cycles',()=>{
  const s=opened(),v=new BayShopCustomerView();run(s,1200)
- assert.equal(s.visitor?.budget,95);assert.match(card(s,v),/Бюджет этого визита/);assert.match(card(s,v),/Нежное к чаю/);assert.doesNotMatch(card(s,v),/Грушевое облако/)
+ assert.equal(s.visitor?.budget,95);assert.match(card(s,v),/Лимит на этот визит/);assert.match(card(s,v),/Нежное к чаю/);assert.doesNotMatch(card(s,v),/Грушевое облако/)
  advanceBayShopDay(s,2);run(s,1200);assert.equal(s.visitor?.id,'bea');assert.equal(s.visitor?.budget,103);assert.match(card(s,v),/103 монеты/)
  advanceBayShopDay(s,3);run(s,1200);assert.equal(s.visitor?.budget,111);assert.match(card(s,v),/111 монет/)
  advanceBayShopDay(s,4);run(s,1200);assert.equal(s.visitor?.budget,95);assert.match(card(s,v),/95 монет/)
@@ -51,14 +51,29 @@ test('budget is not willingness or a guaranteed price; observed rejected visit c
  assert.doesNotMatch(card(s,v),/Грушевое облако/)
 })
 
+test('a spoken wish is optional, not a pending order; only a real shelf sale earns coins',()=>{
+ const s=createBayShop(),v=new BayShopCustomerView()
+ const bread={...pear,id:'bread',identity:'bread',name:'Простая булочка',tags:['bread']}
+ stockBayShop(s,0,bread,1);setBayShopPrice(s,0,48);setBayShopOpen(s,true)
+ run(s,1200)
+ const first=card(s,v)
+ assert.match(first,/Лимит на этот визит<\/dt><dd[^>]*>95 монет/);assert.match(first,/Пожелание, не заказ<\/dt><dd[^>]*>Нежное к чаю/)
+ run(s,6200)
+ assert.equal(s.visitor?.outcome?.kind,'bought');assert.equal(s.memories.bea.purchases.bread.liked,0)
+ assert.equal(s.revenue,48);assert.equal(s.slots[0]?.quantity,0)
+ run(s,6200);assert.equal(s.visitor,null)
+ assert.match(card(s,v),/Базовый лимит<\/dt><dd[^>]*>95 монет/);assert.match(card(s,v),/Пожелание, не заказ/);assert.doesNotMatch(card(s,v),/>Просит</)
+ run(s,10400);assert.equal(s.visitor?.outcome?.kind,'empty');assert.equal(s.revenue,48)
+})
+
 test('help hides only explanatory prose; exact aggregate sales and remembered product data remain available',()=>{
  const s=opened(),v=new BayShopCustomerView();run(s,7400);assert.ok(v.choose('finn'))
  const before=structuredClone(s),closed=renderBayShopCustomers(s,v)
  assert.match(closed,/aria-expanded="false"/);assert.match(closed,/id="bay-shop-customer-explanation" hidden/);assert.match(closed,/Продано: <strong>1/);assert.match(closed,/Выручка: <strong>50 монет/);assert.match(closed,/Помнят вкус: Беа/)
  v.explanation=true;const open=renderBayShopCustomers(s,v)
- assert.equal((open.match(/Не цена товара и не оценка качества/g)??[]).length,1)
- assert.match(open,/id="bay-shop-customer-explanation">[\s\S]*Не цена товара и не оценка качества/)
- assert.doesNotMatch(card(s,v),/Не цена товара и не оценка качества/)
+ assert.equal((open.match(/купить одну штуку по цене на полке/g)??[]).length,1)
+ assert.match(open,/id="bay-shop-customer-explanation">[\s\S]*купить одну штуку по цене на полке/)
+ assert.doesNotMatch(card(s,v),/купить одну штуку по цене на полке/)
  assert.match(open,/aria-expanded="true"/);assert.doesNotMatch(open,/id="bay-shop-customer-explanation" hidden/);assert.deepEqual(s,before)
 })
 
@@ -111,7 +126,7 @@ test('first Buyers visit shows the real customer after an earned sale; browsing 
  assert.equal(p.state.day,9);assert.equal(shop.sold,1);assert.equal(p.state.coins,coins+price);assert.equal(shop.visitor?.budget,145)
  const view=new BayShopCustomerView(),before=structuredClone(p.state)
  view.enter(shop.visitor?.id)
- assert.equal(view.selected,'finn');assert.match(card(shop,view),/Бюджет этого визита/);assert.match(card(shop,view),/145 монет/);assert.match(card(shop,view),/Что-нибудь сытное/)
+ assert.equal(view.selected,'finn');assert.match(card(shop,view),/Лимит на этот визит/);assert.match(card(shop,view),/145 монет/);assert.match(card(shop,view),/Что-нибудь сытное/)
  const otherBuyer=renderBayShopCustomers(shop,view)
  assert.match(otherBuyer,/class="bay-shop-reputation"/);assert.match(otherBuyer,/Помнят вкус: Беа/)
  assert.ok(view.choose('bea'));view.enter(shop.visitor?.id)

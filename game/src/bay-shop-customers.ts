@@ -44,13 +44,13 @@ export function renderBayShopCustomers(state:BayShopState, view:BayShopCustomerV
     <article class="bay-shop-customer-card" id="bay-shop-customer-card" aria-label="${person.name}">
       <header><h3>${person.name}</h3><span>Встречи: ${memory.visits} · покупки: ${total}</span></header>
       <dl class="bay-shop-customer-facts">
-        <div><dt>${visitor?'Бюджет этого визита':'Базовый бюджет визита'}</dt><dd class="bay-shop-customer-budget">${money(visitor?.budget??person.budget)}</dd></div>
-        ${memory.visits?`<div><dt>Просит</dt><dd class="bay-shop-customer-wish">${person.wish}</dd></div>`:''}
+        <div><dt>${visitor?'Лимит на этот визит':'Базовый лимит'}</dt><dd class="bay-shop-customer-budget">${money(visitor?.budget??person.budget)}</dd></div>
+        ${memory.visits?`<div><dt>Пожелание, не заказ</dt><dd class="bay-shop-customer-wish">${person.wish}</dd></div>`:''}
       </dl>
       ${purchases.length?`<ul class="bay-shop-customer-purchases" aria-label="Наблюдения после покупок">${purchases.map(([key,purchase])=>`<li data-customer-product="${escape(key)}"><strong data-user-text>${escape(productName(key))}</strong><span>Куплено: ${purchase.bought}${purchase.liked>0?` · Понравилось: ${purchase.liked}`:''}</span></li>`).join('')}</ul>`:`<p class="bay-shop-customer-unknown">${memory.visits?'Покупок пока нет. Любимые товары ещё неизвестны.':'Встреч ещё не было. Любимые товары ещё неизвестны.'}</p>`}
     </article>
     <button class="bay-shop-customer-help" type="button" data-customer-help aria-expanded="${view.explanation}" aria-controls="bay-shop-customer-explanation">${view.explanation?'Скрыть пояснение':'Как читать вкусы и бюджет'}</button>
-    <div class="bay-shop-customer-explanation" id="bay-shop-customer-explanation"${view.explanation?'':' hidden'}><p>Здесь только реакции после покупок конкретного товара. Покупка сама по себе не означает, что вкус стал любимым. Знакомый понравившийся рецепт охотнее выбирают снова.</p><p>Бюджет — монеты на один визит. Не цена товара и не оценка качества. В следующих визитах он может быть больше базового. Даже в пределах бюджета покупатель сравнивает товар и цену: покупка не гарантирована.</p></div>
+    <div class="bay-shop-customer-explanation" id="bay-shop-customer-explanation"${view.explanation?'':' hidden'}><p>Здесь только реакции после покупок конкретного товара. Покупка сама по себе не означает, что вкус стал любимым. Знакомый понравившийся рецепт охотнее выбирают снова.</p><p>За визит гость может купить одну штуку по цене на полке. Даже в пределах лимита он может отказаться. В следующий раз лимит может быть другим.</p></div>
     <section class="bay-shop-customer-history" aria-label="Общий журнал лавки"><div class="bay-shop-customer-totals"><span>Продано: <strong>${state.sold}</strong></span><span>Выручка: <strong>${money(state.revenue)}</strong></span></div>
       ${reputation.length&&!repeatsBuyer?`<h3>${manyProducts?`<button class="bay-shop-customer-help" type="button" data-customer-history aria-expanded="${view.historyOpen}" aria-controls="bay-shop-product-sales">Продажи по товарам · ${reputation.length}</button>`:'Продажи по товарам'}</h3>
       <div id="bay-shop-product-sales"${showProducts?'':' hidden'}>${showProducts?reputation.map(([key,rep])=>{
