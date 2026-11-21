@@ -2085,6 +2085,10 @@ function drawPanel() {
   dialog.dataset.panel = panel
   dialog.dataset.marketTab = marketTab
   dialogEmblem.src = iconUrl(panel === 'specialize' ? `upgrade-${specializationBuilding}-card` : panelEmblems[panel])
+  const activeInput = document.activeElement
+  const focusedSaleSearch = panel === 'market' && marketTab === 'sell' && activeInput instanceof HTMLInputElement
+    && activeInput.matches('[data-market-sale-query]') && dialogContent.contains(activeInput)
+    ? {start:activeInput.selectionStart, end:activeInput.selectionEnd, direction:activeInput.selectionDirection} : undefined
   const focusedInlineKey=document.activeElement instanceof HTMLInputElement&&document.activeElement.matches('[data-inline-quantity]')?document.activeElement.closest<HTMLElement>('[data-inline-key]')?.dataset.inlineKey:undefined
   const focusedStorageChoice = document.activeElement instanceof HTMLSelectElement && document.activeElement.matches('[data-tree-storage-choice]') && dialogContent.contains(document.activeElement)
   const focused = document.activeElement instanceof HTMLButtonElement && dialogContent.contains(document.activeElement)
@@ -2588,6 +2592,13 @@ function drawPanel() {
   }
 
   applyIngredientFinishes(dialogContent)
+  // A stock update can redraw Sell while the player is still editing the query.
+  if (focusedSaleSearch) {
+    const input = dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]')
+    input?.focus({preventScroll:true})
+    if (input && focusedSaleSearch.start !== null && focusedSaleSearch.end !== null)
+      input.setSelectionRange(focusedSaleSearch.start, focusedSaleSearch.end, focusedSaleSearch.direction ?? undefined)
+  }
   if(focusedInlineKey)Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-inline-key]')).find(card=>card.dataset.inlineKey===focusedInlineKey)?.querySelector<HTMLInputElement>('[data-inline-quantity]')?.focus({preventScroll:true})
   if (focusedStorageChoice) dialogContent.querySelector<HTMLSelectElement>('[data-tree-storage-choice]')?.focus({preventScroll:true})
   if(panel==='market'&&salePresentation.place)updateSaleQuote()
