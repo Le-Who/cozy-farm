@@ -1343,19 +1343,20 @@ function marketCards() {
     </ul>` + (isProjectComplete(farm,'fair') ? nav(button('Кондитерская','workshop',true,{secondary:true})) : '')
   }
   if (marketTab === 'sell') {
-    const destinations = stall + (farm.culinary.recipes.length ? nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})) : '')
+    const sellControls = `<div class="market-controls">${tabs}${stall ? `<div class="market-header">${stall}</div>` : ''}</div>`
+    const destinations = farm.culinary.recipes.length ? nav(button('Оставить на свой рецепт','open-panel',true,{value:'recipe-surplus',secondary:true})+button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})) : ''
     // A zero-result filter can still have stock elsewhere. Only suppress browsing when the entire market is empty.
-    if (getSale(farm).items === 0) return `<section data-market-sale-browser><div class="market-controls">${tabs}</div>
+    if (getSale(farm).items === 0) return `<section data-market-sale-browser>${sellControls}
       <p class="market-sale-search-empty" data-market-sale-empty tabindex="-1" role="status">Пока нет товаров для продажи.</p>
       ${destinations ? `<footer class="market-inline-tools">${destinations}</footer>` : ''}</section>`
     const bulk = marketBulkSaleControls()
-    return `<section data-market-sale-browser><div class="market-controls">${tabs}</div>
+    return `<section data-market-sale-browser>${sellControls}
       <div class="market-sale-filters"><div class="market-sale-search"><label for="market-sale-query"><span class="sr-only">Найти товар</span><input id="market-sale-query" data-market-sale-query type="search" maxlength="100" value="${escapeHtml(marketSaleQuery)}" placeholder="Найти товар" aria-controls="market-sale-results" autocomplete="off"></label>${button('Очистить','market-sale-clear',Boolean(marketSaleQuery),{secondary:true})}</div>
       <nav class="market-inline-groups" aria-label="Группа товаров">${panelTabs('market-sell-group',marketSellGroup,[['all','Всё'],['harvest','Урожай'],['kitchen','Кухня'],['shore','Берег']])}</nav></div>
       ${marketSellGroup==='harvest'?`<div class="market-inline-family"><select data-market-sale-family aria-label="Товар и его варианты"><option value="harvest"${!marketSaleFamily?' selected':''}>Весь урожай</option>${marketFamilyOptions(marketSaleFamily)}</select></div>`:''}
       <p class="market-sale-search-status${marketSaleQuery||marketSellGroup!=='all'?'':' sr-only'}" role="status" aria-live="polite">${marketSaleSearchStatus()}</p>
       <div id="market-sale-results">${marketSaleResults()}</div>
-      <footer class="market-inline-tools">${marketSellGroup==='all'?`<div class="market-total"${bulk?'':' hidden'}>${bulk}</div>`:''}${destinations}</footer></section>`
+      ${marketSellGroup==='all'||destinations?`<footer class="market-inline-tools">${marketSellGroup==='all'?`<div class="market-total"${bulk?'':' hidden'}>${bulk}</div>`:''}${destinations}</footer>`:''}</section>`
   }
 
   const categories=`<nav class="market-category-icons${marketCategory==='buildings'?' market-building-categories':''}" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}<span>${category.name}</span></button>`).join('')}</nav>`
