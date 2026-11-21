@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import {readFileSync} from 'node:fs'
+import {stripTypeScriptTypes} from 'node:module'
+import {runInNewContext} from 'node:vm'
+import ts from 'typescript'
 import {createParfaitTransfer} from '../src/parfait-transfer.ts'
-import {beginHoneyStroke,createHoneyModel,depositParfaitCustard,depositParfaitHoney,endHoneyStroke,honeyProgress,moveHoneyStroke,placeHoneyFruit,settleHoney} from '../src/honey-cookery-model.ts'
+import {beginHoneyStroke,createHoneyModel,depositParfaitCustard,depositParfaitHoney,endHoneyStroke,honeyProgress,moveHoneyStroke,onHoneySurface,placeHoneyFruit,settleHoney} from '../src/honey-cookery-model.ts'
+import * as motion from '../src/food-motion.ts'
 
 test('an empty spoon cannot fill the glass, and carried cream survives a long trip or release',()=>{
  const cream=createParfaitTransfer()
@@ -60,4 +65,102 @@ test('honey flows and spreads in the single vessel while stationary, then settle
  endHoneyStroke(model);assert.equal(model.stage,'settling')
  settleHoney(model,.1,true);settleHoney(model,.05,true);assert.equal(model.stage,'ready')
  assert.deepEqual(model.steps,['layer-fruit','pour-honey'])
+})
+
+function scoopScene(){
+ const read=(name:string)=>readFileSync(new URL('../src/'+name,import.meta.url),'utf8')
+ const source=read('honey-cookery.ts'),ast=ts.createSourceFile('honey-cookery.ts',source,ts.ScriptTarget.Latest,true)
+ const methods:string[]=[],names=['currentTool','imagePoint','contains','parfaitBowlContact','dispatchCreamPickup','start','move','release','returnTool','advanceMaterial']
+ function walk(node:ts.Node){
+  if(ts.isFunctionDeclaration(node)&&node.name&&names.includes(node.name.text))methods.push(node.getText(ast))
+  if(ts.isCallExpression(node)&&node.expression.getText(ast)==='view.addEventListener'&&node.arguments[0]?.getText(ast)==="'keydown'")methods.push(node.getText(ast))
+  ts.forEachChild(node,walk)
+ }
+ walk(ast)
+ // Preserve the real 110 ms cooldown in the separate audio module's namespace.
+ const audio=read('game-sound.ts').split('\n').slice(1).join('\n').split('/** Decode')[0]
+  .replaceAll('lastContact','lastSoundContact').replaceAll('export ','').replace('function playBaySound(','function forwardBaySound(')
+ const slice=(from:string,to:string)=>source.slice(source.indexOf(from),source.indexOf(to,source.indexOf(from)))
+ const code=stripTypeScriptTypes([audio,...methods,slice('  const normalized =','\n  function '),slice('  const eventPoint =','  function rotateFruit('),'this.tick=advanceMaterial'].join('\n'))
+ const abort=new AbortController(),view=new(class extends EventTarget{
+  captures=new Set<number>()
+  closest(){return null} setPointerCapture(id:number){this.captures.add(id)} hasPointerCapture(id:number){return this.captures.has(id)}
+  releasePointerCapture(id:number){this.captures.delete(id)} getBoundingClientRect(){return {left:0,top:0}} focus(){}
+ })()
+ const bowl={x:110,y:180},glass={x:405,y:200},model=createHoneyModel('windParfait'),cream=createParfaitTransfer(),silent=()=>{}
+ const part=(point:{x:number;y:number})=>({mesh:{position:point,rotation:{z:0}},rect:{x:point.x-40,y:point.y-40,width:80,height:80}})
+ let now=0
+ const requests:string[]=[],sounds:{id:string;load:number}[]=[],flow:boolean[]=[]
+ const state:Record<string,any>={
+  ...motion,model,parfaitTransfer:cream,view,window:new EventTarget(),signal:abort.signal,document:{hidden:false},
+  performance:{now:()=>now},bayAudio:{playEvent:(id:string)=>sounds.push({id,load:cream.load}),setContact:(id:string,active:boolean)=>{if(id==='cook.cream-flow')flow.push(active)}},
+  playBaySound(id:string,strength?:number,cooldown?:number){requests.push(id);state.forwardBaySound(id,strength,cooldown)},
+  family:'windParfait',loaded:true,lost:false,destroyed:false,knifeSounded:new Set(),creamRelease:null,creamPickupSent:false,
+  parts:new Map([['spoon',part(bowl)],['custard-bowl',part({x:bowl.x,y:bowl.y+5.6})]]),toolReturns:new Map(),fruitParts:new Map(),
+  surface:{...glass,rx:95,ry:80},width:600,height:420,cursor:{x:0,y:0},held:null,pointer:null,pointerPressure:.9,keyboard:false,
+  pearView:null,plateView:null,contact:motion.createViscousFollower(),contactReady:false,lastContact:null,knifeTransport:false,
+  custardLevel:{value:0,velocity:0},fruitLayer:{value:0,velocity:0},parfaitTopping:{value:0,velocity:0},pitcherTilt:{value:0,velocity:0},
+  coating:{value:0,velocity:0},swirl:{value:0,velocity:0},swirlTarget:0,swirlAngle:0,strandTail:0,
+  landings:new Map(),incorporated:new Map(),honeyDrops:new Set(),foods:[],batter:null,stream:null,streamGeometry:null,
+  honeySound:'cook.honey-flow',creamFlow:0,grippedDough:null,gripMaterial:null,physicalQuiet:true,
+  root:{dataset:{}},previousStage:'custard',previousBrushHint:'',previousProgress:0,previousCreamUi:0,finish:{disabled:false},
+  beginHoneyStroke,endHoneyStroke,depositParfaitCustard,depositParfaitHoney,honeyProgress,settleHoney,moveHoneyStroke,onHoneySurface,
+  brushReleaseHint:()=>'',sync:silent,updateFoodState:silent,layout:silent,updateCursor:silent,
+  moveHeld(point:{x:number;y:number}){state.cursor=point}
+ }
+ runInNewContext(code,state)
+ function pointer(type:string,point:{x:number;y:number}){
+  view.dispatchEvent(Object.assign(new Event('pointer'+type),{button:0,pointerId:1,pointerType:'mouse',clientX:point.x,clientY:point.y}))
+ }
+ function key(key:string,code:string){
+  const event=Object.assign(new Event('keydown',{cancelable:true}),{key,code})
+  view.dispatchEvent(event);assert.equal(event.defaultPrevented,true)
+ }
+ return {state,model,cream,sounds,requests,flow,bowl,glass,pointer,key,
+  delay(ms:number){now+=ms},frames(number:number){for(let i=0;i<number;i++){now+=20;state.tick(.02)}},
+  close:()=>abort.abort()}
+}
+
+test('one real bowl press fills an empty spoon, and full regrips stay quiet even after the sound cooldown',()=>{
+ const h=scoopScene()
+ try{
+  h.pointer('down',h.glass);h.frames(8);h.pointer('up',h.glass)
+  assert.equal(h.cream.load,0);assert.deepEqual(h.requests,[]);assert.deepEqual(h.sounds,[])
+  h.pointer('down',h.bowl);assert.equal(h.cream.load,.34)
+  h.frames(8);h.pointer('up',h.bowl)
+  for(let i=0;i<2;i++){h.delay(250);h.pointer('down',h.bowl);h.frames(8);h.pointer('up',h.bowl);assert.equal(h.cream.load,.34)}
+  assert.deepEqual(h.sounds,[{id:'cook.cream-scoop',load:.34}])
+  assert.deepEqual(h.requests,['cook.cream-scoop'])
+  assert.ok(h.flow.every(active=>!active));assert.equal(h.model.parfaitCustard,0)
+ }finally{h.close()}
+})
+
+test('held spoon refills start one scoop per return to the bowl, while only a glass pour sustains flow',()=>{
+ const h=scoopScene()
+ try{
+  h.pointer('down',h.bowl)
+  for(let visit=1;visit<=2;visit++){
+   const delivered=h.cream.delivered
+   h.pointer('move',h.glass);h.frames(16)
+   assert.ok(h.cream.load>0&&h.cream.load<.34);assert.ok(h.cream.delivered>delivered)
+   assert.equal(h.flow.at(-1),true);assert.equal(h.sounds.length,visit)
+   h.pointer('move',h.bowl);h.frames(35)
+   assert.equal(h.cream.load,.34);assert.equal(h.flow.at(-1),false)
+   assert.equal(h.sounds.length,visit+1);assert.ok(h.sounds.at(-1)!.load>0&&h.sounds.at(-1)!.load<.34)
+   assert.deepEqual(h.requests,Array.from({length:visit+1},()=> 'cook.cream-scoop'))
+  }
+  assert.equal(h.model.parfaitCustard,h.cream.delivered)
+ }finally{h.close()}
+})
+
+test('keyboard S scoops once, goes to the glass with no new scoop, then scoops again only after pouring',()=>{
+ const h=scoopScene()
+ try{
+  h.key('s','KeyS');assert.equal(h.cream.load,.34);assert.equal(h.sounds.length,1)
+  h.frames(8);h.key('s','KeyS')
+  assert.deepEqual({...h.state.cursor},h.glass);assert.equal(h.sounds.length,1)
+  h.frames(25);assert.equal(h.cream.load,0);assert.equal(h.model.parfaitCustard,.34);assert.ok(h.flow.includes(true))
+  h.key('s','KeyS');assert.equal(h.cream.load,.34);assert.equal(h.sounds.length,2)
+  assert.deepEqual(h.requests,['cook.cream-scoop','cook.cream-scoop'])
+ }finally{h.close()}
 })
