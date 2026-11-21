@@ -1708,7 +1708,7 @@ function neighboursCard() {
         ${here ? '' : `<div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 изделия в день':'+1 место на крючке · крепче снасть'}</span></div>`}
         <div class="resident-service">${here ? (id === 'bea' ? `<div class="resident-patterns"><div class="resident-pattern-heading"><h3>Форма выпечки</h3><small>✓ Освоено</small></div>${pastryChoices()}</div><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>${practice
           ? button(`Освоить вручную: ${workshopDefinitions[pastryShape].name.toLowerCase()}`, 'practice-pattern', getWorkshopAction(farm).available, { value: pastryShape })
-          : button(`Испечь ×${getBeaPastryCount(farm)}`, 'resident-service', service.available, { value: id })}`
+          : button(`Испечь ×${getBeaPastryCount(farm)}`, 'resident-service', service.available, { value: id, context: workshopDefinitions[pastryShape].name })}`
           : pier ? `<div class="finn-hook-ready" tabindex="-1" data-finn-hook>${icon('tool-rod')}<strong>Крючок готов · +1 место</strong></div>${button(pier.label, 'finn-pier', true, { value: pier.island + ':' + pier.panel })}`
           : button('Разведать · +1 место на крючке', 'resident-service', service.available, { value: id }))
         : button('Пригласить', 'invite-resident', true, { value: id })}

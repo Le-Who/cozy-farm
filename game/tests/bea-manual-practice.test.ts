@@ -57,3 +57,37 @@ test('Bea’s unlearned pastry quotes one manual bake, links missing stock, and 
   assert.ok(p.state.workshopPatterns.includes('folded'));assert.doesNotMatch(panel('folded').html,/data-action="practice-pattern"/)
   assert.equal(p.state.village.serviceOn.bea,supply.village.serviceOn.bea)
 })
+
+test('an occupied Bea house confirms the selected mastered pastry by name',()=>{
+  const actions=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8')) as {name:string;args:unknown[]}[]
+  const p=commissionPlayer(actions.slice(0,actions.findIndex(a=>a.name==='serveVillageMeal')+1))
+  assert.equal(p.state.island,'village');assert.equal(p.state.village.residents[0],'bea')
+  const farm=structuredClone(p.state)
+  assert.ok(F.sail(farm,'home').ok)
+  // Seed ingredients only. Mastery is earned through the same manual bake as normal play.
+  farm.produce.wheat=8;farm.eggs=4
+  assert.ok(F.bakeWorkshop(farm,'folded').ok)
+  assert.ok(F.bakeWorkshop(farm,'long').ok)
+  assert.ok(F.sail(farm,'village').ok)
+  assert.ok(F.restoreCurrentFarm(farm))
+  const before=structuredClone(farm)
+  const selectors=section('function pastryChoices()', 'function villageProjectCard()')
+  const house=stripTypeScriptTypes(selectors)+render
+  const targets:Record<string,string|undefined>={}
+  for(const shape of F.workshopShapes){
+    assert.ok(F.getResidentService(farm,'bea',shape).available)
+    const html=runInNewContext(house,{...F,farm,pastryShape:shape,villageSlot:0,requirementLinks:new Map(),getBerryNurserySource,villageHomeProgress,
+      neighborHelpCard:()=>'',icon:()=>'',pastryIcons:{},nav:(...parts:string[])=>parts.join('')}) as string
+    assert.match(html,new RegExp('data-action="pastry-shape" data-value="'+shape+'" aria-pressed="true"'))
+    const buttons=[...html.matchAll(/<button[^>]+data-action="resident-service"[^>]*>[^<]*<\/button>/g)]
+    assert.equal(buttons.length,1);assert.doesNotMatch(buttons[0][0],/\bdisabled\b/)
+    assert.match(buttons[0][0],/>Испечь ×3\s*<\/button>/)
+    targets[shape]=buttons[0][0].match(/aria-label="([^"]+)"/)?.[1]
+    const charged=structuredClone(farm)
+    assert.ok(F.runResidentService(charged,'bea',shape).ok)
+    assert.deepEqual(charged.handmade,{...farm.handmade,[shape]:farm.handmade[shape]+3})
+    assert.ok(!F.runResidentService(charged,'bea',shape).ok,'the action spends daily help')
+  }
+  assert.deepEqual(targets,{round:'Испечь ×3, Круглая булочка',folded:'Испечь ×3, Слойка',long:'Испечь ×3, Батон'})
+  assert.deepEqual(farm,before)
+})
