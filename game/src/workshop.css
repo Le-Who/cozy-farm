@@ -41,7 +41,8 @@
 .dough-workshop .workshop-shape-picker button { flex:1; min-width:0; min-height:44px; display:flex; align-items:center; justify-content:center; gap:4px; padding:3px 7px; border:1px solid #ba8f5a; border-radius:13px; color:#74462d; background:#fff3deed; box-shadow:0 3px 8px #482b2833,inset 0 0 0 2px #fff8e8; font:600 11px ui-rounded,"Trebuchet MS",sans-serif; }
 .workshop-shape-picker img { width:29px; height:28px; object-fit:contain; }
 .dough-workshop .workshop-shape-picker button[aria-pressed="true"] { border:2px solid #9670ac; background:#f5e8ffed; }
-.workshop-shape-picker button:disabled { opacity:.75; }
+.workshop-shape-picker button:disabled,
+.dough-workshop[data-piece-count="6"] .workshop-hand-menu [data-tool="cut"]:disabled { opacity:.75; }
 .workshop-result { position:absolute; left:50%; transform:translateX(-50%); top:18%; width:max-content; max-width:90%; margin:0; padding:4px 9px; border-radius:10px; background:#fff3e1e8; color:#704524; font:12px ui-rounded,"Trebuchet MS",sans-serif; text-align:center; z-index:11; pointer-events:none; }
 .workshop-result[hidden] { display:none; }
 .dough-workshop[data-layout="portrait"] .workshop-shape-picker { top:9%; width:min(300px,94%); }

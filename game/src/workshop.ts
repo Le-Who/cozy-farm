@@ -612,7 +612,10 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     root.dataset.mass = pieces.reduce((sum, piece) => sum + piece.mass, 0).toFixed(5)
     root.dataset.cutting=String(cutPending);root.setAttribute('aria-busy',String(cutPending))
     bakeButton.hidden=stage==='ingredients'||stage==='mixing'||stage==='transferring'
-    toolButtons.forEach(button => { button.disabled = contextLost || cutPending || stage !== 'working'; button.setAttribute('aria-pressed', String(button.dataset.tool === activeTool)) })
+    toolButtons.forEach(button => {
+      button.disabled = contextLost || cutPending || stage !== 'working' || (button.dataset.tool === 'cut' && pieces.length >= 6)
+      button.setAttribute('aria-pressed', String(button.dataset.tool === activeTool))
+    })
     handButton.disabled=contextLost||cutPending||stage!=='working'
     hotspots.filter(button=>button.dataset.prop==='bowl'||button.dataset.prop==='spoon').forEach(button=>{button.disabled=stage!=='ingredients'&&stage!=='mixing'})
     const guide=workshopToolGuide(stage,activeTool,pieces.length,cutPending)
@@ -720,12 +723,15 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     })
     selected = pieces.length - 2
     work += 1
+    // A completed last cut should leave a gesture the player can still use.
+    const boardFull = pieces.length >= 6
+    if (boardFull) activeTool = 'move'
     updateState()
-    announce(`На доске: ${ruCount(pieces.length, 'кусочек', 'кусочка', 'кусочков')}. Выберите один, чтобы придать форму.`)
+    announce(`На доске: ${ruCount(pieces.length, 'кусочек', 'кусочка', 'кусочков')}.${boardFull ? '' : ' Выберите один, чтобы придать форму.'}`)
   }
   function tool(action: Tool, keyboard = false) {
     // A palette click only selects a mode; board shortcuts also act on the dough.
-    if (stage !== 'working'||cutPending||(layoutChanging&&keyboard)) return
+    if (stage !== 'working'||cutPending||(layoutChanging&&keyboard)||(action==='cut'&&pieces.length>=6)) return
     if(hand.down)release(undefined,true)
     activeTool = action
     const piece = activePiece()

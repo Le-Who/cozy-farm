@@ -6,6 +6,8 @@ import ts from 'typescript'
 import * as THREE from 'three'
 import {getWorkshopLayout, containArtwork} from '../src/workshop-camera.ts'
 import { workshopTools, workshopToolGuide } from '../src/workshop-controls.ts'
+import { executeDoughCut, packDoughGeometry, unpackDoughGeometry } from '../src/workshop-cut-transfer.ts'
+import { ruCount } from '../src/ru.ts'
 
 // Actual loss/restore and hand callbacks with inert graphics/DOM adapters.
 // This is a disabled-state unit gate, not native WebGL or keyboard acceptance.
@@ -136,6 +138,62 @@ test('Escape restores the selected board gesture after inspecting tools, but nev
       assert.match(s.cue.textContent,scenario==='roll'?/Раскатайте/:/Перетащите/)
       assert.equal(s.activeTool,scenario)
     } else assert.equal(s.cue.hidden,true,scenario)
+  }
+})
+
+test('the accepted sixth piece hands off to Move; a fresh Cut shortcut cannot take it back',async()=>{
+  const actions=ts.transpileModule([declaration('cutSelected'),declaration('tool'),declaration('updateCue'),listener('root','keydown')].join('\n'),
+    {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+  for(const count of [4,5]){
+    const h=fixture(false),s=h.state,tools=h.tools
+    const knife=tools.find(button=>button.dataset.tool==='cut')!,move=tools.find(button=>button.dataset.tool==='move')!
+    let keydown!: (event:unknown)=>void
+    const makePiece=(geometry:THREE.BufferGeometry,mass:number)=>{
+      geometry.computeBoundingBox()
+      const piece={mass,bounds:geometry.boundingBox,mesh:{geometry,position:new THREE.Vector3()},fold:.4,form:'folded'}
+      s.pieces.push(piece);return piece
+    }
+    const sounds:string[]=[]
+    const announcements:string[]=[]
+    Object.assign(s,{THREE,executeDoughCut,packDoughGeometry,unpackDoughGeometry,ruCount,activeTool:'cut',cutWorker:null,layoutChanging:false,
+      cue:{},layout:{id:'portrait'},applyBox(){},pieces:[],activePiece:()=>s.pieces[s.selected],
+      requestAnimationFrame:(fn:()=>void)=>fn(),announce:(message:string)=>announcements.push(message),playBaySound:(name:string)=>sounds.push(name),
+      scene:{remove(){}},discardGeometry:(geometry:THREE.BufferGeometry)=>geometry.dispose(),keepOnBoard(){},makePiece,HTMLButtonElement:class{}})
+    s.root.addEventListener=(_type:string,fn:typeof keydown)=>{keydown=fn}
+    for(let i=0;i<count;i++)makePiece(new THREE.BoxGeometry(2,.4,2),1/count)
+    runInNewContext(actions,s)
+    try{
+      s.updateState()
+      await s.cutSelected(new THREE.Vector2(4,-2),new THREE.Vector2(4,2))
+      assert.equal(s.pieces.length,count);assert.equal(s.activeTool,'cut');assert.equal(knife.disabled,false)
+      const accepted=s.cutSelected(new THREE.Vector2(0,-2),new THREE.Vector2(0,2))
+      assert.equal(s.cutPending,true);assert.equal(s.cue.hidden,true);assert.equal(s.activeTool,'cut')
+      await accepted
+      assert.equal(s.pieces.length,count+1);assert.ok(Math.abs(s.pieces.reduce((sum:number,p:{mass:number})=>sum+p.mass,0)-1)<1e-10)
+      assert.deepEqual(sounds,['cook.dough-cut'])
+      if(count===4){
+        assert.equal(s.activeTool,'cut');assert.equal(knife.disabled,false);assert.match(s.cue.textContent,/Проведите/)
+      }else{
+        assert.equal(s.activeTool,'move')
+        assert.equal(move.attributes['aria-pressed'],'true');assert.equal(knife.attributes['aria-pressed'],'false')
+        assert.equal(knife.disabled,true);assert.equal(move.disabled,false);assert.equal(s.bakeButton.disabled,false)
+        assert.equal(s.modeTitle.textContent,'Режим: Перенести')
+        assert.equal(s.cue.hidden,false);assert.match(s.cue.textContent,/Перетащите/)
+        assert.match(announcements.at(-1)!,/6 кусочков/)
+        const serial=s.cutSerial
+        s.hand.down=true
+        keydown({target:{},key:'x',code:'KeyX',preventDefault(){}})
+        assert.equal(s.activeTool,'move');assert.equal(s.cutSerial,serial);assert.equal(h.releases(),0)
+        assert.equal(s.hand.down,true,'an unavailable shortcut cannot interrupt an in-progress Move gesture')
+        s.hand.down=false;h.activateHand()
+        assert.equal(s.handMenu.hidden,false);assert.equal(knife.disabled,true);assert.equal(move.attributes['aria-pressed'],'true')
+        s.tool('fold')
+        assert.equal(s.activeTool,'fold');assert.equal(s.modeTitle.textContent,'Режим: Сложить')
+        assert.equal(s.pieces.length,6);assert.equal(knife.disabled,true)
+      }
+    }finally{
+      for(const piece of s.pieces)piece.mesh.geometry.dispose()
+    }
   }
 })
 
