@@ -367,6 +367,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   }
   let handleGrip: { id: number; bearing: number; angle: number; moved: boolean } | null = null
   rotateHandle.addEventListener('pointerdown', event => {
+    if (handleGrip) return
     const art = fruitArt.get(selectedFruit), fruit = model.fruit.find(value => value.id === selectedFruit)
     if (!art || !fruit) return
     event.preventDefault(); event.stopPropagation(); const bounds = view.getBoundingClientRect()
@@ -380,8 +381,17 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     const change = normalizeAngle(bearing - handleGrip.bearing); if (Math.abs(change) > .03) handleGrip.moved = true
     rotateSelection(handleGrip.angle + change)
   }, { signal })
-  const releaseHandle = () => { if (handleGrip && !handleGrip.moved) { const fruit = model.fruit.find(value => value.id === selectedFruit); if (fruit) rotateSelection(fruit.angle + Math.PI / 12) }; handleGrip = null }
-  rotateHandle.addEventListener('pointerup', releaseHandle, { signal }); rotateHandle.addEventListener('pointercancel', () => { handleGrip = null }, { signal })
+  rotateHandle.addEventListener('pointerup', event => {
+    if (handleGrip?.id !== event.pointerId) return
+    const { moved } = handleGrip
+    handleGrip = null
+    if (moved) return
+    const fruit = model.fruit.find(value => value.id === selectedFruit)
+    if (fruit) rotateSelection(fruit.angle + Math.PI / 12)
+  }, { signal })
+  const cancelHandle = (event: PointerEvent) => { if (handleGrip?.id === event.pointerId) handleGrip = null }
+  rotateHandle.addEventListener('pointercancel', cancelHandle, { signal })
+  rotateHandle.addEventListener('lostpointercapture', cancelHandle, { signal })
   rotateHandle.addEventListener('click', event => { if (event.detail === 0) { const fruit = model.fruit.find(value => value.id === selectedFruit); if (fruit) rotateSelection(fruit.angle + Math.PI / 12) } }, { signal })
   view.addEventListener('wheel', event => {
     const fruit = model.fruit.find(value => value.id === selectedFruit)
@@ -501,7 +511,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   }, { signal })
   const abandon = () => { setBaySoundContact('cook.preserves-stir',false);setBaySoundContact('cook.sugar',false);setBaySoundContact('cook.jam-flow',false);pour=0;lastSugarAt=-Infinity;drag = null; pointerId = null; touches.clear(); twist = null; twistedGesture = false; lastDust = null; lastStirPoint = null; endCookeryStroke(model); layoutArt(); sync() }
   view.addEventListener('pointercancel', abandon, { signal }); view.addEventListener('lostpointercapture', event => { if (pointerId === event.pointerId && touches.size <= 1) abandon() }, { signal })
-  window.addEventListener('blur', abandon, { signal })
+  window.addEventListener('blur', () => { handleGrip = null; abandon() }, { signal })
   view.addEventListener('keydown', event => {
     if (event.defaultPrevented) return
     if (event.key === 'Escape' && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
