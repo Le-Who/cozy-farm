@@ -2563,7 +2563,8 @@ function drawPanel() {
           const level = farm.buildingLevels[building]
           const [label, action] = actions[building]
           const branch = farm[`${building}Specialization`]
-          return row(`upgrade-${building}-card`, branch ? branchDefinitions[branch].name : definition.name,
+          const labelText = branch ? branchDefinitions[branch].name : definition.name
+          return row(`upgrade-${building}-card`, `<span data-upgrade-title="${building}" tabindex="-1">${labelText}</span>`,
             level === 1 ? definition.benefit : `Ур. ${level}`,
             level >= 2 ? button(label, action, true, { secondary: true }) +
               (level === 2 || building === 'farmhouse' && level === 3 && !farm.farmhouseSecondarySpecialization ? button(level===3?'Освоить второе направление':'Выбрать направление', 'specialize', true, { value: building, context: definition.name }) : '')
@@ -4494,7 +4495,17 @@ app.addEventListener('click', async (event) => {
       openPanel('orchard')
       if (value && farm.treeNursery.some(entry => entry.id === Number(value))) highlightControl(dialogContent.querySelector<HTMLElement>(`[data-action="return-nursery-tree"][data-value="${Number(value)}"]`))
       break
-    case 'upgrades': openPanel('upgrades'); break
+    case 'upgrades': {
+      const marketBuilding = dialog.open && panel === 'market' && marketTab === 'buy' && marketCategory === 'buildings' && farm.island === 'home'
+        ? buildingIds.find(id => id === value && farm.buildingLevels[id] >= 2) : undefined
+      openPanel('upgrades')
+      if (marketBuilding) {
+        const title = dialogContent.querySelector<HTMLElement>(`[data-upgrade-title="${marketBuilding}"]`)
+        title?.focus({preventScroll:true})
+        title?.scrollIntoView({block:'nearest'})
+      }
+      break
+    }
     case 'specialize': {
       const building = buildingIds.find((id) => id === value)
       if (building && farm.island === 'home' && (farm.buildingLevels[building] === 2 || building === 'farmhouse' && farm.buildingLevels.farmhouse === 3 && !farm.farmhouseSecondarySpecialization)) {
