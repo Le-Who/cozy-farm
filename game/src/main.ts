@@ -464,9 +464,11 @@ function requirementLink(content: string, requirement: Requirement, className: s
   if (ready) return `<li class="${className}" data-ready="true">${content}</li>`
   const key = String(requirementLinks.size)
   requirementLinks.set(key, requirement)
+  const recipeIngredient = panel === 'recipes' && requirement.kind === 'stock'
+    ? ` data-recipe-ingredient="${bayProductId(requirement.item)}"` : ''
   const nursery = requirement.kind === 'stock' && getBerryNurserySource(farm, requirement.item) !== undefined
     ? `<button class="nursery-preserve" type="button" data-action="berry-nursery-ingredient" data-value="${key}" aria-label="Сохранить разновидность: ${name}">Сохранить разновидность</button>` : ''
-  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}" aria-label="Где найти: ${name}"${description ? ` aria-describedby="requirement-source-${key}"` : ''}>${content}${description ? `<small id="requirement-source-${key}">${escapeHtml(description)}</small>` : ''}</button>${nursery}</li>`
+  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}"${recipeIngredient} aria-label="Где найти: ${name}"${description ? ` aria-describedby="requirement-source-${key}"` : ''}>${content}${description ? `<small id="requirement-source-${key}">${escapeHtml(description)}</small>` : ''}</button>${nursery}</li>`
 }
 const islandNames = { home: 'Родной остров', grove: 'Солёная роща', cape: 'Цветочный мыс', village: 'Лавандовая гавань' }
 

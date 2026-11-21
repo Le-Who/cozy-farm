@@ -32,6 +32,9 @@ function focusId(element: Element | null): string | undefined {
   if (element.matches('[data-recipe-query]')) return 'index:query'
   if (element.dataset.recipeName) return `${scope}name:${element.dataset.recipeName}`
   if (element.tagName === 'SUMMARY') return scope+(element.parentElement?.getAttribute('data-recipe-disclosure') ?? element.parentElement?.getAttribute('data-repeat-guide') ?? '')
+  // Requirement action values are reassigned when earlier ingredients become ready.
+  const guide = element.dataset.recipeIngredient && element.closest<HTMLDetailsElement>('details[data-repeat-guide]')
+  if (guide) return `${scope}ingredient:${guide.dataset.repeatGuide}:${element.dataset.recipeIngredient}`
   if (element.dataset.action) return scope+JSON.stringify([element.dataset.action,element.dataset.value,element.dataset.resident])
   return element.dataset.recipeFocus
 }
@@ -89,6 +92,8 @@ export class RecipeBookNavigation {
         repeat.focus({preventScroll:true});repeat.scrollIntoView({block:'nearest'});return
       }
       const exact=[...root.querySelectorAll<HTMLElement>(focusable)].find(element=>focusId(element)===this.view.focus&&element.getClientRects().length>0)
+      const summary = !exact && this.view.focus?.startsWith(`detail:ingredient:${this.view.selectedId}:`)
+        ? detail?.querySelector<HTMLElement>('details[data-repeat-guide] > summary') : null
       // A placed last jar removes its own shortcut. Keep focus in the same decision section.
       const stockFocus = 'detail:'+JSON.stringify(['recipe-shop-stock',this.view.selectedId,undefined])
       if (!exact && this.view.mode === 'detail' && this.view.focus === stockFocus) {
@@ -98,7 +103,7 @@ export class RecipeBookNavigation {
         }
       }
       const search = this.view.mode === 'index' && this.view.query ? root.querySelector<HTMLElement>('[data-recipe-query]') : null
-      const target=exact ?? (search?.getClientRects().length ? search : undefined)
+      const target=exact ?? (summary?.getClientRects().length ? summary : undefined) ?? (search?.getClientRects().length ? search : undefined)
         ?? [...root.querySelectorAll<HTMLElement>('[data-recipe-focus="cooking"], .recipe-book-index [data-action="select-recipe"], .recipe-book-index [data-action="new-signature"]')].find(element=>element.getClientRects().length>0)
       target?.focus({preventScroll:true})
     }
