@@ -16,8 +16,8 @@ export class MarketInlineSales {
       draft = { owner: new SalePresentation(), raw: '1', count, price, pending: false }
       draft.owner.open({kind:'market',key}); this.drafts.set(key,draft)
     } else if (draft.count !== count || draft.price !== price) {
-      // An exhausted row may disappear before the same goods are earned again.
-      if (draft.receipt?.remaining === 0 && count > 0) { draft.raw='1'; draft.receipt=undefined }
+      // Do not keep a sale's old remaining count beside a new live stock count.
+      if (draft.receipt && draft.receipt.remaining !== count) { draft.raw='1'; draft.receipt=undefined }
       draft.count=count; draft.price=price; draft.owner.open({kind:'market',key})
     }
     return draft

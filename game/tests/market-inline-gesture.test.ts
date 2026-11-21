@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { ActionClickGuard, ActivationKeyGuard, installActionClickGuard, isGuardedAction } from '../src/action-click-guard.ts'
 import { MarketInlineSales, inlineReceiptText } from '../src/market-inline-sale.ts'
-import { collectEggs, createFarm, getMarketStock, pickFruit, restoreCurrentFarm, sellMarketItem, workBed } from '../src/farm.ts'
+import { collectEggs, createFarm, endDay, getMarketStock, getSale, getTreeAction, pickFruit, restoreCurrentFarm, sellMarketItem, workBed } from '../src/farm.ts'
 
 test('inline confirmation and rearming own their gesture; quantity stepping stays repeatable', () => {
   assert.equal(isGuardedAction('inline-sale-confirm'), true)
@@ -160,6 +160,39 @@ test('a receipt with one left rearms to the singleton sale without expecting a n
     inlineSaleContext:()=>({item,card:node,token:node.dataset.inlineToken})})
   assert.equal(sell.dataset.action,'inline-sale-confirm'); assert.match(sell.innerHTML,/Продать 1 · 4/)
   assert.equal(sell.disabled,false); assert.deepEqual(farm,before)
+})
+
+test('returning after harvesting more apples replaces the partial receipt with current inline quantity',()=>{
+  const farm=createFarm(),sales=new MarketInlineSales(),key='fruit:apple',name='Яблоко'
+  assert.ok(pickFruit(farm,0).ok)
+  const initial=row(farm,key,name)
+  assert.equal(initial.count,2)
+  const beforeSale=sales.view(key,initial.count,initial.price).token
+  const sold=sales.take(key,beforeSale,initial.count,initial.price)!
+  assert.deepEqual(sold,{quantity:1,total:initial.price,remaining:1})
+  assert.ok(sellMarketItem(farm,key,sold.quantity).ok)
+  sales.finish(key,sold)
+  let item=row(farm,key,name)
+  const receiptToken=sales.view(key,item.count,item.price).token
+  assert.match(card(item,sales),/Осталось: 1/)
+  assert.match(card(item,sales),/data-action="inline-sale-again"/)
+
+  for(let i=0; !getTreeAction(farm,0).available && i<5; i++) assert.ok(endDay(farm).ok)
+  assert.ok(pickFruit(farm,0).ok)
+  item=row(farm,key,name)
+  assert.ok(item.count>1)
+  const before=structuredClone(farm),total=getSale(farm),fresh=card(item,sales)
+  assert.match(fresh,new RegExp(`В запасе: ${item.count}<\/p>`))
+  assert.doesNotMatch(fresh,/Осталось: 1|inline-sale-again/,'the old remaining count is not a current balance')
+  assert.match(fresh,new RegExp(`data-inline-quantity[^>]*max="${item.count}"[^>]*value="1"(?![^>]*disabled)`))
+  assert.match(fresh,new RegExp(`Продать 1 · ${item.price}`))
+  assert.equal(sales.rearm(key,receiptToken,item.count,item.price),false)
+  assert.equal(sales.take(key,receiptToken,item.count,item.price),undefined)
+  let view=sales.view(key,item.count,item.price)
+  assert.ok(sales.edit(key,view.token,'2',item.count,item.price))
+  view=sales.view(key,item.count,item.price)
+  assert.deepEqual(sales.take(key,view.token,item.count,item.price),{quantity:2,total:2*item.price,remaining:item.count-2})
+  assert.deepEqual(getSale(farm),total);assert.deepEqual(farm,before)
 })
 
 test('an older edited quantity remains visible and repairable when only one item remains',()=>{
