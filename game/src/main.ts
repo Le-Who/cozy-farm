@@ -75,7 +75,7 @@ import './apiary-preview.css'
 import { activeHarvestPicnic } from './harvest-picnic'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopCapacityWarning } from './coop-preview'
-import { getIncubatorWarehouseEgg, hasIncubatorBasketSource, renderCoopPanel } from './coop-panel'
+import { getIncubatorWarehouseBasket, getIncubatorWarehouseEgg, hasIncubatorBasketSource, renderCoopPanel } from './coop-panel'
 import { groupCoopServices } from './coop-services'
 import './coop-services.css'
 import './coop-panel.css'
@@ -4525,6 +4525,16 @@ app.addEventListener('click', async (event) => {
     case 'unpack-egg-crate':perform(()=>unpackEggCrate(farm),false,true);break
     case 'pack-egg-basket': arrangementRequest = { kind: 'packing', mode: 'eggs' }; openPanel('arrangement'); break
     case 'pack-egg-crate': arrangementRequest = { kind: 'packing', mode: 'crate' }; openPanel('arrangement'); break
+    case 'incubator-warehouse-basket': {
+      if (panel !== 'coop' || !dialog.open || !dialogContent.contains(control)) break
+      const storedBasket = getIncubatorWarehouseBasket(farm)
+      if (!storedBasket || value !== storedBasket.token) break
+      if (perform(() => withdrawWarehouseSupply(farm,storedBasket.request,storedBasket.supply),false,true)) {
+        playBaySound('harbour.crate')
+        highlightControl(dialogContent.querySelector('.coop-packing [data-action="unpack-egg-basket"]:not(:disabled)')?.closest<HTMLElement>('.dialog-row') ?? null)
+      }
+      break
+    }
     case 'incubator-warehouse-egg': {
       if (panel !== 'coop' || !dialog.open || !dialogContent.contains(control)) break
       const storedEgg = getIncubatorWarehouseEgg(farm)
