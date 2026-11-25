@@ -12,7 +12,7 @@ import { describeFood } from '../src/intent-orders.ts'
 import { closeShopBeforeRest } from '../src/shop-rest.ts'
 import { bayShopDayGuidance } from '../src/bay-shop-day.ts'
 import { advanceBayShop, setBayShopOpen, stockBayShop } from '../src/bay-shop-model.ts'
-import { endDay, foodDescriptors, restoreFarm } from '../src/farm.ts'
+import { endDay, foodDescriptors, restoreFarm, sail } from '../src/farm.ts'
 import { shopDayFixture } from './fixtures/shop-day.ts'
 
 function finishVisitors(farm: ReturnType<typeof shopDayFixture>, target: number) {
@@ -184,9 +184,11 @@ function watchMountedRefusal(farm: ReturnType<typeof earnedFirstRefusalShop>) {
     addEventListener:(key:string, cb:(event:unknown)=>void)=>listeners.set(key,cb),
     removeEventListener:(key:string)=>listeners.delete(key),
   }
-  const document = { activeElement:null, hidden:false }
+  const document = { activeElement:null, hidden:false }, nextActions: string[] = []
   const options = {
-    state:farm.bayShop, products:()=>[], onChange(){}, onClose(){}, onOpenMusic(){},
+    state:farm.bayShop, products:()=>[], onChange(){}, onClose(){},
+    onOpenMusic(){nextActions.push('music')}, onGoRest(){nextActions.push('rest')},
+    performanceBonus:()=>Number(farm.concertDay===farm.day),
     onEarn(coins:number){ farm.coins += coins },
     returnStock(id:string, quantity:number){ assert.equal(id,'dish:orchardPreserves'); farm.dishes.orchardPreserves += quantity },
   }
@@ -206,7 +208,7 @@ function watchMountedRefusal(farm: ReturnType<typeof earnedFirstRefusalShop>) {
   // The live renderer opens the first empty shelf; use the same explicit
   // occupied shelf selection the player makes before price or return actions.
   listeners.get('click')?.({target:new Control([], {slot:'0'})})
-  return { detail, count, next, document, step, until, mounted,
+  return { detail, count, next, nextActions, document, step, until, mounted,
     press: (attributes:string[],dataset?:Record<string,string>)=>listeners.get('click')?.({target:new Control(attributes,dataset)}),
     enterPrice:(value:string)=>listeners.get('change')?.({target:new Price(value),type:'change'}) }
 }
@@ -292,4 +294,70 @@ test('the ordinary first sale never leaves a refusal status or charges twice', (
   ui.until(()=>farm.bayShop.visitor===null && farm.bayShop.visitsToday===2)
   assert.equal(farm.coins,balance+22)
   ui.mounted.destroy()
+})
+
+test('the real sixth refusal briefly explains the result without replacing or triggering the concert', () => {
+  const original = 'Концерт сегодня может пригласить ещё двух гостей.'
+  for (const [price, outcome, reason] of [
+    [50,'expensive','цена не подошла'], [96,'budget','не хватило монет'], [30,'bought',undefined],
+  ] as const) {
+    const farm=earnedFirstRefusalShop(price), balance=farm.coins, shop=farm.bayShop, ui=watchMountedRefusal(farm)
+    ui.until(()=>shop.visitor?.id==='mark' && shop.visitor.outcome!==null)
+    assert.equal(shop.visitor?.outcome?.kind,outcome)
+    assert.equal(ui.count.textContent,'Гости сегодня: 6 из 6')
+    assert.equal(ui.detail.textContent,'Последний гость ещё в лавке.')
+    assert.equal(ui.next.hidden,true)
+    ui.until(()=>shop.visitor===null)
+    const status=reason ? `Марк: ${reason}. Концерт: ещё 2 гостя.` : original
+    assert.equal(ui.detail.textContent,status)
+    assert.ok(status.length<=original.length)
+    assert.equal(ui.next.textContent,'Пригласить музыкой');assert.equal(ui.next.hidden,false)
+    assert.deepEqual([farm.coins,shop.sold,shop.slots[0]?.quantity],reason?[balance,0,1]:[balance+30,1,0])
+    const unchanged=structuredClone(farm)
+    assert.deepEqual(ui.nextActions,[])
+    ui.press(['data-shop-next'])
+    assert.deepEqual(ui.nextActions,['music']);assert.deepEqual(farm,unchanged)
+    ui.mounted.destroy()
+  }
+})
+
+test('valid repricing clears a final refusal; same or invalid prices leave it, and there is no next-day echo', () => {
+  const farm=earnedFirstRefusalShop(50), shop=farm.bayShop, balance=farm.coins, ui=watchMountedRefusal(farm), day=farm.day
+  ui.until(()=>shop.visitor===null && shop.visitsToday===6)
+  assert.match(ui.detail.textContent,/Марк: цена не подошла/)
+  ui.enterPrice('50');assert.match(ui.detail.textContent,/Марк: цена/)
+  ui.enterPrice('10001');assert.match(ui.detail.textContent,/Марк: цена/)
+  ui.enterPrice('22');assert.equal(ui.detail.textContent,'Концерт сегодня может пригласить ещё двух гостей.')
+  assert.deepEqual([ui.next.textContent,ui.next.hidden,shop.visitsToday,shop.slots[0]?.price,shop.slots[0]?.quantity,farm.coins],
+    ['Пригласить музыкой',false,6,22,1,balance])
+  ui.press(['data-open']);ui.mounted.destroy()
+  assert.ok(sail(farm,'home').ok);assert.ok(endDay(farm).ok);assert.ok(sail(farm,'village').ok)
+  assert.equal(farm.day,day+1)
+  const loaded=restoreFarm(JSON.parse(JSON.stringify(farm)))!, tomorrow=watchMountedRefusal(loaded)
+  assert.equal(tomorrow.detail.textContent,'Лавка закрыта. Откройте её для гостей.')
+  assert.equal(tomorrow.count.textContent,'Гости сегодня: 0 из 6');assert.equal(tomorrow.next.hidden,true)
+  assert.deepEqual([loaded.bayShop.slots[0]?.price,loaded.bayShop.slots[0]?.quantity,loaded.coins],[22,1,balance])
+  tomorrow.mounted.destroy()
+})
+
+test('with the ordinary concert bonus already granted, the eighth actual refusal preserves the rest action', () => {
+  const farm=earnedFirstRefusalShop(50), shop=farm.bayShop, balance=farm.coins
+  const before=watchMountedRefusal(farm)
+  before.until(()=>shop.visitor===null && shop.visitsToday===6)
+  before.mounted.destroy()
+  // Completed concert is a boundary input; no audio/player behavior is under test.
+  farm.concertDay=farm.day;farm.musicGarden.performances++
+  const granted=restoreFarm(JSON.parse(JSON.stringify(farm)))!, watched=watchMountedRefusal(granted)
+  assert.equal(watched.count.textContent,'Гости сегодня: 6 из 8');assert.equal(watched.next.hidden,true)
+  watched.until(()=>granted.bayShop.visitor?.serial===8 && granted.bayShop.visitor.outcome!==null)
+  assert.equal(granted.bayShop.visitor?.id,'finn');assert.equal(granted.bayShop.visitor?.outcome?.kind,'expensive')
+  assert.equal(watched.next.hidden,true)
+  watched.until(()=>granted.bayShop.visitor===null)
+  assert.equal(watched.detail.textContent,'Финн: цена не подошла. Новые гости после отдыха.')
+  assert.equal(watched.count.textContent,'Гости сегодня: 8 из 8')
+  assert.equal(watched.next.textContent,'Домой к отдыху');assert.equal(watched.next.hidden,false)
+  const exact=structuredClone(granted)
+  watched.press(['data-shop-next']);assert.deepEqual(watched.nextActions,['rest'])
+  assert.deepEqual(granted,exact);assert.equal(granted.coins,balance)
+  watched.mounted.destroy()
 })

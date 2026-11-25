@@ -160,10 +160,12 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (count && count.textContent !== guidance.count) count.textContent = guidance.count;
     const refusal = lastRefusal;
     const buyer = refusal && state.open && !state.visitor && state.serial === refusal.serial
-      && state.businessDay === refusal.day && guidance.remaining > 0
+      && state.businessDay === refusal.day
       ? bayShopVisitors.find(person => person.id === refusal.buyer) : undefined;
+    const nextVisit = guidance.action === 'music' ? ' Концерт: ещё 2 гостя.'
+      : guidance.action === 'rest' ? ' Новые гости после отдыха.' : '';
     const message = buyer && refusal
-      ? `${buyer.name}: ${refusal.kind === 'expensive' ? 'цена не подошла' : 'не хватило монет'}.`
+      ? `${buyer.name}: ${refusal.kind === 'expensive' ? 'цена не подошла' : 'не хватило монет'}.${nextVisit}`
       : guidance.detail;
     if (detail && detail.textContent !== message) detail.textContent = message;
     const next = host.querySelector<HTMLButtonElement>('[data-shop-next]');
