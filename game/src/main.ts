@@ -124,7 +124,7 @@ import { combinedExpeditionId, expeditionOfferAfterClaim, initialExpeditionPrevi
 import { getFerryRestockPlan } from './ferry-restock'
 import { firstFerryCargoOffer } from './ferry-smaller-cargo'
 import { bayAudio } from './bay-audio'
-import { mountBayShop, type BayShopOptions } from './bay-shop'
+import { mountBayShop, type BayShopCommissionPreview, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
 import { renderFreightPanelInto, presentFerryDeparture, presentFerryArrival, freightControl } from './bay-freight-ui'
 import { FerryArrivalPresentation } from './ferry-arrival-presentation'
@@ -1972,16 +1972,26 @@ function openShopScene(host:HTMLElement) {
   const recipe = source?.panel === 'recipes' ? source.harbourRecipe : undefined
   const recipeProduct = recipe?.preview ? 'signature:' + recipe.id : undefined
   if (recipe) recipe.preview = false
+  const readyCommission = (customer: BayShopCommissionPreview['customer'], recipeId: string): BayShopCommissionPreview | undefined => {
+    if (farm.island !== 'village') return
+    const offer = getShopCommissionOffers(farm).find(row => row.customer === customer && row.recipeId === recipeId)
+    const ready = (farm.culinary.stock[recipeId] ?? 0) + (farm.freight.warehouses.village[`signature:${recipeId}`] ?? 0)
+    return offer && ready >= offer.quantity ? { customer, recipeId, key: offer.key } : undefined
+  }
   const options:BayShopOptions = {state:farm.bayShop,products,catalog,stockProduct:nextShopStock,recipeProduct,returnToRecipe:!!recipe,
     takeStock:(id,n)=>{ const reserved=reserveShopGoods(farm,id,n); if(reserved)status(); return reserved },
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
     onOpenFreight:()=>openPanel('bay-freight'),
     commissionCustomers:()=>getShopCommissionOffers(farm).map(offer=>offer.customer),
-    onOpenCommissions:customer=>{
-      if(customer&&shopCommissionView.current(farm).customer!==customer)shopCommissionView.choose(farm,'customer',customer)
+    readyCommission,
+    onOpenCommissions:(customer,preview)=>{
+      const exact = preview && readyCommission(preview.customer, preview.recipeId)?.key === preview.key ? preview : undefined
+      const target = preview ? exact?.customer : customer
+      if(target && (exact || shopCommissionView.current(farm).customer!==target)) shopCommissionView.choose(farm,'customer',target)
+      if(exact) shopCommissionView.choose(farm,'recipe',exact.recipeId)
       openPanel('shop-commissions')
-      if(customer)dialogContent.querySelector<HTMLElement>('[data-commission-view="customer"], [data-commission-customer]')?.focus({preventScroll:true})
+      if(target)dialogContent.querySelector<HTMLElement>('[data-commission-view="customer"], [data-commission-customer]')?.focus({preventScroll:true})
     },
     onOpenMusic:()=>openPanel('bay-music'),
     onGoRest:()=>{void visitPanelAt('home','rest')},

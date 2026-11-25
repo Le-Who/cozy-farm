@@ -13,6 +13,8 @@ import { placeShopQuantity, shopQuantityPreview, shopStockSlot } from './bay-sho
 import { shopRemainderQuote, shopReturnLabel } from './bay-shop-price-copy';
 import { applyIngredientFinishes } from './ingredient-finish';
 
+export type BayShopCommissionPreview = { customer: BayShopVisitorId; recipeId: string; key: string };
+
 export type BayShopOptions = {
   state: BayShopState;
   stockProduct?: string;
@@ -27,7 +29,8 @@ export type BayShopOptions = {
   onClose(): void;
   onOpenFreight?(): void;
   commissionCustomers?(): readonly BayShopVisitorId[];
-  onOpenCommissions?(customer?: BayShopVisitorId): void;
+  readyCommission?(customer: BayShopVisitorId, recipeId: string): BayShopCommissionPreview | undefined;
+  onOpenCommissions?(customer?: BayShopVisitorId, preview?: BayShopCommissionPreview): void;
   onOpenMusic?(): void;
   onGoRest?(): void;
   renderProduct?(product: BayShopProduct, className: string): string;
@@ -44,7 +47,8 @@ const visitorMessages = {
 /** A scene owns its animation; the farm owns inventory, earnings and persistence. */
 export function mountBayShop(host: HTMLElement, options: BayShopOptions): { destroy(): void; refresh(): void } {
   const state = options.state;
-  const canToggleOpen = () => state.open || state.slots.some(slot => slot && slot.quantity > 0);
+  const hasShelfStock = () => state.slots.some(slot => slot && slot.quantity > 0);
+  const canToggleOpen = () => state.open || hasShelfStock();
   const customerView = new BayShopCustomerView();
   // Exact entry is only a quote. Defer catalog writes to an explicit placement.
   const quotedProduct = options.stockProduct ?? options.recipeProduct;
@@ -59,6 +63,13 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   let lastPhase = !state.open && !state.visitor ? 'idle' : '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
   // Only this live scene owns a recently observed refusal. The save and customer ledger stay unchanged.
   let lastRefusal: { buyer: BayShopVisitorId; serial: number; day: number; kind: 'expensive' | 'budget' } | undefined;
+  // A new order belongs only to the sale this open scene actually observed.
+  let earnedOrder: BayShopCommissionPreview | undefined;
+  function readyEarnedOrder(): BayShopCommissionPreview | undefined {
+    const order = earnedOrder;
+    if (!order || tab !== 'stock' || !state.open || pending || hasShelfStock()) return;
+    return options.readyCommission?.(order.customer, order.recipeId)?.key === order.key ? order : undefined;
+  }
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const art = (product: BayShopProduct, cls = '') => options.renderProduct?.(product, cls)
     ?? `<img class="${cls}" src="${escape(product.image)}" alt="" draggable="false">`;
@@ -109,7 +120,8 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   type StockReturn = { id?: string; listScroll: number };
   function render(returnStock?: StockReturn): void {
     if (destroyed) return;
-    const commission = commissionCustomer();
+    const commission = commissionCustomer(), earned = readyEarnedOrder();
+    const commissionName = earned ? bayShopVisitors.find(person => person.id === earned.customer)?.name : commission?.name;
     const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
     const priceDraft = active instanceof HTMLInputElement && active.hasAttribute('data-price') ? active.value : undefined;
     const focusAttribute = returnStock?.id ? 'data-stock' : active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
@@ -125,7 +137,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
           <span class="bay-shop-shelf-product">${slot && slot.quantity > 0 ? art(slot.product) : `<span class="bay-shop-shelf-empty">${slot ? 'Продано' : '+'}</span>`}</span>${slot ? `<span class="bay-shop-shelf-label">${money(slot.price)} <span aria-hidden="true">●</span><small>×${slot.quantity}</small></span>` : ''}</button>`).join('')}</div>
         <div class="bay-shop-visitor" aria-hidden="true"><span class="bay-shop-contact-shadow"></span><span class="bay-shop-person"></span><span class="bay-shop-purchase"></span></div>
       </div><div class="bay-shop-speech" data-user-text role="status" aria-live="polite"></div></div>
-      <div class="bay-shop-desk"><nav class="bay-shop-tabs" aria-label="Управление лавкой"><button type="button" data-tab="stock" aria-pressed="${tab === 'stock'}">Прилавок</button><button type="button" data-tab="journal" aria-pressed="${tab === 'journal'}">Покупатели</button>${options.onOpenCommissions ? `<button type="button" data-commissions>Заказы${commission ? ` · ${commission.name}` : ''}</button>` : ''}${options.performanceBonus?.() ? '<span title="Сегодня ещё два гостя из сада">+2 гостя ♫</span>' : ''}</nav>
+      <div class="bay-shop-desk"><nav class="bay-shop-tabs" aria-label="Управление лавкой"><button type="button" data-tab="stock" aria-pressed="${tab === 'stock'}">Прилавок</button><button type="button" data-tab="journal" aria-pressed="${tab === 'journal'}">Покупатели</button>${options.onOpenCommissions ? `<button type="button" data-commissions>Заказы${commissionName ? ` · ${commissionName}` : ''}</button>` : ''}${options.performanceBonus?.() ? '<span title="Сегодня ещё два гостя из сада">+2 гостя ♫</span>' : ''}</nav>
       <section class="bay-shop-day" aria-label="Гости сегодня" ${pending ? 'hidden' : ''}><div><p class="bay-shop-day-count"></p><p class="bay-shop-day-detail" role="status" aria-live="polite"></p></div><button type="button" data-shop-next hidden></button></section>
       <p class="bay-shop-notice" role="status">${escape(notice)}</p><div class="bay-shop-desk-content">${tab === 'stock' ? stockControls() : renderBayShopCustomers(state, customerView, options.catalog)}</div></div>
       </section>`;
@@ -218,12 +230,17 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       if (next === 'music') options.onOpenMusic?.(); else if (next === 'rest') options.onGoRest?.();
       return;
     }
-    if (button.hasAttribute('data-commissions')) { options.onOpenCommissions?.(commissionCustomer()?.id); return; }
+    if (button.hasAttribute('data-commissions')) {
+      const preview = readyEarnedOrder();
+      if (preview) options.onOpenCommissions?.(preview.customer, preview);
+      else options.onOpenCommissions?.(commissionCustomer()?.id);
+      return;
+    }
     if (button.hasAttribute('data-close')) { options.onClose(); return; }
     if (button.hasAttribute('data-freight')) { options.onOpenFreight?.(); return; }
     if (button.hasAttribute('data-open')) {
       if (!canToggleOpen()) { playBaySound('menu.blocked',.8); notice = 'Сначала поставьте хотя бы один товар на прилавок.'; render(); return; }
-      setBayShopOpen(state, !state.open); lastRefusal = undefined;
+      setBayShopOpen(state, !state.open); lastRefusal = undefined; earnedOrder = undefined;
       notice = state.open ? 'Лавка открыта' : 'Лавка закрыта'; changed(); return;
     }
     if (button.dataset.slot !== undefined) { pending = undefined; selected = Number(button.dataset.slot); tab = 'stock'; notice = ''; render(); return; }
@@ -282,7 +299,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!product || !placeShopQuantity(state, selected, product, quantity, options.takeStock)) {
       playBaySound('menu.blocked',.8); notice = 'Проверьте количество и свободное место на полке.'; render(); return;
     }
-    lastRefusal = undefined;
+    lastRefusal = undefined; earnedOrder = undefined;
     if (quotedProduct && options.catalog) syncBayShopProducts(state, options.catalog);
     const listScroll = pending.listScroll;
     pending = undefined;
@@ -326,7 +343,13 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
         lastRefusal = kind === 'expensive' || kind === 'budget'
           ? { buyer: visitor.id, serial: visitor.serial, day: state.businessDay, kind } : undefined;
       }
-      for (const sale of sales) options.onEarn(sale.price);
+      for (const sale of sales) {
+        options.onEarn(sale.price);
+        const { id, identity, signature } = sale.product;
+        const liked = state.memories[sale.visitor].purchases[identity]?.liked;
+        earnedOrder = sale.liked && liked === 1 && signature && id === identity && id.startsWith('signature:') && !hasShelfStock()
+          ? options.readyCommission?.(sale.visitor, id.slice('signature:'.length)) : undefined;
+      }
       const phase = state.visitor ? `${state.visitor.serial}:${state.visitor.phase}` : 'idle';
       if (sales.length) { saveChanges(); render(); savedAt = now; }
       else if (phase !== lastPhase || now - savedAt > 5000 && state.visitor) { saveChanges(); savedAt = now; }
