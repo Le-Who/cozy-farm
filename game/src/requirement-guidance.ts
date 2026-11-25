@@ -99,7 +99,11 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
   if (item.kind === 'fish' && !getFishAction({...farm,island:getFishSource(farm,item.item)}).available) return fishClue
     ? atHome(farm, { ...route('open-panel', 'rest'), notice: getSupplyGuidance(farm,item,'нужные припасы').detail })
     : tomorrow('Рыба вернётся в эти воды завтра.');
-  if (item.kind === 'seaSalt' && farm.saltGatheredToday) return atHome(farm,{...route('open-panel','rest'),notice:seaSaltRestNotice(farm)});
+  if (item.kind === 'seaSalt' && farm.saltGatheredToday) {
+    const source = getSupplyGuidance(farm,item,'нужные припасы');
+    if (source.action.target === 'sail' && source.action.value === 'grove') return {action:source.action};
+    return atHome(farm,{...route('open-panel','rest'),notice:seaSaltRestNotice(farm)});
+  }
   if ((item.kind === 'honey' || item.kind === 'beeswax') && farm.capeHoneyOn === farm.day) return tomorrow('Улей снова наполнится завтра.');
   if (item.kind === 'fruit') {
     const source = getFruitSource(farm, item.item);

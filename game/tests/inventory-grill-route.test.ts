@@ -245,7 +245,15 @@ test('only the sole missing grill salt previews its real local or sailing route,
   assert.ok(F.sellMarketItem(farm,'fish:perch',1).ok); inspect() // two short, despite salt in the local warehouse.
   assert.ok(F.catchFish(farm,true).ok)
   assert.ok(transferBayGoods(farm,'withdraw','home','seaSalt',2).ok); assert.ok(F.sellMarketItem(farm,'seaSalt',2).ok)
-  inspect() // today's quota is exhausted; the real next action is rest, not travel.
+  const stocked = farm.freight.warehouses.grove.seaSalt
+  assert.ok(stocked > 0, 'this ordinary save produced salt in the Grove warehouse overnight')
+  inspect('Плыть в Солёную рощу') // the field quota is spent, but the warehouse is a real same-day source.
+  assert.ok(F.sail(farm,'grove').ok)
+  assert.ok(transferBayGoods(farm,'withdraw','grove','seaSalt',stocked).ok)
+  assert.ok(F.sail(farm,'home').ok)
+  assert.ok(F.sellMarketItem(farm,'seaSalt',stocked).ok)
+  assert.equal(F.getCookAction(farm,'grilledFish','perch').available,false)
+  inspect() // with both sources exhausted, Rest is again the truthful next action.
 })
 
 function dayFourKitchen() {

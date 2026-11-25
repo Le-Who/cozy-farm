@@ -1,6 +1,6 @@
 import { getShopCommission, getShopCommissionOffers } from './shop-commissions.ts';
 import { getOrdinaryHoneyWait } from './ordinary-honey-guidance.ts';
-import { seaSaltRestNotice } from './salt-guidance.ts';
+import { getGroveSaltWithdrawal, seaSaltRestNotice } from './salt-guidance.ts';
 import { getWindHoneySource } from './wind-honey-guidance.ts';
 import { getNextCropBed, getNextHarvestBed } from './crop-guidance.ts';
 import { plannedCropAt, seedForBed } from './garden-plans.ts';
@@ -135,7 +135,11 @@ function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTas
   if (item.kind === 'dishes') return recipe(farm, item.item, purpose);
   if (item.kind === 'fish' || item.kind === 'seaSalt') {
     if (item.kind === 'seaSalt' && farm.seaSalt >= item.quantity) return task(id, 'Морская соль уже в припасах', `В припасах: ${farm.seaSalt}. Цель: ${purpose}. Дополнительный сбор не нужен.`, 'ui-sea-salt', {label:'Открыть запасы',target:'open-panel',value:'inventory'});
-    if (item.kind === 'seaSalt' && farm.saltGatheredToday) return home(farm, task(id, 'Морская соль после отдыха', seaSaltRestNotice(farm), 'ui-sea-salt', {label:'К отдыху дома',target:'visit-rest'}));
+    if (item.kind === 'seaSalt' && farm.saltGatheredToday) {
+      const fromGrove = getGroveSaltWithdrawal(farm,item.quantity);
+      if (fromGrove) return task(id,'Морская соль на складе рощи',`Можно забрать со склада сегодня: ${fromGrove}.`,'ui-sea-salt',{label:'В рощу',target:'sail',value:'grove'});
+      return home(farm, task(id, 'Морская соль после отдыха', seaSaltRestNotice(farm), 'ui-sea-salt', {label:'К отдыху дома',target:'visit-rest'}));
+    }
     const destination = item.kind === 'fish' ? getFishSource(farm, item.item) : 'grove';
     const clue = item.kind === 'fish' && rareFishClue(item.item,farm);
     if (item.kind === 'fish' && !getFishAction({ ...farm, island: destination }).available) return clue
