@@ -1,11 +1,11 @@
-import { orchardIslandIds, treeDefinitions, type FarmState, type OrchardIslandId, type TreeId, type TreeSlot } from './farm.ts';
+import { orchardIslandIds, treeNightsToFruit, type FarmState, type OrchardIslandId, type TreeId, type TreeSlot } from './farm.ts';
 import { ruCount } from './ru.ts';
 
 type FruitSource = { island: OrchardIslandId; slot: number; kind: 'pick' | 'grow' | 'return' | 'plant' | 'space'; nights?: number; nurseryId?: number };
 
 /** Planted trees grow once per rest; an empty adult refills on the next morning. */
 export function nightsToFruit(tree: TreeSlot): number {
-  return tree.fruitReady > 0 ? 0 : Math.max(1, treeDefinitions[tree.tree].days - tree.age);
+  return treeNightsToFruit(tree);
 }
 
 export function nurseryFruitDetail(tree: TreeSlot): string {

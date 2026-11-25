@@ -83,7 +83,7 @@ export type IslandId = typeof islandIds[number];
 
 export const treeIds = ['apple', 'pear', 'peach'] as const;
 export type TreeId = typeof treeIds[number];
-export type TreeSlot = { tree: TreeId; age: number; fruitReady: number; trait?: Trait };
+export type TreeSlot = { tree: TreeId; age: number; fruitReady: number; trait?: Trait; sprouting?: true };
 export const treeDefinitions: Record<TreeId, { name: string; treeName: string; saplingName: string; days: number; saplingPrice: number; sellPrice: number }> = {
   apple: { name: 'Яблоко', treeName: 'Яблоня', saplingName: 'Саженец яблони', days: 2, saplingPrice: 9, sellPrice: 4 },
   pear: { name: 'Груша', treeName: 'Грушевое дерево', saplingName: 'Саженец груши', days: 3, saplingPrice: 11, sellPrice: 6 },
@@ -1219,9 +1219,14 @@ export function cancelFishingTrip(farm: FarmState, token?: number): ActionResult
   return { ok: true, message: 'Удочка убрана.' };
 }
 
+export function treeNightsToFruit(tree: TreeSlot): number {
+  return tree.fruitReady > 0 ? 0
+    : Math.max(1, treeDefinitions[tree.tree].days - tree.age + Number(tree.sprouting === true));
+}
+
 /** A planted tree fills the same fruit slots at dawn; stored trees never call this. */
 export function treeFruitAtDawn(tree: TreeSlot): number {
-  return tree.age + 1 >= treeDefinitions[tree.tree].days ? fruitPerHarvest : 0;
+  return !tree.sprouting && tree.age + 1 >= treeDefinitions[tree.tree].days ? fruitPerHarvest : 0;
 }
 
 export function getTreeAction(farm: FarmState, slot: number): { kind: 'pick' | 'plant' | 'wait'; available: boolean; label: string } {
@@ -1235,7 +1240,7 @@ export function getTreeAction(farm: FarmState, slot: number): { kind: 'pick' | '
   const definition = treeDefinitions[tree.tree];
   if (tree.fruitReady > 0) return { kind: 'pick', available: true, label: `Собрать плоды: ${definition.name.toLowerCase()}` };
   if (tree.age < definition.days) {
-    const nights = definition.days - tree.age;
+    const nights = treeNightsToFruit(tree);
     return { kind: 'wait', available: false, label: `Саженец (${definition.name.toLowerCase()}) подрастёт через ${ruCount(nights, 'ночь', 'ночи', 'ночей')}.` };
   }
   return { kind: 'wait', available: false, label: 'К утру вырастут новые фрукты.' };
@@ -1266,6 +1271,29 @@ export function plantTree(farm: FarmState, slot: number, tree: TreeId): ActionRe
   orchard[slot] = { tree, age: 0, fruitReady: 0 };
   farm.workToday += 1;
   return { ok: true, message: `Посажен ${treeDefinitions[tree].saplingName.toLowerCase()}.` };
+}
+
+const seedFruitCost = { apple: 'яблока', pear: 'груши', peach: 'персика' } as const;
+
+/** An orchard can grow a locally earned fruit after opening the harbour. No purchase or transplant is implied. */
+export function getFruitTreeSeed(farm: FarmState, slot: number, tree: TreeId) {
+  if (!farm.village.built || !isId(orchardIslandIds, farm.island) || !isId(treeIds, tree)
+    || !Number.isInteger(slot) || slot < 0 || slot >= treeSlotCount || farm.trees[farm.island][slot] !== null
+    || !farm.discoveries[tree]?.regular || !Number.isSafeInteger(farm.fruit[tree]) || farm.fruit[tree] < 1
+    || farm.saplings[tree] > 0 || farm.treeNursery.some(entry => entry.tree.tree === tree)
+    || !Number.isSafeInteger(farm.workToday + 1)) return;
+  return { tree, fruitCost: seedFruitCost[tree], nights: treeDefinitions[tree].days + 1,
+    token: `fruit-tree:${farm.day}:${farm.island}:${slot}:${tree}` };
+}
+
+export function plantFruitTreeSeed(farm: FarmState, slot: number, expected: string | undefined): ActionResult {
+  const tree = typeof expected === 'string' ? expected.split(':').at(-1) : undefined;
+  const choice = isId(treeIds, tree) ? getFruitTreeSeed(farm, slot, tree) : undefined;
+  if (!choice || expected !== choice.token || !isId(orchardIslandIds, farm.island)) return failure('Место или припасы изменились. Проверьте посадку.');
+  farm.fruit[choice.tree] -= 1;
+  farm.trees[farm.island][slot] = { tree: choice.tree, age: 0, fruitReady: 0, sprouting: true };
+  farm.workToday += 1;
+  return { ok: true, message: `Посеяно. Первые плоды через ${ruCount(choice.nights, 'ночь', 'ночи', 'ночей')}.` };
 }
 
 /** Nursery trees retain their exact state. Only planted trees grow or refill overnight. */
@@ -2388,6 +2416,8 @@ export function endDay(farm: FarmState): ActionResult {
     farm.fishCaughtToday[island] = 0;
     for (const [index, tree] of farm.trees[island].entries()) {
       if (!tree) continue;
+      // A seed uses its first full planted night to sprout. Storage pauses this night too.
+      if (tree.sprouting) { delete tree.sprouting; continue; }
       const maturity = treeDefinitions[tree.tree].days, readyAtDawn = treeFruitAtDawn(tree);
       tree.age = Math.min(maturity, tree.age + 1);
       if (readyAtDawn) {
@@ -2523,6 +2553,7 @@ function isTreeSlot(value: unknown): value is TreeSlot | null {
   if (value === null) return true;
   if (!isRecord(value) || !isId(treeIds, value.tree) || !isQuantity(value.age) || !isQuantity(value.fruitReady)) return false;
   if (value.trait !== undefined && (!isId(traitIds, value.trait) || value.fruitReady === 0)) return false;
+  if (value.sprouting !== undefined && (value.sprouting !== true || value.age !== 0 || value.fruitReady !== 0)) return false;
   const maturity = treeDefinitions[value.tree].days;
   return value.age <= maturity && value.fruitReady <= (value.age === maturity ? fruitPerHarvest : 0);
 }

@@ -244,6 +244,9 @@ import {
   getSale,
   getShoreItem,
   getTreeAction,
+  getFruitTreeSeed,
+  plantFruitTreeSeed,
+  treeNightsToFruit,
   getWaterCapacity,
   ingredientCount,
   hasBayDisplay,
@@ -2560,14 +2563,15 @@ function drawPanel() {
       dialogTitle.setAttribute('aria-label',dialogTitle.textContent)
       if(slot){
         const definition=treeDefinitions[slot.tree],growing=slot.age<definition.days
-        dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong>${growing ? 'До зрелости: ' + quantity(definition.days-slot.age,'ночь') : 'Новые плоды завтра'}</strong>`}
+        dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong data-tree-remaining tabindex="-1">${growing ? 'До зрелости: ' + quantity(treeNightsToFruit(slot),'ночь') : 'Новые плоды завтра'}</strong>`}
           ${treeVariantCopy(slot)?`<p class="dialog-intro">${treeVariantCopy(slot)}</p>`:''}${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):panelHistory.at(-1)?.panel==='recipes'?button('К рецепту','back',true,{secondary:true}):''}</div>
           <p class="dialog-intro">Хранение бесплатно освободит это место. Возраст, готовые плоды и особенность сохранятся; рост и новые плоды будут на паузе.</p>
           ${nav(button('Убрать дерево на хранение','store-tree',true,{value:treeSlot,secondary:true}))}`
       }else{
         dialogContent.innerHTML=treeSelector()+marketTreeContinuation()+nurseryCard(treeSlot)+`<div class="sapling-options">${treeIds.map(tree=>{
           const definition=treeDefinitions[tree],owned=farm.saplings[tree]>0
-          return `<article class="sapling-option">${icon(`ui-tree-${tree}`)}<h2>${definition.treeName}</h2><span>До зрелости: ${quantity(definition.days, 'ночь')}</span>${button(owned?'Посадить':'Купить и посадить','buy-plant-tree',owned||farm.coins>=definition.saplingPrice,{value:tree,context:`${definition.treeName}`,cost:owned?undefined:{icon:'coin',amount:definition.saplingPrice}})}</article>`
+          const sow = getFruitTreeSeed(farm, treeSlot, tree)
+          return `<article class="sapling-option">${icon(`ui-tree-${tree}`)}<h2>${definition.treeName}</h2><span>До зрелости: ${quantity(definition.days, 'ночь')}</span>${button(owned?'Посадить':'Купить и посадить','buy-plant-tree',owned||farm.coins>=definition.saplingPrice,{value:tree,context:`${definition.treeName}`,cost:owned?undefined:{icon:'coin',amount:definition.saplingPrice}})}${sow ? button(`Из 1 ${sow.fruitCost} · ${quantity(sow.nights, 'ночь')}`,'fruit-tree-seed',true,{value:sow.token,context:definition.treeName,secondary:true}) : ''}</article>`
         }).join('')}</div>`
       }
       break
@@ -4711,6 +4715,13 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
+    case 'fruit-tree-seed':
+      if (panel === 'tree' && dialog.open && dialogContent.contains(control)
+        && perform(() => plantFruitTreeSeed(farm, treeSlot, value), false, true)) {
+        playBaySound('orchard.sapling', 1, 0)
+        dialogContent.querySelector<HTMLElement>('[data-tree-remaining]')?.focus({preventScroll:true})
+      }
+      break
     case 'buy-plant-tree': {const tree=treeIds.find(id=>id===value);if(tree && perform(()=>buyAndPlantTree(farm,treeSlot,tree)))playBaySound('orchard.sapling', 1, 0);break}
     case 'nursery-sail-plot': {
       if(!dialog.open||(panel!=='tree'&&panel!=='orchard')||island.isCrossing())break
