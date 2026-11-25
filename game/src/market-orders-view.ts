@@ -2,10 +2,11 @@ import { getHarborOrder, getMarketOrders, ingredientCount, type FarmState, type 
 import { getLocalWarehouseSupply, warehouseRequestValue } from './warehouse-guidance.ts'
 import { ruCount } from './ru.ts'
 import { quoteMarketOrderPickup } from './market-order-pickup.ts'
+import { readyHarborOrderRoute } from './harbor-return.ts'
 
 export type MarketOrderChoice = {
   id: string; name: string; reward: number;
-  group: 'ready' | 'warehouse' | 'waiting' | 'delivered' | 'harbor'; note: string; warehouseRequest?:string
+  group: 'ready' | 'warehouse' | 'waiting' | 'delivered' | 'harbor'; note: string; warehouseRequest?:string; readyHarborRoute?: boolean
 }
 
 /** Only the visible portfolio is selectable. No duplicated menus, stock or reward calculation. */
@@ -31,8 +32,11 @@ export function getMarketOrderBoard(farm: FarmState, selected?: string) {
   })
   const harbor = getHarborOrder(farm)
   if (harbor) choices.push({ id: 'harbor', name: harbor.name, reward: harbor.reward, group: 'harbor',
-    note: harbor.status === 'completed' ? 'Доставлено' : farm.island !== 'grove' ? 'Сдача в роще' : harbor.status === 'ready' ? 'Можно внести припасы' : 'Нужны припасы' })
-  const current = choices.find(order => order.id === selected) ?? choices.find(order => order.group === 'ready') ?? choices.find(order => order.group === 'warehouse') ?? choices[0]
+    note: harbor.status === 'completed' ? 'Доставлено' : farm.island !== 'grove' ? 'Сдача в роще' : harbor.status === 'ready' ? 'Можно внести припасы' : 'Нужны припасы',
+    readyHarborRoute: readyHarborOrderRoute(farm, harbor) !== undefined })
+  // Keep deliveries that need no crossing first. An exact pier route still outranks waiting.
+  const current = choices.find(order => order.id === selected) ?? choices.find(order => order.group === 'ready')
+    ?? choices.find(order => order.group === 'warehouse') ?? choices.find(order => order.readyHarborRoute) ?? choices[0]
   const order = orders.find(order => order.lane === current?.id)
   const pickup = order && current?.group === 'warehouse' ? quoteMarketOrderPickup(farm, order, readSupply) : undefined
   return { choices, selected: current?.id, order, pickup }
@@ -40,7 +44,10 @@ export function getMarketOrderBoard(farm: FarmState, selected?: string) {
 
 const escape = (text: string) => text.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!))
 export function renderMarketOrderPicker(board: ReturnType<typeof getMarketOrderBoard>, icon: (name: string) => string) {
-  const groups = [['ready', 'Готовы к сдаче'], ['warehouse', 'Осталось забрать со склада'], ['waiting', 'Нужно подготовить'], ['delivered', 'Сегодня доставлены'], ['harbor', 'Причал рощи']] as const
+  const harbor = ['harbor', 'Причал рощи'] as const
+  const remaining = [['waiting', 'Нужно подготовить'], ['delivered', 'Сегодня доставлены']] as const
+  const groups = [['ready', 'Готовы к сдаче'], ['warehouse', 'Осталось забрать со склада'],
+    ...(board.choices.some(order => order.readyHarborRoute) ? [harbor, ...remaining] : [...remaining, harbor])] as const
   return `<nav class="market-order-picker" aria-label="Выберите заказ">${groups.map(([group, title]) => {
     const choices = board.choices.filter(order => order.group === group)
     return choices.length ? `<section class="market-order-group" data-order-group="${group}"><h2>${title} <small>${choices.length}</small></h2>${choices.map(order =>
