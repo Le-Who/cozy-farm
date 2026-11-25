@@ -8,7 +8,7 @@ import { createDiscoveryPreferences, restoreDiscoveryPreferences, type Discovery
 import { createBayShop, restoreBayShop, advanceBayShopDay, syncBayShopProducts, bayShopDailyLimit, type BayShopState } from './bay-shop-model.ts';
 import { bayProductId } from './bay-product-id.ts';
 import { createBayFestival, noteFestivalActivity, noteFestivalDelivery, restoreBayFestival, getBayFestivalChoices, getBayFestivalStatus, beginBayFestival, cancelBayFestival, contributeBayFestival, finishBayFestival, type BayFestivalState, type FestivalContext, type FestivalTradition } from './bay-festival.ts';
-import { createFreight, restoreFreight, advanceFreight, type BayFreightState } from './bay-freight-model.ts';
+import { createFreight, restoreFreight, advanceFreight, freightStock, type BayFreightState } from './bay-freight-model.ts';
 import { createBayMusicState, normalizeBayMusicState, type BayMusicState } from './bay-music-model.ts';
 import { ruCount, traitLabel } from './ru.ts';
 import { exposedTrait, getClimate, traitIds, type Trait } from './climate.ts';
@@ -1049,6 +1049,36 @@ export function incubateEgg(farm: FarmState): ActionResult {
   if (farm.hatchDay !== null) return failure('Одно яйцо уже в инкубаторе.');
   if (farm.eggs < 1) return failure('Соберите яйцо для инкубатора.');
   farm.eggs -= 1;
+  return scheduleIncubation(farm);
+}
+
+/** A rare egg is an explicit fallback, never substituted for a cheaper egg. */
+export function getRareIncubatorEgg(farm: FarmState) {
+  if (farm.island !== 'home' || farm.coopSpecialization !== 'hatchery' || farm.flockSize >= maxFlockSize
+    || farm.hatchDay !== null || farm.eggs > 0 || farm.eggsReady > Number(farm.eggTrait !== null)
+    || getEggUnpackAction(farm, 'basket').available || getEggUnpackAction(farm, 'crate').available
+    || !Number.isSafeInteger(farm.day + incubationDays) || !Number.isSafeInteger(farm.workToday + 1)) return;
+  // A local ordinary egg source still wins. A distant cargo delivery does not.
+  if (canSailTo(farm, 'home') && ['eggs', 'eggBaskets', 'eggCrates'].some(id => freightStock(farm.freight, 'home', id) > 0)) return;
+  const stock = farm.variants.egg;
+  if (!stock) return;
+  let trait: Trait | undefined;
+  let best = 0;
+  for (const candidate of traitIds) {
+    const count = stock[candidate] ?? 0;
+    if (isQuantity(count) && count > best) { trait = candidate; best = count; }
+  }
+  if (trait) return { trait, token: `hatch:${farm.day}:${trait}`, name: variantLabel('egg', trait).name };
+}
+
+export function incubateRareEgg(farm: FarmState, expected: string | undefined): ActionResult {
+  const choice = getRareIncubatorEgg(farm);
+  if (!choice || expected !== choice.token) return failure('Запас яиц изменился. Откройте инкубатор снова.');
+  removeStock(farm, { kind: 'variants', item: 'egg', trait: choice.trait, quantity: 1 });
+  return scheduleIncubation(farm);
+}
+
+function scheduleIncubation(farm: FarmState): ActionResult {
   farm.hatchDay = farm.day + incubationDays;
   farm.workToday += 1;
   return { ok: true, message: `Яйцо в инкубаторе. Новая курочка появится в день ${farm.hatchDay}.` };

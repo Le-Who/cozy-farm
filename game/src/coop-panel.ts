@@ -1,4 +1,4 @@
-import { eggsPerBasket, eggsPerCrate, getCoopMorning, getEggUnpackAction, incubationDays, maxChickenHappiness, maxFlockSize, type FarmState } from './farm.ts'
+import { eggsPerBasket, eggsPerCrate, getCoopMorning, getEggUnpackAction, getRareIncubatorEgg, incubationDays, maxChickenHappiness, maxFlockSize, type FarmState } from './farm.ts'
 import { renderCoopMorning } from './coop-preview.ts'
 import { henFriends } from './hen-friendship.ts'
 import { ruCount } from './ru.ts'
@@ -19,10 +19,12 @@ export function hasIncubatorBasketSource(farm:FarmState):boolean {
 export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopComponents):string {
   const morning=getCoopMorning(farm)
   const capacity=morning.blockedIfFed?' · соберите до отдыха':''
+  const rare=getRareIncubatorEgg(farm)
   const incubation=farm.coopSpecialization==='hatchery'&&farm.flockSize<maxFlockSize
-    ?row('egg','Инкубатор',farm.hatchDay===null?`1 обычное яйцо · в запасе ${farm.eggs} · ${ruCount(incubationDays,'ночь','ночи','ночей')}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
+    ?row('egg','Инкубатор',farm.hatchDay===null?`${rare ? 'Из припасов' : `1 обычное яйцо · в запасе ${farm.eggs}`} · ${ruCount(incubationDays,'ночь','ночи','ночей')}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
       farm.hatchDay!==null?button('К отдыху дома','visit-rest',true,{secondary:true})
         :hasIncubatorBasketSource(farm)?button('К корзине яиц','incubator-basket',true,{secondary:true})
+        :rare?button(`Положить ${rare.name.toLowerCase()}`,'incubate-rare-egg',true,{value:rare.token})
         :button('Положить яйцо','incubate-egg',farm.eggs>0)):''
   const packing=(farm.coopSpecialization==='packing'?row('ui-egg-crate',`Ящики яиц · ${farm.eggCrates}`,`Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,
     button('Упаковать','pack-egg-crate',farm.eggs>=eggsPerCrate,{context:'ящик яиц'})+button(`Распаковать · +${eggsPerCrate}`,'unpack-egg-crate',getEggUnpackAction(farm,'crate').available,{secondary:true})):'')

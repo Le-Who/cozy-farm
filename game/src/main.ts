@@ -248,6 +248,7 @@ import {
   ingredientCount,
   hasBayDisplay,
   incubateEgg,
+  incubateRareEgg,
   irrigateRow,
   irrigatePair,
   isProjectComplete,
@@ -2630,7 +2631,7 @@ function drawPanel() {
       .find(candidate => focusKey(candidate) === focusKey(focused))
       // A spent pack keeps a neutral result at the old button's position, even on a clipped shelf.
       ?? (focusedSeedCrop ? dialogContent.querySelector<HTMLElement>(`[data-seed-pack="${CSS.escape(focusedSeedCrop)}"] .market-seed-limit`) : null)
-    const incubatorRoute = panel === 'coop' && focused.dataset.action === 'incubate-egg'
+    const incubatorRoute = panel === 'coop' && (focused.dataset.action === 'incubate-egg' || focused.dataset.action === 'incubate-rare-egg')
       ? dialogContent.querySelector<HTMLButtonElement>('.coop-primary [data-action="visit-rest"]') : null
     // A queued planting can spend the last seed while the picker is already open.
     // Keep its crop in focus without moving the old confirmation onto the buy action.
@@ -4451,6 +4452,10 @@ app.addEventListener('click', async (event) => {
         highlightControl(dialogContent.querySelector('.coop-packing [data-action="unpack-egg-basket"]:not(:disabled)')?.closest<HTMLElement>('.dialog-row') ?? null)
       break
     case 'incubate-egg': perform(() => incubateEgg(farm)); break
+    case 'incubate-rare-egg':
+      if (panel === 'coop' && dialog.open && dialogContent.contains(control))
+        perform(() => incubateRareEgg(farm, value))
+      break
     case 'rest-close-shop':
       if (panel === 'rest' && dialog.open) perform(() => closeShopBeforeRest(farm, value), false, true)
       break
