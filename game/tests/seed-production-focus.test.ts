@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { commissionPlayer } from './fixtures/commission-player.ts'
-import { getBedAction } from '../src/farm.ts'
+import { buySeeds, getBedAction } from '../src/farm.ts'
 import { seedChoice } from '../src/seed-choice.ts'
 import { seedSavingQuote, saveCropSeeds } from '../src/seed-saving.ts'
 import { renderSeedPicker } from '../src/seed-picker-ui.ts'
@@ -30,7 +30,7 @@ test('only the matching read-only crop packet is a final fallback',()=>{
  assert.equal(seedProductionFocus([control('preview-seed','carrot',true)],current),undefined)
 })
 
-test('inventory keyboard exchange follows the renewed same-crop quote, then the explicit crop selector',()=>{
+test('after a refill focus stays by the ready selector, but an already-stocked packet keeps its same-crop exchange',()=>{
  const player=commissionPlayer([]),crop='beetroot',bed=0
  player.act('workBed',bed);while(player.state.day<5)player.night()
  player.act('selectSeed',crop);player.act('workBed',bed)
@@ -43,7 +43,12 @@ test('inventory keyboard exchange follows the renewed same-crop quote, then the 
  assert.equal(last.produce[crop],1);assert.equal(player.state.produce[crop],2);assert.equal(last.variants[crop]?.rainbow,1)
  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
  const branch=stripTypeScriptTypes("switch('save-crop-seeds'){"+main.slice(main.indexOf("    case 'save-crop-seeds':"),main.indexOf("    case 'preview-seed':"))+'}')
- for(const start of [last,player.state])for(const panel of ['inventory','seeds'])for(const [detail,owned] of [[0,true],[1,true],[0,false]] as const){
+ const empty=[last,player.state], alreadyStocked=empty.map(start=>{
+  const state=structuredClone(start);assert.ok(buySeeds(state,crop).ok);return state
+ })
+ assert.ok(empty.every(start=>start.seeds[crop]===0))
+ assert.ok(alreadyStocked.every(start=>start.seeds[crop]===3))
+ for(const start of [...empty,...alreadyStocked])for(const panel of ['inventory','seeds'])for(const [detail,owned] of [[0,true],[1,true],[0,false]] as const){
   const farm=structuredClone(start),close=control('close',''),document={activeElement:close},scrollTop=244
   const art={icon:()=>'',button:(label:string,action:string,_enabled:boolean,options:{value?:string})=>`<button data-action="${action}" data-value="${options.value??''}">${label}</button>`}
   const buttons=()=>[...renderSeedPicker(farm,crop,undefined,art).matchAll(/<button\b([^>]*)>/g)].map(([,attrs])=>{
@@ -55,8 +60,9 @@ test('inventory keyboard exchange follows the renewed same-crop quote, then the 
    seedSavingQuote,saveCropSeeds,seedChoice,seedProductionFocus,perform:(action:()=>{ok:boolean})=>{const result=action();if(result.ok)document.activeElement=close;return result.ok}}
   runInNewContext(branch,context)
   const expected=structuredClone(start);assert.ok(saveCropSeeds(expected,old.dataset.value).ok);assert.deepEqual(farm,expected)
-  assert.equal(document.activeElement.dataset.action,!owned||detail===1&&panel==='inventory'?'close':farm.produce[crop]?'save-crop-seeds':'choose-seed')
-  if(document.activeElement!==close)assert.equal(document.activeElement.dataset.value,farm.produce[crop]?seedSavingQuote(farm,crop)!.token:seedChoice(farm,crop).token)
+  const shouldRepeat=start.seeds[crop]>0 && farm.produce[crop]>0
+  assert.equal(document.activeElement.dataset.action,!owned||detail===1&&panel==='inventory'?'close':shouldRepeat?'save-crop-seeds':'choose-seed')
+  if(document.activeElement!==close)assert.equal(document.activeElement.dataset.value,shouldRepeat?seedSavingQuote(farm,crop)!.token:seedChoice(farm,crop).token)
   assert.equal(dialogContent.scrollTop,scrollTop);assert.equal(farm.selectedSeed,'carrot');assert.deepEqual(farm.variants,start.variants)
  }
 })

@@ -4308,20 +4308,23 @@ app.addEventListener('click', async (event) => {
         dialogContent.scrollTop = 0
       }
       break
-    case 'save-crop-seeds':
-      if(dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&seedSavingQuote(farm,previewSeed)?.token===value) {
+    case 'save-crop-seeds': {
+      const quote = seedSavingQuote(farm,previewSeed)
+      if(dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&quote&&quote.token===value) {
         const origin = panel
-        const fromPrimary = control.parentElement?.classList.contains('seed-picker-primary')
+        // An empty packet's exchange is above the grid; stay with selection after it refills.
+        const fromRefill = quote.seeds === 0
         const ownedFocus = document.activeElement===control && (origin==='seeds' || event.detail===0)
         const saved = perform(()=>saveCropSeeds(farm,value),false,true)
         if(saved&&ownedFocus&&dialog.open&&panel===origin&&(panel!=='inventory'||bagTab==='seeds')) {
           seedProductionFocus(dialogContent.querySelectorAll<HTMLButtonElement>('button'), {
-            crop: previewSeed, exchangeToken: fromPrimary ? undefined : seedSavingQuote(farm,previewSeed)?.token,
+            crop: previewSeed, exchangeToken: fromRefill ? undefined : seedSavingQuote(farm,previewSeed)?.token,
             selectionToken: seedChoice(farm,previewSeed,seedPickerBed).token,
           })?.focus({preventScroll:true})
         }
       }
       break
+    }
     case 'preview-seed':
       if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value&&cropIds.includes(value as CropId)) {
         const keyboardChoice = event.detail === 0 && document.activeElement === control

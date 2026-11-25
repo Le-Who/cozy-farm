@@ -15,8 +15,10 @@ export function renderSeedPicker(farm: FarmState, previewSeed: CropId, bed: numb
   const seed = cropDefinitions[previewSeed], choice = seedChoice(farm, previewSeed, bed)
   const label = choice.planned ? choice.label : `Выбрать ${cropChoiceNames[previewSeed]}${activeGardenPlan(farm) ? ' вручную' : ''}`
   const affordable = farm.coins >= seed.seedPrice
-  const quote = !choice.available && !affordable ? seedSavingQuote(farm,previewSeed) : undefined
-  const exchange = quote?.available ? quote : undefined
+  const quote = !choice.available ? seedSavingQuote(farm,previewSeed) : undefined
+  const exchange = !affordable && quote?.available ? quote : undefined
+  // Keep both ways to refill the empty packet before the other crops.
+  const showBoth = affordable && quote?.available
   const buy = !choice.available ? art.button(`Купить ×${seedPackSize}`, 'buy-seeds', affordable, {crop:previewSeed, context:`Семена: ${seed.name.toLowerCase()}, цена: ${ruCount(seed.seedPrice,'монета','монеты','монет')}`, cost:{icon:'coin',amount:seed.seedPrice}}) : ''
   const primary = choice.available ? art.button(label, 'choose-seed', true, {value:choice.token, crop:previewSeed, context:''})
     : exchange ? art.button(`Обменять на ${ruCount(exchange.pack,'семя','семени','семян')}`,'save-crop-seeds',true,{value:exchange.token,context:`цена, обычный урожай: ${seed.name.toLowerCase()} ×1`}) : buy
@@ -24,12 +26,13 @@ export function renderSeedPicker(farm: FarmState, previewSeed: CropId, bed: numb
     : exchange ? `Цена: ${seed.name.toLowerCase()} ×1 из обычного урожая. Посев отдельно.`
       : !affordable ? `У вас: ${ruCount(farm.coins,'монета','монеты','монет')} · не хватает ${seed.seedPrice - farm.coins}.`
         : 'Покупка пополнит запас. Выбор и посев — отдельно.'
+  const saving = renderSeedSaving(farm, previewSeed, art.icon, exchange ? buy : undefined)
   return `<section class="seed-picker" aria-label="Выбор культуры">
     <section class="seed-picker-current" aria-label="Просмотр: ${seed.name}">${art.icon(previewSeed)}<div class="seed-picker-current-copy"><h2>${seed.name}</h2><p>${ruCount(seed.days, 'ночь', 'ночи', 'ночей')} · ${seed.retainsWater ? 'один полив' : 'полив каждый день'}</p></div>
       <div class="seed-picker-primary">${primary}</div>
       <p class="seed-picker-contract">${detail}</p>
     </section>
-    ${mode}<div class="seed-picker-grid" role="group" aria-label="Все культуры">${cropIds.map(crop => `<button class="seed-picker-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${previewSeed === crop}" aria-label="Посмотреть семена: ${cropDefinitions[crop].name.toLowerCase()}, в наличии: ${farm.seeds[crop]}">${art.icon(`ui-seed-${crop}`)}<strong>${cropDefinitions[crop].name}</strong><span>×${farm.seeds[crop]}</span></button>`).join('')}</div>
-    ${renderSeedSaving(farm, previewSeed, art.icon, exchange ? buy : undefined)}${navigation}
+    ${showBoth ? saving : ''}${mode}<div class="seed-picker-grid" role="group" aria-label="Все культуры">${cropIds.map(crop => `<button class="seed-picker-tile" type="button" data-action="preview-seed" data-value="${crop}" aria-pressed="${previewSeed === crop}" aria-label="Посмотреть семена: ${cropDefinitions[crop].name.toLowerCase()}, в наличии: ${farm.seeds[crop]}">${art.icon(`ui-seed-${crop}`)}<strong>${cropDefinitions[crop].name}</strong><span>×${farm.seeds[crop]}</span></button>`).join('')}</div>
+    ${showBoth ? '' : saving}${navigation}
   </section>`
 }
