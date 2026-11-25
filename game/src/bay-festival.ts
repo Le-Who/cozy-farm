@@ -14,6 +14,8 @@ export type FestivalPreparation = {
   performanceBaseline: number;
   materialValue: number;
   cargoDelivered: number;
+  /** Credits actually used for this stage’s cargo, excluding hand-carried supplies. */
+  cargoCreditsSpent?: number;
   activity: Record<FestivalActivity, boolean>;
   delivered: Record<string, number>;
   exhibit?: FestivalFruit;
@@ -413,6 +415,12 @@ export function restoreBayFestival(
     if (!req || !integer(amount) || amount > req.quantity) return undefined;
     active.delivered[id] = amount;
   }
+  // Older saves only counted combined progress. Never reissue a possibly spent credit;
+  // if none had arrived, all previous contributions were necessarily hand-carried.
+  const filledCargo = active.delivered.cargo ?? 0;
+  const spent = a.cargoCreditsSpent === undefined ? Math.min(filledCargo, active.cargoDelivered) : a.cargoCreditsSpent;
+  if (!integer(spent) || spent > filledCargo || spent > active.cargoDelivered) return undefined;
+  if (filledCargo) active.cargoCreditsSpent = spent;
   if (requirements.length && requirements.every((req) => (active.delivered[req.id] ?? 0) === req.quantity))
     return undefined;
   return { completed: counts, lastCompletedOn: value.lastCompletedOn, ...harvestMemory, active };
@@ -441,12 +449,13 @@ export function getBayFestivalChoices(state: BayFestivalState, context: Festival
           : '',
   }));
 }
-function available(alt: Alternative, active: FestivalPreparation, context: FestivalContext): number {
+function available(alt: Alternative, active: FestivalPreparation, context: FestivalContext, requirementId: string): number {
   if (alt.item) return Math.floor(context.count(alt.item) / alt.quantity);
   if (alt.signature) return Math.floor((context.culinary.stock[alt.signature] ?? 0) / alt.quantity);
   if (alt.event === 'concert') return Number(context.musicGarden.performances > active.performanceBaseline);
   if (alt.event && alt.event !== 'delivery') return Number(active.activity[alt.event]);
-  return Math.max(0, active.cargoDelivered - (active.delivered.cargo ?? 0));
+  // Participation witnesses a claimed trade; only the supply row actually spends its units.
+  return requirementId === 'cargo' ? active.cargoDelivered - (active.cargoCreditsSpent ?? 0) : Number(active.cargoDelivered > 0);
 }
 function festivalCancellationReason(state: BayFestivalState, context: FestivalContext): string {
   const active = state.active;
@@ -470,7 +479,7 @@ export function getBayFestivalStatus(state: BayFestivalState, context: FestivalC
       remaining = req.quantity - delivered;
     const alternatives = req.alternatives.map((alt) => ({
       ...alt,
-      available: Math.min(remaining, alt.exhibit ? 1 : Infinity, available(alt, a, context)),
+      available: Math.min(remaining, alt.exhibit ? 1 : Infinity, available(alt, a, context, req.id)),
     }));
     return {
       id: req.id,
@@ -567,11 +576,11 @@ export function contributeBayFestival(
       (!requirementId || req.id === requirementId) &&
       (a.delivered[req.id] ?? 0) < req.quantity &&
       req.alternatives.some(
-        (alt) => (alternativeId ? alt.id === alternativeId : !alt.exhibit) && available(alt, a, context) > 0,
+        (alt) => (alternativeId ? alt.id === alternativeId : !alt.exhibit) && available(alt, a, context, req.id) > 0,
       ),
   );
   const alt = req?.alternatives.find(
-    (alt) => (alternativeId ? alt.id === alternativeId : !alt.exhibit) && available(alt, a, context) > 0,
+    (alt) => (alternativeId ? alt.id === alternativeId : !alt.exhibit) && available(alt, a, context, req.id) > 0,
   );
   if (!req || !alt) return fail('Выберите доступную замену для недостающего вклада.');
   const materialValue = alt.item
@@ -586,12 +595,14 @@ export function contributeBayFestival(
   if (alt.signature) context.culinary.stock[alt.signature] -= alt.quantity;
   if (alt.exhibit) a.exhibit = {...alt.exhibit};
   a.materialValue += materialValue;
+  if (req.id === 'cargo') a.cargoCreditsSpent = (a.cargoCreditsSpent ?? 0) + Number(alt.event === 'delivery');
   a.delivered[req.id] = (a.delivered[req.id] ?? 0) + 1;
   if (
     preparations(a, context)[a.stage].requirements.every((req) => (a.delivered[req.id] ?? 0) === req.quantity)
   ) {
     a.stage++;
     a.delivered = {};
+    delete a.cargoCreditsSpent;
     a.readyOn = context.day + 1;
     return success(
       a.stage === 3
