@@ -2666,6 +2666,12 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryM
 function openGuidedMarket(tab?: string) {
   openPanel('market',true,farm.island,'page.unfold',undefined,{readyOrder:tab==='orders'})
 }
+function openGuidedSeeds(crop: CropId) {
+  openPanel('seeds', true, farm.island, 'page.unfold', undefined, { seedPreview: crop })
+  if (dialog.open && panel === 'seeds' && previewSeed === crop) {
+    highlightControl(dialogContent.querySelector<HTMLElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)'))
+  }
+}
 function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
@@ -3286,6 +3292,7 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
     openPanel('kitchen',true,farm.island,'page.unfold',undefined,{grillFish:fish})
   }
   else if (target === 'warehouse-supply') { selectedWarehouseRequest=warehouseRequest(value);openPanel('warehouse-supply') }
+  else if (target === 'open-panel' && value === 'seeds' && hint.seedPreview) { openGuidedSeeds(hint.seedPreview); return }
   else if (target === 'open-panel' && value && value in panelTitles) openPanel(value as Panel)
   else {openPanel('boat');return}
   const selector = hint.selector ?? (target === 'visit-market' ? marketTab === 'sell' ? '[data-action="sell-item"]'
@@ -3360,6 +3367,10 @@ app.addEventListener('click', async (event) => {
     const task = currentTask()
     if (!task || !('action' in task)) { openPanel('journal'); return }
     action = task.action.target; value = task.action.value
+    if (action === 'open-panel' && value === 'seeds' && 'seedPreview' in task && task.seedPreview) {
+      openGuidedSeeds(task.seedPreview)
+      return
+    }
     if (action === 'open-panel' && value === 'archive' && 'id' in task && task.id === 'collections' && !farm.orientation.collections) {
       openPanel('archive')
       if (dialog.open && panel === 'archive') {

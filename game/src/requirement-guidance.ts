@@ -15,7 +15,7 @@ import { getIslandJourneys } from './journey.ts';
 import {
   boatPrice, buildingIds, canSailTo, cropIds, dishDefinitions, eggsPerCrate,
   getCookAction, getCookIngredients, getFairGuest, getFishAction, getShellAt, getVillageProject, hasFarmhouseSpecialization, ingredientCount, isProjectComplete,
-  type BuildingId, type FarmState, type IslandId, type StockItem,
+  type BuildingId, type CropId, type FarmState, type IslandId, type StockItem,
 } from './farm.ts';
 import { hasShoal, getShoalFindAt } from './shoal.ts';
 import { shellSpotCount } from './tide.ts';
@@ -24,7 +24,7 @@ export type Requirement = { kind: 'stock'; item: StockItem }
   | { kind: 'building'; building: BuildingId }
   | { kind: 'journey'; island: IslandId; id: string }
   | { kind: 'delivery' };
-export type RequirementHint = { action: DiscoveryTask['action']; notice?: string; selector?: string };
+export type RequirementHint = { action: DiscoveryTask['action']; notice?: string; selector?: string; seedPreview?: CropId };
 const route = (target: string, value?: string): RequirementHint => ({ action: { label: '', target, value } });
 const atHome = (farm: FarmState, hint: RequirementHint) => farm.island === 'home' ? hint : route('sail', 'home');
 
@@ -37,7 +37,7 @@ function safe(task: DiscoveryTask): RequirementHint {
   const selector = task.action.target === 'visit-market' ? crop ? `[data-action="buy-seeds"][data-crop="${crop}"]`
     : task.id.endsWith('-feed') ? '[data-action="buy-feed"]' : undefined
     : task.action.target === 'open-panel' && task.action.value === 'seeds' && crop ? `[data-action="preview-seed"][data-value="${crop}"]` : undefined;
-  return { action: task.action, selector };
+  return { action: task.action, selector, ...(task.seedPreview ? { seedPreview: task.seedPreview } : {}) };
 }
 
 function access(farm: FarmState, destination: IslandId): RequirementHint {

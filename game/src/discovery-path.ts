@@ -23,6 +23,8 @@ export type DiscoveryTask = {
   id: string; label: string; detail: string; icon: string; progress: number; target: number;
   /** Ephemeral identity shared only by the available unfinished dock supply routes. Never saved. */
   bookmarkScope?: 'dock-supplies';
+  /** Preview the requested crop, without selecting seed or a bed. */
+  seedPreview?: CropId;
   reward?: number; action: { label: string; target: string; value?: string };
 };
 export type DiscoverySeen = { collections: boolean; islands: boolean };
@@ -87,7 +89,7 @@ function cropSource(farm: FarmState, crop: CropId, purpose: string): DiscoveryTa
   if (ready !== undefined && farm.seeds[crop] > 0) return bedTask(farm, ready, purpose);
   if (farm.seeds[crop] === 0) return farm.coins < cropDefinitions[crop].seedPrice ? coins(farm, cropDefinitions[crop].seedPrice, `семена: ${cropDefinitions[crop].name.toLowerCase()}`)
     : task(`${purpose}-${crop}`, `Купите семена: ${cropDefinitions[crop].name.toLowerCase()}`, `Купите семена, чтобы получить нужный урожай. Цель: ${purpose}.`, crop, { label: 'На рынок', target: 'visit-market', value: 'buy' });
-  if (tilled.length) return task(`${purpose}-${crop}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}, затем засейте подготовленную грядку.`, crop, { label: 'Выбрать семена', target: 'open-panel', value: 'seeds' });
+  if (tilled.length) return { ...task(`${purpose}-${crop}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}`, `Выберите семена: ${cropDefinitions[crop].name.toLowerCase()}, затем засейте подготовленную грядку.`, crop, { label: 'Выбрать семена', target: 'open-panel', value: 'seeds' }), seedPreview: crop };
   if (empty >= 0) return bedTask(farm, empty, purpose);
   const space = getNextHarvestBed(farm);
   const bed = space === undefined ? undefined : farm.beds[space];
