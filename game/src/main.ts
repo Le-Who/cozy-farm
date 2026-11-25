@@ -1016,7 +1016,10 @@ function kitchenFamilies() {
   // visit follows live stock; an explicitly browsed category stays put on Back.
   const landing = farm.island === 'home' && typeof kitchenGroup === 'object' ? kitchenGroup : undefined
   const ready = landing ? kitchenReadyDishes() : []
-  const picked = ready.find(dish => dish === landing?.ready) ?? ready[0]
+  const origin = panelHistory.at(-1)
+  const cottageDish = kitchenGroup === undefined && farm.island === 'village' && farm.village.built && origin?.panel === 'village'
+    ? origin.cottageKitchenDish : undefined
+  const picked = cottageDish ?? ready.find(dish => dish === landing?.ready) ?? ready[0]
   const readyShelf = ready.length > 1
   const group = readyShelf ? 'ready' : picked
     ? isTartDish(picked) ? 'tart' : picked === 'appleJam' || picked === 'orchardPreserves' ? 'preserves' : 'dishes'
@@ -1734,6 +1737,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  cottageKitchenDish?: DishId; // Sole ready dish for this ordinary cottage visit; not a session preference.
   harbourRecipe?: {id: string; preview: boolean}; // Only carried by this recipe's explicit crossing.
   commissionRecipe?: { line:string; prepared:boolean }; // This exact order line opened the book.
   tastingBakery?: string; // An explicit stop from this particular saved recipe.
@@ -2717,7 +2721,16 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next === 'kitchen' && kitchenGroup === undefined) {
     const ordinaryHomeEntry = farm.island === 'home' && remember && next !== panel && !entry && !recipeTarget
       && (!dialog.open || panel === 'rest' || panel === 'guide' || panel === 'boat' || panel === 'upgrades')
-    kitchenGroup = ordinaryHomeEntry ? {} : 'tart'
+    const origin = panelHistory.at(-1)
+    const cottage = farm.island === 'village' && farm.village.built && origin?.panel === 'village' ? origin : undefined
+    const plainCottageEntry = remember && next !== panel && dialog.open && panel === 'village' && !entry && !recipeTarget
+    if (cottage && plainCottageEntry) {
+      const ready = kitchenReadyDishes()
+      if (ready.length === 1) cottage.cottageKitchenDish = ready[0]
+    }
+    // The cottage entry can survive Back even after its apples or other ingredients are spent.
+    if (!cottage?.cottageKitchenDish || entry || recipeTarget || (remember && !plainCottageEntry && next !== panel))
+      kitchenGroup = ordinaryHomeEntry ? {} : 'tart'
   }
   if (next === 'recipes') {
     if (recipeTarget) recipeBook.select(farm,recipeTarget)
