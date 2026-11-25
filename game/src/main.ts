@@ -1743,6 +1743,7 @@ type PanelVisit = {
   tastingBakery?: string; // An explicit stop from this particular saved recipe.
   neighborComposerPlan?: string; // Only set by this visit's explicit “Свой рецепт” button.
   ferryMorning?: number; // This ferry visit's explicit trip to the Home forecast.
+  restFeedMixDay?: number; // Keyboard entered from today's actual Rest mix button.
   recipeBook: RecipeBookView;
   kitchenSourceItem?: string;
   ferryView: FerryPanelView | undefined;
@@ -1800,6 +1801,8 @@ function rememberPanel(): PanelVisit {
 function goBack(keyboard = false) {
   const previous=panelHistory.pop()
   if(!previous)return
+  const restFeedReturn = keyboard && panel === 'chicken-feed' && previous.panel === 'rest'
+    && previous.restFeedMixDay === farm.day && farm.island === 'home' && farm.feed > 0 && !farm.chickensFed
   // Today's table button is gone after supper; return focus to the same cottage.
   const supperCottage = previous.panel === 'village' && panel === 'village-meal' && getVillageMeal(farm).served
   const suppliedRecipe = keyboard && previous.panel === 'recipes' && (panel === 'tree' || panel === 'warehouse-supply' &&
@@ -1879,6 +1882,17 @@ function goBack(keyboard = false) {
       reserve?.scrollIntoView({block:'nearest'})
     }
     else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
+    else if (restFeedReturn) {
+      const feed = dialogContent.querySelector<HTMLButtonElement>('.rest-before-morning [data-action="feed"]:not(:disabled)')
+      const row = feed?.closest<HTMLElement>('.dialog-row')
+      if (feed?.getClientRects().length && row?.getClientRects().length) {
+        // The Mix button was replaced. Reveal the same row, not a spend control
+        // that the same held key could activate. Feed still takes its own action.
+        row.tabIndex = -1
+        row.focus({preventScroll:true})
+        row.scrollIntoView({block:'nearest'})
+      }
+    }
     else if (previous.marketOrder?.source || previous.marketOrder?.warehouse) {
       // Satisfied row or changed withdrawal: read the same crate, never arm a new ingredient or delivery.
       dialogContent.querySelector<HTMLElement>('.market-order-detail')?.focus({preventScroll:true})
@@ -4440,7 +4454,14 @@ app.addEventListener('click', async (event) => {
     }
     case 'chicken-feed-open':
       if (panel === 'coop' && dialog.open && farm.island === 'home' && farm.buildingLevels.coop >= 2) openPanel('chicken-feed')
-      else if (panel === 'rest' && dialog.open && canMixBedtimeFeed(farm)) openPanel('chicken-feed')
+      else if (panel === 'rest' && dialog.open && canMixBedtimeFeed(farm)) {
+        const opener = panelHistory.at(-1)
+        const keyboardEntry = event.detail === 0 && document.activeElement === control
+        openPanel('chicken-feed')
+        const visit = panelHistory.at(-1)
+        if (keyboardEntry && visit?.panel === 'rest' && visit !== opener && visit.focus === focusKey(control))
+          visit.restFeedMixDay = farm.day
+      }
       break
     case 'mix-chicken-feed': {
       const keyboardMix = event.detail === 0 && document.activeElement === control
