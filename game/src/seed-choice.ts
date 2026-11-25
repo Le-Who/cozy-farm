@@ -1,5 +1,13 @@
 import {cropIds,selectSeed,type FarmState,type CropId,type ActionResult} from './farm.ts'
-import {activeGardenPlan,plannedCropAt} from './garden-plans.ts'
+import {activeGardenPlan,plannedCropAt,seedForBed} from './garden-plans.ts'
+
+/** A depleted packet is not the only option for a manually prepared bed. Preview, never select. */
+export function seedPickerBedPreview(farm:FarmState,bed:number):CropId{
+  const current=seedForBed(farm,bed)
+  if(farm.island!=='home'||farm.beds[bed]?.kind!=='tilled'||activeGardenPlan(farm)||farm.seeds[current]>0)return current
+  const owned=cropIds.filter(crop=>farm.seeds[crop]>0)
+  return owned.length===1?owned[0]:current
+}
 
 /** Browsing a packet is not permission to replace the player's sowing plan. */
 export function seedChoice(farm:FarmState,crop:CropId,bed?:number){

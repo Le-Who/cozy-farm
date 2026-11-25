@@ -16,7 +16,7 @@ import {seedProductionFocus} from './seed-production-focus'
 import {renderSeedPicker} from './seed-picker-ui'
 import {revealSeedPickerFocus} from './seed-picker-focus'
 import './seed-picker.css'
-import {seedChoice,chooseSeedForBed} from './seed-choice'
+import {seedChoice,chooseSeedForBed,seedPickerBedPreview} from './seed-choice'
 import {planBedWork,isCurrentBedWork,bedWorkKind} from './bed-work-intent'
 import { basketHotbarIcons, basketHotbarLabels } from './basket-hotbar'
 import { renderHarvestStocks } from './inventory-harvest'
@@ -27,7 +27,7 @@ import { BerryRenewalSelection, renderBerryRenewal, restoreBerryRenewalFocus, be
 import { getBerryPropagation, getBerryRenewalPreview, harvestBerryAndKeep } from './farm'
 import { saveGardenSeedPacket } from './garden-harvest-seeds'
 import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
-import { activeGardenPlan, plannedCropAt, seedForBed, followGardenPlan, removeGardenPlan } from './garden-plans'
+import { activeGardenPlan, plannedCropAt, followGardenPlan, removeGardenPlan } from './garden-plans'
 import { GardenPlanEditor, renderGardenPlans, renderGardenMode, gardenPlanToken } from './garden-plans-ui'
 import './garden-plans.css'
 import { inviteNeighborVisit, finishNeighborVisit, visitActivities } from './neighbor-visits'
@@ -2744,7 +2744,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     if (panel!=='bay-music') selectedWarehouse=farm.island
   }
   if (next !== panel) { stopHarbour(); stopFishing(); stopWorkshop(); stopCookery(); stopArrangement() }
-  if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = next === 'seeds' && entry?.seedPreview ? entry.seedPreview : seedPickerBed === undefined ? farm.selectedSeed : seedForBed(farm, seedPickerBed)
+  if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = next === 'seeds' && entry?.seedPreview ? entry.seedPreview : seedPickerBed === undefined ? farm.selectedSeed : seedPickerBedPreview(farm, seedPickerBed)
   if (remember && next !== panel && next === 'irrigation') irrigationMode = farm.wellSpecialization === 'pipes' ? 'pair' : 'row'
   if (remember && next !== panel && next === 'boat') { boatIsland = destinationIsland; journeyDetailsOpen=false }
   if (next === 'archive' || next === 'boat') {
