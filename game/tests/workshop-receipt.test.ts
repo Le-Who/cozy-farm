@@ -8,6 +8,8 @@ import { transferBayGoods } from '../src/harbour-economy.ts'
 import { getMarketOrderBoard, renderMarketOrderPicker } from '../src/market-orders-view.ts'
 import { getNextMarketOrders } from '../src/market-return.ts'
 import { workshopToolGuide } from '../src/workshop-controls.ts'
+import { getReadySignatureSuppers } from '../src/shared-supper.ts'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 
 // Existing source-fixture seam: real UI callbacks/receipt with inert scene adapters,
 // public domain actions and canonical save restore. Not a native gesture/GL test.
@@ -40,12 +42,14 @@ function earned(bread=false){
  assert.deepEqual(farmApi.restoreCurrentFarm(structuredClone(farm)),farm)
  return farm
 }
-function handoff(farm:farmApi.FarmState,recipe:'bread'|'pastry',shape:farmApi.WorkshopShape){
+function handoff(farm:farmApi.FarmState,recipe:'bread'|'pastry',shape:farmApi.WorkshopShape,origin?:string){
  const saved:farmApi.FarmState[]=[],handlers:Record<string,(event:{detail:number})=>void>={},announcements:string[]=[]
  let options:any,returns=0,now=1000,focusCalls=0
  const focusHandlers=new Map<string,Function>(),body={},document={body,activeElement:body,hasFocus:()=>true,addEventListener:(type:string,handler:Function)=>focusHandlers.set(type,handler)}
  const sounds:string[]=[],baked:number[]=[],risen:number[]=[]
  const mainState:any={farm,workshopRecipe:recipe,pastryShape:shape,panel:'workshop',workshopGame:undefined,...farmApi,
+  dialog:{open:true},island:{isCrossing:()=>false},villageSlot:0,panelHistory:origin?[{panel:origin,pastryShape:'round',villageSlot:0,signatureSlots:[],marketNextOpen:[],scroll:34}]:[],
+  getReadySignatureSuppers,
   dialogContent:{innerHTML:'',querySelector(){return {}}},createWorkshop(_host:unknown,value:any){options=value;return {destroy(){}}},
   leaveScene(){returns++;state.destroyed=true},perform(action:()=>farmApi.ActionResult){const result=action();if(result.ok)saved.push(structuredClone(farm));return result.ok}}
  runInNewContext(js(`switch('workshop'){${panelCase.getText(main)}}`),mainState)
@@ -239,4 +243,87 @@ test('a quoted loaf order is rechecked on actual click, and Done remains availab
  assert.ok(farmApi.sellMarketItem(farm,'dishes:farmhouseBread',1).ok);const afterSale=structuredClone(farm)
  h.order();assert.equal(h.state.orderButton.hidden,true);assert.equal(h.mainState.panel,'workshop')
  assert.deepEqual(farm,afterSale);h.click();assert.equal(h.returns(),1)
+})
+
+function earnedCottageTable(past:0|1,shore:'home'|'grove',catchToday=true){
+  const meals=opening.flatMap((a:{name:string},i:number)=>a.name==='serveVillageMeal'?[i]:[])
+  const beforeBaking=opening.slice(0,meals[past]).findLastIndex((x:{name:string})=>x.name==='bakeWorkshop')
+  const p=commissionPlayer(opening.slice(0,beforeBaking));p.visit(shore)
+  if(catchToday){const cast=p.act('beginFishingTrip');p.act('finishFishingTrip',cast.token,1)}
+  p.visit('village')
+  assert.equal(p.state.village.meals,past);assert.equal(p.state.village.residents[0],'bea')
+  assert.ok(farmApi.getWorkshopAction(p.state).available)
+  return p
+}
+const rewind=find(main,n=>ts.isFunctionDeclaration(n)&&n.name?.text==='goBack') as ts.FunctionDeclaration
+for(const [past,shore,shape,day] of [[0,'home','round',10],[1,'grove','folded',14]] as const)
+test(`earned Day${day}: newly cooked workshop receipt opens the ready local dinner and Back restores the same cottage`,()=>{
+ const p=earnedCottageTable(past,shore),f=p.state,start=structuredClone(f)
+ const h=handoff(f,'pastry',shape,'village'),ctx=h.mainState,events:string[]=[]
+ const fish=shore==='home'?'perch':'seaBass'
+ assert.equal(f.day,day);assert.ok(!farmApi.getVillageMeal(f,shape).available)
+ assert.equal(f.fish[fish],1);assert.equal(h.state.orderButton.hidden,true)
+ const detail={kind:'dialog-intro'}
+ const history=ctx.panelHistory, cottage=history[0]
+ Object.assign(ctx,{dialogContent:{innerHTML:'',scrollTop:0,querySelector(q:string){return q==='.shared-supper-intro'?detail:null},querySelectorAll(){return[]}},
+  openPanel(next:string,remember:boolean){assert.equal(remember,false);events.push(next);ctx.panel=next},
+  highlightControl(node:unknown){assert.equal(node,detail);events.push('neutral-intro')},
+  recipeBook:{load(){}},restoreFerryPanelView(){},panelRenderVersion:1,requestAnimationFrame:(callback:()=>void)=>callback(),
+  })
+ Object.assign(ctx.dialog,{querySelectorAll:()=>[]})
+ runInNewContext(js(rewind.getText(main)),ctx)
+ h.click();h.order();assert.equal(h.state.orderButton.hidden,true)
+ const paid=structuredClone(f)
+ assert.deepEqual([f.produce.wheat,f.eggs,f.handmade[shape],f.fish[fish],f.village.meals],[start.produce.wheat-2,start.eggs-1,1,1,past])
+ h.advance(4);assert.equal(h.state.orderButton.hidden,false,'the freshly cooked receipt can go straight to the table')
+ assert.equal(h.state.orderButton.textContent,'К ужину')
+ h.order()
+ assert.deepEqual(events,['village-meal','neutral-intro']);assert.equal(ctx.panel,'village-meal');assert.equal(ctx.pastryShape,shape)
+ assert.deepEqual(ctx.panelHistory,[cottage]);assert.deepEqual(f,paid);assert.equal(h.saved.length,1)
+ // A continuing click after mounting the table cannot traverse the retired receipt or serve.
+ h.order();assert.deepEqual(events,['village-meal','neutral-intro']);assert.deepEqual(f,paid)
+ ctx.goBack(true);assert.equal(ctx.panel,'village');assert.equal(ctx.villageSlot,0);assert.equal(ctx.pastryShape,'round')
+ assert.equal(ctx.dialogContent.scrollTop,34);assert.deepEqual(f,paid)
+ // Serving is a different exact player action, not an effect of opening the table.
+ assert.ok(farmApi.serveVillageMeal(f,shape).ok);assert.equal(farmApi.serveVillageMeal(f,shape).ok,false)
+ assert.deepEqual([f.village.meals,f.fish[fish],f.handmade[shape],f.day,f.island],[past+1,0,0,day,'village'])
+ if(past===1){assert.equal(farmApi.getVillageHomeCount(f),2);assert.deepEqual(f.village.residents,['bea',null])}
+ assert.deepEqual(farmApi.restoreCurrentFarm(structuredClone(f)),f)
+ console.log(JSON.stringify({day,earned:p.actions,past,fish,shape,fromPaidReceipt:'К ужину',unpaidHopsBeforeServe:1,stockOrTravelOnNavigation:false}))
+})
+
+test('no receipt shortcut for already prepared signature, served day, wrong origin, or fish only on another shore',()=>{
+ for(const state of ['already-ready','served','wrong-origin','fish-gone'] as const){
+  const p=earnedCottageTable(1,state==='fish-gone'?'grove':'home',true)
+  if(state==='already-ready'||state==='served'){
+   const id=p.cook()
+   assert.ok(getReadySignatureSuppers(p.state).find(x=>x.recipe.id===id)?.available)
+   if(state==='served')p.act('deliverSignature',id)
+  }
+  if(state==='fish-gone'){
+    p.visit('grove');p.act('transferBayGoods','deposit','grove','seaBass',1);p.visit('village')
+    assert.equal(p.state.freight.warehouses.grove.seaBass,1);assert.equal(p.state.fish.seaBass,0)
+  }
+  const f=p.state,h=handoff(f,'pastry','folded',state==='wrong-origin'?'guide':'village')
+  h.click();h.advance(4)
+  assert.equal(h.state.orderButton.hidden,true,state);assert.equal(h.saved.length,1)
+  const saved=structuredClone(f);h.order();assert.deepEqual(f,saved);h.click()
+  assert.equal(h.returns(),1);assert.deepEqual(f,saved)
+ }
+})
+
+test('the newly ready table quote expires after a new day, depleted pastry, or a different cottage origin',()=>{
+ for(const reason of ['tomorrow','pastry-used','new-origin'] as const){
+  const p=earnedCottageTable(1,'grove'),f=p.state,h=handoff(f,'pastry','folded','village')
+  h.click();h.advance(4);assert.equal(h.state.orderButton.hidden,false)
+  if(reason==='tomorrow'){
+   assert.ok(farmApi.sail(f,'home').ok);assert.ok(farmApi.endDay(f).ok);assert.ok(farmApi.sail(f,'village').ok)
+   assert.ok(farmApi.getVillageMeal(f,'folded').available,'yesterday’s receipt is stale even when ingredients are still ready')
+  }else if(reason==='pastry-used'){
+   assert.ok(transferBayGoods(f,'deposit','village','handmade:folded',1).ok);assert.ok(!farmApi.getVillageMeal(f,'folded').available)
+  }else h.mainState.panelHistory[0]={...h.mainState.panelHistory[0]}
+  const before=structuredClone(f)
+  h.order();assert.equal(h.state.orderButton.hidden,true,reason);assert.equal(h.mainState.panel,'workshop');assert.equal(h.saved.length,1)
+  assert.deepEqual(f,before);h.click();assert.equal(h.returns(),1)
+ }
 })

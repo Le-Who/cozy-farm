@@ -14,7 +14,7 @@ import { workshopTools, workshopToolGuide, workshopToolPalette, workshopModeRail
 import './workshop.css'
 
 export type WorkshopShape = 'round' | 'folded' | 'long'
-export interface WorkshopOptions { initialShape?: WorkshopShape; recipe?: 'pastry' | 'bread'; onBake: (shape: WorkshopShape) => boolean | void; readyOrder?: () => {name:string; open:()=>void} | undefined; onCancel?: () => void }
+export interface WorkshopOptions { initialShape?: WorkshopShape; recipe?: 'pastry' | 'bread'; onBake: (shape: WorkshopShape) => boolean | void; readyOrder?: () => {name:string; label?:string; open:()=>void} | undefined; onCancel?: () => void }
 type Stage = WorkshopStage
 type Tool = WorkshopTool
 type DoughPiece = {
@@ -1015,7 +1015,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
         stage = 'finished'; playBaySound('cook.oven-out'); updateState()
         bakeButton.disabled = contextLost; bakeButton.innerHTML = '<span>Готово</span>'
         const order = options.readyOrder?.()
-        if (order) { orderButton.textContent = `К заказу «${order.name}»`; orderButton.hidden = false }
+        if (order) { orderButton.textContent = order.label ?? `К заказу «${order.name}»`; orderButton.hidden = false }
         fitBakeLabel()
         announce('Выпечка готова и добавлена в запасы фермы.')
         // Disabling Bake blurs a keyboard user; do not override any later focus intent.

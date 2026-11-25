@@ -2440,14 +2440,25 @@ function drawPanel() {
       }
       dialogContent.innerHTML = '<div class="workshop-host"></div>'
       let made = false, basketDay: number | undefined
+      const cottage = !bread && farm.island === 'village' ? panelHistory.at(-1) : undefined
+      const resident = cottage?.panel === 'village' ? farm.village.residents[cottage.villageSlot] : undefined
+      const sameCottage = () => cottage?.panel === 'village' && !!resident && panel === 'workshop' && farm.island === 'village'
+        && panelHistory.at(-1) === cottage && villageSlot === cottage.villageSlot && farm.village.residents[cottage.villageSlot] === resident
+      let bakedSupper: {day: number; shape: WorkshopShape} | undefined
+      const readySupper = () => bakedSupper?.day === farm.day && dialog.open && !island.isCrossing() && sameCottage()
+        && getVillageMeal(farm,bakedSupper.shape).available ? bakedSupper : undefined
       workshopGame = createWorkshop(dialogContent.querySelector<HTMLElement>('.workshop-host')!, {
         initialShape: bread ? 'long' : pastryShape, recipe: bread ? 'bread' : 'pastry',
         onBake(shape) {
           if (made) return true
           if (panel !== 'workshop') return false
           const waiting = bread && getHomeBreadBasket(farm)?.status === 'waiting'
+          const tableMissingPastry = sameCottage() && !getVillageMeal(farm,shape).served
+            && !workshopShapes.some(choice => getVillageMeal(farm,choice).available)
+            && !getReadySignatureSuppers(farm).some(choice => choice.available)
           made = perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true)
           if (made && waiting && getHomeBreadBasket(farm)?.status === 'ready') basketDay = farm.day
+          if (made && tableMissingPastry && getVillageMeal(farm,shape).available) bakedSupper = {day:farm.day,shape}
           return made
         },
         readyOrder: bread ? () => {
@@ -2462,7 +2473,17 @@ function drawPanel() {
             const detail = dialogContent.querySelector<HTMLElement>('.market-order-detail')
             detail?.focus({preventScroll:true}); detail?.scrollIntoView({block:'nearest'})
           } }
-        } : undefined,
+        } : () => {
+          const supper = readySupper()
+          if (!supper) return
+          return { name: 'Общий ужин', label: 'К ужину', open() {
+            if (readySupper() !== supper) return
+            pastryShape = supper.shape
+            // Replace the paid workshop receipt without losing the cottage Back target.
+            openPanel('village-meal',false)
+            highlightControl(dialogContent.querySelector('.shared-supper-intro'))
+          } }
+        },
         onCancel: leaveScene,
       })
       break
