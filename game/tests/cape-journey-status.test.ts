@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import * as F from '../src/farm.ts'
 import { expeditionWallet, transferBayGoods } from '../src/harbour-economy.ts'
 import { initialExpeditionPreview } from '../src/ferry-expeditions.ts'
-import { hasFirstFerryCargo } from '../src/ferry-smaller-cargo.ts'
+import { firstFerryCargoOffer } from '../src/ferry-smaller-cargo.ts'
 import { getCapeJourneyStatus } from '../src/cape-journey-status.ts'
 import { getIslandJourneys } from '../src/journey.ts'
 import { getDiscoveryTask } from '../src/discovery-path.ts'
@@ -96,7 +96,7 @@ function renderDock(farm:F.FarmState,boatIsland:F.IslandId) {
   body=body.replace("    case 'boat': {",'').replace(/\s*break\s*}\s*$/,'').replaceAll('import.meta.env.BASE_URL',"''")
   const button=(label:string,action:string,enabled=true,options:{value?:unknown}={})=>`<button data-action="${action}"${options.value!==undefined?` data-value="${options.value}"`:''}${enabled?'':' disabled'}>${label}</button>`
   const preview=initialExpeditionPreview(farm.freight.expeditions)
-  return Function('farm','boatIsland','getIslandJourneys','getCapeJourneyStatus','button','quantity','boatPrice','requirementLink','icon','isProjectComplete','getHarborOrder','journeyDetailsOpen','escapeHtml','hasFirstFerryCargo','expeditionWallet','selectedExpeditionPort','selectedExpeditionOffer',`const dialogContent={innerHTML:''};${body};return dialogContent.innerHTML`)(farm,boatIsland,getIslandJourneys,getCapeJourneyStatus,button,(n:number)=>String(n),F.boatPrice,(s:string)=>s,(s:string)=>`<i>${s}</i>`,F.isProjectComplete,F.getHarborOrder,false,(s:string)=>s.replaceAll('&','&amp;').replaceAll('<','&lt;'),hasFirstFerryCargo,expeditionWallet,preview.port,preview.offer) as string
+  return Function('farm','boatIsland','getIslandJourneys','getCapeJourneyStatus','button','quantity','boatPrice','requirementLink','icon','isProjectComplete','getHarborOrder','journeyDetailsOpen','escapeHtml','firstFerryCargoOffer','expeditionWallet','selectedExpeditionPort','selectedExpeditionOffer',`const dialogContent={innerHTML:''};${body};return dialogContent.innerHTML`)(farm,boatIsland,getIslandJourneys,getCapeJourneyStatus,button,(n:number)=>String(n),F.boatPrice,(s:string)=>s,(s:string)=>`<i>${s}</i>`,F.isProjectComplete,F.getHarborOrder,false,(s:string)=>s.replaceAll('&','&amp;').replaceAll('<','&lt;'),firstFerryCargoOffer,expeditionWallet,preview.port,preview.offer) as string
 }
 
 test('actual selected dock template renders a passive line only in Cape and preserves its explicit sail action',()=>{

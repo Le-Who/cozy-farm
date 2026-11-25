@@ -16,12 +16,13 @@ export function smallerFerryCargo(state: FerryExpeditions, id: string, wallet: E
   }
 }
 
-/** A first trip can be prepared through its existing quote without paying coins or waiting. */
-export function hasFirstFerryCargo(state: FerryExpeditions, day: number, wallet: ExpeditionWallet, port: ExpeditionPort, offer: string): boolean {
-  if (state.serial !== 0 || state.active || state.last || !wallet.boatOwned || !state.discovered.includes(port)) return false
+/** Preview the current first-trip quote, or its existing ready smaller cargo. */
+export function firstFerryCargoOffer(state: FerryExpeditions, day: number, wallet: ExpeditionWallet, port: ExpeditionPort, offer: string): string | undefined {
+  if (state.serial !== 0 || state.active || state.last || !wallet.boatOwned || !state.discovered.includes(port)) return
   const ids = expeditionOfferIds(offer), choices = expeditionTrades(state, port)
-  if (!ids.length || !ids.every(id => choices.some(choice => choice.id === id))) return false
+  if (!ids.length || !ids.every(id => choices.some(choice => choice.id === id))) return
   const quote = quoteExpedition(state, offer, wallet)
-  if (quote?.available) return quote.payCoins === 0 && quote.outgoing.length > 0
-  return !!smallerFerryCargo(state, offer, wallet) && !getFerryRestockPlan(state, offer, day, wallet)
+  if (quote?.available) return quote.payCoins === 0 && quote.outgoing.length > 0 ? quote.id : undefined
+  const smaller = smallerFerryCargo(state, offer, wallet)
+  if (smaller && !getFerryRestockPlan(state, offer, day, wallet)) return smaller.id
 }

@@ -122,7 +122,7 @@ import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
 import { combinedExpeditionId, expeditionOfferAfterClaim, initialExpeditionPreview, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
 import { getFerryRestockPlan } from './ferry-restock'
-import { hasFirstFerryCargo } from './ferry-smaller-cargo'
+import { firstFerryCargoOffer } from './ferry-smaller-cargo'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
@@ -2567,7 +2567,7 @@ function drawPanel() {
       }).join('')
       const action = destination.nextAction
       const firstFerry = farm.island === 'home' && destination.id === 'grove' && farm.boatOwned && farm.freight.expeditions.serial === 0
-        && hasFirstFerryCargo(farm.freight.expeditions, farm.day, expeditionWallet(farm), selectedExpeditionPort, selectedExpeditionOffer)
+        ? firstFerryCargoOffer(farm.freight.expeditions, farm.day, expeditionWallet(farm), selectedExpeditionPort, selectedExpeditionOffer) : undefined
       const capeStatus = getCapeJourneyStatus(farm, destination.id)
       const requirements = destination.requirements.filter(item => !item.complete)
       const unpaidBoat = action?.target === 'buy-boat' && !action.enabled
@@ -2592,7 +2592,7 @@ function drawPanel() {
           <nav class="island-places" aria-label="Действия на острове">
             ${nextStep || localPlaces}
             ${destination.current && farm.boatOwned ? button('Грузовой паром','open-panel',true,{value:'bay-freight',secondary:true})
-              : firstFerry ? button('Грузовой паром','first-ferry-route',true,{value:farm.day,secondary:true}) : ''}
+              : firstFerry ? button('Грузовой паром','first-ferry-route',true,{value:`${farm.day}:${firstFerry}`,secondary:true}) : ''}
           </nav>
           ${destination.unlocked || !requirements.length ? '' : requirements.length <= 2 ? checklist : `<details class="journey-details"${journeyDetailsOpen ? ' open' : ''}><summary>Условия открытия <span>${requirements.length}</span></summary>${checklist}</details>`}
         </article>`
@@ -2736,7 +2736,7 @@ function openGuidedSeeds(crop: CropId) {
     highlightControl(dialogContent.querySelector<HTMLElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)'))
   }
 }
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean }) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
@@ -2787,6 +2787,8 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next !== panel && next !== 'recipe-surplus') recipeSurplusSelection.reset()
   if (next !== 'seeds') seedPickerBed = undefined
   if (remember && next==='bay-freight' && next!==panel) {
+    // The originating Boat view already holds its original offer for Back.
+    if (entry?.firstFerryOffer) selectedExpeditionOffer = entry.firstFerryOffer
     freightPlanOpen=false
     if (panel!=='bay-music') selectedWarehouse=farm.island
   }
@@ -3959,11 +3961,13 @@ app.addEventListener('click', async (event) => {
         && control.closest(`.journey-card[data-island="${destination}"]`)) await showRequirement({kind:'journey',island:destination,id:'boat'},control)
       break
     }
-    case 'first-ferry-route':
-      if (panel === 'boat' && dialog.open && boatIsland === 'grove' && farm.island === 'home'
-        && value === String(farm.day) && dialogContent.contains(control) && control.closest('.journey-card[data-island="grove"]')
-        && hasFirstFerryCargo(farm.freight.expeditions, farm.day, expeditionWallet(farm), selectedExpeditionPort, selectedExpeditionOffer)) openPanel('bay-freight')
+    case 'first-ferry-route': {
+      if (panel !== 'boat' || !dialog.open || boatIsland !== 'grove' || farm.island !== 'home'
+        || !dialogContent.contains(control) || !control.closest('.journey-card[data-island="grove"]')) break
+      const offer = firstFerryCargoOffer(farm.freight.expeditions, farm.day, expeditionWallet(farm), selectedExpeditionPort, selectedExpeditionOffer)
+      if (offer && value === `${farm.day}:${offer}`) openPanel('bay-freight',true,farm.island,'page.unfold',undefined,{firstFerryOffer:offer})
       break
+    }
     case 'boat-island':
       journeyDetailsOpen=false
       if(islandIds.some(id=>id===value)){boatIsland=value as typeof boatIsland;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="boat-island"][data-value="${value}"]`)?.focus({preventScroll:true})}break
