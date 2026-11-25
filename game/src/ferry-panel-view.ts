@@ -55,10 +55,11 @@ export function restoreFerryPanelView(host: HTMLElement, view: FerryPanelView | 
     ? panel.querySelector<HTMLElement>(`.expedition-${focus.summary} > summary`) ?? undefined
     : matches.find(button => focus.area === 'panel' || button.closest(`.expedition-${focus.area}`)) ?? matches.find(canFocus);
   const picker = 'action' in focus && (focus.action === 'expedition-offer' || focus.action === 'expedition-pair');
-  // Cooking may retire the useful-cargo link while the player is in the recipe book.
-  // Return to the same settled manifest, never the receipt for a later sailing.
-  const samePaidVoyage = 'action' in focus && focus.action === 'expedition-order-recipe'
-    && panel.dataset.receiptVoyage === focus.value.split(':', 1)[0];
+  // Cooking or planting may retire a cargo-use link. Focus its actual receipt,
+  // never a new voyage or another spending action.
+  const useSerial = 'action' in focus ? focus.action === 'expedition-order-recipe' ? focus.value.split(':', 1)[0]
+    : focus.action === 'visit-tree' && focus.value.startsWith('peach:') ? focus.value.split(':')[1] : undefined : undefined;
+  const samePaidVoyage = useSerial !== undefined && panel.dataset.receiptVoyage === useSerial;
   const fallback = picker ? offers?.querySelector<HTMLElement>('summary') ?? undefined
     : samePaidVoyage ? panel.querySelector<HTMLElement>('.expedition-receipt') ?? undefined : undefined;
   const close = panel.querySelector<HTMLElement>('.bay-freight-close') ?? undefined;

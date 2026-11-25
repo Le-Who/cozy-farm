@@ -12,6 +12,7 @@ import {isGuardedAction,ActivationKeyGuard} from '../src/action-click-guard.ts'
 import * as F from '../src/farm.ts'
 import * as J from '../src/journey.ts'
 import * as H from '../src/harbour-economy.ts'
+import { FerryPeachPlanting } from '../src/ferry-peach-planting.ts'
 import * as Q from '../src/ferry-expeditions.ts'
 import * as S from '../src/ferry-smaller-cargo.ts'
 import {earlyFerryFarm,tendEarlyFerryFarm} from './fixtures/early-ferry.ts'
@@ -139,7 +140,7 @@ function visit(farm:F.FarmState, renderFreight: typeof renderFreightPanel, selec
    hiveFlower:undefined, celebratedFestival:undefined,journalDetailsOpen:false,
    ...Object.fromEntries(['transplantSelection','berryNurserySelection','berryRenewalSelection','gardenEditor','recipeSurplusSelection'].map(key=>[key,{reset:()=>{}}])),
    ...Object.fromEntries(['stopHarbour','stopFishing','stopWorkshop','stopCookery','stopArrangement','saveFarm','status','playBaySound','updateCommunityReturn','presentFerryDeparture'].map(key=>[key,()=>{}])),
-   ferryArrival:{take:()=>false},app:{dataset:{}},toast:{},dialogFeedback:{},closeButton:neutral('page-close'),bayAudio:{playEvent:()=>{}},
+   ferryArrival:{take:()=>false},ferryPeachPlanting:new FerryPeachPlanting(),app:{dataset:{}},toast:{},dialogFeedback:{},closeButton:neutral('page-close'),bayAudio:{playEvent:()=>{}},
    perform:(action:()=>{ok:boolean})=>{const result=action();if(result.ok)ctx.drawPanel();return result.ok},
    drawPanel:()=>{record.push(ctx.panel);ctx.panelRenderVersion++
      if(ctx.panel==='boat'){

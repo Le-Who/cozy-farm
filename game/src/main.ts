@@ -132,7 +132,7 @@ import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } fro
 import { getMusicMaterialGuidance, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
 import { createBayMusic, type BayMusicViewState } from './bay-music'
 import { describeFood } from './intent-orders'
-import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods, sendFerryExpedition, receiveFerryExpedition, expeditionWallet, getFerrySupplyRequirement, gardenMaterialStock } from './harbour-economy'
+import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods, sendFerryExpedition, expeditionWallet, getFerrySupplyRequirement, gardenMaterialStock } from './harbour-economy'
 import { berryCropIds, foodDescriptors, marketStock, unitPrice, islandIds as allPorts } from './farm'
 import './harbour-life.css'
 import {applyIngredientFinishes} from './ingredient-finish'
@@ -157,6 +157,7 @@ import './discovery-journal.css'
 import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
 import { ferryCommissionUse, openFerryCommissionRecipe } from './ferry-commission-use'
+import { FerryPeachPlanting } from './ferry-peach-planting'
 import { lastPortionShopStock, signatureTastingGuide } from './signature-tasting-guidance'
 import { RecipeBookNavigation, recipeBookNarrow, selectedBookId, sortedBookRecipes, type RecipeBookView } from './recipe-book-view'
 import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
@@ -383,6 +384,7 @@ let committedRestClose = false
 let celebratedFestival: FestivalTradition | undefined
 let celebrationReceipt: {effect?:string; coins:number} | undefined
 let treeSlot = 0
+const ferryPeachPlanting = new FerryPeachPlanting()
 let marketTab: 'buy' | 'sell' | 'orders' | 'projects' = 'buy'
 let marketCategory:'seeds'|'trees'|'care'|'buildings'='seeds'
 let marketSellGroup:'all'|'harvest'|'kitchen'|'shore'='all'
@@ -2214,7 +2216,7 @@ function drawPanel() {
       reconcileFreightPorts(farm.freight,openedFreightPorts(farm))
       const goods=harbourGoods()
       renderFreightPanelInto(dialogContent,farm.freight,{day:farm.day,harvestTier:farm.festivals.completed.harvest,coins:farm.coins,boatOwned:farm.boatOwned,villageBuilt:farm.village.built,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,playerPort:farm.island,selectedPort:selectedWarehouse,waxAvailable:farm.capeLevel>=2,routeEditorOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? freightPlanOpen,
-        openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),commissionUse:ferryCommissionUse(farm),icon})
+        openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),commissionUse:ferryCommissionUse(farm),peachPlanting:ferryPeachPlanting.current(farm),icon})
       break
     }
     case 'intents': dialogContent.innerHTML = communityBoard(farm, communityArt); break
@@ -2843,6 +2845,9 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next !== panel) { transplantSelection.reset(); berryNurserySelection.reset(); berryRenewalSelection.reset(); gardenEditor.reset() }
   if (next !== panel && next !== 'recipe-surplus') recipeSurplusSelection.reset()
   if (next !== 'seeds') seedPickerBed = undefined
+  // A distinct ferry visit owns no old cargo cue. Back from its orchard view
+  // restores the still-open visit without resetting the same receipt.
+  if (next === 'bay-freight' && (!dialog.open || (remember && next !== panel))) ferryPeachPlanting.reset()
   if (remember && next==='bay-freight' && next!==panel) {
     // The originating Boat view already holds its original offer for Back.
     if (entry?.firstFerryOffer) selectedExpeditionOffer = entry.firstFerryOffer
@@ -3807,7 +3812,7 @@ app.addEventListener('click', async (event) => {
       const keyboardClaim = event.detail === 0 && document.activeElement === control
       const voyage=farm.freight.expeditions.active
       if(voyage){selectedExpeditionPort=voyage.port;selectedExpeditionOffer=expeditionOfferAfterClaim(farm.freight.expeditions,voyage)}
-      if(perform(()=>receiveFerryExpedition(farm))) {
+      if(perform(()=>ferryPeachPlanting.receive(farm))) {
         bayAudio.playEvent('harbour.crate')
         if (keyboardClaim) {
           const receipt = dialogContent.querySelector<HTMLElement>('.expedition-receipt')
@@ -4743,7 +4748,18 @@ app.addEventListener('click', async (event) => {
       revealTreeStorageReturn(dialogContent)
       break
     }
-    case 'visit-tree': activateTarget({ kind: 'tree', index: Number(value) }); revealTreeStorageReturn(dialogContent); break
+    case 'visit-tree': {
+      if (value?.startsWith('peach:')) {
+        if (panel !== 'bay-freight' || !dialog.open) break
+        const choice = ferryPeachPlanting.resolve(farm, value)
+        if (!choice) break
+        activateTarget({ kind: 'tree', index: choice.slot })
+        const peach = dialogContent.querySelector('[data-action="buy-plant-tree"][data-value="peach"]')
+        highlightControl(peach?.closest('.sapling-option')?.querySelector('h2') ?? null)
+      } else activateTarget({ kind: 'tree', index: Number(value) })
+      revealTreeStorageReturn(dialogContent)
+      break
+    }
     case 'pet': activateTarget({ kind: 'hen', index: Number(value) }); break
     case 'gather-salt': activateTarget({ kind: 'salt' }); break
     case 'guide': openPanel('guide'); break

@@ -1,4 +1,5 @@
 import type { FerryCommissionUse } from './ferry-commission-use.ts'
+import type { FerryPeachChoice } from './ferry-peach-planting.ts'
 import { freightPorts, freightStock,
   setFreightStops, setFreightMode, setFreightPickup, startFreight, pauseFreight,
   type BayFreightState, type FreightPort, type FreightResult } from './bay-freight-model.ts';
@@ -21,6 +22,7 @@ export type FreightPanelContext = {
   expeditionOffer?: string;
   villageBuilt?: boolean;
   commissionUse?: FerryCommissionUse;
+  peachPlanting?: FerryPeachChoice;
   playerPort: FreightPort;
   selectedPort?: FreightPort;
   routeEditorOpen?: boolean;
@@ -133,7 +135,8 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
     : ` · ${gave || 'без затрат'} → ${received || 'без обратного груза'}`;
   const status = active ? `${phase === 'ready' ? 'Вернулся' : 'Вернётся'} утром дня ${active.returnsOn}` : `${discovery || restock ? `Выбран рейс «${manifest.name}». ` : ''}${quote.available ? 'После отправки вернётся следующим игровым утром' : ''}`;
   const receipt = world.last && !active ? `<h4 class="expedition-receipt" tabindex="-1">${world.last.explored ? 'Новый порт на карте' : 'Прошлый груз получен'} · ${esc(expeditionPortNames[world.last.port])} · день ${world.last.day}${receiptExchange}</h4>` : '';
-  const cargoUse = receipt && ctx.commissionUse ? `<div class="expedition-commission-use"><strong>Для заказа · ${esc(ctx.commissionUse.customer)}</strong><p>Теперь хватает на ${ruCount(ctx.commissionUse.ready,'порцию','порции','порций')} по рецепту «${esc(ctx.commissionUse.recipeName)}».</p>${button('Открыть этот рецепт','expedition-order-recipe',ctx.commissionUse.key)}</div>` : '';
+  const cargoUse = receipt && ctx.commissionUse ? `<div class="expedition-commission-use"><strong>Для заказа · ${esc(ctx.commissionUse.customer)}</strong><p>Теперь хватает на ${ruCount(ctx.commissionUse.ready,'порцию','порции','порций')} по рецепту «${esc(ctx.commissionUse.recipeName)}».</p>${button('Открыть этот рецепт','expedition-order-recipe',ctx.commissionUse.key)}</div>` : receipt && ctx.peachPlanting
+    ? `<div class="expedition-commission-use">${button('Посмотреть посадку','visit-tree',ctx.peachPlanting.key)}</div>` : '';
   return `<section class="bay-freight" data-expedition-phase="${phase}"${!active && settled ? ` data-receipt-voyage="${world.serial}"` : ''} data-combined="${combined}" aria-label="Торговые экспедиции">
     <header class="bay-freight-heading">${button('‹', 'back', '', 'class="bay-freight-back" aria-label="Назад"')}<h2>Паром «Ласточка»</h2><span class="expedition-balance">${ctx.icon('coin')} ${ctx.coins ?? 0}</span>${button('×', 'close', '', 'class="bay-freight-close" aria-label="Закрыть паром"')}</header>
     <div class="bay-freight-workspace">

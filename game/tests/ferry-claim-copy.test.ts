@@ -1,3 +1,4 @@
+import { FerryPeachPlanting } from '../src/ferry-peach-planting.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {readFileSync} from 'node:fs'
@@ -85,7 +86,7 @@ test('claiming each earned scouting voyage already opens that port’s first tra
     assert.equal(farm.day,day);assert.equal(voyage.phase,'ready');assert.ok(!world.discovered.includes(port))
     const wallet=expeditionWallet(farm),serial=world.serial,visits=world.markets[port].visits
     let feedback=''
-    const ui={farm,event:{detail:1},selectedExpeditionPort:port,selectedExpeditionOffer:offer,expeditionOfferAfterClaim,receiveFerryExpedition,
+    const ui={farm,event:{detail:1},selectedExpeditionPort:port,selectedExpeditionOffer:offer,expeditionOfferAfterClaim,ferryPeachPlanting:new FerryPeachPlanting(),
       perform(action:()=>{ok:boolean;message:string}){const result=action();feedback=result.message;return result.ok},bayAudio:{playEvent(){}}}
     runInNewContext(claim,ui)
     const after=structuredClone(farm)
