@@ -10,11 +10,12 @@ import { getFishSource, rareFishClue } from './fish-guidance.ts';
 import { getPackedEggSource } from './packed-egg-guidance.ts';
 import { getFruitSource } from './orchard-guidance.ts';
 import { ruCount } from './ru.ts';
+import { getMarketOrderSurplusQuote } from './market-order-surplus.ts';
 import { getCoinGuidance, getSupplyGuidance, type DiscoveryTask } from './discovery-path.ts';
 import { getIslandJourneys } from './journey.ts';
 import {
   boatPrice, buildingIds, canSailTo, cropIds, dishDefinitions, eggsPerCrate,
-  getCookAction, getCookIngredients, getFairGuest, getFishAction, getShellAt, getVillageProject, hasFarmhouseSpecialization, ingredientCount, isProjectComplete,
+  getCookAction, getCookIngredients, getFairGuest, getFishAction, getMarketOrders, getMarketStock, getProject, getShellAt, getVillageProject, hasFarmhouseSpecialization, ingredientCount, isProjectComplete, marketKey,
   type BuildingId, type CropId, type FarmState, type IslandId, type StockItem,
 } from './farm.ts';
 import { hasShoal, getShoalFindAt } from './shoal.ts';
@@ -38,6 +39,22 @@ function safe(task: DiscoveryTask): RequirementHint {
     : task.id.endsWith('-feed') ? '[data-action="buy-feed"]' : undefined
     : task.action.target === 'open-panel' && task.action.value === 'seeds' && crop ? `[data-action="preview-seed"][data-value="${crop}"]` : undefined;
   return { action: task.action, selector, ...(task.seedPreview ? { seedPreview: task.seedPreview } : {}) };
+}
+
+/** The Cape's boat funding need not consume its only jar at the market. */
+function capeBoatSurplus(farm: FarmState): RequirementHint | undefined {
+  const gap = boatPrice - farm.coins;
+  if (farm.island !== 'home' || farm.boatOwned || gap <= 0 || farm.buildingLevels.farmhouse < 2) return;
+  const jar = getProject(farm, 'dock').items.find(({item}) => item.kind === 'dishes' && item.item === 'appleJam');
+  const readyOrders = getMarketOrders(farm).filter(order => order.status === 'ready');
+  const orderJars = readyOrders[0]?.items.find(item => item.kind === 'dishes' && item.item === 'appleJam')?.quantity ?? 0;
+  const needed = jar ? jar.item.quantity - jar.delivered : 0;
+  if (needed < 1 || !orderJars || farm.dishes.appleJam < needed || farm.dishes.appleJam - orderJars >= needed) return;
+  const surplus = new Set(getMarketOrderSurplusQuote(farm)?.requests.map(request => request.key));
+  const reserved = new Set(readyOrders.flatMap(order => order.items.map(marketKey)));
+  const crop = getMarketStock(farm).filter(row => row.item.kind === 'produce' && row.price >= gap && surplus.has(row.key))
+    .sort((a,b) => Number(reserved.has(a.key)) - Number(reserved.has(b.key)) || a.price - b.price)[0];
+  if (crop) return { ...route('market-sale-review', crop.key), notice:'Варенье останется для причала.' };
 }
 
 function access(farm: FarmState, destination: IslandId): RequirementHint {
@@ -178,7 +195,7 @@ export function getRequirementHint(farm: FarmState, requirement: Requirement, or
   if (requirement.kind === 'delivery') return route('guide-delivery');
   if (requirement.kind === 'building') return atHome(farm, route('show-upgrade',requirement.building));
   const id = requirement.id;
-  if (id === 'boat') return access(farm,'grove');
+  if (id === 'boat') return (requirement.island === 'cape' ? capeBoatSurplus(farm) : undefined) ?? access(farm,'grove');
   if (id === 'specialization') return atHome(farm,route('show-upgrade','farmhouse'));
   const building = buildingIds.find(building => id === `building-${building}`);
   if (building) return getRequirementHint(farm,{kind:'building',building});

@@ -3295,6 +3295,11 @@ function highlightControl(element: HTMLElement | null) {
 async function showRequirement(requirement: Requirement, origin?: HTMLElement, depth = 0): Promise<void> {
   const hint = getRequirementHint(farm, requirement, panel === 'recipes' && origin?.closest('.signature-page') ? 'saved-recipe' : undefined)
   const {target,value} = hint.action
+  if (target === 'market-sale-review' && value && farm.island === 'home') {
+    beginExactSale({kind:'market',key:value})
+    if (hint.notice) notify(hint.notice)
+    return
+  }
   // Keep the local grill recipe on Back. Sailing still leaves the old shore behind.
   if (target === 'visit-pier' && panel === 'kitchen' && farm.island === 'home'
       && requirement.kind === 'stock' && requirement.item.kind === 'fish') {
@@ -3950,7 +3955,8 @@ app.addEventListener('click', async (event) => {
       if(value==='harvest'||value==='kitchen'||value==='shore'){inventoryGroup=value;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="inventory-group"][data-value="${value}"]`)?.focus({preventScroll:true})}break
     case 'boat-funds': {
       const destination=islandIds.find(id=>id===value)
-      if(destination)await showRequirement({kind:'journey',island:destination,id:'boat'},control)
+      if(destination && panel==='boat' && dialog.open && boatIsland===destination && dialogContent.contains(control)
+        && control.closest(`.journey-card[data-island="${destination}"]`)) await showRequirement({kind:'journey',island:destination,id:'boat'},control)
       break
     }
     case 'first-ferry-route':
