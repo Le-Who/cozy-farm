@@ -122,6 +122,7 @@ import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
 import { combinedExpeditionId, expeditionOfferAfterClaim, initialExpeditionPreview, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
 import { getFerryRestockPlan } from './ferry-restock'
+import { hasFirstFerryCargo } from './ferry-smaller-cargo'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopOptions } from './bay-shop'
 import type { BayShopStock } from './bay-shop-model'
@@ -2565,6 +2566,8 @@ function drawPanel() {
         return `<button type="button" data-action="boat-island" data-value="${place.id}" aria-pressed="${place.id===destination.id}" aria-label="${place.name}${status}" title="${place.name}${status}">${icon({home:'upgrade-farmhouse-card',grove:'ui-tree-apple',cape:'ui-honey',village:'ui-bea'}[place.id])}<span class="island-full-name">${place.name}</span><span class="island-compact-name" aria-hidden="true">${shortName}${shortStatus ? `<small>${shortStatus}</small>` : ''}</span></button>`
       }).join('')
       const action = destination.nextAction
+      const firstFerry = farm.island === 'home' && destination.id === 'grove' && farm.boatOwned && farm.freight.expeditions.serial === 0
+        && hasFirstFerryCargo(farm.freight.expeditions, farm.day, expeditionWallet(farm), selectedExpeditionPort, selectedExpeditionOffer)
       const capeStatus = getCapeJourneyStatus(farm, destination.id)
       const requirements = destination.requirements.filter(item => !item.complete)
       const unpaidBoat = action?.target === 'buy-boat' && !action.enabled
@@ -2588,7 +2591,8 @@ function drawPanel() {
           </div>
           <nav class="island-places" aria-label="Действия на острове">
             ${nextStep || localPlaces}
-            ${destination.current && farm.boatOwned ? button('Грузовой паром','open-panel',true,{value:'bay-freight',secondary:true}) : ''}
+            ${destination.current && farm.boatOwned ? button('Грузовой паром','open-panel',true,{value:'bay-freight',secondary:true})
+              : firstFerry ? button('Грузовой паром','first-ferry-route',true,{value:farm.day,secondary:true}) : ''}
           </nav>
           ${destination.unlocked || !requirements.length ? '' : requirements.length <= 2 ? checklist : `<details class="journey-details"${journeyDetailsOpen ? ' open' : ''}><summary>Условия открытия <span>${requirements.length}</span></summary>${checklist}</details>`}
         </article>`
@@ -3949,6 +3953,11 @@ app.addEventListener('click', async (event) => {
       if(destination)await showRequirement({kind:'journey',island:destination,id:'boat'},control)
       break
     }
+    case 'first-ferry-route':
+      if (panel === 'boat' && dialog.open && boatIsland === 'grove' && farm.island === 'home'
+        && value === String(farm.day) && dialogContent.contains(control) && control.closest('.journey-card[data-island="grove"]')
+        && hasFirstFerryCargo(farm.freight.expeditions, farm.day, expeditionWallet(farm), selectedExpeditionPort, selectedExpeditionOffer)) openPanel('bay-freight')
+      break
     case 'boat-island':
       journeyDetailsOpen=false
       if(islandIds.some(id=>id===value)){boatIsland=value as typeof boatIsland;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="boat-island"][data-value="${value}"]`)?.focus({preventScroll:true})}break
