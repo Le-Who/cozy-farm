@@ -12,10 +12,10 @@ import { getFruitSource, nurseryFruitDetail } from './orchard-guidance.ts';
 import { freightStock } from './bay-freight-model.ts';
 import { bayShopDailyLimit } from './bay-shop-model.ts';
 import {
-  boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
+  boatPrice, buildingDefinitions, buildingIds, canSailTo, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeHoney, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
   foodDescriptors, getFestivalStatus, getMarketOrders, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
-  treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
+  orchardIslandIds, treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
 } from './farm.ts';
 import {ruCount} from './ru.ts';
 
@@ -161,6 +161,24 @@ function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTas
   return capeHoney(farm, purpose);
 }
 
+/** The table accepts either ordinary fish; its preferred garnish is not a required species. */
+function supperFish(farm: FarmState): DiscoveryTask {
+  const purpose = 'общий ужин';
+  const preferred = getVillageMeal(farm).fish;
+  const other = preferred === 'perch' ? 'seaBass' : 'perch';
+  for (const fish of [preferred, other] as const) {
+    const item = {kind:'fish',item:fish,quantity:1} as const;
+    if (getLocalWarehouseSupply(farm,item)) return supply(farm,item,purpose);
+  }
+  const destination = orchardIslandIds.find(shore => shore === farm.island && getFishAction(farm).available)
+    ?? [getFishSource(farm,preferred),...orchardIslandIds].find(shore =>
+      canSailTo(farm,shore) && getFishAction({...farm,island:shore}).available);
+  if (!destination) return rest(farm,purpose);
+  return task(`${purpose}-fish`,'Поймайте рыбу к ужину','К общему столу подойдёт окунь или сибас.', 'fish',
+    destination === farm.island ? {label:'К рыбацкому причалу',target:'visit-pier'}
+      : {label:destination === 'grove' ? 'В рощу' : 'Домой',target:'sail',value:destination});
+}
+
 function recipe(farm: FarmState, dish: DishId, purpose: string): DiscoveryTask {
   const definition = dishDefinitions[dish];
   if (farm.island !== 'home') return home(farm, task(`${purpose}-kitchen`, `Приготовьте: ${definition.name.toLowerCase()}`, `Приготовьте блюдо «${definition.name}». Цель: ${purpose}.`, 'upgrade-farmhouse-card', { label: 'На кухню', target: 'kitchen' }));
@@ -247,7 +265,7 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
       if (meal.served) return rest(farm, 'следующий общий ужин');
       const signature = getReadySignatureSuppers(farm)[0];
       const missing = meal.items.find(item => (item.kind !== 'handmade' || !signature) && ingredientCount(farm, item) < item.quantity);
-      if (missing) return supply(farm, missing, 'общий ужин');
+      if (missing) return missing.kind === 'fish' ? supperFish(farm) : supply(farm, missing, 'общий ужин');
       if (signature && !farm.handmade[shape]) return arrive(task('shared-suppers', 'Принесите готовое блюдо к общему столу',
         `Авторское блюдо уже есть. Выберите у стола 1 порцию и подайте с 1 рыбой. Два ужина в разные дни откроют второй домик.`,
         'ui-signature-bright', { label: 'Выбрать блюдо к ужину', target: 'village-meal' }, farm.village.meals, 2));
