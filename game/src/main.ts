@@ -1167,6 +1167,17 @@ function projectCard(id: ProjectId) {
   </section>`
 }
 
+function freshIrrigationMode(): typeof irrigationMode {
+  if (farm.wellSpecialization !== 'pipes') return 'row'
+  for (let index = 0; index < gardenRows - 1; index++) {
+    if (getIrrigationPair(farm, index).available) return 'pair'
+  }
+  for (let index = 0; index < gardenRows; index++) {
+    if (getIrrigationRow(farm, index).available) return 'row'
+  }
+  return 'pair'
+}
+
 function irrigationRows() {
   const pair = farm.wellSpecialization === 'pipes' && irrigationMode === 'pair'
   const rowCount = pair ? 2 : 1
@@ -2794,7 +2805,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   }
   if (next !== panel) { stopHarbour(); stopFishing(); stopWorkshop(); stopCookery(); stopArrangement() }
   if (remember && next !== panel && (next === 'inventory' || next === 'seeds')) previewSeed = next === 'seeds' && entry?.seedPreview ? entry.seedPreview : seedPickerBed === undefined ? farm.selectedSeed : seedPickerBedPreview(farm, seedPickerBed)
-  if (remember && next !== panel && next === 'irrigation') irrigationMode = farm.wellSpecialization === 'pipes' ? 'pair' : 'row'
+  if (remember && next !== panel && next === 'irrigation') irrigationMode = freshIrrigationMode()
   if (remember && next !== panel && next === 'boat') { boatIsland = destinationIsland; journeyDetailsOpen=false }
   if (next === 'archive' || next === 'boat') {
     farm.orientation[next === 'archive' ? 'collections' : 'islands'] = true
