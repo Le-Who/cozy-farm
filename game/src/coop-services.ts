@@ -1,21 +1,27 @@
 const mountedCoopServices = new WeakMap<HTMLElement, () => void>()
 
-/** Keep the existing complete care group in visual reading order: daily-left
- * then care-right on desktop; care first on compact. Never recreate controls. */
+/** An available next hatch step belongs before optional care on compact screens. */
+function hasLiveHatchStep(daily: HTMLElement): boolean {
+  return !!daily.querySelector('[data-action="incubate-egg"]:not(:disabled), [data-action="incubate-rare-egg"]:not(:disabled), [data-action="incubator-basket"]:not(:disabled), [data-action="visit-rest"]:not(:disabled)')
+    || !!daily.querySelector('[data-action="incubate-egg"]:disabled') && !!daily.querySelector('[data-action="collect"]:not(:disabled)')
+}
+
+/** Move the existing whole care group in reading order. Never recreate controls. */
 export function groupCoopServices(root: HTMLElement): () => void {
   mountedCoopServices.get(root)?.()
   const panel = root.querySelector<HTMLElement>('.coop-panel')
+  const daily = panel?.querySelector<HTMLElement>(':scope > .coop-primary')
   const care = panel?.querySelector<HTMLElement>(':scope > .coop-care')
   const forecast = panel?.querySelector<HTMLElement>(':scope > .coop-forecast')
-  const desktop = panel && care && forecast
+  const desktop = panel && daily && care && forecast
     ? root.ownerDocument.defaultView?.matchMedia('(min-width: 900px) and (min-height: 600px)') : undefined
-  if (!panel || !care || !forecast || !desktop) return () => {}
+  if (!panel || !daily || !care || !forecast || !desktop) return () => {}
   panel.dataset.coopServices = 'true'
   let disposed = false
   const reorder = () => {
     if (disposed || !root.contains(panel)) return
-    const before = desktop.matches ? forecast.nextElementSibling : panel.firstElementChild
-    if (before === care) return
+    const before = desktop.matches ? forecast.nextElementSibling : hasLiveHatchStep(daily) ? forecast : panel.firstElementChild
+    if (before === care || before === care.nextElementSibling) return
     const active = root.ownerDocument.activeElement as HTMLElement | null
     const focusedCare = care.contains(active) ? active : null
     const scroll = root.scrollTop

@@ -11,14 +11,14 @@ function fixture(desktop:boolean) {
   const document={activeElement:body as unknown,defaultView:{matchMedia(query:string){media.query=query;return media}}}
   const focused=(action:string)=>({action,disabled:false,focusCalls:[] as unknown[],focus(options:unknown){this.focusCalls.push(options);document.activeElement=this}})
   const meet=focused('hen-friendship-open'),mix=focused('chicken-feed-open'),feed=focused('feed')
-  const care={name:'care',buttons:[meet,mix],contains(node:unknown){return this.buttons.includes(node as typeof meet)}},primary={name:'primary',buttons:[feed]},forecast={name:'forecast'},packing={name:'packing'},hens={name:'hens'}
+  const care={name:'care',buttons:[meet,mix],contains(node:unknown){return this.buttons.includes(node as typeof meet)}},primary={name:'primary',buttons:[feed],querySelector(){return null}},forecast={name:'forecast'},packing={name:'packing'},hens={name:'hens'}
   const panel={dataset:{} as Record<string,string>,children:[primary,forecast,care,packing,hens] as any[],
-    querySelector(selector:string){return selector.includes('coop-care')?care:selector.includes('coop-forecast')?forecast:null},
+    querySelector(selector:string){return selector.includes('coop-primary')?primary:selector.includes('coop-care')?care:selector.includes('coop-forecast')?forecast:null},
     get firstElementChild(){return this.children[0]},
     prepend(node:unknown){this.insertBefore(node,this.firstElementChild)},
     insertBefore(node:any,before:any){if(node===before)return;this.children=this.children.filter(child=>child!==node);const index=before?this.children.indexOf(before):this.children.length;assert.ok(index>=0);this.children.splice(index,0,node);if(care.contains(document.activeElement))document.activeElement=body;root.scrollTop=0},
   }
-  Object.defineProperty(forecast,'nextElementSibling',{get(){return panel.children[panel.children.indexOf(forecast)+1]??null}})
+  for(const item of [care,forecast])Object.defineProperty(item,'nextElementSibling',{get(){return panel.children[panel.children.indexOf(item)+1]??null}})
   const root={ownerDocument:document,scrollTop:90,attached:true,contains(node:unknown){return this.attached&&node===panel},querySelector(){return panel}}
   const change=(matches:boolean)=>{media.matches=matches;for(const fn of [...listeners])fn()}
   return {root,panel,care,primary,forecast,packing,hens,meet,mix,feed,document,media,listeners,change,names:()=>panel.children.map(n=>n.name)}
