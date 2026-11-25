@@ -4,6 +4,7 @@ import { standingVisitCrop, showStandingVisitCrop } from './standing-crop-visit'
 import { projectContributionCopy, projectLevelCopy, projectRewardLabel } from './project-readiness-copy'
 import './market-project-readiness.css'
 import { MarketInlineSales, inlineReceiptText } from './market-inline-sale'
+import { getMarketOrderSurplusQuote, sellMarketOrderSurplus } from './market-order-surplus'
 import { MarketSaleBrowseMemory } from './market-sale-browse'
 import { marketSaleFamilies } from './market-sale-family'
 import { SalePresentation } from './sale-presentation'
@@ -1231,7 +1232,11 @@ function marketBulkSaleControls() {
   if (!wholeInventorySaleView()) return ''
   const sale = getSale(farm)
   if (!sale.items) return ''
-  return `<span>Всего: ${quantity(sale.items,'предмет')} · ${quantity(sale.coins,'монета')}</span>${button('Продать всё','sell',!salePresentation.place)}`
+  const surplus = salePresentation.place ? undefined : getMarketOrderSurplusQuote(farm)
+  return `<span>Всего: ${quantity(sale.items,'предмет')} · ${quantity(sale.coins,'монета')}</span>${button('Продать всё','sell',!salePresentation.place)}${surplus
+    ? `<div class="market-order-surplus"><span>Оставить для готовых заказов: ${quantity(surplus.kept,'предмет')}</span>${button(
+      `Продать остальное · ${quantity(surplus.total,'монета')}`,'sell-order-surplus',true,
+      {value:escapeHtml(surplus.token), secondary:true, context:`останется для готовых заказов: ${quantity(surplus.kept,'предмет')}`})}</div>` : ''}`
 }
 function marketInlineCard(item: ReturnType<typeof goods>[number]) {
   const view=marketInlineSales.view(item.key,item.count,item.price), quote=view.quote, receipt=view.receipt
@@ -1356,7 +1361,7 @@ function marketCards() {
       ${marketSellGroup==='harvest'?`<div class="market-inline-family"><select data-market-sale-family aria-label="Товар и его варианты"><option value="harvest"${!marketSaleFamily?' selected':''}>Весь урожай</option>${marketFamilyOptions(marketSaleFamily)}</select></div>`:''}
       <p class="market-sale-search-status${marketSaleQuery||marketSellGroup!=='all'?'':' sr-only'}" role="status" aria-live="polite">${marketSaleSearchStatus()}</p>
       <div id="market-sale-results">${marketSaleResults()}</div>
-      ${marketSellGroup==='all'||destinations?`<footer class="market-inline-tools">${marketSellGroup==='all'?`<div class="market-total"${bulk?'':' hidden'}>${bulk}</div>`:''}${destinations}</footer>`:''}</section>`
+      ${marketSellGroup==='all'||destinations?`<footer class="market-inline-tools">${marketSellGroup==='all'?`<div class="market-total" tabindex="-1"${bulk?'':' hidden'}>${bulk}</div>`:''}${destinations}</footer>`:''}</section>`
   }
 
   const categories=`<nav class="market-category-icons${marketCategory==='buildings'?' market-building-categories':''}" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}<span>${category.name}</span></button>`).join('')}</nav>`
@@ -4215,6 +4220,13 @@ app.addEventListener('click', async (event) => {
       break
     case 'choose-seed':
       if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value===seedChoice(farm,previewSeed,seedPickerBed).token) chooseSeed(previewSeed,value)
+      break
+    case 'sell-order-surplus':
+      if(dialog.open && panel==='market' && marketTab==='sell' && wholeInventorySaleView() && !salePresentation.place && dialogContent.contains(control)) {
+        if(perform(() => sellMarketOrderSurplus(farm,value))) playBaySound('trade.receive')
+        else updateMarketSaleSearch()
+        if(event.detail===0)dialogContent.querySelector<HTMLElement>('.market-total')?.focus({preventScroll:true})
+      }
       break
     case 'sell':
       if(dialog.open && panel==='market' && marketTab==='sell' && wholeInventorySaleView() && !salePresentation.place && dialogContent.contains(control)

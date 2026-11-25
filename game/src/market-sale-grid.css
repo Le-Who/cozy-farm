@@ -54,9 +54,11 @@
 .market-inline-name:focus-visible,
 .market-inline-card :is(button,input,.market-step-limit):focus-visible {outline:3px solid #805789;outline-offset:-3px}
 .market-inline-tools {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;flex:none;padding-top:8px;border-top:1px solid #d5baa0}
-[data-market-sale-browser] .market-total {display:flex;align-items:center;gap:12px;margin:0;padding:0;font-size:13px;border:0;background:none;box-shadow:none}
+[data-market-sale-browser] .market-total {display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:0;padding:0;font-size:13px;border:0;background:none;box-shadow:none}
 [data-market-sale-browser] .market-total .dialog-button,.market-inline-tools>.dialog-button {margin:0;min-height:44px;font-size:14px}
 .market-inline-tools .dialog-nav {margin:0}
+.market-order-surplus {display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;max-width:100%;color:var(--moss)}
+[data-market-sale-browser] .market-total:focus-visible {outline:2px solid var(--plum);outline-offset:2px}
 @media(max-width:1000px){
  .farm-dialog:has([data-market-sale-browser]){width:calc(100vw - 24px)}
  .market-inline-card{grid-template-columns:116px minmax(0,1fr)}

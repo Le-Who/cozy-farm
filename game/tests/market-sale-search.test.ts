@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { searchMarketSales } from '../src/market-sale-search.ts'
+import { getMarketOrderSurplusQuote } from '../src/market-order-surplus.ts'
 import { createFarm, getMarketStock, sellMarketItem, workBed, selectSeed, endDay, getBedAction, getSale, sellProduce } from '../src/farm.ts'
 
 const stock = [
@@ -72,7 +73,7 @@ test('search or a product group cannot activate a whole-farm sale, including a s
     let focusedEmpty=false
     const state={farm,marketSellGroup:group,marketSaleQuery:query,panel:'market',marketTab:'sell',dialog:{open:true},
       dialogContent:{contains:(candidate:unknown)=>attached&&candidate===control,querySelector:(selector:string)=>selector==='[data-market-sale-empty]'&&!getSale(farm).items?{focus:()=>{focusedEmpty=true}}:null},control,salePresentation:{},sellProduce,
-      perform:(action:()=>{ok:boolean})=>action().ok,playBaySound:()=>{},getSale,quantity:(v:number)=>String(v),button:(label:string)=>label}
+      perform:(action:()=>{ok:boolean})=>action().ok,playBaySound:()=>{},getSale,getMarketOrderSurplusQuote,quantity:(v:number)=>String(v),button:(label:string)=>label}
     runInNewContext(code,state)
     if(authorized)assert.ok(sellProduce(expected).ok)
     assert.equal(getSale(farm).items,authorized?0:getSale(earned).items);assert.deepEqual(farm,expected)
