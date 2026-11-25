@@ -16,13 +16,27 @@ const help=()=>`<details class="commission-help"><summary>Как работаю�
 function assortment(farm:FarmState,customer:BayShopVisitorId,choice:ShopAssortmentChoice,picture:(id:string)=>string){
   const offers=getShopCommissionOffers(farm).filter(offer=>offer.customer===customer)
   const recipes=offers.map(offer=>farm.culinary.recipes.find(recipe=>recipe.id===offer.recipeId)!)
-  if(!recipes.some(recipe=>recipe.base==='tart')||!recipes.some(recipe=>recipe.base==='preserves'))return `<section class="commission-assortment"><p>Для набора нужны понравившиеся покупки двух ваших рецептов: конфитюра и тарта.</p><p>Один рецепт пока можно заказать отдельно.</p></section>`
+  const preserves=recipes.filter(recipe=>recipe.base==='preserves'),tarts=recipes.filter(recipe=>recipe.base==='tart')
+  if(!preserves.length||!tarts.length)return `<section class="commission-assortment"><p>Для набора нужны понравившиеся покупки двух ваших рецептов: конфитюра и тарта.</p><p>Один рецепт пока можно заказать отдельно.</p></section>`
+  const line=(id:string,name:string)=>`<div class="commission-preview-line"><div class="commission-recipe">${picture(id)}<div><strong data-user-text>${escape(name)}</strong><small>Нужно 2 · ${stockText(farm,id)}</small></div></div></div>`
+  if(preserves.length===1||tarts.length===1){
+    // A base with only one eligible recipe is information, not a choice.
+    const remembered=choice.customer===customer?[choice.first,choice.second]:[]
+    const select=(group:typeof recipes)=>group.length===1?group[0]:remembered.map(id=>group.find(recipe=>recipe.id===id)).find(Boolean)
+    const preserve=select(preserves),tart=select(tarts),offer=getShopAssortment(farm,customer,preserve?.id,tart?.id)
+    const variable=preserves.length>1?preserves:tarts.length>1?tarts:undefined
+    const selected=preserves.length>1?preserve:tart
+    const selector=variable?`<label>${preserves.length>1?'Конфитюр':'Тарт'}<select data-commission-pair="first" data-customer="${customer}"><option value="">Выберите рецепт</option>${variable.map(recipe=>`<option value="${recipe.id}"${recipe===selected?' selected':''}>${escape(recipe.name)}</option>`).join('')}</select></label>`:''
+    return `<section class="commission-assortment" aria-label="Набор для покупателя">${selector}${preserve?line(preserve.id,preserve.name):''}${tart?line(tart.id,tart.name):''}
+      ${offer?reward(offer.total,offer.bonus):''}
+      ${button('Принять набор 2+2','commission-accept',offer?.key??'',!!offer&&farm.island==='village')}</section>`
+  }
   const first=choice.customer===customer?recipes.find(recipe=>recipe.id===choice.first):undefined
   const second=first?recipes.find(recipe=>recipe.id===choice.second&&recipe.base!==first.base):undefined
   const offer=getShopAssortment(farm,customer,first?.id,second?.id)
   const select=(part:'first'|'second')=>`<label>${part==='first'?'Первый рецепт':'Другой тип'}<select data-commission-pair="${part}" data-customer="${customer}"${part==='second'&&!first?' disabled':''}><option value="">Выберите рецепт</option>${recipes.filter(recipe=>part==='first'||recipe.base!==first?.base).map(recipe=>`<option value="${recipe.id}"${recipe.id===(part==='first'?first?.id:second?.id)?' selected':''}>${escape(recipe.name)}</option>`).join('')}</select></label>`
   return `<section class="commission-assortment" aria-label="Набор для покупателя"><p class="commission-note">Конфитюр + тарт · по 2 порции · без срока</p><div class="commission-selectors">${select('first')}${select('second')}</div>
-    ${offer?`${offer.lines.map(line=>`<div class="commission-preview-line"><div class="commission-recipe">${picture(line.recipeId)}<div><strong data-user-text>${escape(line.recipeName)}</strong><small>Нужно 2 · ${stockText(farm,line.recipeId)}</small></div></div></div>`).join('')}${reward(offer.total,12)}<small class="commission-note">Стоимость блюд ${offer.total-12} + премия 12.</small>`:'<p class="commission-note">Выберите оба рецепта. Просмотр ничего не расходует.</p>'}
+    ${offer?`${offer.lines.map(recipe=>line(recipe.recipeId,recipe.recipeName)).join('')}${reward(offer.total,12)}<small class="commission-note">Стоимость блюд ${offer.total-12} + премия 12.</small>`:'<p class="commission-note">Выберите оба рецепта. Просмотр ничего не расходует.</p>'}
     ${button('Принять набор 2+2','commission-accept',offer?.key??'',!!offer&&farm.island==='village')}</section>`
 }
 export function renderShopCommissions(farm:FarmState,picture:(recipeId:string)=>string,choice=new ShopAssortmentChoice(),selection?:ShopCommissionView):string {

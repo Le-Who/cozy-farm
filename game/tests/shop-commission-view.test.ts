@@ -32,10 +32,10 @@ test('preview separates held bag and harbour warehouse, excludes shelf stock and
  f.culinary.stock[earned.jam]=2;assert.match(render(f,v),/Готовых порций уже хватает/)
 })
 
-test('set mode preserves existing two-base selection, exact 2+2 offer and read-only preview',()=>{
+test('set mode shows both known recipes without extra choices, preserving exact 2+2 offer and read-only preview',()=>{
  const f=fresh(),v=new ShopCommissionView(),pair=new ShopAssortmentChoice(),before=structuredClone(f)
  assert.ok(v.choose(f,'customer','bea'));assert.ok(v.choose(f,'mode','set'))
- assert.match(render(f,v,pair),/data-commission-pair="second" data-customer="bea" disabled/)
+ assert.doesNotMatch(render(f,v,pair),/data-commission-pair=/)
  assert.ok(pair.choose(f,'bea','first',earned.jam));assert.ok(pair.choose(f,'bea','second',earned.tart))
  const html=render(f,v,pair),offer=C.getShopAssortment(f,'bea',earned.jam,earned.tart)!
  assert.equal((html.match(/data-action="commission-accept"/g)??[]).length,1);assert.ok(html.includes(`data-value="${offer.key}"`));assert.match(html,/За всю партию: 114 монет/);assert.match(html,/Принять набор 2\+2/);assert.deepEqual(f,before)
@@ -77,7 +77,7 @@ test('new main preview change handler is gated, read-only and preserves focus wi
 test('combined request chooser guards sets and returns to exact single recipe without changing pair or farm',()=>{
  const f=fresh(),v=new ShopCommissionView(),pair=new ShopAssortmentChoice(),before=structuredClone(f)
  assert.ok(v.choose(f,'customer','bea'));assert.ok(pair.choose(f,'bea','first',earned.jam));assert.ok(pair.choose(f,'bea','second',earned.tart));const oldPair=structuredClone(pair)
- assert.ok(v.choose(f,'request','set'));assert.equal(v.mode,'set');assert.match(render(f,v,pair),/data-commission-pair=/)
+ assert.ok(v.choose(f,'request','set'));assert.equal(v.mode,'set');assert.match(render(f,v,pair),/aria-label="Набор для покупателя"/)
  assert.equal(v.choose(f,'request','s999'),false);assert.equal(v.mode,'set')
  assert.ok(v.choose(f,'request',earned.tart));assert.equal(v.mode,'single');assert.equal(v.current(f).offer!.recipeId,earned.tart);assert.doesNotMatch(render(f,v,pair),/data-commission-pair=/)
  assert.deepEqual(f,before);assert.deepEqual({...pair},{...oldPair})

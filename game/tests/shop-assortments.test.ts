@@ -54,7 +54,7 @@ test('selection previews are read-only, reset an incompatible second recipe, and
   assert.ok(choice.choose(f, 'bea', 'first', earned.jam)); assert.ok(choice.choose(f, 'bea', 'second', earned.tart))
   assert.equal(choice.second, earned.tart)
   const html = renderShopCommissions(f, () => '', choice)
-  assert.match(html, /Стоимость блюд 102 \+ премия 12/); assert.match(html, /Принять набор 2\+2/)
+  assert.match(html, /За всю партию: 114 монет/); assert.match(html, /Включая премию 12 монет/); assert.match(html, /Принять набор 2\+2/)
   assert.match(html, /data-action="commission-accept" data-value="set:bea:s1:s2:2:25"/)
   assert.ok(choice.choose(f, 'bea', 'first', earned.tart)); assert.equal(choice.second, '')
   assert.equal(choice.choose(f, 'bea', 'second', earned.tart), false)
