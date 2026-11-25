@@ -1,6 +1,7 @@
 import { getHarborOrder, getMarketOrders, ingredientCount, type FarmState, type StockItem } from './farm.ts'
 import { getLocalWarehouseSupply, warehouseRequestValue } from './warehouse-guidance.ts'
 import { ruCount } from './ru.ts'
+import { quoteMarketOrderPickup } from './market-order-pickup.ts'
 
 export type MarketOrderChoice = {
   id: string; name: string; reward: number;
@@ -10,13 +11,17 @@ export type MarketOrderChoice = {
 /** Only the visible portfolio is selectable. No duplicated menus, stock or reward calculation. */
 export function getMarketOrderBoard(farm: FarmState, selected?: string) {
   const supply = new Map<string, ReturnType<typeof getLocalWarehouseSupply>>()
-  const locallyCovered = (item:StockItem) => {
+  const readSupply = (_farm:FarmState,item:StockItem) => {
     const key = warehouseRequestValue(item)
     if (!supply.has(key)) supply.set(key,getLocalWarehouseSupply(farm,item))
-    const view = supply.get(key)
+    return supply.get(key)
+  }
+  const locallyCovered = (item:StockItem) => {
+    const view = readSupply(farm,item)
     return view && view.carried + view.quantity >= item.quantity
   }
-  const choices: MarketOrderChoice[] = getMarketOrders(farm).map(order => {
+  const orders = getMarketOrders(farm)
+  const choices: MarketOrderChoice[] = orders.map(order => {
     const missing = farm.island === 'home' && farm.boatOwned && order.status === 'waiting'
       ? order.items.filter(item=>ingredientCount(farm,item)<item.quantity) : []
     const warehouseRequest = missing.length && missing.every(locallyCovered) ? warehouseRequestValue(missing[0]) : undefined
@@ -28,7 +33,9 @@ export function getMarketOrderBoard(farm: FarmState, selected?: string) {
   if (harbor) choices.push({ id: 'harbor', name: harbor.name, reward: harbor.reward, group: 'harbor',
     note: harbor.status === 'completed' ? 'Доставлено' : farm.island !== 'grove' ? 'Сдача в роще' : harbor.status === 'ready' ? 'Можно внести припасы' : 'Нужны припасы' })
   const current = choices.find(order => order.id === selected) ?? choices.find(order => order.group === 'ready') ?? choices.find(order => order.group === 'warehouse') ?? choices[0]
-  return { choices, selected: current?.id }
+  const order = orders.find(order => order.lane === current?.id)
+  const pickup = order && current?.group === 'warehouse' ? quoteMarketOrderPickup(farm, order, readSupply) : undefined
+  return { choices, selected: current?.id, order, pickup }
 }
 
 const escape = (text: string) => text.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!))

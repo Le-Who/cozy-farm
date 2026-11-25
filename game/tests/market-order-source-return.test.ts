@@ -30,7 +30,7 @@ function earned(keepWheat:boolean,partial:boolean){
 }
 
 for(const scenario of ['cancel','eggs','partial','ready','shortcut'] as const)test(`first breakfast crate remembers its ingredient and reading position on Back: ${scenario}`,()=>{
- const p=earned(scenario==='ready',scenario==='partial'),farm=p.state,order=F.getMarketOrders(farm).find(o=>o.lane==='pantry')!
+ const p=earned(scenario==='ready'||scenario==='shortcut',scenario==='partial'),farm=p.state,order=F.getMarketOrders(farm).find(o=>o.lane==='pantry')!
  assert.equal(order.name,'Ящик к завтраку');assert.equal(order.status,'waiting')
  assert.equal(getMarketOrderBoard(farm).selected,'garden','another ready order must not steal the chosen waiting crate')
  let focused:Control|null=null,buttons:Control[]=[],html=''

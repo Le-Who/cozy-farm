@@ -58,6 +58,7 @@ import './village-budget.css'
 import { treeVariantCopy } from './ready-variant-guidance'
 import { canVisitMarketRest, getNextMarketOrders, renderNextMarketOrder } from './market-return'
 import { getMarketOrderBoard, renderMarketOrderPicker } from './market-orders-view'
+import { pickUpMarketOrderStock } from './market-order-pickup'
 import './market-orders-view.css'
 import './market-return.css'
 import { fairJamPicnicChoice, renderFairReturn } from './fair-return'
@@ -1061,13 +1062,13 @@ function familyRecipeName(draft: SignatureDraft, family: typeof signatureFamily)
   return fruits.length === 1 ? names[fruits[0]] : draft.base === 'tart' ? berry ? 'Ягодный тарт' : 'Фруктовый тарт' : berry ? 'Ягодное варенье' : 'Фруктовый конфитюр'
 }
 
-function marketOrderStockTile(item: StockItem) {
+function marketOrderStockTile(item: StockItem, pickup?: number) {
   const stock = ingredientCount(farm, item), label = stockLabel(item)
   const resource = item.kind === 'produce' || item.kind === 'fruit' ? item.item : item.kind === 'eggs' ? 'egg' : undefined
   const specialStock = resource !== undefined && Object.values(farm.variants[resource] ?? {}).some(count => count > 0)
   const name = stock < item.quantity && specialStock ? `${label.name} (обычный урожай)` : label.name
-  return requirementLink(`${icon(label.image)}<span class="order-item-name">${name}</span><strong class="order-item-needed">Нужно: ${item.quantity}</strong><small class="order-item-stock">В запасе: ${stock}</small>`,
-    {kind:'stock',item}, 'ingredient order-requirement', `${name}, нужно ${item.quantity}, в запасе ${stock}`, stock >= item.quantity)
+  return requirementLink(`${icon(label.image)}<span class="order-item-name">${name}</span><strong class="order-item-needed">Нужно: ${item.quantity}</strong><small class="order-item-stock">В запасе: ${stock}${pickup ? ` · со склада +${pickup}` : ''}</small>`,
+    {kind:'stock',item}, 'ingredient order-requirement', `${name}, нужно ${item.quantity}, в запасе ${stock}${pickup ? `, со склада ещё ${pickup}` : ''}`, stock >= item.quantity)
 }
 
 let selectedMarketOrder: string | undefined
@@ -1075,16 +1076,18 @@ let pickedMarketOrder: string | undefined
 function marketOrders() {
   const board = getMarketOrderBoard(farm, selectedMarketOrder)
   selectedMarketOrder = board.selected
-  const order = getMarketOrders(farm).find(order => order.lane === board.selected)
+  const order = board.order
   const next = getNextMarketOrders(farm).find(order => order.lane === board.selected)
   const warehouse = board.choices.find(choice=>choice.id===board.selected)?.warehouseRequest
+  const pickup = board.pickup
   const detail = board.selected === 'harbor' ? `<p class="market-order-location">Причал рощи · можно вносить частями</p>${harborCard()}` : order
     ? `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
       <header class="order-header"><h2 id="order-${order.lane}">${order.name}</h2>
         <span class="order-reward"><small>Награда</small><span>${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></span></header>
       ${order.status === 'delivered' ? `<p class="order-done">✓ Сегодня доставлено</p>${next ? renderNextMarketOrder(next,marketOrderStockTile)+button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)}) : ''}`
-        : `<ul class="ingredients order-items">${order.items.map(marketOrderStockTile).join('')}</ul>
+        : `<ul class="ingredients order-items">${order.items.map(item => marketOrderStockTile(item, pickup?.lines.find(line => line.item === item)?.supply.quantity)).join('')}</ul>
           ${order.status === 'upgrade' ? button('Улучшить дом', 'upgrades', true, { secondary: true })
+            : pickup ? button('Забрать со склада', 'market-order-pickup', true, {value:pickup.token,context:order.name})
             : warehouse ? button('К домашнему складу', 'warehouse-supply', true, {value:warehouse,context:order.name})
             : button('Доставить', 'deliver-order', order.status === 'ready', { value: order.lane, context: order.name })}`}
     </section>` : ''
@@ -4146,6 +4149,13 @@ app.addEventListener('click', async (event) => {
         dialogFeedback.textContent = ''
         drawPanel()
         dialogContent.scrollTop = 0
+      }
+      break
+    case 'market-order-pickup':
+      if (panel === 'market' && dialog.open && marketTab === 'orders' && dialogContent.contains(control)
+        && perform(() => pickUpMarketOrderStock(farm, selectedMarketOrder, value))) {
+        const detail = dialogContent.querySelector<HTMLElement>('.market-order-detail')
+        detail?.focus({preventScroll:true})
       }
       break
     case 'market-order-select':
