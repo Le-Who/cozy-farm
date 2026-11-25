@@ -1,10 +1,48 @@
-import { getCommunityOrders, getFairGuest, villageGuestTarget, type FarmState, type StockItem } from './farm.ts'
+import { cropDefinitions, getBedHarvestPreview, getCommunityOrders, getFairGuest, villageGuestTarget, type FarmState, type StockItem } from './farm.ts'
+import { exposedTrait } from './climate.ts'
+import { getRestPreview } from './rest-preview.ts'
+import { getLocalWarehouseSupply } from './warehouse-guidance.ts'
 
 /** Guest rotation reads the farm day and existing discoveries; looking ahead never advances them. */
 export function getNextFairGuest(farm: FarmState) {
   const day = farm.day + 1
   const guest = getFairGuest({ ...farm, day })
   return guest ? { ...guest, day } : undefined
+}
+
+/** Only suggest one watering that would make tomorrow's ordinary-crop request possible. */
+export function getNextFairCropPrep(farm: FarmState, forecast = getRestPreview(farm)) {
+  if (farm.island !== 'home' || farm.fairGuestsServed === 0 || farm.water < 1) return
+  const guest = getNextFairGuest(farm)
+  if (!guest || guest.served || guest.item.kind !== 'produce') return
+  const { item: crop, quantity: required } = guest.item
+  const carried = farm.produce[crop]
+  if (carried >= required) return
+  // Count only ordinary produce. At dawn an eligible exposure can turn one
+  // item rare, and today's picnic bonus cannot carry over to another day.
+  const ordinaryAtDawn = (index: number) => {
+    const bed = farm.beds[index]
+    if (bed.kind !== 'crop') return 0
+    return cropDefinitions[crop].yield - Number(!!(bed.trait ?? exposedTrait(guest.day, forecast.weather, index + 1)))
+  }
+  let available = carried + (getLocalWarehouseSupply(farm, guest.item)?.quantity ?? 0)
+  let onceToday = 0
+  for (const {index, crop: planted} of forecast.ready) {
+    if (planted !== crop) continue
+    const ready = getBedHarvestPreview(farm, index)!
+    available += ready.ordinary - ready.picnicBonus
+    onceToday = Math.max(onceToday, ready.picnicBonus)
+  }
+  available += onceToday
+  for (const {index, crop: planted} of forecast.ripening) if (planted === crop) available += ordinaryAtDawn(index)
+  if (available >= required) return
+  for (const {index, crop: planted} of forecast.dry) {
+    const bed = farm.beds[index]
+    if (planted !== crop || bed.kind !== 'crop' || bed.growth + 1 < cropDefinitions[crop].days) continue
+    // Keep the surfaced choice self-contained: bag plus this harvest, no
+    // extra withdrawal or harvest elsewhere needed to make its claim true.
+    if (carried + ordinaryAtDawn(index) >= required) return { index, crop, guest: guest.name, carried, required }
+  }
 }
 
 export function renderFairReturn(farm: FarmState, stock: (item: StockItem) => string): string {

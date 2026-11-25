@@ -6,6 +6,7 @@
 .rest-preview-stats strong{display:block;margin:5px 0 0;font-size:16px;font-weight:700;color:var(--plum)}
 .rest-preview p{font-size:13px;line-height:1.45;margin:10px 0}
 .rest-preview .dialog-button{min-height:44px;white-space:normal;max-width:100%}
+.rest-fair-prep{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0 0 8px}.rest-preview .rest-fair-prep p{margin:0}
 .rest-preview-footnote{color:var(--muted)}
 .farm-dialog[data-panel="rest"] .dialog-emblem{display:none}
 .rest-decision{padding:12px;border:1px solid var(--rule);border-radius:15px;background:var(--paper-light)}
