@@ -1338,10 +1338,10 @@ function updateMarketSaleSearch() {
 
 function marketCareProducts(tabs: string, categories: string, stall: string) {
   const capacity=getWaterCapacity(farm),upgradedCapacity=getWaterCapacity({...farm,canUpgraded:true})
-  return `<section data-market-care-browser><div class="market-controls">${tabs}</div>${categories}<div class="market-care-grid">
+  return `<section data-market-care-browser><div class="market-controls">${tabs}</div>${categories}${stall?`<div class="market-care-tools">${stall}</div>`:''}<div class="market-care-grid">
     <section data-care-product="feed"><div class="market-care-art">${icon('tool-feed')}</div><div class="market-care-copy"><h2>Корм для кур</h2><p>В мешке: ${quantity(feedBagSize,'порция')}</p><p>В запасе: ${quantity(farm.feed,'порция')}</p><p class="market-care-price" aria-label="${quantity(feedBagPrice,'монета')} за мешок">${feedBagPrice} ${icon('coin')} за мешок</p></div>${button('Купить','buy-feed',farm.coins>=feedBagPrice,{context:'Корм для кур'})}</section>
     <section data-care-product="can"><div class="market-care-art">${icon('tool-can')}</div><div class="market-care-copy"><h2>Большая лейка</h2><p class="market-care-capacity" aria-label="Объём лейки: ${farm.canUpgraded?quantity(capacity,'порция'):`${quantity(capacity,'порция')} → ${quantity(upgradedCapacity,'порция')}`} воды">Объём: ${farm.canUpgraded?capacity:`${capacity} → ${upgradedCapacity}`} ${icon('drop')}</p>${farm.canUpgraded?'':`<p class="market-care-price" aria-label="${quantity(canUpgradePrice,'монета')} за улучшение">${canUpgradePrice} ${icon('coin')} за улучшение</p>`}</div>${button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{context:'Большая лейка'})}</section>
-  </div>${stall?`<footer class="market-care-tools">${stall}</footer>`:''}</section>`
+  </div></section>`
 }
 
 function marketCards() {
@@ -1375,16 +1375,16 @@ function marketCards() {
   }
 
   const categories=`<nav class="market-category-icons${marketCategory==='buildings'?' market-building-categories':''}" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}<span>${category.name}</span></button>`).join('')}</nav>`
-  if(marketCategory==='seeds')return `<section data-market-seed-browser><div class="market-controls">${tabs}</div>${categories}<div class="market-seed-grid">${cropIds.map(crop=>{
+  if(marketCategory==='seeds')return `<section data-market-seed-browser><div class="market-controls">${tabs}</div>${categories}${stall?`<div class="market-seed-tools">${stall}</div>`:''}<div class="market-seed-grid">${cropIds.map(crop=>{
     const definition=cropDefinitions[crop]
     const stock=`В запасе: ${numberFormat.format(farm.seeds[crop])} ${ruPlural(farm.seeds[crop],['семя','семени','семян'])}`, affordable=farm.coins>=definition.seedPrice
     const buy=button('Купить пакет','buy-seeds',affordable,{crop,context:`${definition.name}, ${seedPackSize} семени за ${quantity(definition.seedPrice,'монета')}`})
     return `<section data-seed-pack="${crop}"><div class="market-seed-art">${icon('ui-seed-'+crop)}</div><div class="market-seed-copy"><h2>${definition.name}</h2><p>В пакете: ${seedPackSize} ${ruPlural(seedPackSize,['семя','семени','семян'])}</p><p class="market-seed-stock">${stock}</p><p class="market-seed-price" aria-label="${quantity(definition.seedPrice,'монета')} за пакет">${definition.seedPrice} ${icon('coin')} за пакет</p></div>${affordable?buy:`<div class="market-seed-limit" role="group" tabindex="-1" aria-label="${definition.name}. ${stock}">${buy}</div>`}</section>`
-  }).join('')}</div>${stall?`<footer class="market-seed-tools">${stall}</footer>`:''}</section>`
-  if(marketCategory==='trees')return `<section data-market-tree-browser><div class="market-controls">${tabs}</div>${categories}${!farm.trees.home.includes(null)?`<div class="market-tree-space"><p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','market-orchard-space',true,{secondary:true}))}</div>`:''}<div class="market-tree-grid">${treeIds.map(tree=>{
+  }).join('')}</div></section>`
+  if(marketCategory==='trees')return `<section data-market-tree-browser><div class="market-controls">${tabs}</div>${categories}${stall?`<div class="market-tree-tools">${stall}</div>`:''}${!farm.trees.home.includes(null)?`<div class="market-tree-space"><p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','market-orchard-space',true,{secondary:true}))}</div>`:''}<div class="market-tree-grid">${treeIds.map(tree=>{
     const definition=treeDefinitions[tree]
     return `<section data-tree-product="${tree}"><div class="market-tree-art">${icon('ui-tree-'+tree)}</div><div class="market-tree-copy"><h2>${definition.saplingName}</h2><p>${quantity(definition.days,'ночь')} до зрелости</p><p>В запасе: ${farm.saplings[tree]}</p><p class="market-tree-price" aria-label="${quantity(definition.saplingPrice,'монета')} за саженец">${definition.saplingPrice} ${icon('coin')} за саженец</p></div>${button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,context:definition.saplingName})}</section>`
-  }).join('')}</div>${stall?`<footer class="market-tree-tools">${stall}</footer>`:''}</section>`
+  }).join('')}</div></section>`
   if(marketCategory==='care')return marketCareProducts(tabs,categories,stall)
   return controls+categories+`<ul class="dialog-list market-shop">${buildingIds.map(building=>row('upgrade-'+building+'-card',buildingDefinitions[building].name,buildingDefinitions[building].benefit,button(farm.buildingLevels[building]>=2?'Посмотреть':'Улучшить',farm.buildingLevels[building]>=2?'upgrades':'upgrade-building',farm.buildingLevels[building]>=2||farm.coins>=buildingDefinitions[building].upgradePrice,{value:building,...(farm.buildingLevels[building]<2?{cost:{icon:'coin' as const,amount:buildingDefinitions[building].upgradePrice}}:{})}))).join('')}</ul>`+nav(button('Причал','visit-boat',true,{secondary:true}))
 }
