@@ -1,4 +1,12 @@
-import { getHarborOrder, type FarmState, type StockItem } from './farm.ts';
+import { canSailTo, getHarborOrder, type FarmState, type StockItem } from './farm.ts';
+
+/** The away order is only a ready route when nothing else needs to be collected. */
+export function readyHarborOrderRoute(farm: FarmState, order = getHarborOrder(farm)) {
+  if (!order || order.status !== 'locked' || !canSailTo(farm,'grove')
+    || !order.items.some(line => line.available > 0)
+    || !order.items.every(({item,delivered,available}) => delivered + available === item.quantity)) return undefined;
+  return `${farm.day}:${farm.orders.harbor.completed}:${farm.farmhouseSpecialization}`;
+}
 
 /** Only a completed manual delivery advances. No day is spent and no reward is forecast. */
 export function getNextHarborOrder(farm: FarmState) {

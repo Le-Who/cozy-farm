@@ -50,7 +50,7 @@ import { canReturnToDailyIntent, renderIntentDeadline, renderSelectedIntentRest,
 import { renderFacilityChoiceDetails } from './facility-choice'
 import './facility-choice.css'
 import { getWindHoneySource } from './wind-honey-guidance'
-import { canVisitHarborRest, getNextHarborOrder, renderNextHarborOrder } from './harbor-return'
+import { canVisitHarborRest, getNextHarborOrder, readyHarborOrderRoute, renderNextHarborOrder } from './harbor-return'
 import './harbor-return.css'
 import { renderVillageBudget } from './village-budget'
 import { withdrawStoredSignature } from './stored-signature'
@@ -1085,7 +1085,7 @@ function marketOrders() {
   const next = getNextMarketOrders(farm).find(order => order.lane === board.selected)
   const warehouse = board.choices.find(choice=>choice.id===board.selected)?.warehouseRequest
   const pickup = board.pickup
-  const detail = board.selected === 'harbor' ? `<p class="market-order-location">Причал рощи · можно вносить частями</p>${harborCard()}` : order
+  const detail = board.selected === 'harbor' ? `<p class="market-order-location">Причал рощи · можно вносить частями</p>${harborCard(true)}` : order
     ? `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
       <header class="order-header"><h2 id="order-${order.lane}">${order.name}</h2>
         <span class="order-reward"><small>Награда</small><span>${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></span></header>
@@ -1113,16 +1113,18 @@ function deliveryItems(items: ReturnType<typeof getProject>['items'], explicit =
   }).join('')
 }
 
-function harborCard() {
+function harborCard(fromMarket = false) {
   const order = getHarborOrder(farm)
   if (!order) return ''
   const withdrawal=getHarborWithdrawal(farm)
   const next=getNextHarborOrder(farm)
+  const route=fromMarket ? readyHarborOrderRoute(farm,order) : undefined
   return `<section class="market-order project-card" aria-labelledby="harbor-order">
     <header class="order-header"><h2 id="harbor-order">${order.name}</h2>
       <span class="order-reward">${icon('coin')} ${order.reward}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></header>
     <ul class="ingredients project-items">${deliveryItems(order.items)}</ul>
     ${order.status === 'completed' ? `<p class="order-done">✓ Доставлено</p>${next ? renderNextHarborOrder(next,stockTile)+button('К отдыху дома','harbor-next-rest',true,{secondary:true,value:String(farm.day)}) : ''}`
+      : route ? button('К заказу в роще','harbor-order-route',true,{value:route})
       : farm.island !== 'grove' ? button('В рощу', 'sail',canSailTo(farm,'grove'), {value:'grove',secondary:true})
       : button('Доставить', 'deliver-harbor', order.status === 'ready', { context: order.name })}
     ${order.status!=='completed'&&withdrawal.items.length?`<p class="dialog-status">Неполную посылку можно забрать у причала. Припасы вернутся в запас, заказ и дневной лимит не изменятся.</p>${button('Вернуть припасы','withdraw-harbor',withdrawal.available,{secondary:true})}`:''}
@@ -4280,6 +4282,12 @@ app.addEventListener('click', async (event) => {
     case 'project-boat': openPanel('boat',true,'grove');break
     case 'project-dock': openPanel('dock-project');break
     case 'visit-harbor': openPanel('harbor');break
+    case 'harbor-order-route': {
+      if (panel !== 'market' || !dialog.open || marketTab !== 'orders' || selectedMarketOrder !== 'harbor' || !dialogContent.contains(control)) break
+      const route=readyHarborOrderRoute(farm)
+      if (route && route === value) await visitPanelAt('grove','harbor')
+      break
+    }
     case 'harbor-next-rest':
       if(canVisitHarborRest(farm,value,{panel,open:dialog.open,tab:marketTab}))await visitPanelAt('home','rest')
       break
