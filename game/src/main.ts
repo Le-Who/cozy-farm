@@ -2493,12 +2493,16 @@ function drawPanel() {
         && communityRequest?.kind === 'neighbor' && communityRequest.planId === source.neighborComposerPlan
         && getNeighborPlans(farm).some(plan => plan.id === source.neighborComposerPlan && plan.resident === source.communityResident
           && (plan.phase === 'joined' || plan.phase === 'arranging'))
+      // An unpaid mix opened at home can be edited without reopening the book.
+      const editingDraft = () => editingForNeighbor() || (signature && !made && !repeatId && farm.island === 'home'
+        && composer?.panel === 'signature' && source?.panel === 'kitchen'
+        && panelHistory.at(-1) === composer && panelHistory.at(-2) === source)
       dialogContent.innerHTML = '<div class="cookery-host"></div>'
       cookeryGame = createCookery(dialogContent.querySelector<HTMLElement>('.cookery-host')!, {
         recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??familyName??'Мой рецепт':preparedDish==='grilledFish'?`${fishDefinitions[preparedFish].name} на гриле`:recipe.name, kind, signature,processing:savedRecipe?.processing,fishSpecies:preparedDish==='grilledFish'?preparedFish:undefined,
           selectedFruit,fruitOptions:selectedFruit.map(part=>({id:part.id,name:signatureFruitNames[part.id as typeof signatureFruitIds[number]],art:part.id==='apple'?'apple-slice':part.id==='pear'?'pear-piece':part.id==='peach'?'peach-slice':part.id})),
           ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity,...(item.kind==='variants'?{trait:item.trait}:{})})) },
-        get returnLabel() { return editingForNeighbor() ? 'К выбору ингредиентов' : fromRequestedFood ? 'К рецепту' : signature ? 'Мои рецепты' : 'На кухню' },
+        get returnLabel() { return editingDraft() ? 'К выбору ингредиентов' : fromRequestedFood ? 'К рецепту' : signature ? 'Мои рецепты' : 'На кухню' },
         onComplete(result) {if(made)return true;if(panel!=='cookery')return false;made=perform(()=>{
           const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
           const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
@@ -2506,7 +2510,7 @@ function drawPanel() {
           if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
           return receipt
         },false,true);return made},
-        onCancel(){if(signature&&!fromRequestedFood&&!editingForNeighbor()){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
+        onCancel(){if(signature&&!fromRequestedFood&&!editingDraft()){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
       })
       break
     }

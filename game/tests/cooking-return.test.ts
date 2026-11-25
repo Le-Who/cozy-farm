@@ -236,3 +236,98 @@ test('Escape belongs to the honey station even on its tilt slider; native slider
   assert.equal(key('Escape',true),true);assert.equal(returns,0)
   assert.equal(key('Escape'),true);assert.equal(returns,1)
 })
+
+for(const exit of ['back','cancel','escape','finished'] as const) test(`earned Home Kitchen fruit mix retains its correct return while Finn prepares his basket: ${exit}`, async()=>{
+  const {commissionPlayer}=await import('./fixtures/commission-player.ts')
+  const {recipePlanningIngredient}=await import('../src/recipe-planning.ts')
+  const {rememberRecipeDraft}=await import('../src/recipe-draft.ts')
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const p=commissionPlayer(opening);p.fruit('apple',2);p.visit('village')
+  const plan=farmApi.getNeighborPlans(p.state).find(plan=>plan.resident==='finn')!
+  assert.deepEqual([p.actions,p.state.day,plan.id,plan.phase,plan.arrangement],[112,15,'finn:1','preparing','basket'])
+  p.visit('home')
+  assert.deepEqual([p.actions,p.state.day,p.state.island],[113,15,'home'])
+  const part=(text:string,a:string,b:string)=>{
+    const start=text.indexOf(a),end=text.indexOf(b,start+a.length)
+    assert.ok(start>=0&&end>start)
+    return text.slice(start,end)
+  }
+  const formActions=js('(cmd)=>{switch(cmd){'
+    +part(main,"    case 'kitchen-group':","    case 'market-category':")
+    +part(main,"    case 'signature-base':","    case 'signature-home':")
+    +part(main,"    case 'back':","    case 'journal-stay':")
+    +'}}')
+  const recipe=part(main,'function kitchenFamilies()', 'function familyRecipeName')
+  assert.match(recipe, /button\('Выбрать фрукты', 'family-signature', true, \{ value: 'preserves' \}\)/)
+  const scene=readFileSync(new URL('../src/cookery.ts',import.meta.url),'utf8')
+  const handleEsc=js(part(scene,"  view.addEventListener('keydown'","  function updateSugar()"))
+  const actor=js('{'+part(islandSource,'    const actors = [...villageActors.values()];','    for (const plan of getNeighborPlans(farm)) {')+'}')
+    const {state:x,calls}=setup('home',true),farm=structuredClone(p.state)
+    const missing='selectedWarehouseRequest selectedExpeditionPort selectedExpeditionOffer selectedWarehouse inventoryGroup boatIsland marketSaleFamily marketSaleQuery marketTab marketCategory marketSellGroup bagTab archiveGroup treeSlot previewSeed specializationBuilding previewSpecialization irrigationMode villageSlot seedPickerBed expandedRepeatId communityOrderId requestedFood kitchenTart kitchenPreserves kitchenGroup kitchenDish honeyKitchenDish freightPlanOpen journeyDetailsOpen journalDetailsOpen selectedMarketOrder'.split(' ')
+    const fakes=Object.fromEntries(missing.map(k=>[k,undefined]))
+    let draftSaves=0, recipeSaves=0
+    const savedMeeting={kind:'neighbor',resident:'finn', planId:plan.id}
+    Object.assign(x,fakes,{
+      farm,panel:'kitchen',panelHistory:[],communityResident:'finn',communityRequest:savedMeeting,kitchenGroups:['tart','preserves','dishes'],kitchenGroup:'tart',signatureSlots:[null,null],
+      control:{dataset:{}},event:{detail:0},recipePlanningIngredient,rememberRecipeDraft,saveFarm(){draftSaves++},drawPanel(){},getSignatureAction:farmApi.getSignatureAction,
+      document:{activeElement:null},HTMLButtonElement:class {},recipeBook:{snapshot(){return{}},load(){}},
+      dialogContent:{querySelector(){return null},querySelectorAll(){return[]},scrollTop:0},
+      dialog:{open:true,querySelectorAll(){return[]}},restoreFerryPanelView(){},panelRenderVersion:0,requestAnimationFrame:(cb:()=>void)=>cb(),
+      openPanel(next:string,remember=true){
+        if(remember)x.panelHistory.push(x.rememberPanel())
+        x.panel=next;x.dialogContent.scrollTop=0
+      },
+      openRecipeBook(id?:string){
+        calls.push('recipe-book');x.bookRecipe=id;x.openPanel('recipes',false)
+      },
+      resumeCommunityRequest(){throw Error('unsolicited neighbor travel')},
+      perform(action:()=>{ok:boolean}){const result=action();if(result.ok)recipeSaves++;return result.ok},
+    })
+    runInNewContext(js(part(main,'function focusKey(', 'let harbourScene:')+part(main,'function rememberCurrentRecipeDraft()', 'const recipeBook =')+closeSale),x)
+    const action=runInNewContext(formActions,x)
+    x.value='preserves';action('kitchen-group')
+    x.control.dataset.family='preserves';x.value='custom';action('recipe-family')
+    x.value='preserves';action('family-signature')
+    assert.equal(x.panel,'signature')
+    x.value='apple';action('signature-fruit');action('signature-fruit')
+    const draft=structuredClone(farm.recipeDraft);assert.ok(draft)
+    assert.deepEqual(draft.slots,[{id:'apple',quantity:1},{id:'apple',quantity:1}])
+    x.dialogContent.scrollTop=41
+    action('start-signature');mount(x)
+    assert.deepEqual(x.panelHistory.map((v:{panel:string})=>v.panel),['kitchen','signature'])
+    const start=structuredClone(farm),writes=draftSaves
+    const here=getNeighborSceneState(plan),collecting={id:plan.resident,slot:1,point:{...here.stand},route:[],facingRight:true,stride:0,
+      gathering:false,serviceRequested:false,fetching:false,waitUntil:0,atStationSince:0,plan}
+    Object.assign(x,{villageActors:new Map([['finn',collecting]]),gatheringPlan:undefined,motion:{matches:false},
+      moment:20_000,elapsed:.05,scenePoint:(u:number,v:number)=>({x:u,y:v}),getNeighborSceneState,stepNeighborWalker,
+      distance:(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.y-b.y),routeResident:(who:any,target:any)=>{who.route=[target]}})
+    runInNewContext(actor,x);assert.equal(collecting.fetching,true);assert.deepEqual(farm,start)
+    if(exit==='finished'){
+      const process={family:'preserves',processing:'silky',fruit:[],steps:['mix','pour']}
+      assert.ok(x.options.onComplete(process));assert.ok(x.options.onComplete(process));assert.equal(recipeSaves,1)
+      const receipt=farm.culinary.recipes.at(-1)!.id,paid=structuredClone(farm)
+      assert.equal(farm.fruit.apple,start.fruit.apple-2)
+      assert.equal(x.options.returnLabel,'Мои рецепты')
+      x.options.onCancel();assert.equal(x.panel,'recipes');assert.equal(x.bookRecipe,receipt)
+      assert.equal(x.panelHistory.length,0);assert.deepEqual(farm,paid)
+      return
+    }
+    const label=x.options.returnLabel
+    if(exit==='back')action('back')
+    if(exit==='cancel')x.options.onCancel()
+    if(exit==='escape'){
+      const event={defaultPrevented:false,key:'Escape',repeat:false,preventDefault(){this.defaultPrevented=true}}
+      Object.assign(x,{event,view:{addEventListener:(_:string,listener:Function)=>listener(event)},signal:new AbortController().signal,cancel:()=>x.options.onCancel()})
+      runInNewContext(handleEsc,x);assert.ok(event.defaultPrevented)
+    }
+    assert.equal(x.panel,'signature',`unpaid ${exit} must resume the draft, not clear kitchen history`)
+    if(exit!=='back')assert.equal(label,'К выбору ингредиентов')
+    assert.deepEqual(JSON.parse(JSON.stringify(x.signatureSlots)),draft.slots)
+    assert.equal(x.signatureSlot,draft.activeSlot);assert.equal(x.dialogContent.scrollTop,41)
+    assert.deepEqual(x.panelHistory.map((v:{panel:string})=>v.panel),['kitchen'])
+    assert.equal(recipeSaves,0);assert.equal(draftSaves,writes);assert.deepEqual(farm,start)
+    assert.deepEqual(x.communityRequest,savedMeeting)
+    action('back')
+    assert.equal(x.panel,'kitchen');assert.equal(x.kitchenGroup,'preserves');assert.equal(x.kitchenPreserves,'custom')
+    console.log(JSON.stringify({day:15,earned:113,from:'home kitchen custom preserves',finn:'finn:1 basket fetching',exit,returnedTo:'same composer then own kitchen',recipeSaves,travel:false}))
+})
