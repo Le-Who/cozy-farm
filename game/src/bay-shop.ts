@@ -76,7 +76,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     const slot = shopStockSlot(state, product, preferred);
     if (!shopQuantityPreview(state,slot,product,1).valid) return false;
     selected = slot;
-    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0 };
+    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-products')?.scrollTop ?? 0 };
     return true;
   }
   function stockControls(): string {
@@ -104,14 +104,17 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   function commissionCustomer() {
     return tab === 'journal' ? bayShopVisitors.find(person => person.id === customerView.selected && options.commissionCustomers?.().includes(person.id)) : undefined;
   }
-  function render(returnStock?: { id: string; listScroll: number }): void {
+  type StockReturn = { id?: string; listScroll: number };
+  function render(returnStock?: StockReturn): void {
     if (destroyed) return;
     const commission = commissionCustomer();
     const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
     const priceDraft = active instanceof HTMLInputElement && active.hasAttribute('data-price') ? active.value : undefined;
-    const focusAttribute = returnStock ? 'data-stock' : active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
+    const focusAttribute = returnStock?.id ? 'data-stock' : active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
     const focusValue = returnStock?.id ?? (focusAttribute ? active!.getAttribute(focusAttribute)! : '');
-    const scroll = returnStock?.listScroll ?? host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
+    const scroll = host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
+    // The catalog scrolls inside the desk; the desk itself is clipped in this view.
+    const listScroll = returnStock?.listScroll ?? host.querySelector('.bay-shop-products')?.scrollTop;
     rendering = true;
     host.innerHTML = `<section class="bay-shop" aria-label="Своя лавка у моря">
       <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button><button type="button" class="bay-shop-close${options.returnToRecipe ? ' bay-shop-recipe-back' : ''}" data-close aria-label="${closeLabel}" title="${recipeReturn ? closeLabel : closeLabel + '; работа лавки не меняется'}">${options.returnToRecipe ? closeLabel : '×'}</button></div></header>
@@ -131,6 +134,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     lastVisitor = ''; lastSpeech = ''; fitStage(); paintVisitor(); paintDayGuidance(); applyIngredientFinishes(host);
     paintNotice();
     const content = host.querySelector('.bay-shop-desk-content'); if (content) content.scrollTop = scroll;
+    const catalog = host.querySelector('.bay-shop-products'); if (catalog && listScroll !== undefined) catalog.scrollTop = listScroll;
     if (focusAttribute) {
       const target = host.querySelector<HTMLElement>(`[${focusAttribute}="${CSS.escape(focusValue)}"]`);
       (target && !target.matches(':disabled') ? target : host.querySelector<HTMLElement>(`[data-slot="${selected}"]`))?.focus({ preventScroll: true });
@@ -190,7 +194,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       lastVisitor = key;
     }
   }
-  function changed(): void { saveChanges(); render(); }
+  function changed(returnStock?: StockReturn): void { saveChanges(); render(returnStock); }
   function click(event: Event): void {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button');
     if (!button || !host.contains(button) || button.disabled) return;
@@ -222,8 +226,8 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       const origin = pending;
       pending = undefined;
       const ownedCancel = (event as MouseEvent).detail === 0 && document.activeElement === button;
-      const available = ownedCancel && origin && options.products().some(p => p.id === origin.id && p.identity === origin.identity && p.quantity > 0);
-      render(available ? origin : undefined);
+      const available = origin && options.products().some(p => p.id === origin.id && p.identity === origin.identity && p.quantity > 0);
+      render(available ? { id: ownedCancel ? origin.id : undefined, listScroll: origin.listScroll } : undefined);
       return;
     }
     if (button.hasAttribute('data-return')) {
@@ -267,8 +271,9 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       playBaySound('menu.blocked',.8); notice = 'Проверьте количество и свободное место на полке.'; render(); return;
     }
     if (quotedProduct && options.catalog) syncBayShopProducts(state, options.catalog);
+    const listScroll = pending.listScroll;
     pending = undefined;
-    playBaySound('harbour.crate',.6); notice = `На полку добавлено: ${quantity}.`; changed();
+    playBaySound('harbour.crate',.6); notice = `На полку добавлено: ${quantity}.`; changed({ listScroll });
     host.querySelector<HTMLElement>(`[data-slot="${selected}"]`)?.focus({preventScroll:true});
   }
   function change(event: Event): void {

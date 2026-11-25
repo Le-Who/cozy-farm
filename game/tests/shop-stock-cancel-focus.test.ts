@@ -15,19 +15,22 @@ function cancel(detail:number,productNow:typeof product,owned=true){
   const button={hasAttribute:(name:string)=>name==='data-stock-cancel',getAttribute:()=>''},document={activeElement:owned?button:null}
   const shelf={name:'shelf',matches:()=>false,focus:({preventScroll}:{preventScroll:boolean})=>{assert.ok(preventScroll);focused.push('shelf')}}
   const row={...shelf,focus:({preventScroll}:{preventScroll:boolean})=>{assert.ok(preventScroll);focused.push('original product')}}
-  const content={scrollTop:23},focused:string[]=[],query=(s:string)=>s==='.bay-shop-desk-content'?content:s==='[data-slot="0"]'?shelf:s==='[data-stock="signature:s1"]'?row:null
-  const room={pending:quote,event:{detail},document,button,options:{products:()=>[productNow]},render:(returnStock:typeof quote|undefined)=>{
+  const content={scrollTop:23},catalog={scrollTop:0},focused:string[]=[],query=(s:string)=>s==='.bay-shop-desk-content'?content:s==='.bay-shop-products'?catalog:s==='[data-slot="0"]'?shelf:s==='[data-stock="signature:s1"]'?row:null
+  const room={pending:quote,event:{detail},document,button,options:{products:()=>[productNow]},render:(returnStock:{id?:string;listScroll:number}|undefined)=>{
     runInNewContext(restore,{returnStock,active:document.activeElement,selected:0,host:{querySelector:query},CSS:{escape:(s:string)=>s}})
   }}
   runInNewContext(handler,room)
   assert.equal(room.pending,undefined)
-  return {focused,scroll:content.scrollTop}
+  return {focused,scroll:catalog.scrollTop,deskScroll:content.scrollTop}
 }
-test('owned keyboard Cancel returns directly to the original available product and its list position',()=>{
-  assert.deepEqual(cancel(0,product),{focused:['original product'],scroll:328})
+test('owned keyboard Cancel returns directly to the original available product and its catalog position',()=>{
+  assert.deepEqual(cancel(0,product),{focused:['original product'],scroll:328,deskScroll:23})
 })
-test('pointer, unrelated focus, gone product, or reused product id do not redirect to the row',()=>{
-  for(const [detail,stock] of [[1,product],[0,{...product,quantity:0}],[0,{...product,identity:'signature:s2'}]] as const)
-    assert.deepEqual(cancel(detail,stock),{focused:['shelf'],scroll:23})
-  assert.deepEqual(cancel(0,product,false),{focused:[],scroll:23})
+test('pointer or unrelated focus preserve the same catalog but do not redirect to the row',()=>{
+  assert.deepEqual(cancel(1,product),{focused:['shelf'],scroll:328,deskScroll:23})
+  assert.deepEqual(cancel(0,product,false),{focused:[],scroll:328,deskScroll:23})
+})
+test('gone product or reused product id do not redirect to the original row or scroll',()=>{
+  for(const stock of [{...product,quantity:0},{...product,identity:'signature:s2'}])
+    assert.deepEqual(cancel(0,stock),{focused:['shelf'],scroll:0,deskScroll:23})
 })
