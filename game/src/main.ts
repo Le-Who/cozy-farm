@@ -2532,6 +2532,18 @@ function drawPanel() {
       // The saved neighbour selection is an explicit travel shortcut, not this
       // cooking session's return address. Keep ordinary exits at their entry.
       const composer = panelHistory.at(-1), source = panelHistory.at(-2)
+      // Mirror the first bread basket. Only a batch that completes the first
+      // local preserves order from this kitchen can offer a finished receipt route.
+      const preservesOrder = () => !signature && preparedDish === 'orchardPreserves'
+        && farm.island === 'home' && farm.farmhouseSpecialization === 'preserves'
+        && farm.orders.specialty.completed === 0 && composer?.panel === 'kitchen'
+        && panelHistory.at(-1) === composer ? getMarketOrders(farm).find(order => order.lane === 'specialty') : undefined
+      let preservesOrderDay: number | undefined
+      const readyPreservesOrder = () => {
+        if (preservesOrderDay !== farm.day || panel !== 'cookery' || !dialog.open || island.isCrossing()) return
+        const order = preservesOrder()
+        return order?.status === 'ready' ? order : undefined
+      }
       const fromRequestedFood = composer?.panel === 'request-food'
       const editingForNeighbor = () => signature && !made && !repeatId && composer?.panel === 'signature'
         && source?.panel === 'neighbor' && !!source.neighborComposerPlan && panelHistory.at(-1) === composer
@@ -2548,13 +2560,25 @@ function drawPanel() {
           selectedFruit,fruitOptions:selectedFruit.map(part=>({id:part.id,name:signatureFruitNames[part.id as typeof signatureFruitIds[number]],art:part.id==='apple'?'apple-slice':part.id==='pear'?'pear-piece':part.id==='peach'?'peach-slice':part.id})),
           ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity,...(item.kind==='variants'?{trait:item.trait}:{})})) },
         get returnLabel() { return editingDraft() ? 'К выбору ингредиентов' : fromRequestedFood ? 'К рецепту' : signature ? 'Мои рецепты' : 'На кухню' },
-        onComplete(result) {if(made)return true;if(panel!=='cookery')return false;made=perform(()=>{
+        ...(!signature && preparedDish === 'orchardPreserves' ? {readyOrder() {
+          const order = readyPreservesOrder()
+          if (!order) return
+          return {name: order.name, open() {
+            if (!readyPreservesOrder()) return
+            marketTab = 'orders'; selectedMarketOrder = order.lane
+            // Like the bakery receipt, keep the existing kitchen as Back's target.
+            openPanel('market', false)
+            const detail = dialogContent.querySelector<HTMLElement>('.market-order-detail')
+            detail?.focus({preventScroll:true}); detail?.scrollIntoView({block:'nearest'})
+          }}
+        }} : {}),
+        onComplete(result) {if(made)return true;if(panel!=='cookery')return false;const waiting=!signature&&preparedDish==='orchardPreserves'&&preservesOrder()?.status==='waiting';made=perform(()=>{
           const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
           const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
           if(receipt.ok&&'recipeId' in receipt&&typeof receipt.recipeId==='string')resultRecipeId=receipt.recipeId
           if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
           return receipt
-        },false,true);return made},
+        },false,true);if(made&&waiting&&preservesOrder()?.status==='ready')preservesOrderDay=farm.day;return made},
         onCancel(){if(signature&&!fromRequestedFood&&!editingDraft()){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
       })
       break

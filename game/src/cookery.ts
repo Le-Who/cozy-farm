@@ -26,7 +26,10 @@ export type CookeryRecipe = {
   selectedFruit?: readonly { id: string; quantity: number; trait?: string }[];
   fishSpecies?: FishingSpecies;
 }
-export type CookeryOptions = { recipe: CookeryRecipe; onComplete: (result: CookeryResult) => boolean; onCancel: () => void; returnLabel?: string }
+export type CookeryOptions = {
+  recipe: CookeryRecipe; onComplete: (result: CookeryResult) => boolean; onCancel: () => void; returnLabel?: string;
+  readyOrder?: () => { name: string; open: () => void } | undefined;
+}
 type Ellipse = { cx: number; cy: number; rx: number; ry: number }
 type Asset = { url: string; width: number; height: number; innerRimEllipse?: Ellipse; mixSurfaceEllipse?: Ellipse; foregroundUrl?: string }
 type Rect = { x: number; y: number; width: number; height: number }
@@ -75,6 +78,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     <div class="cookery-source-cue" aria-hidden="true"></div><div class="cookery-tool-cue" aria-hidden="true"></div>
     <div class="cookery-caption"><p class="cookery-hint"></p><div class="cookery-progress" role="progressbar" aria-label="Приготовление" aria-valuemin="0" aria-valuemax="100"><i></i></div></div>
     <button type="button" class="cookery-finish" hidden><span>Готово</span></button>
+    ${options.readyOrder ? '<button type="button" class="cookery-order" data-action="cookery-order-review" hidden>К заказу</button>' : ''}
     <button type="button" class="cookery-rotate" aria-label="Повернуть выбранный фрукт" title="Потяните, чтобы повернуть · колёсико · Q / E" hidden>↻</button>
     <div class="cookery-processing" role="group" aria-label="Густота конфитюра" hidden><button type="button" data-processing="chunky">С кусочками</button><button type="button" data-processing="bright">Свежее</button><button type="button" data-processing="silky">Нежное</button></div>
     <div class="cookery-render-status" role="status">Открываем кухню…</div>
@@ -88,6 +92,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   const hint = root.querySelector<HTMLElement>('.cookery-hint')!
   const live = root.querySelector<HTMLElement>('.cookery-live')!
   const finish = root.querySelector<HTMLButtonElement>('.cookery-finish')!
+  const orderButton = root.querySelector<HTMLButtonElement>('.cookery-order')
   const close = root.querySelector<HTMLButtonElement>('.cookery-close')!
   const rotateHandle = root.querySelector<HTMLButtonElement>('.cookery-rotate')!
   const processingControls = root.querySelector<HTMLElement>('.cookery-processing')!
@@ -334,6 +339,11 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     progress.hidden = model.stage === 'ready' || model.stage === 'finished'
     finish.hidden = model.stage !== 'ready' && model.stage !== 'finished'; finish.disabled = contextLost || !loaded || !physicallySettled || !!drag
     finish.querySelector('span')!.textContent = model.stage === 'finished' ? options.returnLabel ?? 'На кухню' : 'Готово'
+    if (options.readyOrder && orderButton) {
+      const order = model.stage === 'finished' && loaded && !contextLost ? options.readyOrder() : undefined
+      orderButton.hidden = !order
+      if (order) orderButton.setAttribute('aria-label', `К заказу «${order.name}»`)
+    }
     sourceCue.hidden = model.stage !== 'fruit' || !!drag
     updateToolCue()
     processingControls.hidden = !options.recipe.signature || model.kind !== 'preserves' || model.stage !== 'fruit'
@@ -356,6 +366,12 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     sync()
   }
   finish.addEventListener('click', doFinish, { signal })
+  orderButton?.addEventListener('click', () => {
+    if (destroyed || contextLost || !loaded || model.stage !== 'finished' || orderButton.hidden) return
+    const order = options.readyOrder?.()
+    if (order) order.open()
+    else { orderButton.hidden = true; finish.focus({preventScroll:true}) }
+  }, {signal})
   processingControls.addEventListener('click', event => {
     const value = (event.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.processing
     if (value === 'bright' || value === 'chunky' || value === 'silky') { choosePreserveProcessing(model, value); sync() }

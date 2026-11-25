@@ -21,6 +21,7 @@
 .cookery-finish:hover:enabled{filter:brightness(1.06)}
 .cookery-finish:disabled{cursor:default;filter:saturate(.7)}
 .cookery-game[data-stage="finished"] .cookery-finish{font-size:19px!important}
+.cookery-game .cookery-order{position:absolute;z-index:6;left:24px;bottom:22px;max-width:calc(100% - 246px);min-height:44px;padding:6px 12px;border:2px solid #976ca3;border-radius:12px;background:#fff4e5;color:#603568;font:700 14px/1.2 ui-rounded,"Trebuchet MS",sans-serif}
 .cookery-source-cue,.cookery-tool-cue{position:absolute;width:44px;height:44px;transform:translate(-50%,-50%);pointer-events:none;border:2px dashed #fff6d8b0;border-radius:50%;filter:drop-shadow(0 1px 2px #9a583a66);animation:cookery-cue-breathe 2s ease-in-out infinite}
 @keyframes cookery-cue-breathe{50%{opacity:.5;transform:translate(-50%,-50%) scale(1.08)}}
 .cookery-render-status{position:absolute;inset:38% 15%;display:grid;place-content:center;text-align:center;padding:20px;background:#fff2deed;border:1px solid #efd1a7;border-radius:18px;box-shadow:0 8px 25px #6d422733;font:15px/1.6 ui-rounded,"Trebuchet MS",sans-serif;color:#7c5a42;z-index:30}
@@ -52,6 +53,7 @@
 .cookery-game[data-compact="true"] .cookery-finish{right:12px;bottom:8px;width:141px;height:auto;font-size:25px!important}
 .cookery-game[data-compact="true"] .cookery-source-cue,.cookery-game[data-compact="true"] .cookery-tool-cue{font-size:10px}
 .cookery-game[data-portrait="true"][data-stage="finished"] .cookery-finish,.cookery-game[data-compact="true"][data-stage="finished"] .cookery-finish{font-size:15px!important}
+.cookery-game:is([data-portrait="true"],[data-compact="true"]) .cookery-order{left:12px;bottom:14px;max-width:calc(100% - 178px)}
 @media(max-width:600px){.farm-dialog[data-panel="cookery"] .scene-back{right:65px;top:12px}}
 @media(max-height:620px){.cookery-game[data-portrait="false"] .cookery-caption{left:16px;top:60px;bottom:auto;max-width:calc(100% - 100px)}.cookery-game[data-portrait="false"] .cookery-hint{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.cookery-game *{transition:none!important;animation:none!important}}
