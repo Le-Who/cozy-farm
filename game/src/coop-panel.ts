@@ -1,7 +1,8 @@
-import { eggsPerBasket, eggsPerCrate, getCoopMorning, getEggUnpackAction, getRareIncubatorEgg, incubationDays, maxChickenHappiness, maxFlockSize, type FarmState } from './farm.ts'
+import { eggsPerBasket, eggsPerCrate, getCoopMorning, getEggUnpackAction, getRareIncubatorEgg, incubationDays, maxChickenHappiness, maxFlockSize, type FarmState, type StockItem } from './farm.ts'
 import { renderCoopMorning } from './coop-preview.ts'
 import { henFriends } from './hen-friendship.ts'
 import { ruCount } from './ru.ts'
+import { getLocalWarehouseSupply, warehouseConfirmationValue } from './warehouse-guidance.ts'
 
 type CoopComponents = {
   icon(id:string):string
@@ -15,15 +16,27 @@ export function hasIncubatorBasketSource(farm:FarmState):boolean {
     && farm.eggs===0 && farm.eggsReady===0 && getEggUnpackAction(farm,'basket').available
 }
 
+/** A loose local egg only; taking it and inserting it remain separate actions. */
+export function getIncubatorWarehouseEgg(farm:FarmState) {
+  if (farm.island !== 'home' || farm.coopSpecialization !== 'hatchery' || farm.flockSize >= maxFlockSize
+    || farm.hatchDay !== null || farm.eggs > 0 || farm.eggsReady > Number(farm.eggTrait !== null)
+    || getEggUnpackAction(farm,'basket').available || getEggUnpackAction(farm,'crate').available) return
+  const request:StockItem = {kind:'eggs',quantity:1}
+  const supply = getLocalWarehouseSupply(farm, request)
+  if (supply) return {request, supply, token:`${farm.day}:${warehouseConfirmationValue(supply)}`}
+}
+
 /** Existing actions, grouped by current daily work before optional services. No saved UI state. */
 export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopComponents):string {
   const morning=getCoopMorning(farm)
   const capacity=morning.blockedIfFed?' · соберите до отдыха':''
   const rare=getRareIncubatorEgg(farm)
+  const storedEgg=getIncubatorWarehouseEgg(farm)
   const incubation=farm.coopSpecialization==='hatchery'&&farm.flockSize<maxFlockSize
-    ?row('egg','Инкубатор',farm.hatchDay===null?`${rare ? 'Из припасов' : `1 обычное яйцо · в запасе ${farm.eggs}`} · ${ruCount(incubationDays,'ночь','ночи','ночей')}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
+    ?row('egg','Инкубатор',farm.hatchDay===null?`${storedEgg ? 'Обычное яйцо на складе' : rare ? 'Из припасов' : `1 обычное яйцо · в запасе ${farm.eggs}`} · ${ruCount(incubationDays,'ночь','ночи','ночей')}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
       farm.hatchDay!==null?button('К отдыху дома','visit-rest',true,{secondary:true})
         :hasIncubatorBasketSource(farm)?button('К корзине яиц','incubator-basket',true,{secondary:true})
+        :storedEgg?button('Забрать яйцо со склада','incubator-warehouse-egg',true,{value:storedEgg.token})
         :rare?button(`Положить ${rare.name.toLowerCase()}`,'incubate-rare-egg',true,{value:rare.token})
         :button('Положить яйцо','incubate-egg',farm.eggs>0)):''
   const packing=(farm.coopSpecialization==='packing'?row('ui-egg-crate',`Ящики яиц · ${farm.eggCrates}`,`Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,

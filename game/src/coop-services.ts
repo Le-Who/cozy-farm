@@ -2,7 +2,7 @@ const mountedCoopServices = new WeakMap<HTMLElement, () => void>()
 
 /** An available next hatch step belongs before optional care on compact screens. */
 function hasLiveHatchStep(daily: HTMLElement): boolean {
-  return !!daily.querySelector('[data-action="incubate-egg"]:not(:disabled), [data-action="incubate-rare-egg"]:not(:disabled), [data-action="incubator-basket"]:not(:disabled), [data-action="visit-rest"]:not(:disabled)')
+  return !!daily.querySelector('[data-action="incubate-egg"]:not(:disabled), [data-action="incubate-rare-egg"]:not(:disabled), [data-action="incubator-basket"]:not(:disabled), [data-action="incubator-warehouse-egg"]:not(:disabled), [data-action="visit-rest"]:not(:disabled)')
     || !!daily.querySelector('[data-action="incubate-egg"]:disabled') && !!daily.querySelector('[data-action="collect"]:not(:disabled)')
 }
 

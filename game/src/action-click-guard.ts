@@ -29,7 +29,7 @@ const guardedActions = new Set([
   'harbour-fish-trade', 'harbour-fish-catch', 'invite-resident', 'resident-service', 'finn-pier', 'tasting-bakery',
   'berry-nursery-ingredient', 'berry-nursery-source', 'berry-nursery-destination', 'berry-nursery-confirm', 'berry-nursery-reset',
   'commission-accept', 'commission-deliver', 'commission-cancel', 'commission-finish', 'commission-recipe', 'commission-rest', 'expedition-order-recipe',
-  'incubator-basket', 'incubate-egg', 'incubate-rare-egg', 'visit-rest', 'sleep', 'ferry-return', 'expedition-rest', 'expedition-discovery', 'expedition-restock', 'expedition-source', 'work-context', 'resume-recipe-draft', 'reset-recipe-draft',
+  'incubator-basket', 'incubator-warehouse-egg', 'incubate-egg', 'incubate-rare-egg', 'visit-rest', 'sleep', 'ferry-return', 'expedition-rest', 'expedition-discovery', 'expedition-restock', 'expedition-source', 'work-context', 'resume-recipe-draft', 'reset-recipe-draft',
   'forget-signature', 'follow-task', 'buy-feed', 'festival-contribute', 'market-next-rest', 'market-order-select', 'market-order-pickup', 'bread-basket-review', 'deliver-order', 'deliver-harbor', 'withdraw-harbor', 'harbor-next-rest',
   'show-requirement', 'warehouse-supply', 'warehouse-supply-withdraw', 'recipe-repeat-home', 'recipe-warehouse-withdraw',
   'store-tree', 'return-nursery-tree', 'fruit-tree-seed', 'nursery-sail-plot', 'supper-signature', 'share-meal', 'supper-cottage', 'serve-guest', 'fair-jam-picnic',
