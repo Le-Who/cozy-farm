@@ -57,6 +57,8 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   let pending: { id: string; identity: string; quantity: string; listScroll: number } | undefined;
   let tab: 'stock' | 'journal' = 'stock', notice = '', noticeTimer = 0, destroyed = false, frame = 0, lastTime = performance.now();
   let lastPhase = !state.open && !state.visitor ? 'idle' : '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
+  // Only this live scene owns a recently observed refusal. The save and customer ledger stay unchanged.
+  let lastRefusal: { buyer: BayShopVisitorId; serial: number; day: number; kind: 'expensive' | 'budget' } | undefined;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const art = (product: BayShopProduct, cls = '') => options.renderProduct?.(product, cls)
     ?? `<img class="${cls}" src="${escape(product.image)}" alt="" draggable="false">`;
@@ -144,7 +146,14 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   function paintDayGuidance(): void {
     const guidance = dayGuidance(), count = host.querySelector<HTMLElement>('.bay-shop-day-count'), detail = host.querySelector<HTMLElement>('.bay-shop-day-detail');
     if (count && count.textContent !== guidance.count) count.textContent = guidance.count;
-    if (detail && detail.textContent !== guidance.detail) detail.textContent = guidance.detail;
+    const refusal = lastRefusal;
+    const buyer = refusal && state.open && !state.visitor && state.serial === refusal.serial
+      && state.businessDay === refusal.day && guidance.remaining > 0
+      ? bayShopVisitors.find(person => person.id === refusal.buyer) : undefined;
+    const message = buyer && refusal
+      ? `${buyer.name}: ${refusal.kind === 'expensive' ? 'цена не подошла' : 'не хватило монет'}.`
+      : guidance.detail;
+    if (detail && detail.textContent !== message) detail.textContent = message;
     const next = host.querySelector<HTMLButtonElement>('[data-shop-next]');
     if (!next) return;
     next.hidden = !(guidance.action === 'music' && options.onOpenMusic || guidance.action === 'rest' && options.onGoRest);
@@ -214,7 +223,8 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (button.hasAttribute('data-freight')) { options.onOpenFreight?.(); return; }
     if (button.hasAttribute('data-open')) {
       if (!canToggleOpen()) { playBaySound('menu.blocked',.8); notice = 'Сначала поставьте хотя бы один товар на прилавок.'; render(); return; }
-      setBayShopOpen(state, !state.open); notice = state.open ? 'Лавка открыта' : 'Лавка закрыта'; changed(); return;
+      setBayShopOpen(state, !state.open); lastRefusal = undefined;
+      notice = state.open ? 'Лавка открыта' : 'Лавка закрыта'; changed(); return;
     }
     if (button.dataset.slot !== undefined) { pending = undefined; selected = Number(button.dataset.slot); tab = 'stock'; notice = ''; render(); return; }
     if (button.dataset.tab) {
@@ -232,12 +242,14 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     }
     if (button.hasAttribute('data-return')) {
       const returned = removeBayShopStock(state, selected);
+      if (returned) lastRefusal = undefined;
       if (returned && returned.quantity > 0) options.returnStock(returned.id, returned.quantity);
       notice = returned?.quantity ? 'Товары в припасах.' : 'Место на прилавке освобождено.'; changed(); return;
     }
     if (button.dataset.priceFactor) {
       const slot = state.slots[selected]; if (!slot) return;
-      setBayShopPrice(state, selected, Math.max(1, Math.min(10_000, Math.round(slot.product.basePrice * Number(button.dataset.priceFactor)))));
+      const price = Math.max(1, Math.min(10_000, Math.round(slot.product.basePrice * Number(button.dataset.priceFactor))));
+      if (price !== slot.price && setBayShopPrice(state, selected, price)) lastRefusal = undefined;
       notice = ''; changed(); return;
     }
     if (button.dataset.stock) {
@@ -270,6 +282,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!product || !placeShopQuantity(state, selected, product, quantity, options.takeStock)) {
       playBaySound('menu.blocked',.8); notice = 'Проверьте количество и свободное место на полке.'; render(); return;
     }
+    lastRefusal = undefined;
     if (quotedProduct && options.catalog) syncBayShopProducts(state, options.catalog);
     const listScroll = pending.listScroll;
     pending = undefined;
@@ -280,13 +293,15 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (rendering) return;
     const input = event.target as HTMLInputElement;
     if (!input.matches('[data-price]')) return;
-    if (event.type === 'focusout' && input.value === String(state.slots[selected]?.price)) return;
+    const previousPrice = state.slots[selected]?.price;
+    if (event.type === 'focusout' && input.value === String(previousPrice)) return;
     if (!setBayShopPrice(state, selected, Number(input.value))) {
       playBaySound('menu.blocked',.8); notice = 'Укажите целую цену от 1 до 10 000 монет.';
       input.value = String(state.slots[selected]?.price ?? 1);
     } else {
       notice = 'Цена сохранена'; saveChanges();
       const slot = state.slots[selected]!, shelf = host.querySelector<HTMLElement>(`[data-slot="${selected}"]`);
+      if (slot.price !== previousPrice) { lastRefusal = undefined; paintDayGuidance(); }
       shelf?.setAttribute('aria-label', `Место ${selected + 1}: ${slot.product.name}, остаток ${slot.quantity}, цена ${slot.price} монет`);
       const quote = host.querySelector<HTMLElement>('[data-shelf-quote]');
       if (quote) quote.textContent = shopRemainderQuote(slot.quantity,slot.price);
@@ -302,7 +317,15 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (destroyed) return;
     const elapsed = now - lastTime; lastTime = now;
     if (!document.hidden && elapsed < 1500) {
+      // Snapshot the undecided serial before the model mutates the live visitor.
+      const undecided = state.visitor?.outcome === null ? state.visitor.serial : undefined;
       const sales = advanceBayShop(state, elapsed, options.performanceBonus?.() ?? 0);
+      const visitor = state.visitor;
+      if (visitor && visitor.serial === undecided && visitor.outcome) {
+        const kind = visitor.outcome.kind;
+        lastRefusal = kind === 'expensive' || kind === 'budget'
+          ? { buyer: visitor.id, serial: visitor.serial, day: state.businessDay, kind } : undefined;
+      }
       for (const sale of sales) options.onEarn(sale.price);
       const phase = state.visitor ? `${state.visitor.serial}:${state.visitor.phase}` : 'idle';
       if (sales.length) { saveChanges(); render(); savedAt = now; }
@@ -323,6 +346,6 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   render(); frame = requestAnimationFrame(tick);
   return {
     refresh: render,
-    destroy() { if (destroyed) return; destroyed = true; clearTimeout(noticeTimer); cancelAnimationFrame(frame); resizeObserver.disconnect(); host.removeEventListener('input', quantityInput); host.removeEventListener('submit', submitStock); host.removeEventListener('click', click); host.removeEventListener('change', change); host.removeEventListener('focusout', change); if (state.open || state.visitor || JSON.stringify(state) !== savedShopState) saveChanges(); host.innerHTML = ''; },
+    destroy() { if (destroyed) return; destroyed = true; lastRefusal = undefined; clearTimeout(noticeTimer); cancelAnimationFrame(frame); resizeObserver.disconnect(); host.removeEventListener('input', quantityInput); host.removeEventListener('submit', submitStock); host.removeEventListener('click', click); host.removeEventListener('change', change); host.removeEventListener('focusout', change); if (state.open || state.visitor || JSON.stringify(state) !== savedShopState) saveChanges(); host.innerHTML = ''; },
   };
 }

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import * as model from '../src/bay-shop-model.ts'
-import { BayShopCustomerView } from '../src/bay-shop-customers.ts'
+import { BayShopCustomerView, renderBayShopCustomers } from '../src/bay-shop-customers.ts'
 import { shopReturnLabel, shopRemainderQuote } from '../src/bay-shop-price-copy.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 import { reserveShopGoods } from '../src/harbour-economy.ts'
@@ -130,4 +130,166 @@ test('opening requires stock on a shelf even with goods in hand and in storage; 
   mounted.refresh(); assert.doesNotMatch(toggle(), /disabled/); assert.match(toggle(), /aria-pressed="true"/)
   setBayShopOpen(farm.bayShop, false); mounted.refresh()
   assert.match(toggle(), / disabled/); mounted.destroy()
+})
+
+function earnedFirstRefusalShop(price: number) {
+  const opening = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const p = commissionPlayer(opening)
+  p.fruit('apple', 1); p.fruit('pear', 1); p.visit('home')
+  p.act('specializeFarmhouse', 'preserves'); p.act('cookDish', 'orchardPreserves'); p.visit('village')
+  const farm = p.state, id = 'dish:orchardPreserves'
+  const food = foodDescriptors(farm).find(item => item.id === id)!
+  assert.equal(food.count, 1)
+  assert.equal(farm.bayShop.serial, 0, 'ordinary playthrough has not used Own Shop')
+  assert.ok(reserveShopGoods(farm, id, 1))
+  assert.ok(stockBayShop(farm.bayShop, 0, {
+    id, identity:id, name:food.name, image:'/art/lavender/ui-signature-bright.webp',
+    basePrice:food.sellPrice, tags:[...food.ingredients, ...describeFood(food)],
+  }, 1))
+  assert.equal(farm.bayShop.slots[0]?.price, 22)
+  assert.ok(model.setBayShopPrice(farm.bayShop, 0, price))
+  setBayShopOpen(farm.bayShop, true)
+  return farm
+}
+
+/** Real scene renderer and frame loop, without browser, synthetic stock, or DOM layout claims. */
+function watchMountedRefusal(farm: ReturnType<typeof earnedFirstRefusalShop>) {
+  const source = readFileSync(new URL('../src/bay-shop.ts', import.meta.url), 'utf8')
+  const scene = stripTypeScriptTypes(source.slice(source.indexOf('const escape =')).replace('export function mountBayShop', 'function mountBayShop'))
+  class Control {
+    hidden = false
+    disabled = false
+    textContent = ''
+    readonly attributes: string[]
+    readonly dataset: Record<string,string>
+    constructor(attributes: string[] = [], dataset: Record<string,string> = {}) {
+      this.attributes = attributes
+      this.dataset = dataset
+    }
+    hasAttribute(name: string) { return this.attributes.includes(name) }
+    closest(selector: string) { return selector === 'button' ? this : null }
+  }
+  class Price {
+    value: string
+    constructor(value: string) { this.value = value }
+    matches(selector: string) { return selector === '[data-price]' }
+  }
+  const detail = new Control(), count = new Control(), next = new Control(), notice = new Control()
+  const nodes = new Map([['.bay-shop-day-detail',detail],['.bay-shop-day-count',count],
+    ['[data-shop-next]',next],['.bay-shop-notice',notice]])
+  const listeners = new Map<string,(event: unknown) => void>()
+  const host = {
+    innerHTML:'', querySelector:(selector:string) => nodes.get(selector) ?? null, querySelectorAll:() => [],
+    contains:(button:unknown) => button instanceof Control,
+    addEventListener:(key:string, cb:(event:unknown)=>void)=>listeners.set(key,cb),
+    removeEventListener:(key:string)=>listeners.delete(key),
+  }
+  const document = { activeElement:null, hidden:false }
+  const options = {
+    state:farm.bayShop, products:()=>[], onChange(){}, onClose(){}, onOpenMusic(){},
+    onEarn(coins:number){ farm.coins += coins },
+    returnStock(id:string, quantity:number){ assert.equal(id,'dish:orchardPreserves'); farm.dishes.orchardPreserves += quantity },
+  }
+  let now = 0, nextFrame: ((time:number)=>void) | undefined
+  const mounted = runInNewContext(scene + ';mountBayShop(host, options)', {
+    ...model, BayShopCustomerView, renderBayShopCustomers, bayShopDayGuidance, shopReturnLabel, shopRemainderQuote, host, options,
+    document, HTMLElement:Control, HTMLInputElement:Price, matchMedia:()=>({matches:false}),
+    performance:{now:()=>0}, requestAnimationFrame(cb:(time:number)=>void){ nextFrame=cb; return 1 },
+    cancelAnimationFrame(){ nextFrame=undefined }, clearTimeout(){}, window:{setTimeout:()=>0},
+    ResizeObserver:class { observe() {} disconnect() {} }, applyIngredientFinishes(){}, playBaySound(){},
+  }) as { destroy():void }
+  const step = () => { const frame = nextFrame; assert.ok(frame); now += 250; frame(now) }
+  function until(condition:()=>boolean) {
+    for (let pass=0; pass<500 && !condition(); pass++) step()
+    assert.ok(condition(), 'normal animation frames reached the desired visit phase')
+  }
+  // The live renderer opens the first empty shelf; use the same explicit
+  // occupied shelf selection the player makes before price or return actions.
+  listeners.get('click')?.({target:new Control([], {slot:'0'})})
+  return { detail, count, next, document, step, until, mounted,
+    press: (attributes:string[],dataset?:Record<string,string>)=>listeners.get('click')?.({target:new Control(attributes,dataset)}),
+    enterPrice:(value:string)=>listeners.get('change')?.({target:new Price(value),type:'change'}) }
+}
+
+test('an earned first refusal stays in the existing status between visitors, never as a budget promise', () => {
+  for (const [price, outcome, line] of [
+    [30,'expensive','Беа: цена не подошла.'], [96,'budget','Беа: не хватило монет.'],
+  ] as const) {
+    const farm = earnedFirstRefusalShop(price), balance = farm.coins, shop = farm.bayShop, ui = watchMountedRefusal(farm)
+    assert.match(ui.detail.textContent,/Следующий гость/)
+    ui.until(()=>shop.visitor?.outcome?.kind===outcome)
+    assert.equal(shop.visitor?.budget,95)
+    assert.match(ui.detail.textContent,/ещё в лавке/,'live speech still owns an active visit')
+    ui.until(()=>shop.visitor===null)
+    assert.equal(ui.detail.textContent,line)
+    assert.equal(ui.count.textContent,'Гости сегодня: 1 из 6')
+    assert.deepEqual([farm.coins,shop.sold,shop.revenue,shop.slots[0]?.quantity],[balance,0,0,1])
+    ui.press([], {tab:'journal'}); assert.equal(ui.detail.textContent,line,'looking at buyers does not clear it')
+    ui.until(()=>shop.visitor?.id==='finn')
+    assert.match(ui.detail.textContent,/ещё в лавке/)
+    assert.doesNotMatch(ui.detail.textContent,/Беа/)
+    ui.until(()=>shop.visitor===null && shop.visitsToday===6)
+    assert.equal(ui.next.hidden,false); assert.match(ui.detail.textContent,/Концерт/)
+    assert.deepEqual([farm.coins,shop.sold,shop.slots[0]?.quantity],price===30 ? [balance+30,1,0] : [balance,0,1])
+    assert.equal(shop.memories.mark.purchases['dish:orchardPreserves']?.bought,price===30 ? 1 : undefined)
+    ui.mounted.destroy()
+  }
+})
+
+test('price, shelf and reopening clear actual stale refusals; rejected or unchanged edits do not', () => {
+  const farm = earnedFirstRefusalShop(30), shop = farm.bayShop, ui = watchMountedRefusal(farm)
+  ui.until(()=>shop.visitor===null && shop.visitsToday===1)
+  assert.equal(ui.detail.textContent,'Беа: цена не подошла.')
+  ui.enterPrice('10001'); assert.equal(shop.slots[0]?.price,30); assert.equal(ui.detail.textContent,'Беа: цена не подошла.')
+  ui.enterPrice('30'); assert.equal(ui.detail.textContent,'Беа: цена не подошла.')
+  ui.press([], {priceFactor:'1.35'}); assert.equal(ui.detail.textContent,'Беа: цена не подошла.')
+  ui.mounted.destroy()
+  const returned = watchMountedRefusal(farm)
+  assert.match(returned.detail.textContent,/Следующий гость/,'own shop return starts a new view')
+  returned.until(()=>shop.visitor===null && shop.visitsToday===2)
+  assert.match(returned.detail.textContent,/Финн: цена/)
+  returned.enterPrice('22'); assert.equal(shop.slots[0]?.price,22)
+  assert.match(returned.detail.textContent,/Следующий гость/)
+  returned.mounted.destroy()
+
+  const separate = earnedFirstRefusalShop(30), stockView = watchMountedRefusal(separate)
+  stockView.until(()=>separate.bayShop.visitor===null && separate.bayShop.visitsToday===1)
+  assert.match(stockView.detail.textContent,/Беа: цена/)
+  stockView.press(['data-return'])
+  assert.equal(separate.dishes.orchardPreserves,1); assert.equal(separate.bayShop.slots[0],null)
+  assert.match(stockView.detail.textContent,/На полках пусто/)
+  stockView.mounted.destroy()
+})
+
+test('hidden frames and restoring an already-decided buyer do not synthesize a newly observed refusal', () => {
+  const farm = earnedFirstRefusalShop(96), balance=farm.coins, ui = watchMountedRefusal(farm)
+  ui.until(()=>farm.bayShop.visitor?.phase==='browsing')
+  const before = JSON.stringify(farm)
+  ui.document.hidden = true
+  for (let i=0; i<20; i++) ui.step()
+  assert.equal(JSON.stringify(farm),before)
+  ui.document.hidden = false
+  ui.until(()=>farm.bayShop.visitor?.outcome?.kind==='budget')
+  ui.mounted.destroy()
+  const snapshot = restoreFarm(JSON.parse(JSON.stringify(farm)))!
+  assert.ok(snapshot); assert.equal(snapshot.bayShop.visitor?.outcome?.kind,'budget')
+  const restored = watchMountedRefusal(snapshot)
+  restored.until(()=>snapshot.bayShop.visitor===null)
+  assert.match(restored.detail.textContent,/Следующий гость/)
+  assert.equal(snapshot.coins,balance)
+  restored.until(()=>snapshot.bayShop.visitor===null && snapshot.bayShop.visitsToday===2)
+  assert.match(restored.detail.textContent,/Финн/)
+  restored.press(['data-open']); assert.match(restored.detail.textContent,/Лавка закрыта/)
+  restored.press(['data-open']); assert.match(restored.detail.textContent,/Следующий гость/)
+  restored.mounted.destroy()
+})
+
+test('the ordinary first sale never leaves a refusal status or charges twice', () => {
+  const farm = earnedFirstRefusalShop(22), balance = farm.coins, ui = watchMountedRefusal(farm)
+  ui.until(()=>farm.bayShop.visitor===null && farm.bayShop.visitsToday===1)
+  assert.deepEqual([farm.coins,farm.bayShop.revenue,farm.bayShop.sold,farm.bayShop.slots[0]?.quantity],[balance+22,22,1,0])
+  assert.match(ui.detail.textContent,/На полках пусто/)
+  ui.until(()=>farm.bayShop.visitor===null && farm.bayShop.visitsToday===2)
+  assert.equal(farm.coins,balance+22)
+  ui.mounted.destroy()
 })
