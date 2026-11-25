@@ -30,7 +30,7 @@ import { buyGardenSeeds, gardenSeedQuote } from './garden-seed-basket'
 import { activeGardenPlan, plannedCropAt, followGardenPlan, removeGardenPlan } from './garden-plans'
 import { GardenPlanEditor, renderGardenPlans, renderGardenMode, gardenPlanToken } from './garden-plans-ui'
 import './garden-plans.css'
-import { inviteNeighborVisit, finishNeighborVisit, visitActivities } from './neighbor-visits'
+import { canInviteNeighbor, inviteNeighborVisit, finishNeighborVisit, visitActivities } from './neighbor-visits'
 import { renderNeighborVisits, renderVisitRest } from './neighbor-visits-ui'
 import { canIntroduceHenToVisitor, introduceHenToVisitor } from './farm'
 import './neighbor-visits.css'
@@ -2207,7 +2207,7 @@ function drawPanel() {
     }
     case 'intents': dialogContent.innerHTML = communityBoard(farm, communityArt); break
     case 'intent': dialogContent.innerHTML = communityIntent(farm, communityOrderId, communityArt); break
-    case 'neighbor': dialogContent.innerHTML = neighborDetail(farm, communityResident, communityArt) + (farm.neighbors[communityResident].completed>0?nav(button('Пригласить к себе на ферму','visit-book-home',true,{secondary:true})): ''); break
+    case 'neighbor': dialogContent.innerHTML = neighborDetail(farm, communityResident, communityArt) + (farm.neighbors[communityResident].completed>0?nav(button('Пригласить к себе на ферму','visit-book-home',true,{value:communityResident,secondary:true})): ''); break
     case 'request-food': dialogContent.innerHTML = requestedRecipeCard(); break
     case 'arrangement': {
       const request = arrangementRequest
@@ -4437,7 +4437,21 @@ app.addEventListener('click', async (event) => {
       drawPanel()
       break
     }
-    case 'visit-book-home': void visitPanelAt('home','neighbor-visits'); break
+    case 'visit-book-home': {
+      const resident = value === 'bea' || value === 'finn' ? value : undefined
+      if (value && (!resident || resident !== communityResident || panel !== 'neighbor' || !dialog.open
+        || !farm.village.residents.includes(resident) || !farm.neighbors[resident].completed)) break
+      const day = farm.day
+      await visitPanelAt('home','neighbor-visits')
+      // The harbour invitation points at this resident, not the first guest in the book.
+      if (resident && resident === communityResident && panel === 'neighbor-visits' && dialog.open
+        && farm.day === day && !island.isCrossing() && !farm.neighborVisits.active && canInviteNeighbor(farm,resident)) {
+        const heading = dialogContent.querySelector<HTMLElement>(`[data-visit-resident="${resident}"]`)
+        heading?.scrollIntoView({block:'start',behavior:'instant'})
+        heading?.focus({preventScroll:true})
+      }
+      break
+    }
     case 'visit-invite':
       if(panel==='neighbor-visits'&&dialog.open&&perform(()=>inviteNeighborVisit(farm,value),false,true)){
         closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
