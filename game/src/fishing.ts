@@ -28,6 +28,8 @@ export type FishingGameOptions = {
   onAgain?: () => void;
   /** Explicit opt-in after the rewarded daily quota is exhausted. */
   onPractice?: () => void;
+  /** Escape may return to the originating activity instead of closing the scene. */
+  onBack?: () => boolean;
   onCancel?: () => void;
 };
 
@@ -377,7 +379,11 @@ export function createFishingGame(host: HTMLElement, options: FishingGameOptions
     practice.disabled = true; options.onPractice?.();
   }, { signal });
   const keyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') { event.preventDefault(); options.onCancel?.(); return; }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (!event.repeat && !options.onBack?.()) options.onCancel?.();
+      return;
+    }
     if ((event.target as HTMLElement).closest('button') || model.phase === 'done') return;
     const leftKey = event.key === 'ArrowLeft' || event.code === 'KeyA' || event.key.toLowerCase() === 'a';
     const rightKey = event.key === 'ArrowRight' || event.code === 'KeyD' || event.key.toLowerCase() === 'd';

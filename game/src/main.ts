@@ -1645,6 +1645,11 @@ function mountFishing(practiceOnly = false) {
       return true
     },
     onCancel: () => { if (current()) closeDialog() },
+    onBack: () => {
+      if (!current() || !dialog.open || panel !== 'fishing' || farm.island !== 'grove' || panelHistory.at(-1)?.panel !== 'cove') return false
+      goBack(true)
+      return true
+    },
     onAgain: () => { if (current() && finished) mountFishing(practiceOnly) },
     onPractice: practiceOnly ? undefined : () => { if (current() && finished) mountFishing(true) },
     onFinish({ catches }) {
@@ -2273,6 +2278,12 @@ function drawPanel() {
       const bunch = hiveFlower === undefined ? undefined : getCapeBouquetPreview(farm,hiveFlower)
       const harvest = preview.harvest
       const upgrade = getCapeUpgrade(farm)
+      // A payable Apiary improves this still-available harvest, without replacing it.
+      const readyChoice = hiveFlower === undefined && upgrade?.nextLevel === 2 && upgrade.available && preview.now.available
+      const gatherAction = preview.planted && preview.waiting ? button('Домой к отдыху', 'visit-rest')
+        : button(preview.harvested ? 'Собрано' : 'Собрать мёд', 'collect-honey', preview.now.available)
+      const upgradeAction = upgrade ? button('Улучшить', 'cape-upgrade', true, { secondary: !readyChoice })
+        : button('Медовая кухня', 'visit-honey-kitchen', true, { secondary: true })
       dialogTitle.textContent = farm.capeLevel >= 2 ? 'Цветочная пасека' : 'Улей мыса'
       dialogTitle.setAttribute('aria-label', dialogTitle.textContent)
       dialogContent.innerHTML = `<div class="apiary-preview"><p class="dialog-intro">${preview.summary}</p>
@@ -2282,12 +2293,11 @@ function drawPanel() {
             ${harvest.wax ? row('ui-beeswax', 'Пчелиный воск', `×${harvest.wax}`) : ''}</ul>
           ${harvest.windHoney ? '<p class="dialog-intro">Мёд ветров заменяет одну обычную порцию.</p>' : ''}</section>` : ''}
         ${bunch ? nav(button(`Срезать букет · ${bunch.cost}`, 'cape-bouquet', true, {value:bunch.token, secondary:true})) : ''}
+        ${readyChoice ? nav(upgradeAction, gatherAction) : ''}
         ${preview.note ? `<p class="dialog-intro">${preview.note}</p>` : ''}
         <section aria-label="Мёд ветров"><h2 class="dialog-status">Мёд ветров</h2><p class="dialog-intro">${wind.detail}</p></section>
         ${wind.kind === 'wait' && !preview.waiting ? nav(button('Домой к отдыху', 'visit-rest', true, {secondary:true})) : ''}
-        ${nav(preview.planted && preview.waiting ? button('Домой к отдыху', 'visit-rest')
-          : button(preview.harvested ? 'Собрано' : 'Собрать мёд', 'collect-honey', preview.now.available),
-          upgrade ? button('Улучшить', 'cape-upgrade', true, { secondary: true }) : button('Медовая кухня', 'visit-honey-kitchen', true, { secondary: true }))}</div>`
+        ${readyChoice ? '' : nav(gatherAction, upgradeAction)}</div>`
       break
     }
     case 'cape-upgrade': {
