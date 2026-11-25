@@ -57,7 +57,7 @@ import { withdrawStoredSignature } from './stored-signature'
 import './village-budget.css'
 import { treeVariantCopy } from './ready-variant-guidance'
 import { canVisitMarketRest, getNextMarketOrders, renderNextMarketOrder } from './market-return'
-import { getMarketOrderBoard, renderMarketOrderPicker } from './market-orders-view'
+import { getMarketOrderBoard, placeReadyMarketOrder, renderMarketOrderPicker } from './market-orders-view'
 import { pickUpMarketOrderStock } from './market-order-pickup'
 import './market-orders-view.css'
 import './market-return.css'
@@ -579,6 +579,7 @@ const hotbarButtons = Array.from(app.querySelectorAll<HTMLButtonElement>('.hotba
 const marketButton = app.querySelector<HTMLButtonElement>('[data-panel="market"]')!
 const islandLocation = app.querySelector<HTMLElement>('.island-location')!
 const fieldViewButton = app.querySelector<HTMLButtonElement>('.view-toggle')!
+const stackedMarketOrders = window.matchMedia('(max-width: 600px)')
 const portraitView = window.matchMedia('(max-width: 680px) and (orientation: portrait)')
 const fieldLayout = window.matchMedia(`${portraitView.media}, (max-width: 900px) and (max-height: 600px) and (orientation: landscape)`)
 const numberFormat = new Intl.NumberFormat('ru-RU')
@@ -1895,7 +1896,9 @@ function goBack(keyboard = false) {
     }
     else if (previous.marketOrder?.source || previous.marketOrder?.warehouse) {
       // Satisfied row or changed withdrawal: read the same crate, never arm a new ingredient or delivery.
-      dialogContent.querySelector<HTMLElement>('.market-order-detail')?.focus({preventScroll:true})
+      const ready = dialogContent.querySelector<HTMLElement>('.market-orders-workspace > .market-order-detail:first-child')
+      ;(ready ?? dialogContent.querySelector<HTMLElement>('.market-order-detail'))?.focus({preventScroll:true})
+      ready?.scrollIntoView({block:'nearest'})
     }
     else if (supperCottage) dialogContent.querySelector<HTMLButtonElement>('[data-action="village-slot"][aria-pressed="true"]')?.focus({preventScroll:true})
     else if (previous.kitchenSourceItem) dialogContent.querySelector<HTMLButtonElement>('[data-action="recipe-family"][aria-pressed="true"]')?.focus({preventScroll:true})
@@ -2226,6 +2229,7 @@ function drawPanel() {
     }
     case 'market':
       dialogContent.innerHTML = marketCards()
+      if (marketTab === 'orders') placeReadyMarketOrder(dialogContent, stackedMarketOrders.matches)
       break
     case 'berry-renewal':
       dialogContent.innerHTML = renderBerryRenewal(farm, berryRenewalSelection, icon)
@@ -4181,8 +4185,9 @@ app.addEventListener('click', async (event) => {
     case 'market-order-pickup':
       if (panel === 'market' && dialog.open && marketTab === 'orders' && dialogContent.contains(control)
         && perform(() => pickUpMarketOrderStock(farm, selectedMarketOrder, value))) {
-        const detail = dialogContent.querySelector<HTMLElement>('.market-order-detail')
-        detail?.focus({preventScroll:true})
+        const ready = dialogContent.querySelector<HTMLElement>('.market-orders-workspace > .market-order-detail:first-child')
+        ;(ready ?? dialogContent.querySelector<HTMLElement>('.market-order-detail'))?.focus({preventScroll:true})
+        ready?.scrollIntoView({block:'nearest'})
       }
       break
     case 'market-order-select':
@@ -4864,6 +4869,9 @@ dialog.addEventListener('keydown', event => {
   // focused choice. Clicking first would keep keyboard focus on the old choice.
   choices[next].focus({ preventScroll: true })
   choices[next].click()
+})
+stackedMarketOrders.addEventListener('change', ({ matches }) => {
+  if (dialog.open && panel === 'market' && marketTab === 'orders') placeReadyMarketOrder(dialogContent, matches)
 })
 window.matchMedia('(max-width: 819px), (max-height: 559px)').addEventListener('change',()=>{if(dialog.open&&panel==='recipes')drawPanel()})
 dialogContent.addEventListener('toggle',event=>{

@@ -146,7 +146,7 @@ test('a guided Orders visit cannot travel or open another panel during an island
  }
 })
 
-test('the chooser precedes its selected detail in both the reading sequence and the responsive layout',()=>{
+test('default DOM places the chooser first without a CSS-only visual or tab order',()=>{
  const html=rendered(ready()),picker=html.indexOf('<nav class="market-order-picker"'),detail=html.indexOf('<div class="market-order-detail"')
  assert.ok(picker>=0&&picker<detail&&detail<html.indexOf('<summary>Когда появится следующий заказ'))
  assert.doesNotMatch(html,/tabindex="[1-9]/,'do not force tab order independently of reading order')

@@ -47,3 +47,27 @@ export function renderMarketOrderPicker(board: ReturnType<typeof getMarketOrderB
       `<button type="button" class="market-order-choice" data-action="market-order-select" data-value="${order.id}" aria-pressed="${order.id === board.selected}" aria-label="${escape(order.name)} · ${ruCount(order.reward, 'монета', 'монеты', 'монет')}${order.note ? ` · ${order.note}` : ''}"><span>${escape(order.name)}</span><strong>${icon('coin')}${order.reward}</strong>${order.note ? `<small>${order.note}</small>` : ''}</button>`).join('')}</section>` : ''
   }).join('')}</nav>`
 }
+
+/** Move the same ready card in the stacked layout, in visual and keyboard order. */
+export function placeReadyMarketOrder(content: HTMLElement, stacked: boolean) {
+  const workspace = content.querySelector<HTMLElement>('.market-orders-workspace')
+  const picker = workspace?.querySelector<HTMLElement>(':scope > .market-order-picker')
+  const detail = workspace?.querySelector<HTMLElement>(':scope > .market-order-detail')
+  const order = detail?.querySelector<HTMLElement>(':scope > .market-order[data-status="ready"]')
+  const items = order?.querySelector<HTMLElement>(':scope > .order-items')
+  const action = order?.querySelector<HTMLButtonElement>(':scope > [data-action="deliver-order"]:not(:disabled)')
+  if (!workspace || !picker || !detail || !order || !items || !action
+    || (workspace.firstElementChild === detail) === stacked) return
+
+  const focused = content.ownerDocument.activeElement
+  if (stacked) {
+    order.insertBefore(action, items)
+    workspace.insertBefore(detail, picker)
+  } else {
+    order.append(action)
+    workspace.append(detail)
+  }
+  // Crossing the breakpoint may blur the moved node. Never focus a new action.
+  if (focused instanceof HTMLElement && detail.contains(focused) && focused !== content.ownerDocument.activeElement)
+    focused.focus({ preventScroll: true })
+}
