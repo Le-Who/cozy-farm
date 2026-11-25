@@ -24,7 +24,7 @@ export function renderRestPreview(farm: FarmState, compact = false): string {
   const preview = getRestPreview(farm)
   const fairPrep = getNextFairCropPrep(farm, preview)
   const fairChoice = fairPrep ? `<div class="rest-fair-prep"><p><strong>${fairPrep.guest} завтра</strong> · ${cropDefinitions[fairPrep.crop].name} ${fairPrep.carried}/${fairPrep.required}</p>
-    <button type="button" class="dialog-button secondary" data-fair-crop-prep data-action="focus-bed" data-value="${fairPrep.index}">К грядке · полить сегодня</button></div>` : ''
+    <button type="button" class="dialog-button secondary" data-fair-crop-prep data-action="focus-bed" data-value="${fairPrep.index}">К грядке · ${fairPrep.task === 'harvest' ? 'собрать' : 'полить'} сегодня</button></div>` : ''
   const firstOtherDry = preview.dry.find(bed => bed.index !== fairPrep?.index)
   const otherDryChoice = firstOtherDry ? `<button type="button" class="dialog-button secondary" data-action="focus-bed" data-value="${firstOtherDry.index}">К сухой грядке · ${cropDefinitions[firstOtherDry.crop].name.toLowerCase()}</button>` : ''
   const groups = [

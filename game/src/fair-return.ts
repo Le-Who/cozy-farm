@@ -10,9 +10,9 @@ export function getNextFairGuest(farm: FarmState) {
   return guest ? { ...guest, day } : undefined
 }
 
-/** Only suggest one watering that would make tomorrow's ordinary-crop request possible. */
+/** Suggest one task only if it can make tomorrow’s ordinary-crop request possible. */
 export function getNextFairCropPrep(farm: FarmState, forecast = getRestPreview(farm)) {
-  if (farm.island !== 'home' || farm.fairGuestsServed === 0 || farm.water < 1) return
+  if (farm.island !== 'home' || farm.fairGuestsServed === 0) return
   const guest = getNextFairGuest(farm)
   if (!guest || guest.served || guest.item.kind !== 'produce') return
   const { item: crop, quantity: required } = guest.item
@@ -26,22 +26,22 @@ export function getNextFairCropPrep(farm: FarmState, forecast = getRestPreview(f
     return cropDefinitions[crop].yield - Number(!!(bed.trait ?? exposedTrait(guest.day, forecast.weather, index + 1)))
   }
   let available = carried + (getLocalWarehouseSupply(farm, guest.item)?.quantity ?? 0)
-  let onceToday = 0
+  let collectIndex: number | undefined
   for (const {index, crop: planted} of forecast.ready) {
     if (planted !== crop) continue
-    const ready = getBedHarvestPreview(farm, index)!
-    available += ready.ordinary - ready.picnicBonus
-    onceToday = Math.max(onceToday, ready.picnicBonus)
+    available += ordinaryAtDawn(index)
+    if (collectIndex === undefined && carried + (getBedHarvestPreview(farm, index)?.ordinary ?? 0) >= required) collectIndex = index
   }
-  available += onceToday
   for (const {index, crop: planted} of forecast.ripening) if (planted === crop) available += ordinaryAtDawn(index)
   if (available >= required) return
+  if (collectIndex !== undefined) return { task: 'harvest' as const, index: collectIndex, crop, guest: guest.name, carried, required }
+  if (farm.water < 1) return
   for (const {index, crop: planted} of forecast.dry) {
     const bed = farm.beds[index]
     if (planted !== crop || bed.kind !== 'crop' || bed.growth + 1 < cropDefinitions[crop].days) continue
     // Keep the surfaced choice self-contained: bag plus this harvest, no
     // extra withdrawal or harvest elsewhere needed to make its claim true.
-    if (carried + ordinaryAtDawn(index) >= required) return { index, crop, guest: guest.name, carried, required }
+    if (carried + ordinaryAtDawn(index) >= required) return { task: 'water' as const, index, crop, guest: guest.name, carried, required }
   }
 }
 
