@@ -1722,6 +1722,7 @@ function neighboursCard() {
 
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
+  harbourRecipe?: {id: string; preview: boolean}; // Only carried by this recipe's explicit crossing.
   commissionRecipe?: { line:string; prepared:boolean }; // This exact order line opened the book.
   tastingBakery?: string; // An explicit stop from this particular saved recipe.
   neighborComposerPlan?: string; // Only set by this visit's explicit “Свой рецепт” button.
@@ -1915,7 +1916,11 @@ function openShopScene(host:HTMLElement) {
   const catalog = harbourGoods(), byId = new Map(catalog.map(row => [row.id,row]))
   const products = ():BayShopStock[] => harbourGoods().map(row => ({...row,
     quantity:row.quantity+(farm.freight.warehouses.village[row.id] ?? 0)})).filter(row => row.quantity>0)
-  const options:BayShopOptions = {state:farm.bayShop,products,catalog,stockProduct:nextShopStock,
+  const source = panelHistory.at(-1)
+  const recipe = source?.panel === 'recipes' ? source.harbourRecipe : undefined
+  const recipeProduct = recipe?.preview ? 'signature:' + recipe.id : undefined
+  if (recipe) recipe.preview = false
+  const options:BayShopOptions = {state:farm.bayShop,products,catalog,stockProduct:nextShopStock,recipeProduct,returnToRecipe:!!recipe,
     takeStock:(id,n)=>{ const reserved=reserveShopGoods(farm,id,n); if(reserved)status(); return reserved },
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
@@ -2635,7 +2640,7 @@ function drawPanel() {
 
 // A map shortcut continues at the chosen place after the crossing. Only global
 // pages can be revisited on the new island; a local building belongs to its shore.
-async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryMorning?: number) {
+async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryMorning?: number, recipeId?: string) {
   if (island.isCrossing()) return
   // Keep an incubation morning on the farm so its hatch is not covered by a menu.
   const ferryVisit = ferryMorning !== undefined && farm.hatchDay !== farm.day + 1 && dialog.open && panel === 'bay-freight' && next === 'rest'
@@ -2646,8 +2651,10 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryM
     return
   }
   if (!canSailTo(farm,destination)) return
-  const returnPath = dialog.open && panel ? [...panelHistory,ferryVisit ?? rememberPanel()].filter(visit =>
-    ['guide','boat','archive','bay-freight','inventory','journal'].includes(visit.panel)) : []
+  const recipeVisit = recipeId && dialog.open && panel === 'recipes' && next === 'bay-shop' && destination === 'village'
+    ? {...rememberPanel(),harbourRecipe:{id:recipeId,preview:true}} : undefined
+  const returnPath = dialog.open && panel ? [...panelHistory,recipeVisit ?? ferryVisit ?? rememberPanel()].filter(visit =>
+    visit === recipeVisit || ['guide','boat','archive','bay-freight','inventory','journal'].includes(visit.panel)) : []
   if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
   closeDialog()
   await island.crossIsland(()=>perform(()=>sail(farm,destination),false,true))
@@ -2737,7 +2744,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   }
   if (next === 'bay-freight' && ferryArrival.take(farm.freight.expeditions.active,dialog.open)) presentFerryArrival(dialogContent)
   updateCommunityReturn()
-  const sceneEntry = next === 'bay-shop' ? (nextShopStock ? dialogContent.querySelector<HTMLInputElement>('[data-stock-quantity]') : null) ?? dialogContent.querySelector<HTMLElement>('.bay-shop-close')
+  const sceneEntry = next === 'bay-shop' ? dialogContent.querySelector<HTMLInputElement>('[data-stock-quantity]') ?? dialogContent.querySelector<HTMLElement>('.bay-shop-close')
     : next === 'bay-freight' ? dialogContent.querySelector<HTMLElement>('.bay-freight [data-action="close"]')
     : next === 'bay-music' ? dialogContent.querySelector<HTMLElement>(musicView?.sheet ? '.bay-music-sheet-close' : '.bay-music-close')
     : next === 'workshop' ? dialogContent.querySelector<HTMLElement>('.workshop-close')
@@ -4093,6 +4100,13 @@ app.addEventListener('click', async (event) => {
       const guest = farm.island === 'home' ? farm.neighborVisits.active : null
       if (control.dataset.visit !== guest?.serial.toString() || guest && !control.closest('details[open]')) break
       await visitPanelAt('village','bay-music')
+      break
+    }
+    case 'recipe-harbour-shop': {
+      if (panel !== 'recipes' || !dialog.open || !dialogContent.contains(control) || island.isCrossing() || farm.island === 'village'
+          || !farm.village.built || !value || selectedBookId(farm,recipeBook.view) !== value || !(farm.culinary.stock[value] > 0)) break
+      control.focus({preventScroll:true})
+      await visitPanelAt('village','bay-shop',undefined,value)
       break
     }
     case 'open-panel': if(value&&value in panelTitles)openPanel(value as Panel);break

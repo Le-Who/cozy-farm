@@ -114,7 +114,8 @@ test('only an exact last carried jar with a live tasting replaces its generic sh
     const blocked=structuredClone(farm);block(blocked)
     assert.equal(tasting.lastPortionShopStock(blocked,recipe),undefined)
     const old=render(blocked);assert.doesNotMatch(old,/data-action="recipe-shop-stock"/)
-    assert.match(old,/data-action="open-panel" data-value="bay-shop"/)
+    if (blocked.island === 'village') assert.match(old,/data-action="open-panel" data-value="bay-shop"/)
+    else assert.match(old,/data-action="recipe-harbour-shop" data-value="s1"/)
   }
   const afterGift=structuredClone(farm);assert.ok(tasteSignature(afterGift,recipe,'bea').ok)
   assert.doesNotMatch(render(afterGift),/data-action="recipe-shop-stock"/)

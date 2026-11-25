@@ -16,6 +16,8 @@ import { applyIngredientFinishes } from './ingredient-finish';
 export type BayShopOptions = {
   state: BayShopState;
   stockProduct?: string;
+  recipeProduct?: string;
+  returnToRecipe?: boolean;
   catalog?: readonly BayShopProduct[];
   products(): BayShopStock[];
   takeStock(id: string, quantity: number): boolean;
@@ -45,7 +47,10 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   const canToggleOpen = () => state.open || state.slots.some(slot => slot && slot.quantity > 0);
   const customerView = new BayShopCustomerView();
   // Exact entry is only a quote. Defer catalog writes to an explicit placement.
-  if (!options.stockProduct && options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
+  const quotedProduct = options.stockProduct ?? options.recipeProduct;
+  const recipeReturn = !!options.stockProduct || options.returnToRecipe;
+  const closeLabel = recipeReturn ? 'К рецепту' : 'Вернуться в бухту';
+  if (!quotedProduct && options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
   let savedShopState = JSON.stringify(state);
   function saveChanges() { options.onChange(); savedShopState = JSON.stringify(state); }
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
@@ -109,7 +114,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     const scroll = returnStock?.listScroll ?? host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
     rendering = true;
     host.innerHTML = `<section class="bay-shop" aria-label="Своя лавка у моря">
-      <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button><button type="button" class="bay-shop-close" data-close aria-label="${options.stockProduct ? 'К рецепту' : 'Вернуться в бухту'}" title="${options.stockProduct ? 'К рецепту' : 'Вернуться в бухту; работа лавки не меняется'}">×</button></div></header>
+      <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button><button type="button" class="bay-shop-close${options.returnToRecipe ? ' bay-shop-recipe-back' : ''}" data-close aria-label="${closeLabel}" title="${recipeReturn ? closeLabel : closeLabel + '; работа лавки не меняется'}">${options.returnToRecipe ? closeLabel : '×'}</button></div></header>
       <div class="bay-shop-scene"><div class="bay-shop-stage" style="background-image:url('${escape(options.background ?? '/art/lavender/bay/shop.webp')}')">
         <div class="bay-shop-display" aria-label="Четыре места на прилавке">${state.slots.map((slot, index) => `<button type="button" class="bay-shop-shelf ${index === selected ? 'is-selected' : ''}" data-user-text data-slot="${index}" aria-pressed="${index === selected}" aria-label="Место ${index + 1}${slot ? `: ${escape(slot.product.name)}, остаток ${slot.quantity}, цена ${slot.price} монет` : ': свободно'}">
           <span class="bay-shop-shelf-product">${slot && slot.quantity > 0 ? art(slot.product) : `<span class="bay-shop-shelf-empty">${slot ? 'Продано' : '+'}</span>`}</span>${slot ? `<span class="bay-shop-shelf-label">${money(slot.price)} <span aria-hidden="true">●</span><small>×${slot.quantity}</small></span>` : ''}</button>`).join('')}</div>
@@ -261,7 +266,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!product || !placeShopQuantity(state, selected, product, quantity, options.takeStock)) {
       playBaySound('menu.blocked',.8); notice = 'Проверьте количество и свободное место на полке.'; render(); return;
     }
-    if (options.stockProduct && options.catalog) syncBayShopProducts(state, options.catalog);
+    if (quotedProduct && options.catalog) syncBayShopProducts(state, options.catalog);
     pending = undefined;
     playBaySound('harbour.crate',.6); notice = `На полку добавлено: ${quantity}.`; changed();
     host.querySelector<HTMLElement>(`[data-slot="${selected}"]`)?.focus({preventScroll:true});
@@ -304,9 +309,11 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   }
   const resizeObserver = new ResizeObserver(fitStage); resizeObserver.observe(host);
   host.addEventListener('input', quantityInput); host.addEventListener('submit', submitStock); host.addEventListener('click', click); host.addEventListener('change', change); host.addEventListener('focusout', change);
-  if (options.stockProduct) {
-    const product = options.products().find(item => item.id === options.stockProduct && item.identity === options.stockProduct && item.quantity === 1);
-    if (product) previewStock(product,-1);
+  if (quotedProduct) {
+    const product = options.products().find(item => item.id === quotedProduct && item.identity === quotedProduct
+      && (options.stockProduct ? item.quantity === 1 : item.quantity > 0));
+    if (product && !previewStock(product,-1) && options.recipeProduct)
+      notice = 'Все места заняты. Уберите товар кнопкой ↶.';
   }
   render(); frame = requestAnimationFrame(tick);
   return {
