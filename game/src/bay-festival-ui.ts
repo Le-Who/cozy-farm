@@ -102,8 +102,8 @@ export function renderFestivalPanel(farm: FarmState, options: FestivalViewOption
         alternative.available > 0 ? 'festival-contribute' : 'festival-source', `${requirement.id}|${alternative.id}`,
         !active.waitingNight && (alternative.available === 0 || active.canContribute), 'festival-contribution');
     };
-    // What you can bring comes before directions to other species.
-    const choices = requirement.id === 'fish' || requirement.alternatives.some(alt=>alt.exhibit)
+    // Keep ready treats ahead of finding ingredients; the existing disclosure still holds the other choices.
+    const choices = requirement.id === 'fish' || (requirement.id === 'treat' && active.canContribute) || requirement.alternatives.some(alt=>alt.exhibit)
       ? [...requirement.alternatives].sort((a, b) => Number(b.available > 0) - Number(a.available > 0))
       : requirement.alternatives;
     const alternatives = choices.map(contribution);
