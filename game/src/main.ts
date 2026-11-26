@@ -3773,7 +3773,19 @@ app.addEventListener('click', async (event) => {
     }
     case 'berry-nursery-ingredient': {
       const requirement = value === undefined ? undefined : requirementLinks.get(value)
-      if (requirement?.kind !== 'stock' || getBerryNurserySource(farm, requirement.item) === undefined) break
+      if (requirement?.kind !== 'stock') break
+      const ripe = getBerryNurserySource(farm, requirement.item)
+      if (ripe === undefined) break
+      // On an entirely planted farm, preserving this exact variety does not require making room.
+      if (farm.island === 'home' && farm.beds.every(bed => bed.kind === 'crop')) {
+        if (!dialog.open || !dialogContent.contains(control) || ingredientCount(farm, requirement.item) >= requirement.item.quantity) break
+        control.focus({preventScroll:true})
+        openPanel('berry-renewal')
+        if (panel === 'berry-renewal' && dialog.open && berryRenewalSelection.choose(farm, ripe)) {
+          drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true})
+        }
+        break
+      }
       await visitPanelAt('home', 'berry-nursery')
       const source = getBerryNurserySource(farm, requirement.item)
       if (panel !== 'berry-nursery' || !dialog.open || source === undefined) break
