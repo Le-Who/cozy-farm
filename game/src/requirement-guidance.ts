@@ -184,11 +184,11 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
 }
 
 /** Read-only wayfinding. Following a condition never purchases, harvests, rests or delivers. */
-export function getRequirementHint(farm: FarmState, requirement: Requirement, origin?: 'saved-recipe'): RequirementHint {
+export function getRequirementHint(farm: FarmState, requirement: Requirement, origin?: 'saved-recipe' | 'recipe-draft'): RequirementHint {
   if (requirement.kind === 'stock') {
     const item = requirement.item, hint = stock(farm, item);
-    // Keep this exact recipe on Back. A warehouse, crossing or planting task keeps its own route.
-    if (origin === 'saved-recipe' && item.kind === 'fruit' && farm.fruit[item.item] < item.quantity && hint.action.target === 'visit-tree' &&
+    // Keep the exact saved recipe or active draft on Back. Other source routes stay unchanged.
+    if ((origin === 'saved-recipe' || origin === 'recipe-draft') && item.kind === 'fruit' && farm.fruit[item.item] < item.quantity && hint.action.target === 'visit-tree' &&
         (farm.island === 'home' || farm.island === 'grove')) {
       const tree = farm.trees[farm.island][Number(hint.action.value)];
       if (tree?.tree === item.item && tree.fruitReady > Number(!!tree.trait))
