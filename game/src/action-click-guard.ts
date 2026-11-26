@@ -27,7 +27,7 @@ const guardedActions = new Set([
   'picnic-field', 'cape-bouquet', 'grove-pearl-display', 'cove-watch',
   'garden-shop', 'garden-shop-scope', 'garden-shop-back', 'garden-buy-seeds', 'garden-save-seeds',
   'garden-slot', 'garden-edit', 'garden-copy', 'garden-cancel', 'garden-brush', 'garden-paint', 'garden-save', 'garden-follow', 'garden-delete', 'garden-remove', 'garden-bed',
-  'visit-invite', 'visit-finish', 'visit-reply', 'visit-introduce-hen', 'visit-do', 'visit-book-home',
+  'visit-invite', 'visit-finish', 'visit-reply', 'visit-introduce-hen', 'visit-do', 'visit-find-tree', 'visit-show-tree', 'visit-book-home',
   'hen-walk-start', 'hen-walk-return', 'hen-guide',
   'hen-friendship-open', 'hen-friend-select', 'hen-treat', 'pet',
   'chicken-feed-open', 'mix-chicken-feed',

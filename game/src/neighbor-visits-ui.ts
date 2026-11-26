@@ -1,4 +1,5 @@
 import { standingVisitCrop } from './standing-crop-visit.ts'
+import { restingHomeTree, standingVisitTree } from './standing-tree-visit.ts'
 import { cropDefinitions, getBedStage, getWorkshopAction, treeDefinitions, type FarmState } from './farm.ts'
 import { henFriends } from './hen-friendship.ts'
 import { canInviteNeighbor, getActiveVisitMemory, visitActivities, visitActivityIds, visitName, type VisitActivityId } from './neighbor-visits.ts'
@@ -11,7 +12,7 @@ function readiness(farm:FarmState,id:VisitActivityId){
     case 'hen':return 'Можно познакомить с любой курочкой, даже уже поглаженной.'
     case 'pastry':return getWorkshopAction(farm).available?'Для одной выпечки есть 2 пшеницы и 1 яйцо. Дополнительных расходов нет.':'Для ручной выпечки нужны 2 пшеницы и 1 яйцо. Изделие останется у вас.'
     case 'fruit':{
-      const tree=ripeHomeTree(farm)
+      const tree=ripeHomeTree(farm)??restingHomeTree(farm)
       if(tree)return `Можно показать: ${treeDefinitions[tree.tree].treeName.toLowerCase()}.`
       return farm.neighborVisits.active?.activity===id?'Гостя можно позвать снова, когда в саду созреют плоды.':'Дождитесь спелых плодов домашнего дерева. Визит можно начать позднее.'
     }
@@ -19,14 +20,14 @@ function readiness(farm:FarmState,id:VisitActivityId){
 }
 export function renderNeighborVisits(farm:FarmState,icon:(key:string)=>string, pastrySupplies?:()=>string){
   const active=farm.neighborVisits.active,activity=active&&visitActivities[active.activity]
-  const standing=standingVisitCrop(farm)
+  const standing=standingVisitCrop(farm),restingTree=standingVisitTree(farm)
   const waitingForPastry=active?.activity==='beaHands' && !active.observation && !getWorkshopAction(farm).available
   const harvestReady=activity?.kind==='fruit'?!!ripeHomeTree(farm):activity?.kind!=='crop'||farm.beds.some(b=>b.kind==='crop'&&getBedStage(b)==='ripe')
   const targetLabel=activity?.kind==='pastry'?'В кондитерскую'
     :activity?.kind==='fruit'?(harvestReady?'К дереву':'Нет спелых плодов')
     :harvestReady?'К зрелой грядке':'Нет зрелых грядок'
   const nextStep=!active || !activity || active.observation ? '' : waitingForPastry ? (pastrySupplies?.() ?? `<p>${readiness(farm,active.activity)}</p>`) : `<p>${readiness(farm,active.activity)}</p>
-        ${activity.kind==='hen'?`<div class="home-visit-hens">${henFriends.slice(0,farm.flockSize).map((hen,id)=>button(`Познакомить: ${hen.name}`,'visit-introduce-hen',`${active.serial}:${id}`)).join('')}</div><small>Знакомство с гостем не даёт дополнительных шагов дружбы с курочкой.</small>`:button(targetLabel,'visit-do',String(active.serial),harvestReady)}${standing?button(`Показать на грядке · ${escape(standing.name)}`,'visit-show-crop',standing.token):''}`
+        ${activity.kind==='hen'?`<div class="home-visit-hens">${henFriends.slice(0,farm.flockSize).map((hen,id)=>button(`Познакомить: ${hen.name}`,'visit-introduce-hen',`${active.serial}:${id}`)).join('')}</div><small>Знакомство с гостем не даёт дополнительных шагов дружбы с курочкой.</small>`:restingTree?button('К дереву','visit-find-tree',restingTree.token):button(targetLabel,'visit-do',String(active.serial),harvestReady)}${standing?button(`Показать на грядке · ${escape(standing.name)}`,'visit-show-crop',standing.token):''}`
   const memories=farm.neighborVisits.memories,recordedThisVisit=active?.observation && getActiveVisitMemory(farm)
   const archived=recordedThisVisit ? memories.filter(memory=>memory.serial!==recordedThisVisit.serial) : memories
   const present=active&&activity?`<article class="home-visit-active" aria-label="Гость на ферме"><header>${icon(`ui-${activity.resident}`)}<div><small>Сегодня в гостях</small><h2>${visitName(activity.resident)} · ${activity.title}</h2></div></header>

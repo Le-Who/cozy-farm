@@ -2140,6 +2140,11 @@ export function createIsland(
       describeFocus();
       requestPaint();
     },
+    // Keep the existing view-mode and bedside guidance extraction boundaries intact.
+    guideHomeVisitorToTree(index:number): void {
+      const stop=currentSites().find(site=>sameTarget(site.target,{kind:'tree',index}))?.stop
+      if(state&&homeVisitor&&stop)guideHomeVisitor(homeVisitor,state,nativeHenPoint({x:stop.x-15,y:stop.y}),'finnOrchard')
+    },
     henWalkAvailable(): boolean { return world.available && !crossing && state?.island === 'home'; },
     henWalkStatus(): HenCompanionStatus | null { return companion ? { id: companion.id, returning: companion.returning, ...(companion.guide ? {guiding:true} : {}) } : null; },
     henFieldTarget(id:number): HenFieldTarget|undefined { return fieldRoute(id)?.target; },

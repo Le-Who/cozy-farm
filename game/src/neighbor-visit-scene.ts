@@ -13,9 +13,9 @@ export function syncHomeVisitor(actor:HomeVisitor|undefined,farm:FarmState):Home
   return actor
 }
 /** Use the existing walkable aisle, not the plant's harvest hit area. */
-export function guideHomeVisitor(actor:HomeVisitor,farm:FarmState,stop:HomeVisitor['point']) {
+export function guideHomeVisitor(actor:HomeVisitor,farm:FarmState,stop:HomeVisitor['point'],activity:'beaHarvest'|'finnOrchard'='beaHarvest') {
   const visit=farm.neighborVisits.active
-  if(farm.island==='home'&&visit?.activity==='beaHarvest'&&visit.serial===actor.serial&&!actor.leaving){
+  if(farm.island==='home'&&visit?.activity===activity&&visit.startedOn===farm.day&&visit.serial===actor.serial&&!actor.leaving){
     actor.route=henWalkPath(actor.point,stop,farm.buildingLevels)
   }
 }

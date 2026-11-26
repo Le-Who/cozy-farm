@@ -1,6 +1,7 @@
 import { canPlayWithBea } from './bea-duet'
 import { finnPicnicRide, sailHomeWithFinn } from './finn-picnic-ride'
 import { standingVisitCrop, showStandingVisitCrop } from './standing-crop-visit'
+import { standingVisitTree, showStandingVisitTree } from './standing-tree-visit'
 import { projectContributionCopy, projectLevelCopy, projectRewardLabel } from './project-readiness-copy'
 import './market-project-readiness.css'
 import { MarketInlineSales, inlineReceiptText } from './market-inline-sale'
@@ -2827,8 +2828,10 @@ function drawPanel() {
       dialogTitle.setAttribute('aria-label',dialogTitle.textContent)
       if(slot){
         const definition=treeDefinitions[slot.tree],growing=slot.age<definition.days
+        const standing=standingVisitTree(farm)
         dialogContent.innerHTML=treeSelector()+`<div class="tree-focus">${icon(`ui-tree-${slot.tree}`)}${slot.fruitReady ? '' : `<strong data-tree-remaining tabindex="-1">${growing ? 'До зрелости: ' + quantity(treeNightsToFruit(slot),'ночь') : 'Новые плоды завтра'}</strong>`}
-          ${treeVariantCopy(slot)?`<p class="dialog-intro">${treeVariantCopy(slot)}</p>`:''}${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):panelHistory.at(-1)?.panel==='recipes'?button('К рецепту','back',true,{secondary:true}):''}</div>
+          ${treeVariantCopy(slot)?`<p class="dialog-intro">${treeVariantCopy(slot)}</p>`:''}${slot.fruitReady?button(`Собрать · ${slot.fruitReady}`,'pick-fruit',action.available):panelHistory.at(-1)?.panel==='recipes'?button('К рецепту','back',true,{secondary:true}):''}
+          ${standing?.index===treeSlot ? button('Показать Финну','visit-show-tree',true,{value:standing.token}) : ''}</div>
           <p class="dialog-intro">Хранение бесплатно освободит это место. Возраст, готовые плоды и особенность сохранятся; рост и новые плоды будут на паузе.</p>
           ${nav(button('Убрать дерево на хранение','store-tree',true,{value:treeSlot,secondary:true}))}`
       }else{
@@ -4904,6 +4907,14 @@ app.addEventListener('click', async (event) => {
       perform(()=>introduceHenToVisitor(farm,Number(parts[2])),false,true)
       break
     }
+    case 'visit-find-tree': {
+      if(panel!=='neighbor-visits'||!dialog.open||island.isCrossing()||!dialogContent.contains(control))break
+      const tree=standingVisitTree(farm)
+      if(!tree||tree.token!==value){drawPanel();break}
+      closeDialog();if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
+      island.focusTarget({kind:'tree',index:tree.index})
+      break
+    }
     case 'visit-show-crop': {
       if(panel!=='neighbor-visits'||!dialog.open)break
       const crop=standingVisitCrop(farm)
@@ -5351,6 +5362,17 @@ app.addEventListener('click', async (event) => {
     case 'plant-tree': {
       const tree = treeIds.find((id) => id === value)
       if (tree && perform(() => plantTree(farm, treeSlot, tree))) playBaySound('orchard.sapling', 1, 0)
+      break
+    }
+    case 'visit-show-tree': {
+      if(panel!=='tree'||!dialog.open||island.isCrossing()||!dialogContent.contains(control))break
+      const tree=standingVisitTree(farm)
+      if(!tree||tree.index!==treeSlot||tree.token!==value)break
+      closeDialog()
+      if(perform(()=>showStandingVisitTree(farm,tree.token))){
+        island.guideHomeVisitorToTree(tree.index)
+        island.focusTarget({kind:'tree',index:tree.index})
+      }
       break
     }
     case 'pick-fruit': {
