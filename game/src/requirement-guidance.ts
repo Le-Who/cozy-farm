@@ -256,7 +256,17 @@ export function getRequirementHint(farm: FarmState, requirement: Requirement, or
   if (building) return getRequirementHint(farm,{kind:'building',building});
   if (id === 'village-coins') return farm.coins >= getVillageProject(farm).coins ? atHome(farm,route('village-project')) : safe(getCoinGuidance(farm,getVillageProject(farm).coins,'Лавандовая гавань'));
   if (id.startsWith('supply-')) {
-    const supply = getVillageProject(farm).items.find(({item}) => `supply-${item.kind}` === id);
+    const project = getVillageProject(farm);
+    const supply = project.items.find(({item}) => `supply-${item.kind}` === id);
+    if (requirement.island === 'village' && farm.island === 'home' && farm.boatOwned && project.unlocked
+        && !farm.village.built && supply?.item.kind === 'handmade' && supply.item.item === 'round') {
+      const missing = supply.item.quantity - supply.delivered - ingredientCount(farm, supply.item);
+      const voyage = farm.freight.expeditions.active;
+      // This already committed cargo can finish the roll requirement. Receiving is still a separate action.
+      if (missing > 0 && voyage?.phase === 'ready' && voyage.kind === 'trade' && voyage.port === 'mill'
+          && voyage.incoming.some(item => item.id === bayProductId(supply.item) && item.quantity >= missing))
+        return { ...route('open-panel','bay-freight'), selector:'[data-action="expedition-claim"]' };
+    }
     if (supply?.item.kind === 'fish' && ingredientCount(farm,supply.item) < supply.item.quantity-supply.delivered) return atHome(farm, {...route('village-project'), notice:'Для гавани можно поймать рыбу или привезти местный улов паромом. Выберите удобный путь.'});
     if (supply) return ingredientCount(farm,supply.item) >= supply.item.quantity-supply.delivered
       ? atHome(farm,route('village-project')) : stock(farm,{...supply.item,quantity:supply.item.quantity-supply.delivered});

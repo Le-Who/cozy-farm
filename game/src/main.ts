@@ -1137,9 +1137,13 @@ function deliveryItems(items: ReturnType<typeof getProject>['items'], explicit =
       const copy = projectContributionCopy({ item, delivered, available })
       return requirementLink(`${icon(image)}<span>${name}</span><strong class="project-fair-count">${copy.delivered}</strong><span class="project-fair-contribution${available ? ' is-available' : ''}">${copy.available}</span>`, available >= item.quantity-delivered ? {kind:'delivery'} : {kind:'stock',item:{...item,quantity:item.quantity-delivered}}, 'ingredient', `${name}, ${copy.delivered}, ${copy.available}`, delivered === item.quantity)
     }
+    // The construction card and island checklist share the same source for this exact roll.
+    const missing: Requirement = contributions && item.kind === 'handmade' && item.item === 'round'
+      ? {kind:'journey',island:'village',id:'supply-handmade'}
+      : {kind:'stock',item:{...item,quantity:item.quantity-delivered}}
     return requirementLink(`${icon(image)}<span>${name}</span>
       <strong><span class="sr-only">Доставлено </span>${delivered}/${item.quantity}</strong>
-      ${available ? `<span class="project-available">+${available}<span class="sr-only"> в наличии</span></span>` : ''}`, available >= item.quantity-delivered ? {kind:'delivery'} : {kind:'stock',item:{...item,quantity:item.quantity-delivered}}, 'ingredient', name, delivered === item.quantity)
+      ${available ? `<span class="project-available">+${available}<span class="sr-only"> в наличии</span></span>` : ''}`, available >= item.quantity-delivered ? {kind:'delivery'} : missing, 'ingredient', name, delivered === item.quantity)
   }).join('')
 }
 
