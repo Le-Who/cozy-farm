@@ -72,6 +72,12 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
   if (item.kind === 'seaSalt' && farm.seaSalt >= item.quantity) return safe(getSupplyGuidance(farm,item,'нужные припасы'));
   if (item.kind === 'beeswax' && farm.beeswax >= item.quantity) return {...route('open-panel','inventory'),notice:`Пчелиный воск уже в припасах: ${farm.beeswax}. Дополнительный сбор не нужен.`};
   if (getLocalWarehouseSupply(farm, item)) return safe(getSupplyGuidance(farm, item, 'нужные припасы'));
+  if (item.kind === 'beeswax' && farm.island !== 'cape' && farm.capeLevel >= 2 && canSailTo(farm, 'cape')) {
+    // Warehouse wax and the daily hive harvest are independent. Re-read the
+    // ordinary local quote on arrival; traveling never withdraws the wax.
+    const stored = getLocalWarehouseSupply({ ...farm, island:'cape' }, item);
+    if (stored && stored.carried + stored.quantity >= item.quantity) return route('sail','cape');
+  }
   if (item.kind === 'eggs') {
     const packed = getPackedEggSource(farm, item.quantity);
     if (packed) {
