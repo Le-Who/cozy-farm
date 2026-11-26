@@ -896,25 +896,38 @@ function fishSource(id: FishId): string {
   return {perch:'Родной остров · рыбалка',seaBass:'Солёная роща · рыбалка',moonfish:'Глубже 75 м · редкий улов',lanternfish:'Глубже 100 м · редкий улов'}[id]
 }
 
-function inventoryStockRow(listing: ReturnType<typeof goods>[number]): string {
-  const { image, name, count, trait, item, key, price } = listing
+function firstGroveCatchOrder() {
+  if (farm.island !== 'home' && (farm.island !== 'grove' || !canSailTo(farm, 'home'))) return
+  if (farm.orders.grove.completed !== 0) return
+  const order = getMarketOrders(farm).find(order => order.lane === 'grove')
+  if (order?.status !== 'ready' || order.items.length !== 2
+    || !order.items.some(item => item.kind === 'fish' && item.item === 'seaBass' && item.quantity === 1)
+    || !order.items.some(item => item.kind === 'seaSalt' && item.quantity === 1)) return
+  return { lane:order.lane, reward:order.reward, token:`${farm.day}:${order.lane}:${order.reward}` }
+}
+
+function inventoryStockRow(listing: ReturnType<typeof goods>[number] & { groveCatch?: ReturnType<typeof firstGroveCatchOrder> }): string {
+  const { image, name, count, trait, item, key, price, groveCatch } = listing
   const identified = (html:string) => html.replace(/^<li\b[^>]*>/, tag => tag.replace(/>$/, ` data-stock-key="${key}" data-stock-count="${count}">`))
   if(item.kind==='eggBaskets'||item.kind==='eggCrates'){
     const kind=item.kind==='eggBaskets'?'basket':'crate',action=getEggUnpackAction(farm,kind)
     return identified(row(image,name,`×${count}`,button(farm.island==='home'?`Распаковать · +${action.eggs}`:'Распаковать дома',kind==='basket'?'unpack-egg-basket':'unpack-egg-crate',action.available,{secondary:true}),trait))
   }
   if(item.kind!=='fish')return identified(row(image,name,`×${count}`,'',trait))
-  return identified(row(image,name,`×${count} · ${fishSource(item.item)}`,button('На гриль','fish-kitchen',true,{value:item.item})+button(`Продать 1${farm.island==='home'?'':' дома'} · ${price}`,farm.island==='home'?'sell-item':'fish-market',true,{value:key,secondary:true})))
+  const review = item.item === 'seaBass' && groveCatch
+    ? button(`${farm.island === 'home' ? 'К заказу' : 'На рынок домой'} · ${groveCatch.reward}`,'first-grove-catch-review',true,{value:groveCatch.token,secondary:true}) : ''
+  return identified(row(image,name,`×${count} · ${fishSource(item.item)}`,button('На гриль','fish-kitchen',true,{value:item.item})+button(`Продать 1${farm.island==='home'?'':' дома'} · ${price}`,farm.island==='home'?'sell-item':'fish-market',true,{value:key,secondary:true})+review))
 }
 
 function inventorySupplies() {
   const stock = goods().filter(({count,group})=>count>0&&group===inventoryGroup)
+  const groveCatch = inventoryGroup === 'shore' ? firstGroveCatchOrder() : undefined
   const tabs = panelTabs('inventory-group',inventoryGroup,[['harvest','Ферма'],['kitchen','Кухня'],['shore','Берег']], 'Продукты')
   const contents = inventoryGroup==='harvest'
     ? renderHarvestStocks(stock,itemIcon,inventoryStockRow,
       row('tool-feed', 'Корм для кур', quantity(farm.feed, 'порция')),
       treeIds.filter(tree=>farm.saplings[tree]>0).map(tree=>row('ui-tree-'+tree,treeDefinitions[tree].saplingName,`×${farm.saplings[tree]}`)).join(''))
-    : `<ul class="dialog-list inventory-stock">${inventoryGroup==='kitchen'?row('ui-signature-bright','Мои рецепты',`×${Object.values(farm.culinary.stock).reduce((sum,count)=>sum+count,0)}`,button('Открыть','open-panel',true,{value:'recipes'})):''}${stock.map(inventoryStockRow).join('')}${inventoryGroup==='shore'&&!stock.length?'<li class="dialog-status">Пока пусто</li>':''}</ul>`
+    : `<ul class="dialog-list inventory-stock">${inventoryGroup==='kitchen'?row('ui-signature-bright','Мои рецепты',`×${Object.values(farm.culinary.stock).reduce((sum,count)=>sum+count,0)}`,button('Открыть','open-panel',true,{value:'recipes'})):''}${(groveCatch ? stock.map(listing=>inventoryStockRow({...listing,groveCatch})) : stock.map(inventoryStockRow)).join('')}${inventoryGroup==='shore'&&!stock.length?'<li class="dialog-status">Пока пусто</li>':''}</ul>`
   return `<section class="inventory-supplies" aria-label="Припасы"><div class="inventory-supplies-tabs">${tabs}</div>${farm.island==='home'&&inventoryGroup==='harvest'?`<div class="inventory-use">${button('На кухню','kitchen',true,{secondary:true})}</div>`:''}${contents}</section>`
 }
 
@@ -4420,6 +4433,28 @@ app.addEventListener('click', async (event) => {
         openPanel('inventory',false)
       }
       beginExactSale({kind:'market',key:`fish:${id}`})
+      break
+    }
+    case 'first-grove-catch-review': {
+      if (panel !== 'inventory' || !dialog.open || bagTab !== 'harvest' || inventoryGroup !== 'shore'
+        || !dialogContent.contains(control)) break
+      const quote = firstGroveCatchOrder()
+      if (!quote || quote.token !== value) break
+      const from = rememberPanel()
+      if (farm.island === 'grove') {
+        closeDialog()
+        await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))
+        if (dialog.open) break
+        panelHistory.push(from)
+        if ((farm.island as (typeof islandIds)[number]) !== 'home' || firstGroveCatchOrder()?.token !== value) {
+          goBack()
+          break
+        }
+      } else panelHistory.push(from)
+      marketTab = 'orders'
+      selectedMarketOrder = quote.lane
+      openPanel('market',false)
+      dialogContent.querySelector<HTMLElement>('.market-order-detail')?.focus({preventScroll:true})
       break
     }
     case 'cove-shells':closeDialog();island.focusTarget({kind:'shell',index:[0,1,2].find(index=>!farm.shellsCollectedToday.includes(index))??0});break
