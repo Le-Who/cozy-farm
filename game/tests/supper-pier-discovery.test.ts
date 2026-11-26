@@ -111,6 +111,7 @@ async function followTable(farm:Farm.FarmState,panel='village-meal',open=true,cr
  const terminal=()=>({day:clone.day,coins:clone.coins,fish:clone.fish,work:clone.workToday,mealOn:clone.village.mealOn,meals:clone.village.meals,freight:clone.freight})
  const before=structuredClone(terminal())
  const ctx={...Farm,...Supper,farm:clone,panel,dialog:{open},control:{},island:{isCrossing:()=>crossing},
+  value:undefined, // This suite activates the ordinary catch/rest/table button, not a construction warehouse quote.
   selectedWarehouseRequest:undefined as Farm.StockItem | undefined,
   async visitPanelAt(island:Farm.IslandId,target:string) {
     calls.push(`open:${island}:${target}`)

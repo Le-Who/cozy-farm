@@ -35,7 +35,7 @@ import { renderNeighborVisits, renderVisitRest } from './neighbor-visits-ui'
 import { canIntroduceHenToVisitor, introduceHenToVisitor } from './farm'
 import './neighbor-visits.css'
 import { restoreLegacyFarm } from './farm-save-migration'
-import { getHarbourFishRoute, renderHarbourFishChoice } from './harbour-fish-route'
+import { getHarbourFishRoute, getVillageFishWarehouse, renderHarbourFishChoice } from './harbour-fish-route'
 import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from './berry-nursery'
 import { villageHomeProgress } from './village-home-art'
 import './berry-nursery.css'
@@ -3892,7 +3892,13 @@ app.addEventListener('click', async (event) => {
     }
     case 'harbour-fish-catch': {
       if (panel === 'village-project') {
-        await showRequirement({kind:'stock',item:{kind:'fish',item:'seaBass',quantity:2}},control)
+        if (value) {
+          if (!dialog.open || farm.island !== 'home' || island.isCrossing()) break
+          const source = getVillageFishWarehouse(farm)
+          if (source?.value !== value) { drawPanel(); break }
+          selectedWarehouseRequest = source.item
+          await visitPanelAt('grove','warehouse-supply')
+        } else await showRequirement({kind:'stock',item:{kind:'fish',item:'seaBass',quantity:2}},control)
         break
       }
       if (panel !== 'village-meal' || !dialog.open || farm.island !== 'village' || !farm.village.built
