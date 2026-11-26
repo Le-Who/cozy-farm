@@ -132,7 +132,7 @@ import { getMusicMaterialGuidance, musicMaterialItems, musicMaterialNames } from
 import { createBayMusic, type BayMusicViewState } from './bay-music'
 import { describeFood } from './intent-orders'
 import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods, sendFerryExpedition, expeditionWallet, getFerrySupplyRequirement, getFerryReadyHarvest, gardenMaterialStock } from './harbour-economy'
-import { berryCropIds, foodDescriptors, marketStock, unitPrice, islandIds as allPorts } from './farm'
+import { berryCropIds, foodDescriptors, marketKey, marketStock, unitPrice, islandIds as allPorts } from './farm'
 import './harbour-life.css'
 import {applyIngredientFinishes} from './ingredient-finish'
 import './style.css'
@@ -192,7 +192,7 @@ import {
   workshopDefinitions,
   workshopShapes,
   getVillageProject,
-  contributeVillage,
+  contributeVillage, contributeVillageSupply, getVillageContributionChoices,
   getVillageHomeCount,
   inviteResident,
   getVillageMeal,
@@ -1122,9 +1122,13 @@ function marketOrders() {
     <details class="market-orders-timing"><summary>Когда появится следующий заказ</summary><p>После доставки следующий заказ появится после отдыха дома. Несданные заказы не сгорают от сна.</p></details>`
 }
 
-function deliveryItems(items: ReturnType<typeof getProject>['items'], explicit = false) {
+function deliveryItems(items: ReturnType<typeof getProject>['items'], explicit = false,
+  contributions?: ReadonlyMap<string, { token: string; available: number }>) {
   return items.map(({ item, delivered, available }) => {
     const { name, image } = stockLabel(item)
+    const contribution = contributions?.get(marketKey(item))
+    if (contribution) return `<li class="requirement-slot"><button type="button" class="ingredient requirement-link" data-action="village-supply-pledge" data-value="${contribution.token}" aria-label="Внести: ${name} ×${contribution.available}">${icon(image)}<span>${name}</span>
+      <strong><span class="sr-only">Доставлено </span>${delivered}/${item.quantity}</strong><span class="project-available">Внести ×${contribution.available}</span></button></li>`
     if (explicit) {
       const copy = projectContributionCopy({ item, delivered, available })
       return requirementLink(`${icon(image)}<span>${name}</span><strong class="project-fair-count">${copy.delivered}</strong><span class="project-fair-contribution${available ? ' is-available' : ''}">${copy.available}</span>`, available >= item.quantity-delivered ? {kind:'delivery'} : {kind:'stock',item:{...item,quantity:item.quantity-delivered}}, 'ingredient', `${name}, ${copy.delivered}, ${copy.available}`, delivered === item.quantity)
@@ -1745,12 +1749,13 @@ function villageProjectCard() {
   const unlocked = project.unlocked
   const finishing = unlocked && farm.coins >= project.coins && project.items.every(({item, delivered, available}) => delivered + available >= item.quantity)
   const buildAction = finishing || project.items.every(({item, delivered}) => delivered >= item.quantity)
+  const contributions = new Map(getVillageContributionChoices(farm).map(choice => [choice.key,choice]))
   return `<div class="harbour-preview"><img src="${iconUrl('village-plate')}" alt="Домики, мастерская и стол для ужина в Лавандовой гавани"></div>
     ${unlocked ? '' : `<ul class="dialog-list">${row('ui-market', 'Гости ярмарки', `${Math.min(villageGuestTarget, farm.fairGuestsServed)}/${villageGuestTarget}`)}${isProjectComplete(farm, 'fair') ? '' : row('ui-market', 'Ярмарка', '', button('К стройке', 'fair-project'))}</ul>`}
-    <ul class="ingredients">${deliveryItems(project.items)}</ul>
+    <ul class="ingredients">${deliveryItems(project.items,false,contributions)}</ul>
     ${renderHarbourFishChoice(farm)}
     ${renderVillageBudget(farm,icon('coin'),(content,ready)=>requirementLink(content,{kind:'journey',island:'village',id:'village-coins'},'ingredient','Монеты для постройки Живой бухты',ready))}
-    ${nav(button(buildAction ? 'Построить' : 'Внести припасы', 'build-village', project.status === 'ready', buildAction ? { cost: { icon: 'coin', amount: project.coins } } : {}), button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair'), { secondary: true }))}`
+    ${nav(button(buildAction ? 'Построить' : contributions.size ? 'Внести всё' : 'Внести припасы', 'build-village', project.status === 'ready', buildAction ? { cost: { icon: 'coin', amount: project.coins } } : {}), button('Кондитерская', 'workshop', isProjectComplete(farm, 'fair'), { secondary: true }))}`
 }
 
 function finishSharedSupper(action: () => { ok: boolean; message: string }, pastry = false) {
@@ -5110,6 +5115,10 @@ app.addEventListener('click', async (event) => {
       if (value && workshopShapes.includes(value as WorkshopShape)) pastryShape = value as WorkshopShape
       openPanel('village-meal'); break
     case 'build-village': if(perform(()=>contributeVillage(farm),false,true))playBaySound(farm.village.built?'build.finish':'harbour.crate'); break
+    case 'village-supply-pledge':
+      if (panel==='village-project' && dialog.open && dialogContent.contains(control)
+        && perform(()=>contributeVillageSupply(farm,value),false,true))playBaySound('harbour.crate')
+      break
     case 'village-slot': villageSlot = Number(value) === 1 ? 1 : 0; drawPanel(); dialogContent.scrollTop=0; dialogContent.querySelector<HTMLButtonElement>(`[data-action="village-slot"][data-value="${villageSlot}"]`)?.focus({preventScroll:true}); break
     case 'invite-resident': {
       const id = residentIds.find(id => id === value)

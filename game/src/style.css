@@ -276,6 +276,8 @@ kbd { font: inherit; font-weight: 800; white-space: nowrap; }
 button.requirement-link { position:relative; width:100%; min-height:44px; appearance:none; font:inherit; font-size:12px; border:1px solid #c39bc286; cursor:pointer; text-align:center; }
 button.requirement-link::after { content:'›'; position:absolute; right:5px; bottom:3px; color:#9c6c9c; font-size:15px; line-height:1; }
 button.requirement-link:hover { background:#f4e7ee; border-color:#ae7ead; }
+button[data-action="village-supply-pledge"]::after { content:none; }
+button[data-action="village-supply-pledge"] .project-available { position:static; }
 button.requirement-link:focus-visible { outline:3px solid #a985b4; outline-offset:2px; }
 .guidance-target { outline:3px solid #d6a452!important; outline-offset:3px; box-shadow:0 0 0 6px #fff1b788!important; }
 .journey-requirements button.requirement-link { grid-column:1/-1; display:grid; grid-template-columns:25px minmax(0,1fr) auto; align-items:center; gap:5px; padding:4px 12px 4px 4px; border-radius:9px; text-align:left; color:var(--ink); background:#fff8ee; }

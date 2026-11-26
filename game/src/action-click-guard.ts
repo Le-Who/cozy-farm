@@ -31,7 +31,7 @@ const guardedActions = new Set([
   'hen-walk-start', 'hen-walk-return', 'hen-guide',
   'hen-friendship-open', 'hen-friend-select', 'hen-treat', 'pet',
   'chicken-feed-open', 'mix-chicken-feed',
-  'harbour-fish-trade', 'harbour-fish-catch', 'invite-resident', 'resident-service', 'finn-pier', 'tasting-bakery',
+  'harbour-fish-trade', 'harbour-fish-catch', 'village-supply-pledge', 'invite-resident', 'resident-service', 'finn-pier', 'tasting-bakery',
   'berry-nursery-ingredient', 'berry-nursery-source', 'berry-nursery-destination', 'berry-nursery-confirm', 'berry-nursery-reset',
   'commission-accept', 'commission-deliver', 'commission-cancel', 'commission-finish', 'commission-recipe', 'commission-rest', 'expedition-order-recipe',
   'incubator-basket', 'incubator-warehouse-egg', 'incubator-warehouse-basket', 'incubate-egg', 'incubate-rare-egg', 'visit-rest', 'sleep', 'ferry-return', 'boat-funds', 'buy-boat', 'first-ferry-route', 'expedition-rest', 'expedition-discovery', 'expedition-restock', 'expedition-source', 'expedition-bun-warehouse', 'work-context', 'resume-recipe-draft', 'reset-recipe-draft',

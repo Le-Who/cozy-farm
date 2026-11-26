@@ -1580,6 +1580,25 @@ export function getVillageProject(farm: FarmState) {
   return { name: 'Живая бухта', coins: villagePrice, items, status, unlocked, homes: getVillageHomeCount(farm) } as const;
 }
 
+export function getVillageContributionChoices(farm: FarmState) {
+  const project = getVillageProject(farm);
+  const available = project.items.filter(row => row.available > 0);
+  if (project.status !== 'ready' || available.length < 2
+    || project.items.every(({ item, delivered, available }) => delivered + available >= item.quantity)) return [];
+  return available.map(row => {
+    const key = marketKey(row.item);
+    return { ...row, key, token: `${farm.day}|${key}|${row.delivered}|${row.available}` };
+  });
+}
+
+/** One expressly chosen line is never a construction action or a pledge of other supplies. */
+export function contributeVillageSupply(farm: FarmState, token: string | undefined): ActionResult {
+  const row = getVillageContributionChoices(farm).find(choice => choice.token === token);
+  if (!row) return failure('Припасы изменились. Проверьте, что хотите внести.');
+  const donated = depositSupplies(farm, [row], farm.village.supplies);
+  return { ok: true, message: `Доставлено: ${ruCount(donated, 'припас', 'припаса', 'припасов')}.` };
+}
+
 export function contributeVillage(farm: FarmState): ActionResult {
   const project = getVillageProject(farm);
   if (project.status === 'completed') return failure('Живая бухта уже открыта.');
