@@ -58,7 +58,7 @@ function shopStockGroups(products: GroupedStock[], group: StockGroup) {
 }
 
 /** A scene owns its animation; the farm owns inventory, earnings and persistence. */
-export function mountBayShop(host: HTMLElement, options: BayShopOptions): { destroy(): void; refresh(): void } {
+export function mountBayShop(host: HTMLElement, options: BayShopOptions): { destroy(): void; refresh(): void; focusListing(id: string): void } {
   const state = options.state;
   const hasShelfStock = () => state.slots.some(slot => slot && slot.quantity > 0);
   const canToggleOpen = () => state.open || hasShelfStock();
@@ -423,6 +423,14 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   render(); frame = requestAnimationFrame(tick);
   return {
     refresh: render,
+    focusListing(id) {
+      if (destroyed || pending || tab !== 'stock') return;
+      const index = state.slots.findIndex(slot => slot && slot.quantity > 0 && slot.product.id === id && slot.product.identity === id);
+      if (index < 0) return;
+      selected = index;
+      render();
+      host.querySelector<HTMLElement>(`[data-slot="${index}"]`)?.focus({preventScroll:true});
+    },
     destroy() { if (destroyed) return; destroyed = true; lastRefusal = undefined; clearTimeout(noticeTimer); cancelAnimationFrame(frame); resizeObserver.disconnect(); host.removeEventListener('input', quantityInput); host.removeEventListener('submit', submitStock); host.removeEventListener('click', click); host.removeEventListener('change', change); host.removeEventListener('focusout', change); if (state.open || state.visitor || JSON.stringify(state) !== savedShopState) saveChanges(); host.innerHTML = ''; },
   };
 }

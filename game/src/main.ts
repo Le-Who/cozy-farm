@@ -1990,7 +1990,7 @@ function goBack(keyboard = false) {
     }
   })
 }
-let harbourScene: {destroy():void} | undefined
+let harbourScene: {destroy():void; focusListing?(id:string):void} | undefined
 let nextShopStock: string | undefined
 let nextShopMarketVisit: PanelVisit | undefined
 let selectedWarehouse = farm.island
@@ -2883,8 +2883,13 @@ function drawPanel() {
 
 // A map shortcut continues at the chosen place after the crossing. Only global
 // pages can be revisited on the new island; a local building belongs to its shore.
-async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryMorning?: number, recipeId?: string, shopMarketReturn?: PanelVisit) {
+async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryMorning?: number, recipeId?: string, shopMarketReturn?: PanelVisit, shelfFood?: () => string | undefined) {
   if (island.isCrossing()) return
+  const focusRecoveredListing = () => {
+    if (!shelfFood || next !== 'bay-shop' || panel !== next || !dialog.open) return
+    const food = shelfFood()
+    if (food) harbourScene?.focusListing?.(food)
+  }
   // Keep an incubation morning on the farm so its hatch is not covered by a menu.
   const ferryVisit = ferryMorning !== undefined && farm.hatchDay !== farm.day + 1 && dialog.open && panel === 'bay-freight' && next === 'rest'
     ? {...rememberPanel(),ferryMorning} : undefined
@@ -2892,6 +2897,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryM
     if (ferryVisit) { panelHistory.push(ferryVisit); openPanel(next,false) }
     else if (next === 'recipes' && recipeId) openRecipeBook(recipeId)
     else openPanel(next)
+    focusRecoveredListing()
     return
   }
   if (!canSailTo(farm,destination)) return
@@ -2918,6 +2924,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryM
     try { openPanel(next,false) } finally { nextShopMarketVisit = undefined }
   } else if (next === 'recipes' && recipeId) openRecipeBook(recipeId, false, false)
   else openPanel(next,false)
+  focusRecoveredListing()
 }
 
 function openGuidedMarket(tab?: string) {
@@ -4113,10 +4120,16 @@ app.addEventListener('click', async (event) => {
       if(!dialog.open||panel!=='neighbor')break
       const recovery=value?getNeighborFoodRecovery(farm,value):undefined
       if(!recovery||recovery.plan.resident!==communityResident)break
-      if(!recovery.shelved||!recovery.offer||recovery.offer.id!==control.dataset.food){drawPanel();break}
-      communityRequest={kind:'neighbor',resident:recovery.plan.resident,planId:recovery.plan.id}
+      const food=recovery.offer?.id
+      if(recovery.warehouse||!recovery.shelved||!food||food!==control.dataset.food){drawPanel();break}
+      const request={kind:'neighbor' as const,resident:recovery.plan.resident,planId:recovery.plan.id}
+      communityRequest=request
       requestedFood=undefined
-      await visitPanelAt('village','bay-shop')
+      await visitPanelAt('village','bay-shop',undefined,undefined,undefined,()=>{
+        if(communityRequest!==request||farm.island!=='village')return
+        const current=getNeighborFoodRecovery(farm,request.planId)
+        if(current?.shelved&&!current.warehouse&&current.offer?.id===food)return food
+      })
       break
     }
     case 'neighbor-repeat-food': {
