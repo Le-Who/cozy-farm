@@ -1,3 +1,5 @@
+import { freightPortNames } from './bay-freight-model';
+import { storedSignatureValue } from './stored-signature';
 import { renderIntentDeadline } from './intent-deadline';
 import { getNeighborFoodRecovery } from './neighbor-food-recovery';
 import { neighborHelpStatus } from './neighbor-help';
@@ -88,16 +90,19 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
       const offer = getIntentOffers(farm, plan.intentId).find(offer => offer.id === plan.food?.id);
       const recovery = getNeighborFoodRecovery(farm, plan.id)!;
       const ready = recovery.state === 'ready';
+      const remote = recovery.remoteSignature;
+      const stored = remote && offer
+        ? control(`К складу: ${freightPortNames[remote.port]}`, 'neighbor-stored-food', plan.id, `data-food="${escape(offer.id)}" data-storage="${escape(storedSignatureValue(remote))}"`) : '';
       const repair = recovery.warehouse && offer ? control('К готовой порции на складе', 'neighbor-stored-food', plan.id, `data-food="${escape(offer.id)}"`)
         : recovery.shelved && offer ? control('В лавку за угощением', 'neighbor-shelf-food', plan.id, `data-food="${escape(offer.id)}"`)
         : recovery.state === 'spent' && offer ? offer.source === 'signature' && offer.canCook
-        ? control('Повторить точно ×1', 'neighbor-repeat-food', plan.id)
-        : control(offer.canCook ? 'Приготовить ещё' : 'К рецепту', 'cook-intent-offer', offer.id, `data-plan="${escape(plan.id)}"`) : '';
+        ? control('Повторить точно ×1', 'neighbor-repeat-food', plan.id, '', !!remote)
+        : control(offer.canCook ? 'Приготовить ещё' : 'К рецепту', 'cook-intent-offer', offer.id, `data-plan="${escape(plan.id)}"`, !!remote) : '';
       const arrangeLabel = plan.episode === 'beaTea' ? 'Накрыть стол к чаю'
         : plan.episode === 'finnLantern' ? 'К столу у фонариков'
         : plan.arrangement === 'table' ? 'Накрыть стол' : 'Собрать корзинку';
-      content = `<div class="community-selected"><span class="community-selected-picture">${offer ? art.offerIcon(offer) : prop(plan.arrangement)}</span><strong>${escape(plan.food!.name)}</strong>${ready ? control(arrangeLabel, 'arrange-neighbor', plan.id) : `<p class="community-note" role="status">${recovery.message}</p>${repair}`}</div>
-        <details class="community-alternatives" ${!ready && !recovery.warehouse && !recovery.shelved ? 'open' : ''}><summary>Выбрать другое угощение</summary>${offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id })}</details>`;
+      content = `<div class="community-selected"><span class="community-selected-picture">${offer ? art.offerIcon(offer) : prop(plan.arrangement)}</span><strong>${escape(plan.food!.name)}</strong>${ready ? control(arrangeLabel, 'arrange-neighbor', plan.id) : `${recovery.message ? `<p class="community-note" role="status">${recovery.message}</p>` : ''}${stored}${repair}`}</div>
+        <details class="community-alternatives" ${!ready && !recovery.warehouse && !recovery.shelved && !remote ? 'open' : ''}><summary>Выбрать другое угощение</summary>${offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id })}</details>`;
       break;
     }
     case 'celebrating':

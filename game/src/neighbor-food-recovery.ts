@@ -1,7 +1,19 @@
-import { getIntentOffers, getNeighborPlans, repeatSignature, type FarmState, type FoodOfferId } from './farm.ts'
+import { canSailTo, getIntentOffers, getNeighborPlans, islandIds, repeatSignature, sail, type FarmState, type FoodOfferId } from './farm.ts'
+import { freightStock } from './bay-freight-model.ts'
 import type { IntentId } from './intent-orders.ts'
 import { getStoredSignature } from './stored-signature.ts'
 import { getLocalWarehouseSupply, warehouseRequest } from './warehouse-guidance.ts'
+
+function getRemotePreparedSignature(farm: FarmState, foodId: FoodOfferId) {
+  const recipeId = foodId.slice('signature:'.length)
+  for (const port of islandIds) {
+    if (port === farm.island || !freightStock(farm.freight, port, foodId) || !canSailTo(farm, port)) continue
+    const arrival = structuredClone(farm)
+    if (!sail(arrival, port).ok) continue
+    const supply = getStoredSignature(arrival, recipeId)
+    if (supply) return supply
+  }
+}
 
 /** Derive recovery from current stock, never rewrite the saved meeting. */
 export function getNeighborFoodRecovery(farm: FarmState, planId: string) {
@@ -14,12 +26,15 @@ export function getNeighborFoodRecovery(farm: FarmState, planId: string) {
   const request = state === 'spent' && offer?.source !== 'signature' ? warehouseRequest(`${offer!.id}|1`) : undefined
   const local = request && getLocalWarehouseSupply(farm,request)
   const warehouse = stored ? {kind:'signature' as const,...stored} : local ? {kind:'stock' as const,request:request!,...local} : undefined
-  const message = state === 'deleted' ? 'Выбранный рецепт удалён. Выберите другое угощение: встреча и её прогресс сохранены.'
+  // The meeting stays put. The player may fetch a finished recipe instead of making another.
+  const remoteSignature = farm.island === 'village' && state === 'spent' && !warehouse && !shelved && offer?.source === 'signature'
+    ? getRemotePreparedSignature(farm, offer.id) : undefined
+  const message = remoteSignature ? '' : state === 'deleted' ? 'Выбранный рецепт удалён. Выберите другое угощение: встреча и её прогресс сохранены.'
     : state === 'changed' ? 'Это блюдо больше не подходит. Выберите другое угощение: встреча и её прогресс сохранены.'
     : warehouse ? `Выбранное угощение уже на местном складе: ${warehouse.stored}. Готовить заново не нужно. Заберите одну порцию отдельно и вернитесь к встрече. Встреча и её прогресс сохранены.`
     : shelved ? `Выбранное угощение на прилавке вашей лавки: ${shelved}. В лавке выберите его полку и нажмите «Убрать товар в запас», затем вернитесь к встрече. ${farm.bayShop.open?'Лавка открыта: покупатели могут забрать порции, пока они на полке.':'Лавка закрыта: покупатели пока не заберут порции.'} Встреча и её прогресс сохранены.`
     : state === 'spent' ? 'Выбранное угощение закончилось. Приготовьте ещё порцию или выберите другое. Встреча и её прогресс сохранены.' : ''
-  return { plan, offer, state, message, shelved, warehouse } as const
+  return { plan, offer, state, message, shelved, warehouse, remoteSignature } as const
 }
 
 /** A recovery action makes a missing portion, never an extra batch on a stale click. */

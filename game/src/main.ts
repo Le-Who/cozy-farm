@@ -53,7 +53,7 @@ import { getWindHoneySource } from './wind-honey-guidance'
 import { canVisitHarborRest, getNextHarborOrder, readyHarborOrderRoute, renderNextHarborOrder } from './harbor-return'
 import './harbor-return.css'
 import { renderVillageBudget } from './village-budget'
-import { withdrawStoredSignature } from './stored-signature'
+import { getStoredSignature, storedSignatureValue, withdrawStoredSignature } from './stored-signature'
 import './village-budget.css'
 import { treeVariantCopy } from './ready-variant-guidance'
 import { canVisitMarketRest, getNextMarketOrders, renderNextMarketOrder } from './market-return'
@@ -2836,6 +2836,7 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryM
     ? {...rememberPanel(),ferryMorning} : undefined
   if (farm.island === destination) {
     if (ferryVisit) { panelHistory.push(ferryVisit); openPanel(next,false) }
+    else if (next === 'recipes' && recipeId) openRecipeBook(recipeId)
     else openPanel(next)
     return
   }
@@ -2861,7 +2862,8 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryM
     // Pass ownership only to the scene mounted by this successful crossing.
     nextShopMarketVisit = marketVisit
     try { openPanel(next,false) } finally { nextShopMarketVisit = undefined }
-  } else openPanel(next,false)
+  } else if (next === 'recipes' && recipeId) openRecipeBook(recipeId, false, false)
+  else openPanel(next,false)
 }
 
 function openGuidedMarket(tab?: string) {
@@ -4010,7 +4012,19 @@ app.addEventListener('click', async (event) => {
       if(!dialog.open||panel!=='neighbor')break
       const recovery=value?getNeighborFoodRecovery(farm,value):undefined
       if(!recovery||recovery.plan.resident!==communityResident)break
-      if(!recovery.warehouse||!recovery.offer||recovery.offer.id!==control.dataset.food){drawPanel();break}
+      if(!recovery.offer||recovery.offer.id!==control.dataset.food){drawPanel();break}
+      if(control.dataset.storage){
+        const source = recovery.remoteSignature
+        if(!source || control.dataset.storage!==storedSignatureValue(source) || !dialogContent.contains(control) || island.isCrossing()) { drawPanel();break }
+        const request = {kind:'neighbor' as const,resident:recovery.plan.resident,planId:recovery.plan.id}
+        communityRequest=request
+        requestedFood=undefined
+        await visitPanelAt(source.port,'recipes',undefined,source.recipeId)
+        // Standard close/continue returns to this meeting; no stock is moved on the crossing.
+        if(dialog.open && farm.island===source.port && communityRequest===request && getStoredSignature(farm,source.recipeId)) focusRecipeAction(true)
+        break
+      }
+      if(!recovery.warehouse){drawPanel();break}
       communityRequest={kind:'neighbor',resident:recovery.plan.resident,planId:recovery.plan.id}
       requestedFood=undefined
       const supply=recovery.warehouse
