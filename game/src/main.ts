@@ -2000,6 +2000,25 @@ const shopAssortmentChoice = new ShopAssortmentChoice()
 const shopCommissionView = new ShopCommissionView()
 let freightPlanOpen = false
 let musicView: BayMusicViewState | undefined
+// An unpaid supply quote belongs to this rendered ferry only, not the next visit or receipt.
+const ferrySupplyOrigins = new WeakMap<Element, {day:number; island:typeof farm.island; serial:number;
+  port:ExpeditionPort; offer:string; supply:string; view:FerryPanelView|undefined}>()
+function returnToFerrySupplyOrigin() {
+  if (panel !== 'bay-freight' || !dialog.open) return false
+  const owner = dialogContent.querySelector('.bay-freight')
+  const origin = owner && ferrySupplyOrigins.get(owner)
+  if (!owner || !origin) return false
+  ferrySupplyOrigins.delete(owner)
+  const world = farm.freight.expeditions
+  if (origin.day !== farm.day || origin.island !== farm.island || origin.serial !== world.serial
+    || origin.port !== selectedExpeditionPort || origin.supply !== selectedExpeditionOffer) return false
+  const plan = getFerryRestockPlan(world,origin.offer,farm.day,expeditionWallet(farm))
+  if (plan?.kind !== 'supply' || plan.port !== origin.port || plan.offer.id !== origin.supply) return false
+  selectedExpeditionOffer = origin.offer
+  drawPanel()
+  restoreFerryPanelView(dialogContent,origin.view)
+  return true
+}
 function stopHarbour() {
   if (!harbourScene) return
   harbourScene.destroy()
@@ -3944,13 +3963,18 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'expedition-restock': {
-      if (panel !== 'bay-freight' || value !== selectedExpeditionOffer) break
-      const plan = getFerryRestockPlan(farm.freight.expeditions,value,farm.day,expeditionWallet(farm))
+      if (panel !== 'bay-freight' || !dialog.open || value !== selectedExpeditionOffer) break
+      const world = farm.freight.expeditions
+      const plan = getFerryRestockPlan(world,value,farm.day,expeditionWallet(farm))
       if (!plan || plan.port !== selectedExpeditionPort) break
       if (plan.kind === 'rest') await visitPanelAt('home','rest')
       else {
+        const view = captureFerryPanelView(dialogContent)
         selectedExpeditionOffer = plan.offer.id
         drawPanel()
+        const owner = dialogContent.querySelector('.bay-freight')
+        if (owner) ferrySupplyOrigins.set(owner,{day:farm.day,island:farm.island,serial:world.serial,
+          port:plan.port,offer:value,supply:plan.offer.id,view})
         dialogContent.querySelector<HTMLElement>('.bay-freight-close')?.focus({preventScroll:true})
       }
       break
@@ -4515,7 +4539,10 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'travel-panel': if(value==='market') await visitPanelAt('home','market'); break
-    case 'back': if(!closeContextualSale()&&!returnToRecipeIndex())goBack(event.detail===0); break
+    case 'back':
+      if (!closeContextualSale() && !returnToRecipeIndex() && (panel !== 'bay-freight' || !returnToFerrySupplyOrigin()))
+        goBack(event.detail===0)
+      break
     case 'journal-stay': {
       const crossing = control.closest<HTMLDetailsElement>('details.journal-visit-crossing[open]')
       if (panel !== 'journal' || !dialog.open || !crossing || !dialogContent.contains(crossing)) break
@@ -5289,6 +5316,7 @@ function returnFromPanel(event: Event) {
   if (event.defaultPrevented) return
   if(closeContextualSale()){event.preventDefault();return}
   if(returnToRecipeIndex()){event.preventDefault();return}
+  if (panel === 'bay-freight' && returnToFerrySupplyOrigin()) {event.preventDefault();return}
   if (communityRequest && panel === 'arrangement' && arrangementRequest?.kind === 'neighbor') {
     event.preventDefault()
     void resumeCommunityRequest()
@@ -5305,7 +5333,7 @@ dialog.addEventListener('keydown', event => {
   if (event.repeat) event.preventDefault()
   else returnFromPanel(event)
 })
-dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&salePresentation.place){event.preventDefault();closeContextualSale();return}if(event.altKey&&event.key==='ArrowLeft'&&(panelHistory.length||panel==='recipes'&&recipeBook.view.mode==='detail'&&recipeBookNarrow())){event.preventDefault();if(!returnToRecipeIndex())goBack(true)}})
+dialog.addEventListener('keydown',event=>{if(event.altKey&&event.key==='ArrowLeft'&&salePresentation.place){event.preventDefault();closeContextualSale();return}if(event.altKey&&event.key==='ArrowLeft'&&panel==='bay-freight'&&returnToFerrySupplyOrigin()){event.preventDefault();return}if(event.altKey&&event.key==='ArrowLeft'&&(panelHistory.length||panel==='recipes'&&recipeBook.view.mode==='detail'&&recipeBookNarrow())){event.preventDefault();if(!returnToRecipeIndex())goBack(true)}})
 dialog.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !(event.target instanceof HTMLButtonElement)) return
   const selector = event.target.closest('.island-selector,.house-selector,.tree-selector,.panel-tabs,.market-category-icons,.recipe-family-choices,.recipe-fish-choices')
