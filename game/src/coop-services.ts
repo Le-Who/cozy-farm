@@ -2,8 +2,8 @@ const mountedCoopServices = new WeakMap<HTMLElement, () => void>()
 
 /** A current feeding choice or hatch step belongs before optional care on compact screens. */
 function hasLiveDailyStep(daily: HTMLElement): boolean {
-  return !!daily.querySelector('[data-action="chicken-feed-open"]:not(:disabled), [data-action="incubate-egg"]:not(:disabled), [data-action="incubate-rare-egg"]:not(:disabled), [data-action="incubator-basket"]:not(:disabled), [data-action="incubator-warehouse-egg"]:not(:disabled), [data-action="incubator-warehouse-basket"]:not(:disabled), [data-action="visit-rest"]:not(:disabled)')
-    || !!daily.querySelector('[data-action="incubate-egg"]:disabled') && !!daily.querySelector('[data-action="collect"]:not(:disabled)')
+  return !!daily.querySelector('[data-action="chicken-feed-open"]:not(:disabled), [data-action="incubate-egg"]:not(:disabled), [data-action="incubate-rare-egg"]:not(:disabled), [data-action="incubator-basket"]:not(:disabled), [data-action="incubator-warehouse-egg"]:not(:disabled), [data-action="incubator-warehouse-basket"]:not(:disabled), [data-action="visit-rest"]:not(:disabled), [data-action="hen-friendship-open"]:not(:disabled)')
+    || !!daily.querySelector('.coop-incubator-nest [data-action="collect"]:not(:disabled)')
 }
 
 /** Move the existing whole care group in reading order. Never recreate controls. */

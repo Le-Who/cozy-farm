@@ -34,6 +34,7 @@ function newlyHatched() {
   const farm=p.state, id=farm.flockSize-1
   assert.equal(farm.day,6);assert.equal(id,4);assert.equal(farm.hatchDay,null)
   let html='', notes:{open:boolean}|null=null, saves=0
+  const coopOpener={closest:()=>null}
   const messages:string[]=[], tones:{hidden:boolean}[]=[]
   const dialogContent={
     set innerHTML(value:string) {
@@ -41,6 +42,7 @@ function newlyHatched() {
       const details=html.match(/<details class="hen-friend-notes"([^>]*)>/)
       notes=details?{open:/\bopen\b/.test(details[1])}:null
     }, scrollTop:0,
+    contains(control:unknown) { return control===coopOpener },
     querySelector(query:string) {
       if(query==='.hen-friend-notes')return notes
       if(query==='.hen-friend-select[aria-pressed="true"]'){
@@ -52,7 +54,7 @@ function newlyHatched() {
   }
   const dialog={open:true,showModal(){this.open=true}}
   const ctx=createContext({
-    farm,dialog,dialogContent,panel:'coop',selectedFriendHen:id,henGesture:'stroke',
+    farm,dialog,dialogContent,control:coopOpener,panel:'coop',selectedFriendHen:id,henGesture:'stroke',
     renderHenFriendship,renderChickenFeedMixes,henFriends,treatHen,petChicken,canIntroduceHenToVisitor,icon:()=>'',
     island:{henWalkStatus:()=>null,henWalkAvailable:()=>true,henFieldTarget:()=>undefined,render(){}},
     panelHistory:[], playBaySound(){}, status(){}, saveFarm(){saves++},

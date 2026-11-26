@@ -15,3 +15,15 @@
 .coop-forecast .coop-morning{margin:0 0 8px;border:0;padding:0}
 .coop-care{display:grid;gap:7px}.coop-care .coop-tools{margin:0}.coop-packing h2{margin:0 0 8px;font-size:16px;color:var(--plum)}
 @media(max-height:480px){.coop-panel{gap:7px}.farm-dialog:has(.coop-panel) .dialog-panel{padding-top:8px;padding-bottom:8px}.farm-dialog:has(.coop-panel) .dialog-header{padding-bottom:4px;min-height:44px}}
+/* One source tray: the Collect button keeps its own row/location. The next
+   stage does not take the completed Collect hit target. */
+.coop-incubator-nest{min-width:0;border:1px solid var(--rule);border-radius:12px;background:var(--paper-light)}
+.coop-incubator-nest>.dialog-list{gap:0}
+.coop-panel .coop-incubator-nest .dialog-row{border:0;background:none;box-shadow:none}
+.coop-incubator-nest .dialog-row+.dialog-row{border-top:1px solid var(--rule);border-top-left-radius:0;border-top-right-radius:0}
+.coop-incubator-new-hen .dialog-icon{background:url('/art/lavender/hen-poses.webp') 85.7142857% 0 / 800% 100% no-repeat}
+.coop-incubator-new-hen .dialog-icon>.icon{visibility:hidden}
+@media(max-width:420px){
+ .coop-panel .coop-primary .dialog-row-actions:has([data-action^="incubator-warehouse-"]){grid-column:1/-1;max-width:none;justify-content:stretch}
+ .coop-panel .coop-primary [data-action^="incubator-warehouse-"]{width:100%}
+}

@@ -38,6 +38,13 @@ export function getIncubatorWarehouseBasket(farm:FarmState) {
     return {request, supply, token:`${farm.day}:${warehouseConfirmationValue(supply)}`}
 }
 
+/** The fifth hen is really owned and hasn't had her first interaction. Not a saved event. */
+export function getIncubatorNewHen(farm:FarmState):number|undefined {
+  const id=maxFlockSize-1
+  if (farm.island==='home' && farm.coopSpecialization==='hatchery' && farm.flockSize===maxFlockSize
+    && farm.hatchDay===null && farm.henFriendship.hens[id]?.points===0) return id
+}
+
 /** Existing actions, grouped by current daily work before optional services. No saved UI state. */
 export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopComponents):string {
   const morning=getCoopMorning(farm)
@@ -47,23 +54,32 @@ export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopCom
   const rare=getRareIncubatorEgg(farm)
   const storedEgg=getIncubatorWarehouseEgg(farm)
   const storedBasket=!storedEgg&&getIncubatorWarehouseBasket(farm)
-  const incubation=farm.coopSpecialization==='hatchery'&&farm.flockSize<maxFlockSize
-    ?row('egg','Инкубатор',farm.hatchDay===null?`${storedEgg ? 'Обычное яйцо на складе' : storedBasket ? '1 обычное яйцо' : rare ? 'Из припасов' : `1 обычное яйцо · в запасе ${farm.eggs}`} · ${ruCount(incubationDays,'ночь','ночи','ночей')}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
+  const hatchery=farm.island==='home' && farm.coopSpecialization==='hatchery'
+  const canIncubate=hatchery && farm.flockSize<maxFlockSize
+  const fromNest=canIncubate && farm.hatchDay===null && farm.eggs===0 && farm.eggsReady>Number(farm.eggTrait!==null)
+  const newcomer=getIncubatorNewHen(farm)
+  const nights=ruCount(incubationDays,'ночь','ночи','ночей')
+  const collect=row('egg','Яйца',`В гнёздах: ${farm.eggsReady}/${morning.capacity}${capacity}`,button('Собрать','collect',farm.eggsReady>0,{context:'яйца'}))
+  const incubation=canIncubate
+    ?row('egg','Инкубатор',farm.hatchDay===null? `${storedEgg?'Обычное яйцо на складе':fromNest||storedBasket?'1 обычное яйцо':rare?'Из припасов':`1 обычное яйцо · в запасе ${farm.eggs}`} · ${nights}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
       farm.hatchDay!==null?button('К отдыху дома','visit-rest',true,{secondary:true})
         :hasIncubatorBasketSource(farm)?button('К корзине яиц','incubator-basket',true,{secondary:true})
         :storedEgg?button('Забрать яйцо со склада','incubator-warehouse-egg',true,{value:storedEgg.token})
         :storedBasket?button('Забрать корзину со склада','incubator-warehouse-basket',true,{value:storedBasket.token})
         :rare?button(`Положить ${rare.name.toLowerCase()}`,'incubate-rare-egg',true,{value:rare.token})
-        :button('Положить яйцо','incubate-egg',farm.eggs>0)):''
+        :farm.eggs>0?button('Положить яйцо','incubate-egg'):''):''
+  const meeting=newcomer===undefined?'':`<li class="coop-incubator-new-hen"><ul class="dialog-list">${row('tool-hen',henFriends[newcomer].name,'',
+    button('Познакомиться','hen-friendship-open',true,{secondary:true,context:'с Пуговкой'}))}</ul></li>`
+  const eggJourney=fromNest?`<li class="coop-incubator-nest"><ul class="dialog-list">${collect}${incubation}</ul></li>`:`${collect}${incubation}${meeting}`
   const packing=(farm.coopSpecialization==='packing'?row('ui-egg-crate',`Ящики яиц · ${farm.eggCrates}`,`Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,
     button('Упаковать','pack-egg-crate',farm.eggs>=eggsPerCrate,{context:'ящик яиц'})+button(`Распаковать · +${eggsPerCrate}`,'unpack-egg-crate',getEggUnpackAction(farm,'crate').available,{secondary:true})):'')
     +(farm.buildingLevels.coop >= 2 || farm.eggBaskets > 0 ? row('ui-egg-basket',`Корзины яиц · ${farm.eggBaskets}`,`Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,
       button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket,{context:'корзина яиц'})+button(`Распаковать · +${eggsPerBasket}`,'unpack-egg-basket',getEggUnpackAction(farm,'basket').available,{secondary:true})):'')
   return `<section class="coop-panel" aria-label="Курятник: дела и забота">
-    <ul class="dialog-list coop-primary" aria-label="Сегодня в курятнике">${feedRow(mixNow?mixChoice:undefined)}${row('egg','Яйца',`В гнёздах: ${farm.eggsReady}/${morning.capacity}${capacity}`,button('Собрать','collect',farm.eggsReady>0,{context:'яйца'}))}${incubation}</ul>
+    <ul class="dialog-list coop-primary" aria-label="Сегодня в курятнике">${feedRow(mixNow?mixChoice:undefined)}${eggJourney}</ul>
     <details class="coop-forecast"><summary>Кладка после отдыха</summary>${renderCoopMorning(farm)}</details>
     <section class="coop-care" aria-label="Забота и развитие"><div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>${button('Улучшения','upgrades',true,{secondary:true})}</div>
-      <ul class="dialog-list">${row('tool-hen','Дружба со стаей','Погладить, угостить, погулять',button('Познакомиться','hen-friendship-open',true,{secondary:true}))}
+      <ul class="dialog-list">${newcomer===undefined?row('tool-hen','Дружба со стаей','Погладить, угостить, погулять',button('Познакомиться','hen-friendship-open',true,{secondary:true})):''}
         ${mixNow?'':mixChoice?row('tool-feed','Корм из урожая','3 порции с морковью · 4 с яблоком',mixChoice):row('tool-feed','Домашние кормовые смеси','Откроются после улучшения курятника')}</ul>
 
     </section>

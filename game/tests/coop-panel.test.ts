@@ -41,8 +41,13 @@ test('every original action and enabled guard remains in basic, hatchery, pendin
 
 test('ordinary egg cost and two nights are explicit; rare eggs do not enable or pay incubation',()=>{
  const f=structuredClone(earned);f.eggs=0;f.variants.egg={rainbow:1};const before=structuredClone(f)
- assert.match(render(f),/1 обычное яйцо · в запасе 0 · 2 ночи/)
- assert.ok(actions(render(f)).find(a=>a.action==='incubate-egg')!.disabled);assert.equal(F.incubateEgg(f).ok,false);assert.deepEqual(f,before)
+ assert.ok(f.eggsReady>Number(f.eggTrait!==null),'ordinary egg still in the nest')
+ const beforeCollect=render(f)
+ assert.match(beforeCollect,/1 обычное яйцо · 2 ночи/)
+ const choices=actions(beforeCollect)
+ assert.equal(choices.filter(a=>a.action==='collect'&&!a.disabled).length,1)
+ assert.equal(choices.some(a=>a.action==='incubate-egg'||a.action==='incubate-rare-egg'),false)
+ assert.equal(F.incubateEgg(f).ok,false);assert.deepEqual(f,before)
  f.eggs=1;assert.ok(F.incubateEgg(f).ok);assert.equal(f.eggs,0);assert.equal(f.variants.egg.rainbow,1)
  assert.match(render(f),/До вылупления: 2 ночи/);assert.doesNotMatch(render(f),/data-action="incubate-egg"/)
 })
@@ -278,7 +283,8 @@ test('collecting the first loose egg by keyboard reveals the incubator without s
    assert.ok(F.collectEggs(farm).ok);assert.ok(F.buyFeed(farm).ok);assert.ok(F.feedChickens(farm).ok);assert.ok(F.endDay(farm).ok)
    assert.ok(farm.eggs>0);assert.ok(farm.eggsReady>0)
   }
-  assert.equal(actions(render(farm)).find(a=>a.action==='incubate-egg')?.disabled,mode!=='already-stocked')
+  const beforeCollect=actions(render(farm)).find(a=>a.action==='incubate-egg')
+  assert.equal(beforeCollect?.disabled,mode==='already-stocked'?false:undefined)
   const before=structuredClone(farm),expected=structuredClone(farm)
   assert.ok(F.collectEggs(expected).ok)
   const sounds:string[]=[],document={activeElement:null as unknown}

@@ -4,12 +4,14 @@ import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
 import {stripTypeScriptTypes} from 'node:module'
 import * as F from '../src/farm.ts'
-import {renderCoopPanel} from '../src/coop-panel.ts'
+import * as coopPanel from '../src/coop-panel.ts'
 import {groupCoopServices} from '../src/coop-services.ts'
 import {renderHenFriendship} from '../src/hen-friendship.ts'
 import {mixChickenFeed} from '../src/chicken-feed.ts'
 import {chickenCarePlayer} from './fixtures/chicken-care-player.ts'
 import {commissionPlayer} from './fixtures/commission-player.ts'
+
+const {renderCoopPanel}=coopPanel
 
 const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
 function part(a:string,b:string){const i=main.indexOf(a),j=main.indexOf(b,i+1);assert.ok(i>=0&&j>i,[a,b]);return main.slice(i,j)}
@@ -33,11 +35,13 @@ function mount(farm:F.FarmState,desktop=false) {
   const groups=segments.flatMap((name,i)=>{
     const at=raw.indexOf(starts[i]);if(at<0)return []
     const end=starts.slice(i+1).map(x=>raw.indexOf(x,at)).find(x=>x>at)
-    const controls=buttons(raw.slice(at,end))
+    const html=raw.slice(at,end),controls=buttons(html)
     const find=(selector:string)=>selector.split(/,\s*/).flatMap(term=>{
-      const m=/^\[data-action="([^"]+)"\](?:(:disabled|:not\(:disabled\)))?$/.exec(term)
+      const nest=term.startsWith('.coop-incubator-nest ')
+      const m=/^\[data-action="([^"]+)"\](?:(:disabled|:not\(:disabled\)))?$/.exec(nest?term.slice('.coop-incubator-nest '.length):term)
       assert.ok(m,term)
-      return controls.filter(control=>control.action===m[1]&&(!m[2]||control.disabled===(m[2]===':disabled')))
+      const candidates=nest?buttons(html.match(/<li class="coop-incubator-nest">[\s\S]*?<\/ul><\/li>/)?.[0]??''):controls
+      return candidates.filter(control=>control.action===m[1]&&(!m[2]||control.disabled===(m[2]===':disabled')))
     })[0]??null
     return [{name,controls,contains(item:unknown){return controls.includes(item as typeof controls[number])},querySelector:find}]
   })
@@ -63,7 +67,7 @@ function mount(farm:F.FarmState,desktop=false) {
   const enabled=()=>groups.flatMap(g=>g.controls.filter(control=>!control.disabled).map(control=>control.action))
   const all=()=>groups.flatMap(g=>g.controls)
   const resize=(wide:boolean)=>{media.matches=wide;for(const listener of listeners)listener()}
-  return {groupOrder,enabled,all,lookup,document,moves,root,dispose,resize}
+  return {groupOrder,enabled,all,lookup,document,moves,root,dispose,resize,raw}
 }
 
 const compact=['primary','care','forecast','packing','hens'],normal=['care','primary','forecast','packing','hens'],desktop=['primary','forecast','care','packing','hens']
@@ -101,6 +105,7 @@ test('same true rest action is earlier when incubation is pending, with zero cha
  assert.equal((intro.match(/data-action="hen-friend-select"/g)??[]).length,5)
  assert.equal((intro.match(/class="hen-friend-card"/g)??[]).length,1)
  assert.match(intro,/<h2>Пуговка<\/h2>/);assert.match(intro,/<details class="hen-friend-notes">/)
+ p.act('petChicken',4)
  for(const state of [p.state,F.createFarm(),days('hatchery').state,days('packing').state]){
   const snapshot=structuredClone(state),adult=mount(state)
   assert.deepEqual(adult.groupOrder().slice(0,3),normal.slice(0,3))
@@ -166,8 +171,9 @@ test('an earned hungry post-hatch flock sees Buy and make-from-harvest together 
   const f=hungryAfterHatch(),before=structuredClone(f)
   for (const wide of [false,true]) {
     const view=mount(f,wide),daily=view.lookup('primary').controls
-    const feedChoices=daily.filter(x=>!x.disabled).map(x=>x.action)
-    assert.deepEqual(feedChoices,['buy-feed','chicken-feed-open'])
+    assert.equal(f.henFriendship.hens[4].points,0)
+    const ready=daily.filter(x=>!x.disabled).map(x=>x.action)
+    assert.deepEqual(ready,['buy-feed','chicken-feed-open','hen-friendship-open'],'independent urgent feed choices remain first')
     assert.deepEqual(view.groupOrder().slice(0,3),(wide?desktop:compact).slice(0,3))
     assert.equal(view.all().filter(x=>x.action==='chicken-feed-open').length,1)
     assert.ok(view.enabled().includes('hen-friendship-open'))
@@ -206,7 +212,64 @@ test('normal Coop returns one unchanged Mix choice to care when it is not an imm
     assert.equal(view.all().filter(x=>x.action==='chicken-feed-open').length,1)
     const cameFrom=mode==='only-apples'?'primary':'care'
     assert.ok(view.lookup(cameFrom).controls.some(x=>x.action==='chicken-feed-open'&&!x.disabled&&x.value===''))
-    assert.deepEqual(view.groupOrder().slice(0,3),mode==='only-apples'?compact.slice(0,3):normal.slice(0,3))
+    assert.deepEqual(view.groupOrder().slice(0,3),compact.slice(0,3),'the separate unintroduced hen keeps the daily tray in front')
     assert.deepEqual(next,saved)
+    assert.ok(F.petChicken(next,4).ok)
+    const familiar=mount(next)
+    assert.deepEqual(familiar.groupOrder().slice(0,3),mode==='only-apples'?compact.slice(0,3):normal.slice(0,3))
+    assert.ok(familiar.lookup(cameFrom).controls.some(x=>x.action==='chicken-feed-open'&&!x.disabled))
   }
+})
+
+test('earned Day2→4: one reachable egg source and the existing Meet leads to the unintroduced fifth hen after reload',()=>{
+  const p=hatchDayTwo(), inNest=mount(p.state)
+  assert.deepEqual([p.state.day,p.state.eggsReady,p.state.eggs],[2,4,0])
+  assert.equal(inNest.all().filter(x=>x.action==='collect'&&!x.disabled).length,1)
+  assert.equal(inNest.all().some(x=>x.action==='incubate-egg'),false,'a known egg source should not display a dead Insert button')
+  assert.match(inNest.raw,/<li class="coop-incubator-nest">[\s\S]*?В гнёздах: 4\/9[\s\S]*?data-action="collect"[\s\S]*?1 обычное яйцо · 2 ночи[\s\S]*?<\/ul><\/li>/)
+  p.act('collectEggs')
+  assert.equal(p.state.hatchDay,null,'collecting is not inserting')
+  let available=mount(p.state)
+  assert.equal(available.lookup('primary').controls.filter(x=>x.action==='incubate-egg'&&!x.disabled).length,1)
+  p.act('incubateEgg')
+  assert.deepEqual([p.state.day,p.state.eggs,p.state.hatchDay],[2,3,4])
+  assert.equal(mount(p.state).enabled().filter(x=>x==='visit-rest').length,1)
+  p.act('endDay')
+  assert.deepEqual([p.state.day,p.state.flockSize,p.state.hatchDay],[3,4,4])
+  assert.equal(mount(p.state).enabled().filter(x=>x==='visit-rest').length,1)
+  p.act('endDay')
+  const cold=restored(p.state)!, before=structuredClone(cold)
+  assert.deepEqual([cold.day,cold.flockSize,cold.hatchDay,cold.henFriendship.hens[4].points],[4,5,null,0])
+  const view=mount(cold)
+  assert.equal(view.all().filter(x=>x.action==='hen-friendship-open').length,1,'preserve exactly one Meet entry')
+  assert.ok(view.lookup('primary').controls.some(x=>x.action==='hen-friendship-open'&&!x.disabled))
+  assert.match(view.raw,/<li class="coop-incubator-new-hen">[\s\S]*?<strong>Пуговка<\/strong>[\s\S]*?data-action="hen-friendship-open"[\s\S]*?aria-label="Познакомиться, с Пуговкой"/)
+  assert.equal(view.groupOrder()[0],'primary')
+  const opener=stripTypeScriptTypes(`switch ('hen-friendship-open') { ${part("    case 'hen-friendship-open':","    case 'hen-treat':")} }`)
+  const ordinaryOpener={dataset:{action:'hen-friendship-open'},closest:()=>null}
+  const namedOpener={dataset:{action:'hen-friendship-open'},closest:(selector:string)=>selector==='.coop-incubator-new-hen'?{}:null}
+  const intercept=(selected:number,control=ordinaryOpener,farm=cold,panel='coop',owned=true)=>{
+    const touches:string[]=[]
+    const scope={farm,panel,dialog:{open:true},dialogContent:{contains:()=>owned},control,selectedFriendHen:selected,
+      getIncubatorNewHen:coopPanel.getIncubatorNewHen,openPanel:(name:string)=>touches.push(name),drawPanel:()=>touches.push('refresh')}
+    runInNewContext(opener,scope)
+    return {selected:scope.selectedFriendHen,touches}
+  }
+  assert.deepEqual(intercept(0,namedOpener),{selected:4,touches:['hen-friendship']})
+  assert.deepEqual(intercept(2),{selected:2,touches:['hen-friendship']},'generic Meet keeps a deliberate other selection')
+  assert.deepEqual(intercept(2,namedOpener,{...cold,island:'grove'}),{selected:2,touches:[]})
+  assert.deepEqual(intercept(2,namedOpener,cold,'coop',false),{selected:2,touches:[]},'a stale/detached action is not owned by the open panel')
+  const intro=renderHenFriendship(cold,null,true,intercept(0,namedOpener).selected)
+  assert.match(intro,/<h2>Пуговка<\/h2>/)
+  assert.equal((intro.match(/data-action="hen-friend-select"/g)??[]).length,5)
+  const focusKey=runInNewContext(stripTypeScriptTypes(part('function focusKey(','// The route key'))+'\nfocusKey',{})
+  assert.equal(focusKey(ordinaryOpener),focusKey(namedOpener),'the existing Back focus key survives the named-to-generic transition')
+  assert.deepEqual(cold,before,'mount, explicit Meet preview and the Back focus key have no save/resource side effects')
+
+  p.act('petChicken',4)
+  available=mount(p.state)
+  assert.ok(available.lookup('care').controls.some(x=>x.action==='hen-friendship-open'&&!x.disabled))
+  assert.equal(available.lookup('primary').controls.some(x=>x.action==='hen-friendship-open'),false)
+  assert.deepEqual(intercept(2,namedOpener,p.state),{selected:2,touches:['refresh']},'never send a stale named action to another hen')
+  assert.ok(available.enabled().includes('pack-egg-basket'))
 })

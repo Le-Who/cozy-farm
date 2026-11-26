@@ -75,7 +75,7 @@ import './apiary-preview.css'
 import { activeHarvestPicnic } from './harvest-picnic'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopCapacityWarning } from './coop-preview'
-import { getIncubatorWarehouseBasket, getIncubatorWarehouseEgg, hasIncubatorBasketSource, renderCoopPanel } from './coop-panel'
+import { getIncubatorNewHen, getIncubatorWarehouseBasket, getIncubatorWarehouseEgg, hasIncubatorBasketSource, renderCoopPanel } from './coop-panel'
 import { groupCoopServices } from './coop-services'
 import './coop-services.css'
 import './coop-panel.css'
@@ -4646,9 +4646,16 @@ app.addEventListener('click', async (event) => {
       if (island.endHenWalk(Number(value))) { dialog.close(); notify(`${henFriends[Number(value)].name} возвращается на своё место.`) }
       break
     }
-    case 'hen-friendship-open':
-      if (panel === 'coop' && dialog.open && farm.island === 'home') openPanel('hen-friendship')
+    case 'hen-friendship-open': {
+      if (panel !== 'coop' || !dialog.open || farm.island !== 'home' || !dialogContent.contains(control)) break
+      if (control.closest('.coop-incubator-new-hen')) {
+        const newcomer=getIncubatorNewHen(farm)
+        if (newcomer===undefined) { drawPanel(); break }
+        selectedFriendHen=newcomer
+      }
+      openPanel('hen-friendship')
       break
+    }
     case 'hen-treat': {
       if (panel !== 'hen-friendship' || !dialog.open) break
       const choice = /^(0|1|2|3|4):(carrot|leafyGreens|apple)$/.exec(value ?? '')
