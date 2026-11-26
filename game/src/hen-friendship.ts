@@ -47,9 +47,11 @@ export function befriendPettedHen(farm: FarmState, id: number): string {
 export function getHenTreat(farm: FarmState, id: number, treat: HenTreat) {
   const hen = henFriends[id], bond = farm.henFriendship.hens[id]
   const stock = treat === 'apple' ? farm.fruit.apple : farm.produce[treat]
-  const complete = !!bond && bond.points === maxHenFriendship && bond.tasted.includes(hen.favorite)
-  const available = farm.island === 'home' && isHen(farm, id) && stock >= 1 && bond.treatedOn !== farm.day && !complete
-  return { stock, complete, available, known: !!bond?.tasted.includes(treat), favorite: !!bond?.tasted.includes(hen.favorite) }
+  const known = !!bond?.tasted.includes(treat), favorite = !!bond?.tasted.includes(hen.favorite)
+  const capped = bond?.points === maxHenFriendship
+  const complete = capped && favorite, repeatAtCap = capped && !favorite && known
+  const available = farm.island === 'home' && isHen(farm, id) && stock >= 1 && bond.treatedOn !== farm.day && !complete && !repeatAtCap
+  return { stock, complete, available, known, favorite, repeatAtCap }
 }
 
 export function treatHen(farm: FarmState, id: unknown, treat: unknown): ActionResult {
@@ -57,6 +59,7 @@ export function treatHen(farm: FarmState, id: unknown, treat: unknown): ActionRe
   const option = getHenTreat(farm, id, treat), bond = farm.henFriendship.hens[id], hen = henFriends[id]
   if (bond.treatedOn === farm.day) return { ok: false, message: `${hen.name} сегодня уже получила угощение. Можно продолжить знакомство в другой день.` }
   if (option.complete) return { ok: false, message: `${hen.name} уже ваш близкий друг. Поглаживаниям она рада и без угощений.` }
+  if (option.repeatAtCap) return { ok: false, message: 'Это угощение уже знакомо.' }
   if (!option.available) return { ok: false, message: 'Нужна одна порция выбранного обычного продукта. Необычный урожай останется в запасах.' }
   if (treat === 'apple') farm.fruit.apple -= 1
   else farm.produce[treat] -= 1
