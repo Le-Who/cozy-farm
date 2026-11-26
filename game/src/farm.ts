@@ -1415,7 +1415,10 @@ export function getCapeBouquetPreview(farm: FarmState, bed: number) {
   const changes = [['мёд', now.honey, then.honey], ['мёд ветров', now.windHoney, then.windHoney],
     ['воск', getCapeWax(farm), getCapeWax(clipped)]] as const;
   const cost = changes.filter(([,a,b]) => a !== b).map(([name,a,b]) => `${name} ${a} → ${b}`).join(', ');
-  return { token: [farm.day, bed, now.honey, now.windHoney, getCapeWax(farm), then.honey, then.windHoney, getCapeWax(clipped)].join(':'), cost };
+  const token = [farm.day, bed, now.honey, now.windHoney, getCapeWax(farm), then.honey, then.windHoney, getCapeWax(clipped)].join(':');
+  const upgrade = getCapeUpgrade(farm);
+  const delaysUpgrade = upgrade?.nextLevel === 2 && upgrade.available && getCapeUpgrade(clipped)?.available === false;
+  return { token: delaysUpgrade ? token + ':upgrade' : token, cost, delaysUpgrade };
 }
 
 export function cutCapeBouquet(farm: FarmState, bed: number, token: string): ActionResult {

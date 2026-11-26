@@ -2379,7 +2379,7 @@ function drawPanel() {
             ${harvest.windHoney ? row('ui-wind-honey', 'Мёд ветров', `×${harvest.windHoney}`) : ''}
             ${harvest.wax ? row('ui-beeswax', 'Пчелиный воск', `×${harvest.wax}`) : ''}</ul>
           ${harvest.windHoney ? '<p class="dialog-intro">Мёд ветров заменяет одну обычную порцию.</p>' : ''}</section>` : ''}
-        ${bunch ? nav(button(`Срезать букет · ${bunch.cost}`, 'cape-bouquet', true, {value:bunch.token, secondary:true})) : ''}
+        ${bunch ? nav(button(`Срезать букет · ${bunch.cost}${bunch.delaysUpgrade ? ' · улучшение не раньше завтра' : ''}`, 'cape-bouquet', true, {value:bunch.token, secondary:true})) : ''}
         ${readyChoice ? nav(upgradeAction, gatherAction) : ''}
         ${preview.note ? `<p class="dialog-intro">${preview.note}</p>` : ''}
         <section aria-label="Мёд ветров"><h2 class="dialog-status">Мёд ветров</h2><p class="dialog-intro">${wind.detail}</p></section>
