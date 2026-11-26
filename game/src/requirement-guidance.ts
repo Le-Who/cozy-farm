@@ -3,7 +3,7 @@ import { getNurseryVariantSource, nurseryVariantNotice } from './nursery-variant
 import { getOrdinaryHoneyWait } from './ordinary-honey-guidance.ts';
 import { seaSaltRestNotice } from './salt-guidance.ts';
 import { getRegularShellSource } from './regular-shell-source.ts';
-import { getReadyVariantSource, readyVariantNotice } from './ready-variant-guidance.ts';
+import { getBlockingVariantFruit, getReadyVariantSource, readyVariantNotice } from './ready-variant-guidance.ts';
 import { getLocalWarehouseSupply } from './warehouse-guidance.ts';
 import { bayProductId } from './bay-product-id.ts';
 import { getFishSource, rareFishClue } from './fish-guidance.ts';
@@ -25,7 +25,7 @@ export type Requirement = { kind: 'stock'; item: StockItem }
   | { kind: 'building'; building: BuildingId }
   | { kind: 'journey'; island: IslandId; id: string }
   | { kind: 'delivery' };
-export type RequirementHint = { action: DiscoveryTask['action']; notice?: string; selector?: string; seedPreview?: CropId };
+export type RequirementHint = { action: DiscoveryTask['action']; notice?: string; selector?: string; seedPreview?: CropId; sourceLabel?: string };
 const route = (target: string, value?: string): RequirementHint => ({ action: { label: '', target, value } });
 const atHome = (farm: FarmState, hint: RequirementHint) => farm.island === 'home' ? hint : route('sail', 'home');
 
@@ -140,6 +140,13 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
       const hint = growing.watered ? route('focus-place','farmhouse')
         : farm.water > 0 ? route('focus-bed',String(growing.index)) : route('focus-place','well');
       return atHome(farm,{...hint,notice:growingVariantNotice(item,growing)});
+    }
+    const blocking = getBlockingVariantFruit(farm,item);
+    if (blocking) {
+      const sourceLabel = 'К спелым плодам';
+      if (blocking.island !== farm.island) return {...route('sail',blocking.island),sourceLabel};
+      return {...route('inspect-tree',String(blocking.index)),sourceLabel,selector:'[data-action="pick-fruit"]',
+        notice:'Соберите спелые плоды: их особенность уже не сменится.'};
     }
     const base: StockItem = item.item === 'egg' ? {kind:'eggs',quantity:item.quantity}
       : item.item === 'apple' || item.item === 'pear' || item.item === 'peach' ? {kind:'fruit',item:item.item,quantity:item.quantity}

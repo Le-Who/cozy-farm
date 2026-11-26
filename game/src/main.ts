@@ -974,7 +974,10 @@ function stockLabel(item: StockItem): { name: string; image: string } {
   }
 }
 
-function stockTile(item: StockItem) { return stockTileWithSource(item) }
+function stockTile(item: StockItem) {
+  const source = item.kind === 'variants' && panel === 'recipes' ? getRequirementHint(farm,{kind:'stock',item}).sourceLabel : undefined
+  return stockTileWithSource(item,source)
+}
 function stockTileWithSource(item: StockItem, source = '') {
   const stock = ingredientCount(farm, item)
   const label = stockLabel(item)

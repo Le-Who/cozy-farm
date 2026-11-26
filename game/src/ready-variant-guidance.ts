@@ -30,6 +30,27 @@ export function getReadyVariantSource(farm: FarmState, request: VariantRequest):
   return index >= 0 ? {kind:'bed',island:'home',index} : undefined;
 }
 
+/**
+ * A ripe special fruit keeps its trait over later weather. Use this clue only
+ * when every reachable planted tree for the requested fruit is holding another
+ * trait; an unblocked tree may produce it without clearing any ready fruit.
+ */
+export function getBlockingVariantFruit(farm: FarmState, request: VariantRequest) {
+  const fruit = request.item;
+  if ((fruit !== 'apple' && fruit !== 'pear' && fruit !== 'peach') || ingredientCount(farm,request) >= request.quantity) return undefined;
+  const islands = farm.island === 'grove' ? ['grove', 'home'] as const : ['home', 'grove'] as const;
+  let first: { island: 'home' | 'grove'; index: number } | undefined;
+  for (const island of islands) {
+    if (island === 'grove' && !canSailTo(farm,island)) continue;
+    for (const [index,tree] of farm.trees[island].entries()) {
+      if (tree?.tree !== fruit) continue;
+      if (!tree.fruitReady || !tree.trait || tree.trait === request.trait) return undefined;
+      first ??= { island, index };
+    }
+  }
+  return first;
+}
+
 export function readyVariantNotice(request: VariantRequest): string {
   return `Уже можно собрать: ${variantLabel(request.item,request.trait).name} ×1. Сбор нужно подтвердить отдельно.`;
 }
