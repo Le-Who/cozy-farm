@@ -124,8 +124,7 @@ import { combinedExpeditionId, expeditionOfferAfterClaim, initialExpeditionPrevi
 import { getFerryRestockPlan } from './ferry-restock'
 import { firstFerryCargoOffer } from './ferry-smaller-cargo'
 import { bayAudio } from './bay-audio'
-import { mountBayShop, type BayShopCommissionPreview, type BayShopOptions } from './bay-shop'
-import type { BayShopStock } from './bay-shop-model'
+import { mountBayShop, type BayShopCommissionPreview, type BayShopOptions, type BayShopStockGroup } from './bay-shop'
 import { renderFreightPanelInto, presentFerryDeparture, presentFerryArrival, freightControl } from './bay-freight-ui'
 import { FerryArrivalPresentation } from './ferry-arrival-presentation'
 import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } from './ferry-panel-view'
@@ -1968,8 +1967,12 @@ function harbourGoods() {
 }
 function openShopScene(host:HTMLElement) {
   const catalog = harbourGoods(), byId = new Map(catalog.map(row => [row.id,row]))
-  const products = ():BayShopStock[] => harbourGoods().map(row => ({...row,
-    quantity:row.quantity+(farm.freight.warehouses.village[row.id] ?? 0)})).filter(row => row.quantity>0)
+  const products = ():ReturnType<BayShopOptions['products']> => harbourGoods().map(row => {
+    const kind = row.item?.kind
+    const group:BayShopStockGroup = !kind || ['dishes','handmade','eggBaskets','eggCrates'].includes(kind) ? 'kitchen'
+      : ['fish','shells','shoalFinds','seaSalt'].includes(kind) ? 'shore' : 'harvest'
+    return {...row,group,quantity:row.quantity+(farm.freight.warehouses.village[row.id] ?? 0)}
+  }).filter(row => row.quantity>0)
   const source = panelHistory.at(-1)
   const recipe = source?.panel === 'recipes' ? source.harbourRecipe : undefined
   const recipeProduct = recipe?.preview ? 'signature:' + recipe.id : undefined

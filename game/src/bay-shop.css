@@ -31,3 +31,10 @@
 .bay-shop-remainder{grid-column:1/-1;margin:1px 0 0;font-size:11px;line-height:1.3;color:#80684d;overflow-wrap:anywhere}
 
 .bay-shop-close.bay-shop-recipe-back{width:auto;padding-inline:10px;border-radius:18px;font-size:12px;white-space:nowrap}
+
+/* Keep the existing desk grid as the sole scroller; one compact group row replaces the long-list heading. */
+.bay-shop-stock-groups{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;padding:4px 0}
+.bay-shop-stock-groups button{min-width:0;min-height:44px;padding:3px;border:1px solid #ddc8a3;border-radius:8px;background:#fcf3df;color:var(--shop-ink);font-size:12px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+.bay-shop-stock-groups button[aria-pressed=true]{background:#e8daee;border-color:#a58ab5;color:#654b76}
+.bay-shop-stock-groups button:focus-visible{outline:2px solid #705187;outline-offset:-3px}
+@media(max-height:500px){.bay-shop-stock-groups button{font-size:11px}}

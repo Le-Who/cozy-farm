@@ -7,7 +7,7 @@ import * as F from '../src/farm.ts'
 import * as model from '../src/bay-shop-model.ts'
 import * as quantities from '../src/bay-shop-quantity.ts'
 import { reserveShopGoods, returnShopGoods } from '../src/harbour-economy.ts'
-import { BayShopCustomerView } from '../src/bay-shop-customers.ts'
+import { BayShopCustomerView, renderBayShopCustomers } from '../src/bay-shop-customers.ts'
 import { bayShopDayGuidance } from '../src/bay-shop-day.ts'
 import { bayShopPurchaseReaction } from '../src/bay-shop-speech.ts'
 import { shopRemainderQuote, shopReturnLabel } from '../src/bay-shop-price-copy.ts'
@@ -27,8 +27,9 @@ const readCatalog=(farm:F.FarmState):model.BayShopStock[]=>runInNewContext(list,
   // Names/art are not under test. Product identities, order, availability and price are production code.
   stockLabel:(item:F.StockItem)=>({name:bayProductId(item),image:'ui-market'}),bayProductId,describeFood
 })
-function available(farm:F.FarmState){
-  return readCatalog(farm).map(row=>({...row,quantity:row.quantity+(farm.freight.warehouses.village[row.id]??0)})).filter(row=>row.quantity>0)
+const ownedProducts=stripTypeScriptTypes(slice(main,'  const products = ():','  const source = panelHistory.at(-1)')+'\nproducts()')
+function available(farm:F.FarmState):model.BayShopStock[]{
+  return runInNewContext(ownedProducts,{farm,harbourGoods:()=>readCatalog(farm)})
 }
 function earned(){
   const p=commissionPlayer(opening.slice(0,opening.findIndex((a:{name:string})=>a.name==='inviteResident')+1))
@@ -110,7 +111,7 @@ function scene(farm:F.FarmState){
   }
   const get=(s:string)=>{const e=host.querySelector(s);assert.ok(e,s);return e}
   const mounted=runInNewContext(render,{
-    ...model,...quantities,BayShopCustomerView,bayShopDayGuidance,bayShopPurchaseReaction,shopRemainderQuote,shopReturnLabel,ruCount,
+    ...model,...quantities,BayShopCustomerView,renderBayShopCustomers,bayShopDayGuidance,bayShopPurchaseReaction,shopRemainderQuote,shopReturnLabel,ruCount,
     Element,HTMLElement:Element,HTMLInputElement:Input,document,performance:{now:()=>0},CSS:{escape:(v:string)=>v},
     ResizeObserver:class{observe(){}disconnect(){}},matchMedia:()=>({matches:true}),window:{setTimeout:()=>1},clearTimeout(){},playBaySound(){},applyIngredientFinishes(){},
     requestAnimationFrame(fn:(n:number)=>void){nextFrame=fn;return 1},cancelAnimationFrame(){nextFrame=undefined},host,
@@ -180,5 +181,73 @@ test('keeping catalog position after an explicit placement does not change its s
   assert.equal(ui.focused,ui.get('[data-slot="0"]'))
   t.diagnostic(JSON.stringify({day:farm.day,actions,placed:1,before:304,after:ui.get('.bay-shop-products').scrollTop}))
   assert.equal(ui.get('.bay-shop-products').scrollTop,304)
+  ui.destroy()
+})
+
+function earnedCategoryChoices(){
+  const p=commissionPlayer(opening),recipe=p.cook();p.visit('home')
+  while(p.state.day<20){
+    for(const [index,bed] of p.state.beds.entries()){
+      if(bed.kind!=='crop')continue
+      const action=F.getBedAction(p.state,index)
+      if(action.kind==='harvest')p.act('workBed',index,0)
+      if(action.kind==='water'){if(!p.state.water)p.act('refillWater');p.act('workBed',index,0)}
+    }
+    if(p.state.eggsReady)p.act('collectEggs')
+    if(F.getTreeAction(p.state,0).kind==='pick')p.act('pickFruit',0)
+    p.night()
+  }
+  for(const [index,bed] of p.state.beds.entries())if(bed.kind==='crop'&&F.getBedAction(p.state,index).kind==='harvest')p.act('workBed',index)
+  if(p.state.eggsReady)p.act('collectEggs')
+  if(F.getTreeAction(p.state,0).kind==='pick')p.act('pickFruit',0)
+  p.act('catchFish',true)
+  if(F.getCookAction(p.state,'appleJam').available)p.act('cookDish','appleJam')
+  p.visit('grove');p.act('catchFish',true);p.act('gatherSeaSalt')
+  for(let i=0;i<3;i++)if(F.getShellAt(p.state,i))p.act('collectShell',i)
+  if(F.getTreeAction(p.state,0).kind==='pick')p.act('pickFruit',0)
+  p.visit('village')
+  assert.deepEqual([p.actions,p.state.day,p.state.island,p.state.coins,p.state.culinary.stock[recipe]],[144,20,'village',68,1])
+  return {farm:p.state,recipe,id:'signature:'+recipe}
+}
+const listing=(html:string)=>[...html.matchAll(/data-stock="([^"]*)"/g)].map(match=>match[1])
+const groups=(html:string)=>[...html.matchAll(/data-stock-group="([^"]+)" aria-pressed="(true|false)"[^>]*>([^<]+)<\/button>/g)].map(match=>[match[1],match[2],match[3]])
+
+test('earned Day20 gallery brings the last authored recipe into the first three kitchen cards without hiding any of 32 products or changing stock',()=>{
+  const {farm,id,recipe}=earnedCategoryChoices(),before=structuredClone(farm),ui=scene(farm)
+  const all=Array.from(available(farm),row=>row.id)
+  assert.equal(all.length,32);assert.equal(all.at(-1),id);assert.deepEqual(listing(ui.host.innerHTML),all)
+  assert.deepEqual(groups(ui.host.innerHTML),[['all','true','Всё'],['harvest','false','Урожай'],['kitchen','false','Кухня'],['shore','false','Берег']])
+  assert.ok(ui.host.innerHTML.indexOf('data-stock-group="kitchen"')<ui.host.innerHTML.indexOf('class="bay-shop-products"'))
+  assert.doesNotMatch(ui.host.innerHTML,/<strong>Припасы<\/strong>/,'no duplicate heading in the long-list view')
+  ui.get('.bay-shop-products').scrollTop=250
+  ui.click('[data-stock-group="kitchen"]')
+  assert.deepEqual(listing(ui.host.innerHTML),['dish:orchardTart','dish:appleJam',id]);assert.equal(ui.get('.bay-shop-products').scrollTop,0)
+  assert.equal(ui.focused,ui.get('[data-stock-group="kitchen"]'))
+  ui.click(`[data-stock="${id}"]`);assert.equal(ui.get('[data-stock-quantity]').value,'1');assert.deepEqual(farm,before)
+  ui.click('[data-stock-cancel]');assert.equal(ui.focused,ui.get(`[data-stock="${id}"]`));assert.deepEqual(listing(ui.host.innerHTML),['dish:orchardTart','dish:appleJam',id]);assert.equal(ui.transfers,0)
+  ui.click('[data-tab="journal"]');ui.click('[data-tab="stock"]')
+  assert.deepEqual(listing(ui.host.innerHTML),['dish:orchardTart','dish:appleJam',id]);assert.deepEqual(farm,before)
+  ui.click('[data-stock-group="shore"]');assert.deepEqual(listing(ui.host.innerHTML),['perch','seaBass','seaSalt','shells'])
+  ui.click('[data-stock-group="harvest"]');assert.equal(listing(ui.host.innerHTML).length,25)
+  ui.click('[data-stock-group="all"]');assert.deepEqual(listing(ui.host.innerHTML),all)
+  ui.click('[data-stock-group="kitchen"]');ui.click(`[data-stock="${id}"]`);ui.submit()
+  assert.equal(ui.transfers,1);assert.equal(farm.culinary.stock[recipe],0);assert.equal(farm.bayShop.slots[0]?.product.id,id);assert.equal(farm.bayShop.slots[0]?.quantity,1)
+  assert.equal(farm.coins,before.coins,'the explicit shelf placement itself is not a sale');assert.equal(ui.focused,ui.get('[data-slot="0"]'))
+  assert.deepEqual(listing(ui.host.innerHTML),['dish:orchardTart','dish:appleJam'])
+  assert.equal(Object.hasOwn(farm.bayShop.slots[0]!.product,'group'),false,'lookup category is never saved with shelf stock')
+  for(const item of ['dish:orchardTart','dish:appleJam']) { ui.click(`[data-stock="${item}"]`);ui.submit() }
+  assert.equal(ui.transfers,3);assert.equal(farm.coins,before.coins)
+  assert.deepEqual(groups(ui.host.innerHTML),[['all','true','Всё'],['harvest','false','Урожай'],['shore','false','Берег']])
+  assert.equal(listing(ui.host.innerHTML).length,29,'an exhausted category falls back to the remaining real stock')
+  ui.destroy()
+})
+
+test('first ordinary harbor arrival has at most four product rows and keeps the original unfiltered compact layout',()=>{
+  const p=commissionPlayer(opening.slice(0,opening.findIndex((a:{name:string})=>a.name==='inviteResident')+1))
+  assert.equal(p.state.island,'village');assert.ok(p.state.village.built)
+  const products=available(p.state);assert.ok(products.length>0&&products.length<=12)
+  const before=structuredClone(p.state),ui=scene(p.state)
+  assert.deepEqual(groups(ui.host.innerHTML),[]);assert.match(ui.host.innerHTML,/<strong>Припасы<\/strong>/)
+  assert.deepEqual(listing(ui.host.innerHTML),Array.from(products,row=>row.id));assert.deepEqual(p.state,before)
   ui.destroy()
 })

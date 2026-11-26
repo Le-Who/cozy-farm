@@ -13,6 +13,10 @@ import { placeShopQuantity, shopQuantityPreview, shopStockSlot } from './bay-sho
 import { shopRemainderQuote, shopReturnLabel } from './bay-shop-price-copy';
 import { applyIngredientFinishes } from './ingredient-finish';
 
+export type BayShopStockGroup = 'harvest' | 'kitchen' | 'shore';
+type StockGroup = 'all' | BayShopStockGroup;
+type GroupedStock = BayShopStock & { group?: BayShopStockGroup };
+
 export type BayShopCommissionPreview = { customer: BayShopVisitorId; recipeId: string; key: string };
 
 export type BayShopOptions = {
@@ -21,7 +25,7 @@ export type BayShopOptions = {
   recipeProduct?: string;
   returnToRecipe?: boolean;
   catalog?: readonly BayShopProduct[];
-  products(): BayShopStock[];
+  products(): GroupedStock[];
   takeStock(id: string, quantity: number): boolean;
   returnStock(id: string, quantity: number): void;
   onEarn(coins: number): void;
@@ -44,6 +48,14 @@ const visitorMessages = {
   budget: 'Сегодня у меня не хватит монет. Вернусь в другой раз!', closed: 'До скорой встречи!',
 } as const;
 
+const stockGroupLabels = [['all','Всё'],['harvest','Урожай'],['kitchen','Кухня'],['shore','Берег']] as const;
+const productGroup = (product: GroupedStock) => product.group ?? 'harvest';
+function shopStockGroups(products: GroupedStock[], group: StockGroup) {
+  const choices = stockGroupLabels.filter(([id]) => id === 'all' || products.some(product => productGroup(product) === id));
+  // Skip shallow lists, but don't discard an active category on small stock changes.
+  return choices.length > 2 && (products.length > 12 || group !== 'all' && choices.some(([id]) => id === group)) ? choices : [];
+}
+
 /** A scene owns its animation; the farm owns inventory, earnings and persistence. */
 export function mountBayShop(host: HTMLElement, options: BayShopOptions): { destroy(): void; refresh(): void } {
   const state = options.state;
@@ -59,6 +71,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   function saveChanges() { options.onChange(); savedShopState = JSON.stringify(state); }
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
   let pending: { id: string; identity: string; quantity: string; listScroll: number } | undefined;
+  let stockGroup: StockGroup = 'all';
   let tab: 'stock' | 'journal' = 'stock', notice = '', noticeTimer = 0, destroyed = false, frame = 0, lastTime = performance.now();
   let lastPhase = !state.open && !state.visitor ? 'idle' : '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
   // Only this live scene owns a recently observed refusal. The save and customer ledger stay unchanged.
@@ -109,8 +122,14 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       <button type="button" class="bay-shop-return" data-return aria-label="${shopReturnLabel(slot.quantity)}" title="${shopReturnLabel(slot.quantity)}">↶</button>
       <p class="bay-shop-remainder" data-shelf-quote>${shopRemainderQuote(slot.quantity,slot.price)}</p>
       </div>` : `<p class="bay-shop-empty-slot">Выберите товар и количество для полки.</p>`;
-    return `${selectedPanel}<div class="bay-shop-stock-heading"><strong>Припасы</strong></div>
-      <div class="bay-shop-products">${products.length ? products.map(product => {
+    const groups = shopStockGroups(products,stockGroup);
+    if (!groups.some(([id]) => id === stockGroup)) stockGroup = 'all';
+    const heading = groups.length ? `<div class="bay-shop-stock-heading bay-shop-stock-groups" role="group" aria-label="Группы припасов">${groups.map(([id,label]) =>
+      `<button type="button" data-stock-group="${id}" aria-pressed="${id === stockGroup}" aria-controls="bay-shop-stock-grid">${label}</button>`).join('')}</div>`
+      : '<div class="bay-shop-stock-heading"><strong>Припасы</strong></div>';
+    const visible = stockGroup === 'all' ? products : products.filter(product => productGroup(product) === stockGroup);
+    return `${selectedPanel}${heading}
+      <div class="bay-shop-products" id="bay-shop-stock-grid">${visible.length ? visible.map(product => {
         return `<button type="button" class="bay-shop-product" data-user-text data-stock="${escape(product.id)}" data-action="shop-stock-select" aria-label="Выбрать товар: ${escape(product.name)}. В запасе: ${product.quantity}"><span class="bay-shop-product-art">${art(product)}</span><span data-user-text>${escape(product.name)}</span><small>×${product.quantity}</small>${product.signature ? '<em title="Мой рецепт" aria-label="Мой рецепт">♥</em>' : ''}</button>`;
       }).join('') : `<div class="bay-shop-stock-empty"><p>Привезите продукты или испеките булочки.</p>${options.onOpenFreight ? '<button type="button" data-freight>К парому</button>' : ''}</div>`}</div>`;
   }
@@ -124,7 +143,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     const commissionName = earned ? bayShopVisitors.find(person => person.id === earned.customer)?.name : commission?.name;
     const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
     const priceDraft = active instanceof HTMLInputElement && active.hasAttribute('data-price') ? active.value : undefined;
-    const focusAttribute = returnStock?.id ? 'data-stock' : active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
+    const focusAttribute = returnStock?.id ? 'data-stock' : active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-stock-group', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
     const focusValue = returnStock?.id ?? (focusAttribute ? active!.getAttribute(focusAttribute)! : '');
     const scroll = host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
     // The catalog scrolls inside the desk; the desk itself is clipped in this view.
@@ -270,6 +289,13 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       const price = Math.max(1, Math.min(10_000, Math.round(slot.product.basePrice * Number(button.dataset.priceFactor))));
       if (price !== slot.price && setBayShopPrice(state, selected, price)) lastRefusal = undefined;
       notice = ''; changed(); return;
+    }
+    const groupValue = button.getAttribute('data-stock-group');
+    if (groupValue) {
+      if (tab !== 'stock' || pending) return;
+      const group = shopStockGroups(options.products().filter(p => p.quantity > 0),stockGroup).find(([id]) => id === groupValue)?.[0];
+      if (group && group !== stockGroup) { stockGroup = group; render({ listScroll: 0 }); }
+      return;
     }
     if (button.dataset.stock) {
       const product = options.products().find(p => p.id === button.dataset.stock);
