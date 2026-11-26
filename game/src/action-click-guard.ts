@@ -12,6 +12,11 @@ export class ActionClickGuard {
   remember(event: Click) {
     if (event.detail > 0) this.last = { detail: event.detail, timeStamp: event.timeStamp, clientX: event.clientX, clientY: event.clientY }
   }
+  followDistantNavigation(event: Click) {
+    const last = this.last
+    if (last && event.detail > 0 && event.timeStamp >= last.timeStamp
+      && Math.hypot(event.clientX - last.clientX, event.clientY - last.clientY) > 8) this.last = undefined
+  }
 }
 
 const guardedActions = new Set([
@@ -77,7 +82,10 @@ export function installActionClickGuard(root: HTMLElement) {
       return
     }
     const control = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null
-    if (control && !control.disabled && guardedControl(control)) guard.remember(event)
+    if (!control || control.disabled) return
+    if (guardedControl(control)) guard.remember(event)
+    // A separate physical navigation click ends the prior local gesture.
+    else if (control.dataset.panel && event.isTrusted) guard.followDistantNavigation(event)
   }, true)
   // A removed button may send keyup/repeat to the dialog, body or close button.
   // Listen on the document so release is always seen, not only inside the app.
