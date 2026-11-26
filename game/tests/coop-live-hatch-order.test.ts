@@ -7,12 +7,13 @@ import * as F from '../src/farm.ts'
 import {renderCoopPanel} from '../src/coop-panel.ts'
 import {groupCoopServices} from '../src/coop-services.ts'
 import {renderHenFriendship} from '../src/hen-friendship.ts'
+import {mixChickenFeed} from '../src/chicken-feed.ts'
 import {chickenCarePlayer} from './fixtures/chicken-care-player.ts'
 import {commissionPlayer} from './fixtures/commission-player.ts'
 
 const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
 function part(a:string,b:string){const i=main.indexOf(a),j=main.indexOf(b,i+1);assert.ok(i>=0&&j>i,[a,b]);return main.slice(i,j)}
-const helpers=stripTypeScriptTypes(part('function button(','function panelTabs(')+part('function flockFeedRow()','function seedCards()'))
+const helpers=stripTypeScriptTypes(part('function button(','function panelTabs(')+part('function flockFeedRow(','function seedCards()'))
 const segments=['primary','forecast','care','packing','hens'] as const
 type Name=typeof segments[number]
 
@@ -147,4 +148,65 @@ test('real compact-active resize preserves original keyboard focus and scroll, n
  assert.equal(m.root.scrollTop,53);assert.ok(m.all().includes(care)&&m.all().includes(insert))
  assert.deepEqual(f,before)
  m.dispose();const count=m.moves.length;m.resize(true);assert.equal(m.moves.length,count)
+})
+
+function hungryAfterHatch() {
+  const p=days(), trace=days()
+  trace.run(10)
+  const i=trace.log.findIndex(action=>action.name==='mixChickenFeed'&&action.day>=6)
+  assert.equal(i,133)
+  // Reuse the same opening actions then run only the public commands, each restored.
+  for(const {name,args} of trace.log.slice(p.log.length,i)) p.act(name,...args)
+  assert.deepEqual([p.state.day,p.state.flockSize,p.state.hatchDay,p.state.feed,p.state.chickensFed],[7,5,null,0,false])
+  assert.deepEqual([p.state.coins,p.state.produce.wheat,p.state.produce.carrot,p.state.fruit.apple],[297,3,2,3])
+  return p.state
+}
+
+test('an earned hungry post-hatch flock sees Buy and make-from-harvest together without performing either',()=>{
+  const f=hungryAfterHatch(),before=structuredClone(f)
+  for (const wide of [false,true]) {
+    const view=mount(f,wide),daily=view.lookup('primary').controls
+    const feedChoices=daily.filter(x=>!x.disabled).map(x=>x.action)
+    assert.deepEqual(feedChoices,['buy-feed','chicken-feed-open'])
+    assert.deepEqual(view.groupOrder().slice(0,3),(wide?desktop:compact).slice(0,3))
+    assert.equal(view.all().filter(x=>x.action==='chicken-feed-open').length,1)
+    assert.ok(view.enabled().includes('hen-friendship-open'))
+    assert.ok(view.enabled().includes('pack-egg-basket'))
+    const mix=daily.find(x=>x.action==='chicken-feed-open')!
+    mix.focus();view.resize(!wide);view.resize(wide)
+    assert.equal(view.document.activeElement,mix)
+    assert.deepEqual(mix.focusCalls,[undefined],'ordinary width changes do not reset or re-arm the action')
+    assert.deepEqual(f,before)
+  }
+  const opener=stripTypeScriptTypes(`switch ('chicken-feed-open') { ${part("    case 'chicken-feed-open':","    case 'mix-chicken-feed':")} }`)
+  const visits:string[]=[]
+  runInNewContext(opener,{farm:f,panel:'coop',dialog:{open:true},openPanel:(next:string)=>visits.push(next)})
+  assert.deepEqual(visits,['chicken-feed'])
+  assert.deepEqual(f,before,'entering the existing chooser cannot spend or feed')
+  for (const option of ['purchase','garden','orchard'] as const) {
+    const next=restored(f)!
+    assert.ok(option==='purchase' ? F.buyFeed(next).ok : mixChickenFeed(next,option).ok)
+    assert.deepEqual([next.coins,next.feed,next.produce.wheat,next.produce.carrot,next.fruit.apple,next.chickensFed],({
+      purchase:[293,2,3,2,3,false],garden:[297,3,2,1,3,false],orchard:[297,4,2,2,2,false]
+    } as const)[option])
+    assert.ok(F.feedChickens(next).ok)
+    assert.deepEqual([next.feed,next.chickensFed],[option==='orchard'?3:option==='garden'?2:1,true])
+  }
+})
+
+test('normal Coop returns one unchanged Mix choice to care when it is not an immediate recovery',()=>{
+  const f=hungryAfterHatch()
+  for(const mode of ['no-wheat','only-apples','mixed','fed'] as const) {
+    const next=restored(f)!
+    if(mode==='no-wheat') assert.ok(F.sellMarketItem(next,'produce:wheat',3).ok)
+    if(mode==='only-apples') assert.ok(F.sellMarketItem(next,'produce:carrot',2).ok)
+    if(mode==='mixed'||mode==='fed') assert.ok(mixChickenFeed(next,'orchard').ok)
+    if(mode==='fed') assert.ok(F.feedChickens(next).ok)
+    const saved=structuredClone(next),view=mount(next)
+    assert.equal(view.all().filter(x=>x.action==='chicken-feed-open').length,1)
+    const cameFrom=mode==='only-apples'?'primary':'care'
+    assert.ok(view.lookup(cameFrom).controls.some(x=>x.action==='chicken-feed-open'&&!x.disabled&&x.value===''))
+    assert.deepEqual(view.groupOrder().slice(0,3),mode==='only-apples'?compact.slice(0,3):normal.slice(0,3))
+    assert.deepEqual(next,saved)
+  }
 })

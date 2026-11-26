@@ -1,5 +1,6 @@
 import { eggsPerBasket, eggsPerCrate, getCoopMorning, getEggUnpackAction, getRareIncubatorEgg, incubationDays, maxChickenHappiness, maxFlockSize, type FarmState, type StockItem } from './farm.ts'
 import { renderCoopMorning } from './coop-preview.ts'
+import { canMixBedtimeFeed } from './chicken-feed.ts'
 import { henFriends } from './hen-friendship.ts'
 import { ruCount } from './ru.ts'
 import { getLocalWarehouseSupply, warehouseConfirmationValue } from './warehouse-guidance.ts'
@@ -8,7 +9,7 @@ type CoopComponents = {
   icon(id:string):string
   row(image:string,name:string,detail:string,actions?:string):string
   button(label:string,action:string,enabled?:boolean,options?:{secondary?:boolean;value?:string|number;context?:string}):string
-  feedRow():string
+  feedRow(alternate?:string):string
 }
 
 export function hasIncubatorBasketSource(farm:FarmState):boolean {
@@ -40,6 +41,8 @@ export function getIncubatorWarehouseBasket(farm:FarmState) {
 /** Existing actions, grouped by current daily work before optional services. No saved UI state. */
 export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopComponents):string {
   const morning=getCoopMorning(farm)
+  const mixNow=canMixBedtimeFeed(farm)
+  const mixChoice=farm.buildingLevels.coop>=2?button('Выбрать смесь', 'chicken-feed-open',true,{secondary:true}):''
   const capacity=morning.blockedIfFed?' · соберите до отдыха':''
   const rare=getRareIncubatorEgg(farm)
   const storedEgg=getIncubatorWarehouseEgg(farm)
@@ -57,11 +60,11 @@ export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopCom
     +(farm.buildingLevels.coop >= 2 || farm.eggBaskets > 0 ? row('ui-egg-basket',`Корзины яиц · ${farm.eggBaskets}`,`Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,
       button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket,{context:'корзина яиц'})+button(`Распаковать · +${eggsPerBasket}`,'unpack-egg-basket',getEggUnpackAction(farm,'basket').available,{secondary:true})):'')
   return `<section class="coop-panel" aria-label="Курятник: дела и забота">
-    <ul class="dialog-list coop-primary" aria-label="Сегодня в курятнике">${feedRow()}${row('egg','Яйца',`В гнёздах: ${farm.eggsReady}/${morning.capacity}${capacity}`,button('Собрать','collect',farm.eggsReady>0,{context:'яйца'}))}${incubation}</ul>
+    <ul class="dialog-list coop-primary" aria-label="Сегодня в курятнике">${feedRow(mixNow?mixChoice:undefined)}${row('egg','Яйца',`В гнёздах: ${farm.eggsReady}/${morning.capacity}${capacity}`,button('Собрать','collect',farm.eggsReady>0,{context:'яйца'}))}${incubation}</ul>
     <details class="coop-forecast"><summary>Кладка после отдыха</summary>${renderCoopMorning(farm)}</details>
     <section class="coop-care" aria-label="Забота и развитие"><div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>${button('Улучшения','upgrades',true,{secondary:true})}</div>
       <ul class="dialog-list">${row('tool-hen','Дружба со стаей','Погладить, угостить, погулять',button('Познакомиться','hen-friendship-open',true,{secondary:true}))}
-        ${farm.buildingLevels.coop>=2?row('tool-feed','Корм из урожая','3 порции с морковью · 4 с яблоком',button('Выбрать смесь', 'chicken-feed-open',true,{secondary:true})):row('tool-feed','Домашние кормовые смеси','Откроются после улучшения курятника')}</ul>
+        ${mixNow?'':mixChoice?row('tool-feed','Корм из урожая','3 порции с морковью · 4 с яблоком',mixChoice):row('tool-feed','Домашние кормовые смеси','Откроются после улучшения курятника')}</ul>
 
     </section>
     ${packing?`<section class="coop-packing" aria-label="Упаковка яиц"><h2>Упаковка яиц</h2><ul class="dialog-list">${packing}</ul></section>`:''}

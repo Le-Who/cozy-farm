@@ -1,8 +1,8 @@
 const mountedCoopServices = new WeakMap<HTMLElement, () => void>()
 
-/** An available next hatch step belongs before optional care on compact screens. */
-function hasLiveHatchStep(daily: HTMLElement): boolean {
-  return !!daily.querySelector('[data-action="incubate-egg"]:not(:disabled), [data-action="incubate-rare-egg"]:not(:disabled), [data-action="incubator-basket"]:not(:disabled), [data-action="incubator-warehouse-egg"]:not(:disabled), [data-action="incubator-warehouse-basket"]:not(:disabled), [data-action="visit-rest"]:not(:disabled)')
+/** A current feeding choice or hatch step belongs before optional care on compact screens. */
+function hasLiveDailyStep(daily: HTMLElement): boolean {
+  return !!daily.querySelector('[data-action="chicken-feed-open"]:not(:disabled), [data-action="incubate-egg"]:not(:disabled), [data-action="incubate-rare-egg"]:not(:disabled), [data-action="incubator-basket"]:not(:disabled), [data-action="incubator-warehouse-egg"]:not(:disabled), [data-action="incubator-warehouse-basket"]:not(:disabled), [data-action="visit-rest"]:not(:disabled)')
     || !!daily.querySelector('[data-action="incubate-egg"]:disabled') && !!daily.querySelector('[data-action="collect"]:not(:disabled)')
 }
 
@@ -20,7 +20,7 @@ export function groupCoopServices(root: HTMLElement): () => void {
   let disposed = false
   const reorder = () => {
     if (disposed || !root.contains(panel)) return
-    const before = desktop.matches ? forecast.nextElementSibling : hasLiveHatchStep(daily) ? forecast : panel.firstElementChild
+    const before = desktop.matches ? forecast.nextElementSibling : hasLiveDailyStep(daily) ? forecast : panel.firstElementChild
     if (before === care || before === care.nextElementSibling) return
     const active = root.ownerDocument.activeElement as HTMLElement | null
     const focusedCare = care.contains(active) ? active : null

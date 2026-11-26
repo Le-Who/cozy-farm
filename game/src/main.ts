@@ -941,11 +941,11 @@ function specializationCards() {
           cost: { icon: 'coin', amount: choice.price } } : {})}</footer>`
 }
 
-function flockFeedRow() {
+function flockFeedRow(alternate = '') {
   return row('tool-feed', 'Корм для кур', farm.chickensFed ? 'Сегодня накормлены' : 'Корм к утренней кладке', farm.chickensFed ? ''
     : farm.feed > 0 ? button('Покормить', 'feed')
       : button('Купить корм', 'buy-feed', farm.coins >= feedBagPrice, {cost:{icon:'coin',amount:feedBagPrice}})
-        + (panel === 'rest' && canMixBedtimeFeed(farm) ? button('Смешать из урожая', 'chicken-feed-open', true, {secondary:true}) : ''))
+        + (panel === 'rest' && canMixBedtimeFeed(farm) ? button('Смешать из урожая', 'chicken-feed-open', true, {secondary:true}) : alternate))
 }
 
 function seedCards() {
