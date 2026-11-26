@@ -310,7 +310,8 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
   if (!seen.collections && farm.progress.harvest > 0 && !established) return task('collections', 'Посмотрите первые находки', 'В коллекциях записаны собранный урожай и его необычные разновидности.', 'tool-crate', { label: 'Открыть коллекции', target: 'open-panel', value: 'archive' });
   if (!pastStarter) { const first = starter(farm); if (first) return first; }
   if (!seen.islands) return task('islands', 'Откройте бухту', 'Карта показывает острова и ближайший шаг к открытию каждого маршрута.', 'island', { label: 'К островам', target: 'open-panel', value: 'boat' });
-  const cooked = farm.bayDiscoveries.some(id => id in dishDefinitions) || Object.values(farm.dishes).some(count => count > 0);
+  // A completed author recipe is cooking too, even after that recipe is archived.
+  const cooked = farm.culinary.serial > 0 || farm.bayDiscoveries.some(id => id in dishDefinitions) || Object.values(farm.dishes).some(count => count > 0);
   if (!cooked && !established) return getCookAction(farm, 'orchardTart').available
     ? task('first-cooking', 'Испеките первый садовый тарт', 'На домашней кухне нужны 2 яблока, 1 пшеница и 1 яйцо.', 'ui-tree-apple', { label: 'На кухню', target: 'kitchen', value: 'orchardTart' })
     : recipe(farm, 'orchardTart', 'первое блюдо');
