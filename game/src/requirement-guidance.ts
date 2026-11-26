@@ -1,6 +1,7 @@
 import {getGrowingVariantSource,growingVariantNotice} from './growing-variant-guidance.ts';
 import { getNurseryVariantSource, nurseryVariantNotice } from './nursery-variant-guidance.ts';
 import { getOrdinaryHoneyWait } from './ordinary-honey-guidance.ts';
+import { getWindHoneySource } from './wind-honey-guidance.ts';
 import { seaSaltRestNotice } from './salt-guidance.ts';
 import { getRegularShellSource } from './regular-shell-source.ts';
 import { getMusicSaltRequirement } from './music-material-guidance.ts';
@@ -26,7 +27,7 @@ export type Requirement = { kind: 'stock'; item: StockItem; musicSaltOn?: number
   | { kind: 'building'; building: BuildingId }
   | { kind: 'journey'; island: IslandId; id: string }
   | { kind: 'delivery' };
-export type RequirementHint = { action: DiscoveryTask['action']; notice?: string; selector?: string; seedPreview?: CropId; sourceLabel?: string; nurserySpace?: number };
+export type RequirementHint = { action: DiscoveryTask['action']; notice?: string; modalNotice?: string; selector?: string; seedPreview?: CropId; sourceLabel?: string; nurserySpace?: number };
 const route = (target: string, value?: string): RequirementHint => ({ action: { label: '', target, value } });
 const atHome = (farm: FarmState, hint: RequirementHint) => farm.island === 'home' ? hint : route('sail', 'home');
 
@@ -211,6 +212,13 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
   if (item.kind === 'eggBaskets' && farm.buildingLevels.coop < 2) return atHome(farm, route('show-upgrade','coop'));
   if (item.kind === 'handmade' && !isProjectComplete(farm,'fair') && !farm.village.built) return getRequirementHint(farm,{kind:'journey',island:'village',id:'fair'});
   if (item.kind === 'windHoney') {
+    if (farm.island === 'home' && farm.windHoney < item.quantity && getMarketOrders(farm).some(order =>
+      order.lane === 'cape' && order.status === 'waiting' && order.items.some(part =>
+        part.kind === 'windHoney' && part.quantity === item.quantity))) {
+      const forecast = getWindHoneySource(farm);
+      // The existing forecast is known here; travel would only turn the player back home.
+      if (forecast.kind === 'wait') return { ...route('open-panel','rest'), modalNotice: forecast.detail };
+    }
     const task=getSupplyGuidance(farm,item,'нужные припасы');
     return {...safe(task),...(task.action.target === 'open-panel' ? {} : {notice:task.detail})};
   }

@@ -3669,6 +3669,14 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
   else if (target === 'open-panel' && value === 'seeds' && hint.seedPreview) { openGuidedSeeds(hint.seedPreview); return }
   else if (target === 'open-panel' && value && value in panelTitles) openPanel(value as Panel)
   else {openPanel('boat');return}
+  if (hint.modalNotice && dialog.open) {
+    window.clearTimeout(dialogFeedbackTimer)
+    dialogFeedback.classList.remove('sr-only')
+    dialogFeedback.dataset.tone = 'good'
+    dialogFeedback.textContent = hint.modalNotice
+    dialogFeedback.hidden = false
+    return // Keep the ordinary panel entry focus, not its commit button.
+  }
   const selector = hint.selector ?? (target === 'visit-market' ? marketTab === 'sell' ? '[data-action="sell-item"]'
     : marketTab === 'orders' ? '[data-action="deliver-order"]:not(:disabled)' : '[data-action="buy-seeds"],[data-action="buy-feed"]'
     : target === 'project-dock' || target === 'fair-project' ? '[data-action="deliver-project"]'
