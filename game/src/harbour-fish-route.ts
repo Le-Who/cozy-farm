@@ -1,6 +1,7 @@
 import { getVillageProject, type FarmState } from './farm.ts'
 import { quoteExpedition, type ExpeditionPort } from './ferry-expeditions.ts'
 import { expeditionWallet } from './harbour-economy.ts'
+import { getSupperFishRecovery } from './shared-supper.ts'
 
 /** Only prepares navigation. No purchase, voyage, night or contribution is automatic. */
 export function getHarbourFishRoute(farm: FarmState) {
@@ -28,9 +29,12 @@ export function harbourFishNeeded(farm: FarmState): boolean {
 export function renderHarbourFishChoice(farm: FarmState, purpose: 'building' | 'supper' = 'building'): string {
   if (purpose === 'building' && !harbourFishNeeded(farm)) return ''
   const route = getHarbourFishRoute(farm)
+  const recovery = purpose === 'supper' && farm.island === 'village' && farm.village.built ? getSupperFishRecovery(farm).kind : 'shore'
+  const catchLabel = recovery === 'rest' ? 'К отдыху дома' : recovery === 'warehouse' ? 'К рыбе на складе' : 'Поймать бесплатно'
+  const fishing = recovery === 'rest' ? 'Рыбалка снова завтра. ' : recovery === 'warehouse' ? '' : 'Поймайте рыбу сами или привезите паромом. '
   return `<section class="harbour-fish-choice" aria-label="Два пути за рыбой"><h2>${purpose === 'building' ? 'Улов для гавани' : 'Рыба к общему столу'}</h2>
     ${purpose === 'supper' ? '<p>Для ужина подойдёт обычный окунь или морской окунь.</p>' : ''}
-    <p>Поймайте рыбу сами или привезите паромом. У Соляного маяка 2 обычных морских окуня стоят ${route.price} монет. Это покупка из местного запаса, не ваш улов.</p>
-    <p>${route.step}</p><nav class="dialog-grid dialog-nav"><button class="dialog-button secondary" type="button" data-action="harbour-fish-catch">Поймать бесплатно</button><button class="dialog-button secondary" type="button" data-action="harbour-fish-trade">${route.label}</button></nav>
+    <p>${fishing}У Соляного маяка 2 обычных морских окуня стоят ${route.price} монет. Это покупка из местного запаса, не ваш улов.</p>
+    <p>${route.step}</p><nav class="dialog-grid dialog-nav"><button class="dialog-button secondary" type="button" data-action="harbour-fish-catch">${catchLabel}</button><button class="dialog-button secondary" type="button" data-action="harbour-fish-trade">${route.label}</button></nav>
     <p>Просмотр ничего не тратит. Отправка рейса и получение рыбы выбираются отдельно.</p></section>`
 }

@@ -5,17 +5,17 @@ import { getWindHoneySource } from './wind-honey-guidance.ts';
 import { getNextCropBed, getNextHarvestBed } from './crop-guidance.ts';
 import { plannedCropAt, seedForBed } from './garden-plans.ts';
 import { getLocalWarehouseSupply, warehouseRequestValue } from './warehouse-guidance.ts';
-import { getReadySignatureSuppers } from './shared-supper.ts';
+import { getReadySignatureSuppers, getSupperFishRecovery } from './shared-supper.ts';
 import { getFishSource, rareFishClue } from './fish-guidance.ts';
 import { getPackedEggSource } from './packed-egg-guidance.ts';
 import { getFruitSource, nurseryFruitDetail } from './orchard-guidance.ts';
 import { freightStock } from './bay-freight-model.ts';
 import { bayShopDailyLimit } from './bay-shop-model.ts';
 import {
-  boatPrice, buildingDefinitions, buildingIds, canSailTo, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
+  boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeHoney, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
   foodDescriptors, getFestivalStatus, getMarketOrders, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
-  orchardIslandIds, treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
+  treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
 } from './farm.ts';
 import {ruCount} from './ru.ts';
 
@@ -170,16 +170,10 @@ function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTas
 /** The table accepts either ordinary fish; its preferred garnish is not a required species. */
 function supperFish(farm: FarmState): DiscoveryTask {
   const purpose = 'общий ужин';
-  const preferred = getVillageMeal(farm).fish;
-  const other = preferred === 'perch' ? 'seaBass' : 'perch';
-  for (const fish of [preferred, other] as const) {
-    const item = {kind:'fish',item:fish,quantity:1} as const;
-    if (getLocalWarehouseSupply(farm,item)) return supply(farm,item,purpose);
-  }
-  const destination = orchardIslandIds.find(shore => shore === farm.island && getFishAction(farm).available)
-    ?? [getFishSource(farm,preferred),...orchardIslandIds].find(shore =>
-      canSailTo(farm,shore) && getFishAction({...farm,island:shore}).available);
-  if (!destination) return rest(farm,purpose);
+  const recovery = getSupperFishRecovery(farm);
+  if (recovery.kind === 'warehouse') return supply(farm,recovery.item,purpose);
+  if (recovery.kind === 'rest') return rest(farm,purpose);
+  const destination = recovery.shore;
   return task(`${purpose}-fish`,'Поймайте рыбу к ужину','К общему столу подойдёт окунь или сибас.', 'fish',
     destination === farm.island ? {label:'К рыбацкому причалу',target:'visit-pier'}
       : {label:destination === 'grove' ? 'В рощу' : 'Домой',target:'sail',value:destination});

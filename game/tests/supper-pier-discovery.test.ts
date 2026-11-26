@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { stripTypeScriptTypes } from 'node:module'
+import { runInNewContext } from 'node:vm'
+import * as Farm from '../src/farm.ts'
+import * as Supper from '../src/shared-supper.ts'
+import { getRequirementHint } from '../src/requirement-guidance.ts'
+import { renderHarbourFishChoice } from '../src/harbour-fish-route.ts'
 import test from 'node:test'
 import { getDiscoveryTask, getSupplyGuidance } from '../src/discovery-path.ts'
 import { renderDiscoveryGuidance } from '../src/discovery-preferences-ui.ts'
@@ -91,4 +97,88 @@ test('when a local pier is spent, the guide prefers another open ordinary-fish s
   const was=p.state.day;p.night()
   assert.equal(p.state.day,was+1)
   assert.equal(hint(p)?.action.target,'visit-pier')
+})
+
+const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+const start=source.indexOf("    case 'harbour-fish-catch':"),end=source.indexOf("    case 'harbour-fish-trade':",start)
+assert.ok(start>0&&end>start)
+const clickCatch=stripTypeScriptTypes(`(async()=>{switch('harbour-fish-catch'){${source.slice(start,end)}}})()`)
+
+async function followTable(farm:Farm.FarmState,panel='village-meal',open=true) {
+ const shown:unknown[]=[], calls:string[]=[], clone=Farm.restoreCurrentFarm(JSON.parse(JSON.stringify(farm)))!
+ const terminal=()=>({day:clone.day,coins:clone.coins,fish:clone.fish,work:clone.workToday,mealOn:clone.village.mealOn,meals:clone.village.meals,freight:clone.freight})
+ const before=structuredClone(terminal())
+ const ctx={...Farm,...Supper,farm:clone,panel,dialog:{open},control:{},
+  async visitPanelAt(island:Farm.IslandId,target:string) {
+    calls.push(`open:${island}:${target}`)
+    if(clone.island!==island)assert.ok(Farm.sail(clone,island).ok)
+  },
+  async showRequirement(req:Parameters<typeof getRequirementHint>[1]) {
+    shown.push(structuredClone(req))
+    for(let dep=0;dep<3;dep++) {
+      const {action}=getRequirementHint(clone,req)
+      calls.push([action.target,action.value].filter(Boolean).join(':'))
+      if(action.target!=='sail')return
+      assert.ok(Farm.sail(clone,action.value as Farm.IslandId).ok)
+    }
+    assert.fail('route never settled')
+  }}
+ await runInNewContext(clickCatch,ctx)
+ assert.deepEqual(terminal(),before,'routing alone cannot cast, spend, sleep, complete supper or dispatch ferry')
+ return {calls,shown}
+}
+
+const fishReq=(item:'perch'|'seaBass',quantity=1)=>({kind:'stock',item:{kind:'fish',item,quantity}})
+function fromUsedHome() {
+ const p=beforeSupper(1)
+ spendDailyQuota(p,'home');p.act('sellMarketItem','fish:perch',p.state.fish.perch);p.visit('village')
+ assert.deepEqual([p.actions,p.state.day,p.state.village.meals,p.state.fishCaughtToday.home,p.state.fishCaughtToday.grove,p.state.handmade.round],[111,14,1,3,0,1])
+ return p
+}
+const html=(f:Farm.FarmState)=>renderHarbourFishChoice(f,'supper')
+
+test('the table sends an earned empty-plate hiker to the still-open Grove and the second cottage can open today',async()=>{
+ const ordinary=beforeSupper(1);ordinary.visit('village')
+ assert.deepEqual(await followTable(ordinary.state),{calls:['sail:home','visit-pier'],shown:[fishReq('perch')]},'the usual Home tie preference stays in place')
+ const p=fromUsedHome(),f=p.state, before=structuredClone(f)
+ assert.match(html(f),/data-action="harbour-fish-catch">Поймать бесплатно/)
+ assert.match(html(f),/data-action="harbour-fish-trade"/)
+ assert.deepEqual(hint(p)?.action,{label:'В рощу',target:'sail',value:'grove'})
+ assert.deepEqual(await followTable(f),{calls:['sail:grove','visit-pier'],shown:[fishReq('seaBass')]})
+ assert.deepEqual(f,before)
+ p.visit('grove');fish(p);p.visit('village');p.act('serveVillageMeal','round')
+ assert.deepEqual([p.state.day,p.state.village.meals,p.state.coins, getVillageHomeCount(p.state)],[14,2,before.coins,2])
+ assert.equal(p.state.village.residents[1],null)
+ assert.deepEqual(await followTable(p.state),{calls:[],shown:[]},'stale table control never routes on a served day')
+})
+
+test('both piers exhausted offers real rest instead of a false catch, and charter building keeps its exact species',async()=>{
+ const p=fromUsedHome()
+ spendDailyQuota(p,'grove');p.visit('home');p.act('sellMarketItem','fish:seaBass',p.state.fish.seaBass);p.visit('village')
+ const f=p.state,before=structuredClone(f)
+ assert.deepEqual(hint(p)?.action,{label:'Домой',target:'sail',value:'home'})
+ assert.doesNotMatch(html(f),/Поймать бесплатно/)
+ assert.match(html(f),/data-action="harbour-fish-catch">К отдыху дома/)
+ assert.match(html(f),/data-action="harbour-fish-trade"/)
+ assert.deepEqual(await followTable(f),{calls:['open:home:rest'],shown:[]})
+ const charter=commissionPlayer(milestones.slice(0,70))
+ assert.equal(charter.state.village.built,false)
+ assert.match(renderHarbourFishChoice(charter.state),/data-action="harbour-fish-catch">Поймать бесплатно/)
+ assert.deepEqual((await followTable(charter.state,'village-project')).shown,[fishReq('seaBass',2)],'project uses the existing exact two bass need')
+ assert.deepEqual(await followTable(f,'village-meal',false),{calls:[],shown:[]})
+ assert.deepEqual(f,before)
+})
+
+test('a locally stored earned bass keeps the player by the table rather than sending them to fish or buying fish',async()=>{
+ const p=fromUsedHome()
+ p.visit('grove');fish(p);p.visit('village');p.act('transferBayGoods','deposit','village','seaBass',1)
+ const f=p.state,before=structuredClone(f)
+ assert.equal(hint(p)?.action.target,'warehouse-supply')
+ assert.match(html(f),/data-action="harbour-fish-catch">К рыбе на складе/)
+ assert.doesNotMatch(html(f),/Поймать бесплатно/)
+ assert.match(html(f),/data-action="harbour-fish-trade"/)
+ assert.deepEqual(await followTable(f),{calls:['warehouse-supply:seaBass|1'],shown:[fishReq('seaBass')]})
+ assert.deepEqual(f,before)
+ p.act('transferBayGoods','withdraw','village','seaBass',1)
+ assert.deepEqual(await followTable(p.state),{calls:[],shown:[]},'stale table choice cannot route when fish has just arrived')
 })

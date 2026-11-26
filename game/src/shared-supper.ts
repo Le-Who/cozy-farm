@@ -1,8 +1,26 @@
-import { fishDefinitions, getSignatureStock, getVillageHomeCount, getVillageMeal, type FarmState } from './farm.ts'
+import { canSailTo, fishDefinitions, getFishAction, getSignatureStock, getVillageHomeCount, getVillageMeal, orchardIslandIds, type FarmState } from './farm.ts'
+import { getFishSource } from './fish-guidance.ts'
+import { getLocalWarehouseSupply } from './warehouse-guidance.ts'
 import { ruCount } from './ru.ts'
 import type { SignatureRecipe } from './culinary.ts'
 
 const escape = (text: string) => text.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!))
+
+const supperFishItem = (item: 'perch' | 'seaBass') => ({ kind: 'fish', item, quantity: 1 } as const)
+
+/** One ordinary fish is interchangeable at supper; a charter's exact fish are not. */
+export function getSupperFishRecovery(farm: FarmState) {
+  const preferred = getVillageMeal(farm).fish
+  for (const fish of [preferred, preferred === 'perch' ? 'seaBass' : 'perch'] as const) {
+    const item = supperFishItem(fish)
+    if (getLocalWarehouseSupply(farm, item)) return { kind: 'warehouse', item } as const
+  }
+  const shore = orchardIslandIds.find(island => island === farm.island && getFishAction(farm).available)
+    ?? [getFishSource(farm, preferred), ...orchardIslandIds].find(island =>
+      canSailTo(farm, island) && getFishAction({ ...farm, island }).available)
+  return shore ? { kind: 'shore', shore, item: supperFishItem(shore === 'home' ? 'perch' : 'seaBass') } as const
+    : { kind: 'rest' } as const
+}
 
 /** Existing signature supper rules, exposed without reserving or spending anything. */
 export function getReadySignatureSuppers(farm: FarmState) {

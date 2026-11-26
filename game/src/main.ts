@@ -64,7 +64,7 @@ import './market-return.css'
 import { fairJamPicnicChoice, renderFairReturn } from './fair-return'
 import './fair-return.css'
 import { getLocalWarehouseSupply, warehouseRequest, warehouseSupplyCopy, warehouseConfirmation, warehouseConfirmationValue, withdrawWarehouseSupply } from './warehouse-guidance'
-import { getReadySignatureSuppers, renderSignatureSuppers, renderSupperResult, supperCottageReady } from './shared-supper'
+import { getReadySignatureSuppers, getSupperFishRecovery, renderSignatureSuppers, renderSupperResult, supperCottageReady } from './shared-supper'
 import './shared-supper.css'
 import { renderShopRest, closeShopBeforeRest } from './shop-rest'
 import './shop-rest.css'
@@ -3733,9 +3733,15 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'harbour-fish-catch': {
-      if (panel !== 'village-project' && panel !== 'village-meal') break
-      const fish = panel === 'village-project' ? 'seaBass' : getVillageMeal(farm).fish
-      await showRequirement({kind:'stock',item:{kind:'fish',item:fish,quantity:panel==='village-project'?2:1}},control)
+      if (panel === 'village-project') {
+        await showRequirement({kind:'stock',item:{kind:'fish',item:'seaBass',quantity:2}},control)
+        break
+      }
+      if (panel !== 'village-meal' || !dialog.open || farm.island !== 'village' || !farm.village.built
+        || getVillageMeal(farm).served || farm.fish.perch + farm.fish.seaBass > 0) break
+      const recovery = getSupperFishRecovery(farm)
+      if (recovery.kind === 'rest') await visitPanelAt('home','rest')
+      else await showRequirement({kind:'stock',item:recovery.item},control)
       break
     }
     case 'harbour-fish-trade': {
