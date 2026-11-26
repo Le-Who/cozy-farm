@@ -44,6 +44,7 @@ import { ShopAssortmentChoice } from './shop-assortment-choice'
 import { ShopCommissionView } from './shop-commission-view'
 import './shop-commissions.css'
 import { acceptShopCommission, deliverShopCommission, cancelShopCommission, finishShopCommission, getShopCommissionLine, getShopCommissionOffers } from './shop-commissions'
+import { getFestivalCargoRoute } from './festival-cargo-route.ts'
 import { getFestivalShoreRoute } from './festival-shore-route.ts'
 import { rememberRecipeDraft, resumeRecipeDraft, resetRecipeDraft } from './recipe-draft'
 import { canReturnToDailyIntent, renderIntentDeadline, renderSelectedIntentRest, selectedDailyIntent } from './intent-deadline'
@@ -1813,6 +1814,7 @@ type PanelVisit = {
   neighborComposerPlan?: string; // Only set by this visit's explicit “Свой рецепт” button.
   dailyIntentComposerOrder?: string; // Owns an exact draft from a daily request, not the last global selection.
   ferryMorning?: number; // This ferry visit's explicit trip to the Home forecast.
+  festivalCargoPreview?: { port: ExpeditionPort; offer: string; serial: number };
   restFeedMixDay?: number; // Keyboard entered from today's actual Rest mix button.
   recipeBook: RecipeBookView;
   kitchenSourceItem?: string;
@@ -2957,7 +2959,7 @@ function openGuidedSeeds(crop: CropId) {
     highlightControl(dialogContent.querySelector<HTMLElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)'))
   }
 }
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string; honeyRecipe?: HoneyKitchenRecipe }) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string; festivalCargo?: { port: ExpeditionPort; offer: string }; honeyRecipe?: HoneyKitchenRecipe }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
@@ -3029,6 +3031,12 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (remember && next==='bay-freight' && next!==panel) {
     // The originating Boat view already holds its original offer for Back.
     if (entry?.firstFerryOffer) selectedExpeditionOffer = entry.firstFerryOffer
+    const source = entry?.festivalCargo && panelHistory.at(-1)
+    if (entry?.festivalCargo && source && source.panel === 'festival') {
+      source.festivalCargoPreview = { ...entry.festivalCargo, serial: farm.freight.expeditions.serial }
+      selectedExpeditionPort = entry.festivalCargo.port
+      selectedExpeditionOffer = entry.festivalCargo.offer
+    }
     freightPlanOpen=false
     if (panel!=='bay-music') selectedWarehouse=farm.island
   }
@@ -3119,6 +3127,14 @@ function closeDialog() {
   stopWorkshop()
   stopCookery()
   stopArrangement()
+  const source = panelHistory.slice().reverse().find(visit => visit.festivalCargoPreview)
+  const peek = source?.festivalCargoPreview
+  // Closing is not a manual ferry choice. Keep a changed choice or a dispatched voyage.
+  if (source && peek && peek.port === selectedExpeditionPort && peek.offer === selectedExpeditionOffer
+      && peek.serial === farm.freight.expeditions.serial) {
+    selectedExpeditionPort = source.expeditionPort
+    selectedExpeditionOffer = source.expeditionOffer
+  }
   panel = undefined
   panelHistory.length=0
   marketTreeSpaceVisit=undefined
@@ -3885,7 +3901,13 @@ app.addEventListener('click', async (event) => {
     case 'festival-continue': celebratedFestival=undefined;drawPanel();break
     case 'festival-rest': await visitPanelAt('home','rest');break
     case 'festival-music': openPanel('bay-music');break
-    case 'festival-freight': openPanel('bay-freight');break
+    case 'festival-freight': {
+      if (panel !== 'festival' || !dialog.open || !dialogContent.contains(control)) break
+      if (!value) { openPanel('bay-freight'); break }
+      const route = getFestivalCargoRoute(farm)
+      if (route?.key === value) openPanel('bay-freight',true,farm.island,'page.unfold',undefined,{festivalCargo:route.preview})
+      break
+    }
     case 'festival-source': {
       const [requirement,id]=(value??'').split('|')
       const source=getFestivalStatus(farm).active?.requirements.find(row=>row.id===requirement)?.alternatives.find(alt=>alt.id===id)

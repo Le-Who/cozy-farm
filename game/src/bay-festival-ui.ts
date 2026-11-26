@@ -1,3 +1,4 @@
+import { getFestivalCargoRoute } from './festival-cargo-route.ts';
 import { getFestivalShoreRoute } from './festival-shore-route.ts';
 import {festivalFruitArt,festivalFruitLabel,type FestivalFruit} from './festival-fruit.ts';
 import { getFestivalChoices, getFestivalStatus, type FarmState } from './farm.ts';
@@ -79,7 +80,12 @@ export function renderFestivalPanel(farm: FarmState, options: FestivalViewOption
     const contribution = (alternative: typeof requirement.alternatives[number]): string => {
       if (alternative.available === 0) {
         if (alternative.id === 'concert') return button('Сыграть в саду', 'festival-music', '', !active.waitingNight, 'festival-contribution');
-        if (alternative.id === 'delivery') return button('Отправить паром', 'festival-freight', '', !active.waitingNight, 'festival-contribution');
+        if (alternative.id === 'delivery') {
+          const cargo = requirement.id === 'cargo' && active.stage === 2
+          const route = cargo ? getFestivalCargoRoute(farm) : undefined
+          // A generic ferry visit still works, but a sale or exploration is not a supply promise.
+          return button(route?.label ?? (cargo ? 'К парому' : 'Отправить паром'), 'festival-freight', route?.key ?? '', !active.waitingNight, 'festival-contribution')
+        }
         if (alternative.id === 'harvest') {
           const route = getFestivalHarvestRoute(farm);
           return button(route?.label ?? activityLabels.harvest, 'festival-activity', 'harvest', !!route, 'festival-contribution');
@@ -103,7 +109,8 @@ export function renderFestivalPanel(farm: FarmState, options: FestivalViewOption
         !active.waitingNight && (alternative.available === 0 || active.canContribute), 'festival-contribution');
     };
     // Keep ready treats ahead of finding ingredients; the existing disclosure still holds the other choices.
-    const choices = requirement.id === 'fish' || (requirement.id === 'treat' && active.canContribute) || requirement.alternatives.some(alt=>alt.exhibit)
+    const choices = requirement.id === 'fish' || (requirement.id === 'treat' && active.canContribute)
+      || (requirement.id === 'cargo' && active.stage === 2) || requirement.alternatives.some(alt=>alt.exhibit)
       ? [...requirement.alternatives].sort((a, b) => Number(b.available > 0) - Number(a.available > 0))
       : requirement.alternatives;
     const alternatives = choices.map(contribution);
