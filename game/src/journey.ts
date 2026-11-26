@@ -44,6 +44,7 @@ export type IslandJourney = {
   unlocked: boolean;
   requirements: JourneyRequirement[];
   nextAction?: JourneyAction;
+  dockProjectReady?: boolean;
 };
 
 function requirement(id: string, label: string, icon: string, current: number, target = 1): JourneyRequirement {
@@ -124,6 +125,7 @@ export function getIslandJourneys(farm: FarmState): IslandJourney[] {
     const unlocked = canSailTo(farm, destination.id);
     return {
       ...destination, current, unlocked,
+      ...(current && destination.id === 'grove' && pier.status === 'ready' ? { dockProjectReady: true } : {}),
       nextAction: current ? undefined : unlocked ? sailTo(destination.id, `В путь · ${destination.name}`) : destination.nextAction,
     };
   });

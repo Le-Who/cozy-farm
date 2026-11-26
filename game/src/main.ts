@@ -2737,7 +2737,9 @@ function drawPanel() {
       const supperTomorrow = destination.current && destination.id === 'village' && getVillageMeal(farm, pastryShape).served
       const localPlaces = farm.island === 'home'
         ? button('Кухня','kitchen',true,{secondary:true}) + (isProjectComplete(farm,'fair') ? button('Просьбы соседей','open-panel',true,{value:'intents',secondary:true}) : '')
-        : farm.island === 'grove' ? button('Живая заводь','open-panel',true,{value:'cove',secondary:true}) + (getHarborOrder(farm) ? button('Заказ гавани','visit-harbor',true,{secondary:true}) : '')
+        : farm.island === 'grove' ? button('Живая заводь','open-panel',true,{value:'cove',secondary:true})
+          + (destination.dockProjectReady ? button('Причал рощи','project-dock',true,{secondary:true}) : '')
+          + (getHarborOrder(farm) ? button('Заказ гавани','visit-harbor',true,{secondary:true}) : '')
         : farm.island === 'cape' ? button(farm.capeLevel>=3?'Медовая кухня':'Пасека','open-panel',true,{value:farm.capeLevel>=3?'honey-kitchen':'hive',secondary:true})
         : button('Соседи','open-village',true,{secondary:true}) + (supperTomorrow ? '' : button('Общий ужин','village-meal',true,{secondary:true}))
       dialogContent.innerHTML = `<nav class="island-selector" aria-label="Острова">${selectors}</nav>
