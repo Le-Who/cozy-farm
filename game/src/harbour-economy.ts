@@ -1,15 +1,33 @@
-import { canSailTo, ingredientCount, islandIds, marketStock, type FarmState, type StockItem } from './farm.ts'
+import { canSailTo, getBedHarvestPreview, ingredientCount, islandIds, marketStock, type FarmState, type StockItem } from './farm.ts'
 import { addFreightStock, freightStock, takeFreightStock } from './bay-freight-model.ts'
 import { noteFestivalDelivery } from './bay-festival.ts'
 import { BAY_MUSIC_EXPANSIONS } from './bay-music-model.ts'
 import { bayProductId } from './bay-product-id.ts'
 import { dispatchExpedition, expeditionPortNames, finishExpedition, quoteExpedition, type ExpeditionWallet } from './ferry-expeditions.ts'
+import { smallerFerryCargo } from './ferry-smaller-cargo.ts'
 export { bayProductId } from './bay-product-id.ts'
 
 const stockItems = new Map(marketStock.map(item => [bayProductId(item), item]))
 export const openedFreightPorts = (farm: FarmState) => islandIds.filter(id => canSailTo(farm,id))
 export function expeditionWallet(farm: FarmState): ExpeditionWallet {
   return { harvestTier: farm.festivals.completed.harvest, boatOwned: farm.boatOwned, coins: farm.coins, bag: Object.fromEntries([...stockItems.keys()].map(id => [id, amount(farm, id)])) }
+}
+
+/** Only offer a local harvest that makes the selected trade sendable in one separate action. */
+export function getFerryReadyHarvest(farm: FarmState, offerId: string) {
+  if (farm.island !== 'home') return;
+  const world = farm.freight.expeditions, wallet = expeditionWallet(farm);
+  if (!smallerFerryCargo(world, offerId, wallet)) return;
+  const quote = quoteExpedition(world, offerId, wallet);
+  const wheat = quote?.port === 'mill' && quote.outgoing.find(item => item.id === 'wheat');
+  if (!wheat || (wallet.bag.wheat ?? 0) >= wheat.quantity) return;
+  for (const [index] of farm.beds.entries()) {
+    const harvest = getBedHarvestPreview(farm, index);
+    if (harvest?.crop !== 'wheat' || harvest.ordinary < 1) continue;
+    const projected = { ...wallet, bag: { ...wallet.bag, wheat: (wallet.bag.wheat ?? 0) + harvest.ordinary } };
+    if (quoteExpedition(world, offerId, projected)?.available)
+      return { key: `harvest:${farm.day}:${index}:${harvest.ordinary}`, index, ordinary: harvest.ordinary };
+  }
 }
 
 /** Resolve the current shortage, never a seed purchase or an automatic transfer. */

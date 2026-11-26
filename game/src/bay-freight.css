@@ -82,3 +82,6 @@
 
 .expedition-commission-use{margin:.4rem 0 .1rem;padding:.5rem .6rem;border-left:3px solid var(--bf-gold);background:var(--bf-paper);color:var(--bf-ink);border-radius:8px;overflow-wrap:anywhere}
 .expedition-commission-use>p{margin:.16rem 0 .36rem;font-size:.85em}
+
+.bay-freight .expedition-cargo-choices{display:grid;gap:6px}
+.bay-freight .expedition-cargo-choices .expedition-source{min-height:44px;margin-top:0}
