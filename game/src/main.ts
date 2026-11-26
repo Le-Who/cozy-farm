@@ -1224,6 +1224,10 @@ function marketSellView() {
 function marketSaleGridKey(grid: HTMLElement) {
   return JSON.stringify([marketSellView(), Array.from(grid.querySelectorAll<HTMLElement>('[data-inline-key]'), card => card.dataset.inlineKey)])
 }
+function marketBuySeedGridKey(grid: HTMLElement) {
+  return JSON.stringify([farm.island, grid.clientWidth, grid.scrollHeight,
+    Array.from(grid.querySelectorAll<HTMLElement>('[data-seed-pack]'), pack => pack.dataset.seedPack)])
+}
 function rememberClosedMarketSell() {
   if (!dialog.open || panel !== 'market' || marketTab !== 'sell' || salePresentation.place) return
   const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
@@ -2200,6 +2204,8 @@ function drawPanel() {
     : panel === 'workshop' && workshopRecipe === 'bread' ? 'Домашний хлеб' : panel === 'neighbor' ? residentDefinitions[communityResident].name : panelTitles[panel]
   dialogTitle.textContent = recipeBack?'Рецепт':panelBanners[panel] ?? title
   dialogTitle.setAttribute('aria-label', title)
+  // A different rendered panel ends the Buy shelf's same-Market tab visit.
+  if (panel === 'market' && dialog.dataset.panel !== 'market') marketSaleBrowse.resetBuySeeds()
   dialog.dataset.panel = panel
   dialog.dataset.marketTab = marketTab
   dialogEmblem.src = iconUrl(panel === 'specialize' ? `upgrade-${specializationBuilding}-card` : panelEmblems[panel])
@@ -4172,7 +4178,12 @@ app.addEventListener('click', async (event) => {
       signatureSlots = signatureFamily === 'berries' ? [{ id:'strawberry',quantity:1 },{ id:'blueberry',quantity:1 }] : [null,null]
       signatureSlot = 0; signatureRepeatId = undefined; openPanel('signature'); break
     }
-    case 'market-category':if(value==='seeds'||value==='trees'||value==='care'||value==='buildings'){marketCategory=value;drawPanel();dialogContent.scrollTop=0}break
+    case 'market-category':
+      if (value === 'seeds' || value === 'trees' || value === 'care' || value === 'buildings') {
+        if (value !== marketCategory) marketSaleBrowse.resetBuySeeds()
+        marketCategory = value; drawPanel(); dialogContent.scrollTop = 0
+      }
+      break
     case 'inventory-group':
       if(value==='harvest'||value==='kitchen'||value==='shore'){inventoryGroup=value;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="inventory-group"][data-value="${value}"]`)?.focus({preventScroll:true})}break
     case 'boat-funds': {
@@ -4441,6 +4452,9 @@ app.addEventListener('click', async (event) => {
         if (marketTab === 'sell' && panel === 'market' && dialog.open) {
           const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
           if (grid) marketSaleBrowse.rememberTab(marketSaleGridKey(grid), grid.scrollTop)
+        } else if (marketTab === 'buy' && panel === 'market' && dialog.open) {
+          const grid = dialogContent.querySelector<HTMLElement>('.market-seed-grid')
+          if (grid) marketSaleBrowse.rememberBuySeeds(marketBuySeedGridKey(grid), grid.scrollTop)
         }
         closeContextualSale(false)
         marketTab = value
@@ -4451,6 +4465,10 @@ app.addEventListener('click', async (event) => {
         if (marketTab === 'sell' && panel === 'market' && dialog.open) {
           const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
           const scroll = marketSaleBrowse.takeTab(grid ? marketSaleGridKey(grid) : undefined)
+          if (grid && scroll !== undefined) grid.scrollTop = scroll
+        } else if (marketTab === 'buy' && panel === 'market' && dialog.open) {
+          const grid = dialogContent.querySelector<HTMLElement>('.market-seed-grid')
+          const scroll = marketSaleBrowse.takeBuySeeds(grid ? marketBuySeedGridKey(grid) : undefined)
           if (grid && scroll !== undefined) grid.scrollTop = scroll
         }
       }

@@ -10,6 +10,7 @@ export class MarketSaleBrowseMemory {
 
   private closed?: SellView & { scroll: number }
   private pausedTab?: GridPosition
+  private pausedBuySeeds?: GridPosition
   private search?: { original?: GridPosition; refined: boolean }
 
   rememberClosed(view: SellView, scroll: number) {
@@ -34,6 +35,19 @@ export class MarketSaleBrowseMemory {
     return previous && previous.key === key ? previous.scroll : undefined
   }
 
+  /** A separate, one-use pause for the current open Market → Buy seeds. */
+  rememberBuySeeds(key: string, scroll: number) {
+    this.pausedBuySeeds = { key, scroll }
+  }
+
+  takeBuySeeds(key: string | undefined): number | undefined {
+    const previous = this.pausedBuySeeds
+    this.resetBuySeeds()
+    return previous && previous.key === key ? previous.scroll : undefined
+  }
+
+  resetBuySeeds() { this.pausedBuySeeds = undefined }
+
   beginSearch(original?: GridPosition) { this.search ??= { original, refined: false } }
   refineSearch() { if (this.search) this.search.refined = true }
   get crossCategorySearch() { return this.search?.refined === false }
@@ -51,5 +65,5 @@ export class MarketSaleBrowseMemory {
   }
 
   resetPositions() { this.views.clear(); this.closed = undefined; this.pausedTab = undefined }
-  reset() { this.resetPositions(); this.search = undefined }
+  reset() { this.resetPositions(); this.resetBuySeeds(); this.search = undefined }
 }
