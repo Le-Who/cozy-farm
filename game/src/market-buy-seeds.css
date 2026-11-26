@@ -67,6 +67,32 @@
  [data-market-seed-browser] .market-category-icons button {flex-direction:column;gap:1px;padding:3px 1px}
  [data-market-seed-browser] .market-category-icons .icon {width:20px;height:20px}
 }
+/* Compact shelf: keep the existing stock, price and separate purchase on a single card. */
+@media(max-width:600px) and (orientation:portrait){
+ [data-market-seed-browser] .market-seed-grid {gap:8px}
+ [data-market-seed-browser] .market-seed-grid>section {
+  grid-template-columns:52px repeat(2,minmax(0,1fr));
+  grid-template-rows:auto auto minmax(46px,auto);
+  grid-template-areas:"art title title" "art pack stock" "art price buy";
+  justify-items:stretch;gap:4px 8px;padding:8px 10px;text-align:left;
+ }
+ [data-market-seed-browser] .market-seed-art {grid-area:art;width:52px;height:62px}
+ [data-market-seed-browser] .market-seed-art>.icon {width:52px;height:62px}
+ [data-market-seed-browser] .market-seed-copy {display:contents}
+ [data-market-seed-browser] .market-seed-copy h2 {grid-area:title;margin:0;font-size:19px}
+ [data-market-seed-browser] .market-seed-copy p {margin:0;font-size:15px}
+ [data-market-seed-browser] .market-seed-copy p:first-of-type {grid-area:pack}
+ [data-market-seed-browser] .market-seed-stock {grid-area:stock}
+ [data-market-seed-browser] .market-seed-price {grid-area:price;gap:3px}
+ [data-market-seed-browser] .market-seed-price .icon {width:20px;height:20px}
+ [data-market-seed-browser] .market-seed-grid>section>:is(.dialog-button,.market-seed-limit) {
+  grid-area:buy;justify-self:stretch;min-width:0;width:100%;
+ }
+ [data-market-seed-browser] .market-seed-grid .dialog-button {
+  min-width:0;width:100%;font-size:16px;line-height:1.15;white-space:normal;padding:6px 8px;
+ }
+ [data-market-seed-browser] .market-seed-limit:focus-visible {outline:3px solid #805789;outline-offset:2px}
+}
 @media(max-height:400px) and (orientation:landscape){
  .farm-dialog:has([data-market-seed-browser]) .dialog-panel {height:calc(100dvh - 12px);max-height:calc(100dvh - 12px);padding:6px 10px}
  .farm-dialog:has([data-market-seed-browser]) .dialog-content {overflow:auto}
