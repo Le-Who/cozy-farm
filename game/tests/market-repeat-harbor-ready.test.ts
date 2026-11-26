@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { deliverHarborOrder, getHarborOrder, getMarketOrders } from '../src/farm.ts'
+import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
 import { readyHarborOrderRoute } from '../src/harbor-return.ts'
 import { getMarketOrderBoard, renderMarketOrderPicker } from '../src/market-orders-view.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
@@ -65,7 +66,7 @@ test('manual waiting selection survives changing tabs and backing out; the alter
   const farm = repeatGroveParcel().state, before = structuredClone(farm), focus: string[] = []
   const c = {
     farm, getMarketOrderBoard, panel: 'market', next: 'market', remember: true, entry: undefined,
-    marketTab: 'orders', dialog: { open: true }, selectedMarketOrder: 'harbor' as string | undefined, pickedMarketOrder: undefined as string | undefined,
+    marketTab: 'orders', dialog: { open: true }, marketSaleBrowse: new MarketSaleBrowseMemory(), selectedMarketOrder: 'harbor' as string | undefined, pickedMarketOrder: undefined as string | undefined,
     dialogFeedback: { hidden: false, textContent: 'old' }, value: 'pantry', closeContextualSale() {},
     dialogContent: { scrollTop: 88, querySelector(selector: string) {
       if (selector === '.market-order-picker') return { scrollTop: 23 }

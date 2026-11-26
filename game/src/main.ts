@@ -4305,12 +4305,21 @@ app.addEventListener('click', async (event) => {
       break
     case 'market-tab':
       if ((value === 'buy' || value === 'sell' || value === 'orders' || value === 'projects') && value !== marketTab) {
+        if (marketTab === 'sell' && panel === 'market' && dialog.open) {
+          const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+          if (grid) marketSaleBrowse.rememberTab(marketSaleGridKey(grid), grid.scrollTop)
+        }
         closeContextualSale(false)
         marketTab = value
         dialogFeedback.hidden = true
         dialogFeedback.textContent = ''
         drawPanel()
         dialogContent.scrollTop = 0
+        if (marketTab === 'sell' && panel === 'market' && dialog.open) {
+          const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+          const scroll = marketSaleBrowse.takeTab(grid ? marketSaleGridKey(grid) : undefined)
+          if (grid && scroll !== undefined) grid.scrollTop = scroll
+        }
       }
       break
     case 'market-order-pickup':

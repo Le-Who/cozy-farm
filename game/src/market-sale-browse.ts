@@ -8,6 +8,7 @@ export class MarketSaleBrowseMemory {
   private views = new Map<MarketSaleGroup, BrowseView>()
 
   private closed?: SellView & { scroll: number }
+  private pausedTab?: { key: string; scroll: number }
 
   rememberClosed(view: SellView, scroll: number) {
     this.closed = { ...view, scroll }
@@ -20,6 +21,17 @@ export class MarketSaleBrowseMemory {
       previous.family === view.family && previous.query === view.query ? previous.scroll : undefined
   }
 
+  /** Only resume the Sell shelf if the same visit still shows the exact result list. */
+  rememberTab(key: string, scroll: number) {
+    this.pausedTab = { key, scroll }
+  }
+
+  takeTab(key: string | undefined): number | undefined {
+    const previous = this.pausedTab
+    this.pausedTab = undefined
+    return previous && previous.key === key ? previous.scroll : undefined
+  }
+
   change(from: MarketSaleGroup, to: MarketSaleGroup, current: BrowseView): BrowseView {
     // An explicit All choice starts over instead of reviving a hidden filter.
     if (to === 'all') { this.reset(); return { family: undefined, scroll: 0 } }
@@ -27,5 +39,5 @@ export class MarketSaleBrowseMemory {
     return { ...(this.views.get(to) ?? { family: undefined, scroll: 0 }) }
   }
 
-  reset() { this.views.clear(); this.closed = undefined }
+  reset() { this.views.clear(); this.closed = undefined; this.pausedTab = undefined }
 }
