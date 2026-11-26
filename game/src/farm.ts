@@ -563,6 +563,8 @@ export type FarmState = {
   shellDiscoveries: ShellId[];
   shellsCollectedToday: number[];
   shoalFinds: Record<ShoalFindId, number>;
+  /** A single placement reserves one owned pearl, never a second balance. */
+  grovePearlDisplay?: true;
   shoalDiscoveries: ShoalFindId[];
   shoalCollectedToday: ShoalFindId[];
   dishes: Record<DishId, number>;
@@ -2053,6 +2055,24 @@ export function advanceNeighborPlan(farm: FarmState, id: string): ActionResult {
   return { ok: true, message: farm.day >= view.nextAvailableOn ? 'У соседа появилась новая затея.' : 'Встреча осталась тёплым воспоминанием. Новая затея появится завтра.' };
 }
 
+function grovePearlAllocation(farm: FarmState): 0 | 1 {
+  return farm.grovePearlDisplay === true && farm.shoalFinds.pearl > 0 ? 1 : 0;
+}
+
+/** Cabinet only. An allocated pearl still exists while its owner visits other islands. */
+export function grovePearlCabinet(farm: FarmState): 'hidden' | 'empty' | 'place' | 'take' {
+  if (farm.island !== 'grove' || !hasBayDisplay(farm)) return 'hidden';
+  if (grovePearlAllocation(farm)) return 'take';
+  return farm.shoalFinds.pearl > 0 ? 'place' : 'empty';
+}
+
+export function setGrovePearlCabinet(farm: FarmState, action: 'place' | 'take'): boolean {
+  if (grovePearlCabinet(farm) !== action) return false;
+  if (action === 'place') farm.grovePearlDisplay = true;
+  else delete farm.grovePearlDisplay;
+  return true;
+}
+
 export function ingredientCount(farm: FarmState, ingredient: StockItem): number {
   if ('item' in ingredient) {
     // The discriminant ties each item ID to its inventory.
@@ -2063,7 +2083,8 @@ export function ingredientCount(farm: FarmState, ingredient: StockItem): number 
       case 'dishes': return farm.dishes[ingredient.item];
       case 'handmade': return farm.handmade[ingredient.item];
       case 'shells': return farm.shells[ingredient.item];
-      case 'shoalFinds': return farm.shoalFinds[ingredient.item];
+      case 'shoalFinds': return farm.shoalFinds[ingredient.item]
+        - (ingredient.item === 'pearl' ? grovePearlAllocation(farm) : 0);
       case 'variants': return farm.variants[ingredient.item]?.[ingredient.trait] ?? 0;
     }
   }
@@ -2409,7 +2430,7 @@ export function sellProduce(farm: FarmState): ActionResult {
   farm.windHoney = 0;
   farm.beeswax = 0;
   for (const shell of shellIds) farm.shells[shell] = 0;
-  for (const item of shoalFindIds) farm.shoalFinds[item] = 0;
+  for (const item of shoalFindIds) farm.shoalFinds[item] = item === 'pearl' ? grovePearlAllocation(farm) : 0;
   farm.variants = {};
   return record(farm, 'sell', `Продано: ${ruCount(items, 'предмет', 'предмета', 'предметов')}. Выручка: ${ruCount(coins, 'монета', 'монеты', 'монет')}.`);
 }
@@ -3000,6 +3021,7 @@ export function restoreFarm(value: unknown): FarmState | undefined {
     discoveries,
     culinary,shoreline,intentOrders,neighbors,neighborVisits,gardenPlans,freight,bayShop,musicGarden,concertDay,festivals,shopCommissions,
   };
+  if (value.grovePearlDisplay === true && result.shoalFinds.pearl > 0 && hasBayDisplay(result)) result.grovePearlDisplay = true;
   syncFestivalRewards(result);
   syncFarmShopPrices(result);
   return result;

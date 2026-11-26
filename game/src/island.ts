@@ -7,7 +7,7 @@ import { playBaySound } from './game-sound'
 import {BedPointerGuard} from './bed-work-intent'
 import {compactFieldHintRooms, fieldHintOverlaps, type FieldHintBands} from './field-hint'
 import { bayAudio } from './bay-audio'
-import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
+import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, grovePearlCabinet, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
 import { cookeryFinishTraits, type SignatureRecipe } from './culinary';
 import { finishedIngredient } from './ingredient-finish';
 import { createRasterLibrary } from './raster';
@@ -1429,6 +1429,9 @@ export function createIsland(
     if (atGrove && state && hasBayDisplay(state)) {
       if (art.image('bay-display')) paintSupportShadow('bay-display', displayShadow, displayFoot.x, displayFoot.y, 69, 75);
       art.draw(world, 'bay-display', displayFoot.x, displayFoot.y, 69, 75, { fullCell: true, baseline: 118 / 128 });
+      // Rest the existing pearl sprite on the lower ledge, just in front of the case.
+      if (grovePearlCabinet(state) === 'take')
+        art.draw(world, 'ui-moon-pearl', displayFoot.x + 7, displayFoot.y - 13, 11, 11, { footY: displayFoot.y + 1 });
     }
     if (atHome && state) {
       const guest = getFairGuest(state);

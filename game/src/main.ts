@@ -102,6 +102,7 @@ import { renderFishingPracticeEntry } from './fishing-practice-ui'
 import { canPracticeFishing, createFishingPractice } from './fishing-practice'
 import { getEggUnpackAction, unpackEggBasket, unpackEggCrate, getHarborWithdrawal, withdrawHarborSupplies } from './farm'
 import { installActionClickGuard } from './action-click-guard'
+import { grovePearlCabinet, setGrovePearlCabinet } from './farm'
 import { exactSaleQuote, saleStock, stepSaleQuantity, type SaleTarget } from './exact-sale'
 import './exact-sale.css'
 import { getBedHarvestPreview } from './farm'
@@ -371,7 +372,7 @@ const tools = [
 type Tool = (typeof tools)[number]['id']
 type Panel = 'recipe-surplus' | 'berry-renewal' | 'garden-plans' | 'neighbor-visits' | 'hen-friendship' | 'chicken-feed' | 'berry-nursery' | 'shop-commissions' | 'warehouse-supply' | 'music-supplies' | 'transplant' | 'sale' | 'festival' | 'bay-shop' | 'bay-freight' | 'bay-music' | 'market' | 'inventory' | 'archive' | 'settings' | 'journal' | 'coop' | 'rest' | 'guide' | 'seeds'
   | 'fishing' | 'boat' | 'orchard' | 'tree' | 'upgrades' | 'kitchen' | 'irrigation' | 'dock-project' | 'harbor' | 'specialize' | 'hive' | 'guest' | 'cape-upgrade' | 'honey-kitchen' | 'workshop' | 'cookery' | 'village-project' | 'village' | 'village-meal' | 'recipes' | 'signature' | 'cove'
-  | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal'
+  | 'intents' | 'intent' | 'neighbor' | 'request-food' | 'arrangement' | 'shoal' | 'grove-display'
 
 const transplantSelection = new BedTransplantSelection()
 const berryNurserySelection = new BerryNurserySelection()
@@ -759,6 +760,7 @@ const panelTitles: Record<Panel, string> = {
   market: 'Рынок',
   inventory: 'Запасы',
   archive: 'Коллекции',
+  'grove-display': 'Витрина бухты',
   settings: 'Настройки',
   journal: 'Дневник',
   coop: 'Курятник',
@@ -798,7 +800,7 @@ const panelEmblems: Record<Panel, string> = {
   sale: 'ui-market',
   'recipe-surplus': 'ui-bag',
   'berry-renewal':'ui-seed-strawberry', 'berry-nursery':'ui-seed-blueberry', 'shop-commissions':'ui-signature-bright', 'music-supplies':'bay/music-harp', festival:'festivals/lights', 'bay-shop':'ui-market', 'bay-freight':'tool-boat', 'bay-music':'bay/music-harp',
-  market: 'ui-market', inventory: 'ui-bag', archive: 'orchard', settings: 'gear', journal: 'star', coop: 'tool-hen',
+  market: 'ui-market', inventory: 'ui-bag', archive: 'orchard', 'grove-display': 'orchard', settings: 'gear', journal: 'star', coop: 'tool-hen',
   rest: 'moon', guide: 'island', seeds: 'ui-bag', fishing: 'tool-rod', boat: 'tool-boat',
   orchard: 'orchard', tree: 'orchard', upgrades: 'hammer', kitchen: 'ui-kitchen',
   irrigation: 'tool-can',
@@ -2378,9 +2380,14 @@ function drawPanel() {
       break
     }
     case 'archive':
-      dialogContent.innerHTML = panelTabs('archive-group', archiveGroup, [['crops', 'Грядки'], ['orchard', 'Сад'], ['coop', 'Курятник'], ['shore', 'Берег'], ['bay', 'Бухта']])
+    case 'grove-display': {
+      const pearl = panel === 'grove-display' && archiveGroup === 'bay' ? grovePearlCabinet(farm) : 'hidden'
+      dialogContent.innerHTML = (pearl === 'place' || pearl === 'take'
+        ? nav(button(pearl === 'place' ? 'Поставить жемчужину' : 'Забрать жемчужину', 'grove-pearl-display', true, {value:pearl})) : '')
+        + panelTabs('archive-group', archiveGroup, [['crops', 'Грядки'], ['orchard', 'Сад'], ['coop', 'Курятник'], ['shore', 'Берег'], ['bay', 'Бухта']])
         + archiveCards(farm, archiveGroup, (name, trait) => itemIcon(archiveIcons[name] ?? name, trait))
       break
+    }
     case 'hive': {
       const preview = getApiaryCopy(farm)
       const wind = getWindHoneySource(farm)
@@ -2965,6 +2972,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
   if (next === 'shoal' && (farm.island !== 'grove' || !hasShoal(farm))) return
+  if (next === 'grove-display' && (farm.island !== 'grove' || !hasBayDisplay(farm))) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival'||next==='shop-commissions') && !farm.village.built || next==='bay-freight'&&!farm.boatOwned) return
   if ((next==='bay-shop'||next==='bay-music'||next==='festival'||next==='shop-commissions') && farm.island!=='village') {
     void visitPanelAt('village',next)
@@ -3431,9 +3439,9 @@ function activateTarget(target: IslandTarget, henGesture: 'stroke' | 'settle' = 
     case 'village-meal': openPanel('village-meal'); break
     case 'village-home': villageSlot = target.index; openPanel('village'); break
     case 'bay-display':
-      if (hasBayDisplay(farm)) {
+      if (farm.island === 'grove' && hasBayDisplay(farm)) {
         archiveGroup = 'bay'
-        openPanel('archive')
+        openPanel('grove-display')
       }
       break
     case 'harbor': if (farm.island === 'grove' && getHarborOrder(farm)) openPanel('harbor'); break
@@ -4708,6 +4716,18 @@ app.addEventListener('click', async (event) => {
       if (value === 'archive') { openPanel('archive'); break }
       if (value === 'seeds' || value === 'harvest') { bagTab = value; drawPanel(); dialogContent.scrollTop = 0 }
       break
+    case 'grove-pearl-display': {
+      if (!dialog.open || panel !== 'grove-display' || archiveGroup !== 'bay' || !dialogContent.contains(control)
+          || (value !== 'place' && value !== 'take') || grovePearlCabinet(farm) !== value) break
+      const action = value, focused = document.activeElement === control
+      const placed = perform(() => ({
+        ok: setGrovePearlCabinet(farm,action),
+        message: action === 'place' ? 'Жемчужина на витрине.' : 'Жемчужина в припасах.',
+      }),false,true)
+      if (placed && focused)
+        dialogContent.querySelector<HTMLButtonElement>('[data-action="grove-pearl-display"]')?.focus({preventScroll:true})
+      break
+    }
     case 'archive-group':
       if (value === 'crops' || value === 'orchard' || value === 'coop' || value === 'shore' || value === 'bay') {
         archiveGroup = value
