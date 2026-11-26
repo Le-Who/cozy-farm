@@ -29,7 +29,7 @@ export function getFruitSource(farm: FarmState, fruit: TreeId): FruitSource {
     return slot >= 0 ? [{ island, slot }] : [];
   })[0];
   // Ripe stored fruit can be collected today after the player explicitly frees a slot.
-  if (stored?.nights === 0 && !space) return { island: preferred, slot: 0, kind: 'space' };
+  if (stored?.nights === 0 && !space) return { island: preferred, slot: 0, kind: 'space', nurseryId: stored.nurseryId };
   // Prefer an already planted tree on ties. A paused tree needs a reachable free slot.
   if (stored && space && (!best || stored.nights < best.nights)) return { ...space, ...stored, kind: 'return' };
   if (best) return { ...best, kind: 'grow' };

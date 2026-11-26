@@ -3634,6 +3634,15 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
     treeSlot=index
     openPanel('tree')
   }
+  else if (target === 'orchard' && hint.nurserySpace !== undefined && dialog.open && panel && panel !== 'orchard') {
+    const start = panelHistory.length
+    let owned: PanelVisit | undefined
+    treeStorageChoice.guideSpace(farm, hint.nurserySpace, () => owned !== undefined && dialog.open
+      && panel === 'tree' && panelHistory.length === start + 2
+      && panelHistory[start] === owned && panelHistory[start + 1]?.panel === 'orchard')
+    openPanel('orchard')
+    if ((panel as Panel) === 'orchard' && panelHistory.length === start + 1) owned = panelHistory[start]
+  }
   else if (target === 'orchard') { if (value) treeStorageChoice.choose(farm,value); openPanel('orchard') }
   else if (target === 'project-dock') openPanel('dock-project')
   else if (target === 'visit-harbor') openPanel('harbor')
@@ -5311,7 +5320,7 @@ app.addEventListener('click', async (event) => {
     case 'store-tree': {
       if (panel === 'tree' && Number(value) === treeSlot && perform(() => {
         const result = storeTree(farm, treeSlot)
-        if (result.ok) treeStorageChoice.choose(farm, String(farm.treeNurserySerial))
+        if (result.ok) treeStorageChoice.afterStore(farm)
         return result
       })) {
         dialogContent.scrollTop = 0

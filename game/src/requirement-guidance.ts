@@ -26,7 +26,7 @@ export type Requirement = { kind: 'stock'; item: StockItem; musicSaltOn?: number
   | { kind: 'building'; building: BuildingId }
   | { kind: 'journey'; island: IslandId; id: string }
   | { kind: 'delivery' };
-export type RequirementHint = { action: DiscoveryTask['action']; notice?: string; selector?: string; seedPreview?: CropId; sourceLabel?: string };
+export type RequirementHint = { action: DiscoveryTask['action']; notice?: string; selector?: string; seedPreview?: CropId; sourceLabel?: string; nurserySpace?: number };
 const route = (target: string, value?: string): RequirementHint => ({ action: { label: '', target, value } });
 const atHome = (farm: FarmState, hint: RequirementHint) => farm.island === 'home' ? hint : route('sail', 'home');
 
@@ -117,7 +117,11 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
     if (source.kind === 'grow') return tomorrow(getSupplyGuidance(farm, item, 'нужные припасы').detail);
     if (source.kind === 'space' || source.kind === 'return') {
       const task = getSupplyGuidance(farm, item, 'нужные припасы');
-      return { ...safe(task), notice: task.detail, ...(source.kind === 'return' ? { selector: `[data-action="return-nursery-tree"][data-value="${source.nurseryId}"]` } : {}) };
+      const waiting = source.kind === 'space' && task.action.target === 'orchard'
+        ? farm.treeNursery.find(entry => entry.id === source.nurseryId) : undefined;
+      const missing = item.quantity - farm.fruit[item.item];
+      return { ...safe(task), notice: task.detail, ...(source.kind === 'return' ? { selector: `[data-action="return-nursery-tree"][data-value="${source.nurseryId}"]` } : {}),
+        ...(waiting && missing > 0 && waiting.tree.fruitReady - Number(!!waiting.tree.trait) >= missing ? { nurserySpace: waiting.id } : {}) };
     }
   }
   if (item.kind === 'shells' || item.kind === 'shoalFinds') {
