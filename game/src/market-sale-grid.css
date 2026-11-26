@@ -20,8 +20,9 @@
 [data-market-sale-browser] .market-sale-search {position:relative;display:block;margin:0}
 [data-market-sale-browser] .market-sale-search label {display:block}
 [data-market-sale-browser] .market-sale-search input {min-height:48px;border-radius:15px;font-size:18px;padding:8px 48px 8px 16px;background:#fffaf1;border-color:#baa08a}
-[data-market-sale-browser] [data-action=market-sale-clear] {position:absolute;right:2px;top:2px;min-width:44px;min-height:44px;margin:0;padding:0;font-size:0;background:none;border:0;box-shadow:none}
-[data-market-sale-browser] [data-action=market-sale-clear]::after {content:'×';font-size:24px}
+/* Keep native search and keyboard behavior; the app already supplies an accessible clear control. */
+[data-market-sale-browser] .market-sale-search input[data-market-sale-query]::-webkit-search-cancel-button {display:none}
+[data-market-sale-browser] [data-action=market-sale-clear] {position:absolute;right:2px;top:2px;min-width:44px;min-height:44px;margin:0;padding:0;font-size:24px;background:none;border:0;box-shadow:none}
 [data-market-sale-browser] .market-inline-groups .panel-tabs {display:flex;gap:10px;margin:0}
 [data-market-sale-browser] .market-inline-groups .panel-tabs button {flex:1;min-height:44px;min-width:0;padding:6px 12px;border-radius:15px;border:1px solid #bea092;background:#f7eadf;font:700 16px Georgia,serif}
 [data-market-sale-browser] .market-inline-groups .panel-tabs [aria-pressed=true] {background:linear-gradient(#aa76ad,#895a91);color:#fff9ff}

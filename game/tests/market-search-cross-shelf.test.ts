@@ -140,3 +140,26 @@ test('an explicit sale on a cross-shelf hit uses the exact rare product once; se
  runInNewContext(confirm,c)
  assert.equal(writes,1);assert.deepEqual(f,after)
 })
+
+test('the earned Sell search keeps a native search field and one named game clear button, without a second cancel adornment',()=>{
+ const render=stripTypeScriptTypes(section('function marketCards()','function treeSelector()')+'\nmarketCards()')
+ const css=readFileSync(new URL('../src/market-sale-grid.css',import.meta.url),'utf8')
+ for(const marketSaleQuery of ['','радужное яйцо']){
+  const html:string=runInNewContext(render,{farm:earned,marketTab:'sell',marketSellGroup:'harvest',marketSaleFamily:'fruit:pear',
+   marketSaleQuery,numberFormat:new Intl.NumberFormat('ru-RU'),getSale:F.getSale,quantity:()=>'',icon:()=>'',panelTabs:()=>'',
+   button:(label:string,action:string,enabled=true)=>`<button type="button" data-action="${action}"${enabled?'':' disabled'}>${label}</button>`,
+   nav:()=>'',escapeHtml:(v:string)=>v,marketBulkSaleControls:()=>'',marketFamilyOptions:()=>'',marketSaleSearchStatus:()=>'',marketSaleResults:()=>''})
+  const search=html.match(/<div class="market-sale-search">([\s\S]*?)<\/div>/)?.[1]??''
+  assert.match(search,/<input\b[^>]*data-market-sale-query\s+type="search"/)
+  const close=[...search.matchAll(/<button\b([^>]*data-action="market-sale-clear"[^>]*)>([^<]*(?:<span[^>]*>[^<]*<\/span>[^<]*)*)<\/button>/g)]
+  assert.equal(close.length,1)
+  const [,attrs,inside]=close[0]
+  assert.match(attrs,/\baria-label="Очистить"/,'the existing game Clear has one explicit accessible name')
+  assert.equal(/\bdisabled\b/.test(attrs),marketSaleQuery==='')
+  assert.equal(inside,'<span aria-hidden="true">×</span>','the one game cross is decorative, not part of the name')
+ }
+ assert.deepEqual([...css.matchAll(/^([^{}\n]*::-webkit-search-cancel-button)\s*\{([^}]*)\}/gm)].map(([,selector,rule])=>[selector.trim(),rule.trim()]),
+  [['[data-market-sale-browser] .market-sale-search input[data-market-sale-query]::-webkit-search-cancel-button','display:none']])
+ assert.match(css,/\[data-market-sale-browser\] \[data-action=market-sale-clear\]\s*\{[^}]*min-width:44px;min-height:44px/)
+ assert.doesNotMatch(css,/\[data-action=market-sale-clear\]::after/)
+})
