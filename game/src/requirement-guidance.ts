@@ -15,7 +15,7 @@ import { getCoinGuidance, getSupplyGuidance, type DiscoveryTask } from './discov
 import { getIslandJourneys } from './journey.ts';
 import {
   boatPrice, buildingIds, canSailTo, cropIds, dishDefinitions, eggsPerCrate,
-  getCookAction, getCookIngredients, getFairGuest, getFishAction, getMarketOrders, getMarketStock, getProject, getShellAt, getVillageProject, hasFarmhouseSpecialization, ingredientCount, isProjectComplete, marketKey,
+  getBedHarvestPreview, getCookAction, getCookIngredients, getFairGuest, getFishAction, getMarketOrders, getMarketStock, getProject, getShellAt, getVillageProject, hasFarmhouseSpecialization, ingredientCount, isProjectComplete, marketKey,
   type BuildingId, type CropId, type FarmState, type IslandId, type StockItem,
 } from './farm.ts';
 import { hasShoal, getShoalFindAt } from './shoal.ts';
@@ -176,8 +176,26 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
     if (!recipe.capeLevel && (farm.buildingLevels.farmhouse < recipe.requiredLevel || recipe.specialization && !hasFarmhouseSpecialization(farm, recipe.specialization))) return atHome(farm,route('show-upgrade','farmhouse'));
     if (item.item === 'grilledFish' && getCookAction(farm, item.item).available)
       return { ...route('grill-kitchen'), selector: '[data-action="cook"][data-value="grilledFish"]:not(:disabled)' };
-    const missing = getCookIngredients(farm, item.item).find(ingredient=>ingredientCount(farm,ingredient)<ingredient.quantity);
+    const ingredients = getCookIngredients(farm, item.item);
+    const missing = ingredients.find(ingredient=>ingredientCount(farm,ingredient)<ingredient.quantity);
     if (missing) return stock(farm,missing);
+    if (item.item === 'honeyBiscuits' && item.quantity === 2 && farm.island === 'home'
+      && farm.orders.honeyKitchen.completed === 0 && farm.dishes.honeyBiscuits === 0
+      && canSailTo(farm, 'cape') && getMarketOrders(farm).some(order => order.lane === 'honeyKitchen'
+        && order.status === 'waiting' && order.items.length === 1 && order.items.some(part =>
+          part.kind === 'dishes' && part.item === item.item && part.quantity === item.quantity))) {
+      const wheat = ingredients.find(part => part.kind === 'produce' && part.item === 'wheat');
+      const shortage = wheat ? wheat.quantity * item.quantity - ingredientCount(farm,wheat) : 0;
+      // Only an immediate local harvest that completes the box supply saves a
+      // crossing. Otherwise one ordinary portion remains an available choice.
+      if (shortage > 0 && ingredients.every(part => part === wheat || ingredientCount(farm,part) >= part.quantity * item.quantity)) {
+        const ripe = farm.beds.findIndex((_, index) => {
+          const crop = getBedHarvestPreview(farm,index);
+          return crop?.crop === 'wheat' && crop.ordinary >= shortage;
+        });
+        if (ripe >= 0) return route('focus-bed',String(ripe));
+      }
+    }
     return recipe.capeLevel ? farm.island==='cape'?route('open-panel','honey-kitchen'):route('sail','cape') : atHome(farm,route('kitchen'));
   }
   if (item.kind === 'eggCrates') {
