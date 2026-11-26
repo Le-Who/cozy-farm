@@ -2599,6 +2599,16 @@ function drawPanel() {
       // The saved neighbour selection is an explicit travel shortcut, not this
       // cooking session's return address. Keep ordinary exits at their entry.
       const composer = panelHistory.at(-1), source = panelHistory.at(-2)
+      // Manual cooking from a shop order uses the same exact recipe visit as
+      // a quick repeat. A new preparation must not be presented as that order.
+      const commissionOrigin = signature && repeatId && composer?.panel === 'recipes' && source?.panel === 'shop-commissions'
+        ? source.commissionRecipe : undefined
+      const commissionLineForReturn = () => {
+        if (!commissionOrigin || panel !== 'cookery' || !dialog.open || farm.island !== 'village' || island.isCrossing()
+          || panelHistory.at(-1) !== composer || panelHistory.at(-2) !== source || source?.commissionRecipe !== commissionOrigin) return
+        const line = getShopCommissionLine(farm,commissionOrigin.line)
+        return line && line.recipeId === repeatId && line.remaining > 0 ? line : undefined
+      }
       // Mirror the first bread basket. Only a batch that completes the first
       // local preserves order from this kitchen can offer a finished receipt route.
       const preservesOrder = () => !signature && preparedDish === 'orchardPreserves'
@@ -2659,14 +2669,29 @@ function drawPanel() {
             detail?.focus({preventScroll:true}); detail?.scrollIntoView({block:'nearest'})
           }}
         }} : {}),
-        onComplete(result) {if(made)return true;if(panel!=='cookery')return false;const waiting=!signature&&preparedDish==='orchardPreserves'&&preservesOrder()?.status==='waiting';made=perform(()=>{
-          const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
-          const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
-          if(receipt.ok&&'recipeId' in receipt&&typeof receipt.recipeId==='string')resultRecipeId=receipt.recipeId
-          if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
-          return receipt
-        },false,true);if(made&&waiting&&preservesOrder()?.status==='ready')preservesOrderDay=farm.day;return made},
-        onCancel(){if(signature&&!fromRequestedFood&&!editingDraft()){panelHistory.length=0;openRecipeBook(resultRecipeId,false,false)}else leaveScene()},
+        onComplete(result) {if(made)return true
+          if (panel !== 'cookery') return false
+          const waiting = !signature && preparedDish === 'orchardPreserves' && preservesOrder()?.status === 'waiting'
+          const commissionBefore = signature ? commissionLineForReturn() : undefined
+          made = perform(() => {
+            const known = new Set(farm.culinary.recipes.map(recipe=>recipe.id))
+            const receipt=signature?repeatId?repeatSignature(farm,repeatId,result):completeSignature(farm,draft,result):cookDish(farm,preparedDish,result)
+            if(receipt.ok&&'recipeId' in receipt&&typeof receipt.recipeId==='string')resultRecipeId=receipt.recipeId
+            if(receipt.ok&&familyName&&'recipeId' in receipt&&typeof receipt.recipeId==='string'&&!known.has(receipt.recipeId))nameSignature(farm,receipt.recipeId,familyName)
+            return receipt
+          },false,true)
+          if (made && waiting && preservesOrder()?.status === 'ready') preservesOrderDay = farm.day
+          if (made && commissionBefore && commissionOrigin && resultRecipeId === repeatId
+            && commissionBefore.inBag + commissionBefore.warehouse < commissionBefore.remaining) {
+            const line = commissionLineForReturn()
+            if (line && line.inBag + line.warehouse >= line.remaining) commissionOrigin.prepared = true
+          }
+          return made
+        },
+        onCancel(){if(signature && !fromRequestedFood && !editingDraft() && !(resultRecipeId === repeatId && commissionLineForReturn())) {
+            panelHistory.length = 0; openRecipeBook(resultRecipeId,false,false)
+          } else leaveScene()
+        },
       })
       break
     }
