@@ -237,7 +237,7 @@ test('Escape belongs to the honey station even on its tilt slider; native slider
   assert.equal(key('Escape'),true);assert.equal(returns,1)
 })
 
-for(const exit of ['back','cancel','escape','finished'] as const) test(`earned Home Kitchen fruit mix retains its correct return while Finn prepares his basket: ${exit}`, async()=>{
+for(const shore of ['home','village'] as const) for(const exit of ['back','cancel','escape','finished'] as const) test(`earned ${shore==='home'?'Home':'Bea cottage'} Kitchen fruit mix retains its correct return while Finn prepares his basket: ${exit}`, async()=>{
   const {commissionPlayer}=await import('./fixtures/commission-player.ts')
   const {recipePlanningIngredient}=await import('../src/recipe-planning.ts')
   const {rememberRecipeDraft}=await import('../src/recipe-draft.ts')
@@ -245,8 +245,13 @@ for(const exit of ['back','cancel','escape','finished'] as const) test(`earned H
   const p=commissionPlayer(opening);p.fruit('apple',2);p.visit('village')
   const plan=farmApi.getNeighborPlans(p.state).find(plan=>plan.resident==='finn')!
   assert.deepEqual([p.actions,p.state.day,plan.id,plan.phase,plan.arrangement],[112,15,'finn:1','preparing','basket'])
-  p.visit('home')
-  assert.deepEqual([p.actions,p.state.day,p.state.island],[113,15,'home'])
+  if(shore==='home')p.visit('home')
+  assert.deepEqual([p.actions,p.state.day,p.state.island],[shore==='home'?113:112,15,shore])
+  if(shore==='village'){
+    assert.equal(p.state.village.residents[0],'bea','ordinary existing Bea cottage')
+    assert.match(main,/class="resident-self-cook".*?button\('Кухня', 'kitchen'/s)
+  }
+  const history = shore==='village' ? ['village','kitchen','signature'] : ['kitchen','signature']
   const part=(text:string,a:string,b:string)=>{
     const start=text.indexOf(a),end=text.indexOf(b,start+a.length)
     assert.ok(start>=0&&end>start)
@@ -256,23 +261,30 @@ for(const exit of ['back','cancel','escape','finished'] as const) test(`earned H
     +part(main,"    case 'kitchen-group':","    case 'market-category':")
     +part(main,"    case 'signature-base':","    case 'signature-home':")
     +part(main,"    case 'back':","    case 'journal-stay':")
+    +part(main,"    case 'kitchen':\n      island.visit","    case 'close':")
     +'}}')
   const recipe=part(main,'function kitchenFamilies()', 'function familyRecipeName')
   assert.match(recipe, /button\('Выбрать фрукты', 'family-signature', true, \{ value: 'preserves' \}\)/)
   const scene=readFileSync(new URL('../src/cookery.ts',import.meta.url),'utf8')
   const handleEsc=js(part(scene,"  view.addEventListener('keydown'","  function updateSugar()"))
   const actor=js('{'+part(islandSource,'    const actors = [...villageActors.values()];','    for (const plan of getNeighborPlans(farm)) {')+'}')
-    const {state:x,calls}=setup('home',true),farm=structuredClone(p.state)
+    const {state:x,calls}=setup(shore,true),farm=structuredClone(p.state)
     const missing='selectedWarehouseRequest selectedExpeditionPort selectedExpeditionOffer selectedWarehouse inventoryGroup boatIsland marketSaleFamily marketSaleQuery marketTab marketCategory marketSellGroup bagTab archiveGroup treeSlot previewSeed specializationBuilding previewSpecialization irrigationMode villageSlot seedPickerBed expandedRepeatId communityOrderId requestedFood kitchenTart kitchenPreserves kitchenGroup kitchenDish honeyKitchenDish freightPlanOpen journeyDetailsOpen journalDetailsOpen selectedMarketOrder'.split(' ')
     const fakes=Object.fromEntries(missing.map(k=>[k,undefined]))
     let draftSaves=0, recipeSaves=0
+    class CookButton {
+      dataset={action:'start-signature'}
+      getClientRects(){return [{}]}
+      focus(){x.document.activeElement=this}
+    }
+    const originalStart=new CookButton(),rerenderedStart=new CookButton()
     const savedMeeting={kind:'neighbor',resident:'finn', planId:plan.id}
     Object.assign(x,fakes,{
-      farm,panel:'kitchen',panelHistory:[],communityResident:'finn',communityRequest:savedMeeting,kitchenGroups:['tart','preserves','dishes'],kitchenGroup:'tart',signatureSlots:[null,null],
+      farm,panel:shore==='village'?'village':'kitchen',panelHistory:[],villageSlot:0,signatureSlot:0,island:{visit(){}},communityResident:'finn',communityRequest:savedMeeting,kitchenGroups:['tart','preserves','dishes'],kitchenGroup:'tart',signatureSlots:[null,null],
       control:{dataset:{}},event:{detail:0},recipePlanningIngredient,rememberRecipeDraft,saveFarm(){draftSaves++},drawPanel(){},getSignatureAction:farmApi.getSignatureAction,
-      document:{activeElement:null},HTMLButtonElement:class {},recipeBook:{snapshot(){return{}},load(){}},
+      document:{activeElement:null},HTMLButtonElement:CookButton,recipeBook:{snapshot(){return{}},load(){}},
       dialogContent:{querySelector(){return null},querySelectorAll(){return[]},scrollTop:0},
-      dialog:{open:true,querySelectorAll(){return[]}},restoreFerryPanelView(){},panelRenderVersion:0,requestAnimationFrame:(cb:()=>void)=>cb(),
+      dialog:{open:true,querySelectorAll(){return x.panel==='signature'?[rerenderedStart]:[]}},restoreFerryPanelView(){},panelRenderVersion:0,requestAnimationFrame:(cb:()=>void)=>cb(),
       openPanel(next:string,remember=true){
         if(remember)x.panelHistory.push(x.rememberPanel())
         x.panel=next;x.dialogContent.scrollTop=0
@@ -285,6 +297,7 @@ for(const exit of ['back','cancel','escape','finished'] as const) test(`earned H
     })
     runInNewContext(js(part(main,'function focusKey(', 'let harbourScene:')+part(main,'function rememberCurrentRecipeDraft()', 'const recipeBook =')+closeSale),x)
     const action=runInNewContext(formActions,x)
+    if(shore==='village')action('kitchen')
     x.value='preserves';action('kitchen-group')
     x.control.dataset.family='preserves';x.value='custom';action('recipe-family')
     x.value='preserves';action('family-signature')
@@ -292,9 +305,9 @@ for(const exit of ['back','cancel','escape','finished'] as const) test(`earned H
     x.value='apple';action('signature-fruit');action('signature-fruit')
     const draft=structuredClone(farm.recipeDraft);assert.ok(draft)
     assert.deepEqual(draft.slots,[{id:'apple',quantity:1},{id:'apple',quantity:1}])
-    x.dialogContent.scrollTop=41
+    x.dialogContent.scrollTop=41;originalStart.focus()
     action('start-signature');mount(x)
-    assert.deepEqual(x.panelHistory.map((v:{panel:string})=>v.panel),['kitchen','signature'])
+    assert.deepEqual(x.panelHistory.map((v:{panel:string})=>v.panel),history)
     const start=structuredClone(farm),writes=draftSaves
     const here=getNeighborSceneState(plan),collecting={id:plan.resident,slot:1,point:{...here.stand},route:[],facingRight:true,stride:0,
       gathering:false,serviceRequested:false,fetching:false,waitUntil:0,atStationSince:0,plan}
@@ -324,10 +337,16 @@ for(const exit of ['back','cancel','escape','finished'] as const) test(`earned H
     if(exit!=='back')assert.equal(label,'К выбору ингредиентов')
     assert.deepEqual(JSON.parse(JSON.stringify(x.signatureSlots)),draft.slots)
     assert.equal(x.signatureSlot,draft.activeSlot);assert.equal(x.dialogContent.scrollTop,41)
-    assert.deepEqual(x.panelHistory.map((v:{panel:string})=>v.panel),['kitchen'])
+    assert.equal(x.document.activeElement,rerenderedStart,'focus returns to the same ordinary composer action')
+    assert.deepEqual(x.panelHistory.map((v:{panel:string})=>v.panel),history.slice(0,-1))
     assert.equal(recipeSaves,0);assert.equal(draftSaves,writes);assert.deepEqual(farm,start)
     assert.deepEqual(x.communityRequest,savedMeeting)
     action('back')
     assert.equal(x.panel,'kitchen');assert.equal(x.kitchenGroup,'preserves');assert.equal(x.kitchenPreserves,'custom')
-    console.log(JSON.stringify({day:15,earned:113,from:'home kitchen custom preserves',finn:'finn:1 basket fetching',exit,returnedTo:'same composer then own kitchen',recipeSaves,travel:false}))
+    if(shore==='village'){
+      action('back')
+      assert.deepEqual([x.panel,x.villageSlot,farm.island],['village',0,'village'],'Back reaches the original Bea cottage, not Finn’s gathering')
+      assert.deepEqual(farm,start);assert.equal(draftSaves,writes)
+    }
+    console.log(JSON.stringify({day:15,earned:p.actions,from:shore==='home'?'home kitchen custom preserves':'Bea cottage ordinary kitchen custom preserves',finn:'finn:1 basket fetching',exit,returnedTo:'same composer, kitchen and, where applicable, original cottage',recipeSaves,travel:false}))
 })

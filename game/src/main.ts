@@ -2596,8 +2596,9 @@ function drawPanel() {
         && communityRequest?.kind === 'neighbor' && communityRequest.planId === source.neighborComposerPlan
         && getNeighborPlans(farm).some(plan => plan.id === source.neighborComposerPlan && plan.resident === source.communityResident
           && (plan.phase === 'joined' || plan.phase === 'arranging'))
-      // An unpaid mix opened at home can be edited without reopening the book.
-      const editingDraft = () => editingForNeighbor() || (signature && !made && !repeatId && farm.island === 'home'
+      // An unpaid local kitchen mix can be edited without reopening the book.
+      const editingDraft = () => editingForNeighbor() || (signature && !made && !repeatId
+        && (farm.island === 'home' || farm.island === 'village' && farm.village.built)
         && composer?.panel === 'signature' && source?.panel === 'kitchen'
         && panelHistory.at(-1) === composer && panelHistory.at(-2) === source)
       dialogContent.innerHTML = '<div class="cookery-host"></div>'
