@@ -6,7 +6,8 @@ import { runInNewContext } from 'node:vm'
 import * as F from '../src/farm.ts'
 import { shellDefinitions } from '../src/tide.ts'
 import { shoalDefinitions } from '../src/shoal.ts'
-import { searchMarketSales, type MarketSaleGroup } from '../src/market-sale-search.ts'
+import { searchMarketSales, searchMarketSaleView, type MarketSaleGroup } from '../src/market-sale-search.ts'
+import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
 import { MarketInlineSales } from '../src/market-inline-sale.ts'
 import { earned416Mixed } from './fixtures/earned-416-market-orders.ts'
 
@@ -17,11 +18,11 @@ function between(a:string,b:string){
 // Use the actual UI naming/group policy, not pretend localizations of earned stock.
 const view=stripTypeScriptTypes(between('function goods()','function fishImage(')+
  between('function stockLabel(','function stockTile(')+between('function marketSaleResults()','function inlineSaleContext(')+
- between('function marketSaleSearchStatus()','function marketBulkSaleControls()')+';({goods,marketSaleResults,marketSaleSearchStatus,wholeInventorySaleView})')
+ between('function marketSaleSearchView()','function marketBulkSaleControls()')+';({goods,marketSaleResults,marketSaleSearchStatus,wholeInventorySaleView})')
 type Row=ReturnType<typeof F.getMarketStock>[number]&{name:string;group:string}
 function seller(farm:F.FarmState,query:string,group:MarketSaleGroup='all',family?:string){
  const placeholders=new Proxy({},{get:()=>''})
- const fn=runInNewContext(view,{...F,farm,marketSellGroup:group,marketSaleFamily:family,marketSaleQuery:query,searchMarketSales,
+ const fn=runInNewContext(view,{...F,farm,marketSellGroup:group,marketSaleFamily:family,marketSaleQuery:query,searchMarketSales,searchMarketSaleView,marketSaleBrowse:new MarketSaleBrowseMemory(),
   shellDefinitions,shoalDefinitions,fishImage:()=>'',pastryIcons:placeholders,dishIcons:placeholders,
   marketInlineCard:(item:Row)=>`<li data-inline-key="${item.key}">${item.name}: ${item.count}</li>`})
  const goods=structuredClone(fn.goods()) as Row[], selected=fn.marketSaleResults() as string

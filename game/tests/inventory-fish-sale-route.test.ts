@@ -10,7 +10,7 @@ import {saleStock,exactSaleQuote} from '../src/exact-sale.ts'
 import {SalePresentation} from '../src/sale-presentation.ts'
 import {MarketInlineSales} from '../src/market-inline-sale.ts'
 import {MarketSaleBrowseMemory} from '../src/market-sale-browse.ts'
-import {searchMarketSales} from '../src/market-sale-search.ts'
+import {searchMarketSaleView} from '../src/market-sale-search.ts'
 import {marketSaleFamilies} from '../src/market-sale-family.ts'
 import {getMarketOrderSurplusQuote} from '../src/market-order-surplus.ts'
 import {recipeRepeatReturnFixture} from './fixtures/recipe-repeat-return.ts'
@@ -23,7 +23,7 @@ const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const source=readFileSync(`${root}/src/main.ts`,'utf8'),ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true)
 function find(predicate){let result;function visit(node){if(!result&&predicate(node))result=node;ts.forEachChild(node,visit)}visit(ast);assert.ok(result);return result.getText(ast)}
 const declaration=name=>find(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name)
-const functions=['button','row','nav','quantity','stockLabel','goods','fishImage','fishSource','inventoryStockRow','marketInlineCard','marketSaleResults','marketSaleSearchStatus','marketCards','panelTabs','marketFamilyOptions','marketBulkSaleControls','wholeInventorySaleView','exactSaleCard','beginExactSale','openPanel','rememberClosedMarketSell','closeDialog','perform','refresh','rememberPanel','goBack','focusKey','stockSourceItem','updateSaleQuote','isSaleSurface']
+const functions=['button','row','nav','quantity','stockLabel','goods','fishImage','fishSource','inventoryStockRow','marketInlineCard','marketSaleResults','marketSaleSearchView','marketSaleSearchStatus','marketCards','panelTabs','marketFamilyOptions','marketBulkSaleControls','wholeInventorySaleView','exactSaleCard','beginExactSale','openPanel','rememberClosedMarketSell','closeDialog','perform','refresh','rememberPanel','goBack','focusKey','stockSourceItem','updateSaleQuote','isSaleSurface']
 const icons=find(n=>ts.isVariableStatement(n)&&n.declarationList.declarations.some(d=>d.name.getText(ast)==='dishIcons'))
 const sellView=source.slice(source.indexOf('function marketSellView()'),source.indexOf('function rememberClosedMarketSell()'))
 const actions=['fish-market','sell-item','fish-kitchen','open-panel'].map(id=>find(n=>ts.isCaseClause(n)&&n.expression.getText(ast)===`'${id}'`))
@@ -46,7 +46,7 @@ function earned(destination='grove'){
 function screen(farm,query='морковь'){
  const saved=[],crossings=[],visits=[]
  const reset={reset:noop},icon=name=>`<img alt="" data-icon="${name}">`
- const state:any={...F,farm,saleStock,exactSaleQuote,searchMarketSales,marketSaleFamilies,getMarketOrderSurplusQuote,ruPlural,escapeHtml,icon,itemIcon:icon,pastryIcons:{round:'round',long:'long',folded:'folded'},numberFormat:new Intl.NumberFormat('ru-RU'),
+ const state:any={...F,farm,saleStock,exactSaleQuote,searchMarketSaleView,marketSaleFamilies,getMarketOrderSurplusQuote,ruPlural,escapeHtml,icon,itemIcon:icon,pastryIcons:{round:'round',long:'long',folded:'folded'},numberFormat:new Intl.NumberFormat('ru-RU'),
   panel:'inventory',panelHistory:[{panel:'guide'}],inventoryGroup:'shore',marketTab:'buy',marketCategory:'trees',marketSellGroup:'harvest',marketSaleQuery:query,marketSaleFamily:'fruit:apple',marketTreeSpaceVisit:undefined,
   salePresentation:new SalePresentation(),marketInlineSales:new MarketInlineSales(),marketSaleBrowse:new MarketSaleBrowseMemory(),selectedSale:undefined,saleQuantity:'',saleReceipt:undefined,
   selectedMarketOrder:undefined,pickedMarketOrder:undefined,hiveFlower:undefined,

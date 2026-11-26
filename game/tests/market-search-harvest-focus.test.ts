@@ -5,13 +5,17 @@ import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import * as F from '../src/farm.ts'
 import { bedWorkKind, isCurrentBedWork, planBedWork } from '../src/bed-work-intent.ts'
-import { searchMarketSales } from '../src/market-sale-search.ts'
+import { searchMarketSales, searchMarketSaleView } from '../src/market-sale-search.ts'
+
+import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
 
 const read=(file:string)=>readFileSync(new URL('../src/'+file,import.meta.url),'utf8')
 const main=read('main.ts'), island=read('island.ts')
 function part(s:string,a:string,b:string){const start=s.indexOf(a),end=s.indexOf(b,start+1);assert.ok(start>=0&&end>start);return s.slice(start,end)}
 const script=stripTypeScriptTypes([
   part(main,'function marketCards(', 'function treeSelector('),
+  part(main,'function marketSellView()', 'function rememberClosedMarketSell()'),
+  part(main,'function setMarketSaleQuery(', 'function marketSaleSearchView()'),
   part(main,'function refresh()', 'const bedTools ='),
   part(main,'function activateTarget(', '  island.visit(target)\n  switch')+'}',
   part(island,'  function advanceWork(', '  function paintBursts('),
@@ -33,7 +37,7 @@ test('a queued harvest updates the normal Sell results without taking focus from
     focus({preventScroll}:{preventScroll:boolean}){assert.equal(preventScroll,true);document.activeElement=this}
     setSelectionRange(a:number,b:number,d:'none'|'forward'|'backward'='none'){this.selectionStart=a;this.selectionEnd=b;this.selectionDirection=d}
   }
-  const frames:unknown[]=[],saves:typeof farm[]=[],silent=()=>{},rows={innerHTML:''}
+  const frames:unknown[]=[],saves:typeof farm[]=[],silent=()=>{},rows={innerHTML:'',scrollTop:0,querySelectorAll:()=>[]}
   let input:Input|null=null,markup=''
   const dialogContent={
     contains:(element:unknown)=>input!==null&&element===input,querySelectorAll:()=>[],
@@ -45,7 +49,7 @@ test('a queued harvest updates the normal Sell results without taking focus from
       if(input)input.value=value!
     },
   }
-  const ctx:any={...F,farm,dialog:{open:false},panel:undefined,marketTab:'sell',marketSellGroup:'harvest',marketSaleQuery:'',marketSaleFamily:undefined,dialogContent,document,
+  const ctx:any={...F,farm,dialog:{open:false},panel:undefined,marketTab:'sell',marketSellGroup:'harvest',marketSaleQuery:'',marketSaleFamily:undefined,marketSaleBrowse:new MarketSaleBrowseMemory(),dialogContent,document,
     HTMLInputElement:Input,HTMLButtonElement:class{},HTMLSelectElement:class{},salePresentation:{},app:{addEventListener:(name:string,handler:Function)=>{assert.equal(name,'input');ctx.type=handler}},
     bedWorkKind,planBedWork,isCurrentBedWork,bedWorkSound:silent,bayAudio:{primeEvents:silent},playBaySound:silent,
     viewMode:'world',reconcileFrames:silent,farmer:{x:0,y:0},state:farm,workOrders:frames,gesture:undefined,areas:Array(21).fill({center:{x:0,y:0},stop:{x:0,y:0}}),
@@ -78,7 +82,7 @@ test('a queued harvest updates the normal Sell results without taking focus from
 
 test('a newly stocked row must not push an edited quantity and its current quote out of the visible sale grid',async()=>{
   const {MarketInlineSales,inlineReceiptText}=await import('../src/market-inline-sale.ts')
-  const saleCode=stripTypeScriptTypes(part(main,'function marketInlineCard(', 'function confirmInlineSale('))
+  const saleCode=stripTypeScriptTypes(part(main,'function marketSaleSearchView()', 'function marketSaleSearchStatus()')+part(main,'function marketInlineCard(', 'function confirmInlineSale('))
   const farm=F.createFarm(),key='fruit:apple'
   assert.ok(F.workBed(farm,3).ok);assert.ok(F.pickFruit(farm,0).ok)
   assert.equal(farm.produce.carrot,0)
@@ -120,9 +124,9 @@ test('a newly stocked row must not push an edited quantity and its current quote
   }
   const workOrders:unknown[]=[],silent=()=>{}
   const ctx:any={
-    ...F,farm,dialog:{open:false},panel:undefined,marketTab:'sell',marketSellGroup:'harvest',marketSaleQuery:'',marketSaleFamily:undefined,dialogContent,document,
+    ...F,farm,dialog:{open:false},panel:undefined,marketTab:'sell',marketSellGroup:'harvest',marketSaleQuery:'',marketSaleFamily:undefined,marketSaleBrowse:new MarketSaleBrowseMemory(),dialogContent,document,
     HTMLInputElement:Input,HTMLButtonElement:class{},HTMLSelectElement:class{},salePresentation:{},app:{addEventListener:(name:string,fn:Function)=>{assert.equal(name,'input');ctx.type=fn}},
-    marketInlineSales,inlineReceiptText,goods,searchMarketSales,bedWorkKind,planBedWork,isCurrentBedWork,bedWorkSound:silent,bayAudio:{primeEvents:silent},playBaySound:silent,
+    marketInlineSales,inlineReceiptText,goods,searchMarketSales,searchMarketSaleView,bedWorkKind,planBedWork,isCurrentBedWork,bedWorkSound:silent,bayAudio:{primeEvents:silent},playBaySound:silent,
     viewMode:'world',reconcileFrames:silent,farmer:{x:0,y:0},state:farm,workOrders,gesture:undefined,areas:Array(21).fill({center:{x:0,y:0},stop:{x:0,y:0}}),
     WORK_MS:{harvest:200},bursts:[],impactByBed:new Map(),island:{isCrossing:()=>false,render:silent,workBed(index:number,next:Function,commit:Function){workOrders.push({index,next,commit})}},
     numberFormat:new Intl.NumberFormat('ru'),quantity:String,icon:()=>'',itemIcon:()=>'',panelTabs:()=>'',escapeHtml:encode,button:()=>'',nav:()=>'',marketFamilyOptions:()=>'',marketSaleSearchStatus:()=>'',marketBulkSaleControls:()=>'',applyIngredientFinishes:silent,

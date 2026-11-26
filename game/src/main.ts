@@ -8,7 +8,7 @@ import { getMarketOrderSurplusQuote, sellMarketOrderSurplus } from './market-ord
 import { MarketSaleBrowseMemory } from './market-sale-browse'
 import { marketSaleFamilies } from './market-sale-family'
 import { SalePresentation } from './sale-presentation'
-import { searchMarketSales } from './market-sale-search'
+import { searchMarketSales, searchMarketSaleView } from './market-sale-search'
 import './market-sale-search.css'
 import { recipePlanningIngredient } from './recipe-planning'
 import {seedSavingQuote,saveCropSeeds} from './seed-saving'
@@ -1227,6 +1227,7 @@ function selectMarketSaleGroup(group: typeof marketSellGroup) {
   closeContextualSale(false)
   const previous = { family: marketSaleFamily, scroll: dialogContent.querySelector<HTMLElement>('#market-sale-results')?.scrollTop ?? 0 }
   const next = marketSaleBrowse.change(marketSellGroup, group, previous)
+  marketSaleBrowse.refineSearch()
   marketSellGroup = group; marketSaleFamily = next.family
   drawPanel()
   const results = dialogContent.querySelector<HTMLElement>('#market-sale-results')
@@ -1236,7 +1237,7 @@ function selectMarketSaleGroup(group: typeof marketSellGroup) {
   return true
 }
 function resetMarketSaleBrowsePosition() {
-  marketSaleBrowse.reset()
+  marketSaleBrowse.resetPositions()
   const results = dialogContent.querySelector<HTMLElement>('#market-sale-results')
   if (results) results.scrollTop = 0
 }
@@ -1244,13 +1245,29 @@ function selectMarketFamily(value: string) {
   const id=value.startsWith('family:')?value.slice(7):undefined
   if(id&&!marketSaleFamilies(goods(),marketSaleFamily).some(family=>family.id===id))return false
   if(!id&&value!=='harvest')return false
-  closeContextualSale(false);marketSellGroup='harvest';marketSaleFamily=id;drawPanel();dialogContent.scrollTop=0
+  closeContextualSale(false);marketSaleBrowse.refineSearch();marketSellGroup='harvest';marketSaleFamily=id;drawPanel();dialogContent.scrollTop=0
   return true
 }
 
+function setMarketSaleQuery(query: string) {
+  if (query === marketSaleQuery) return
+  const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+  if (query.trim()) {
+    marketSaleBrowse.beginSearch(!marketSaleQuery.trim() && grid ? { key: marketSaleGridKey(grid), scroll: grid.scrollTop } : undefined)
+  }
+  const origin = !query.trim() ? marketSaleBrowse.finishSearch() : undefined
+  closeContextualSale(false)
+  marketSaleQuery = query
+  updateMarketSaleSearch()
+  resetMarketSaleBrowsePosition()
+  if (origin && grid && marketSaleGridKey(grid) === origin.key) grid.scrollTop = origin.scroll
+}
+function marketSaleSearchView() {
+  return searchMarketSaleView(goods(), marketSellGroup, marketSaleQuery, marketSaleFamily, marketSaleBrowse.crossCategorySearch)
+}
 function marketSaleSearchStatus() {
-  const result = searchMarketSales(goods(), marketSellGroup, marketSaleQuery, marketSaleFamily)
-  return `Товары: ${result.items.length} из ${result.total}`
+  const result = marketSaleSearchView()
+  return result.wholeSearch ? `Поиск · Всё: ${result.items.length}` : `Товары: ${result.items.length} из ${result.total}`
 }
 function wholeInventorySaleView() {
   return marketSellGroup === 'all' && !marketSaleQuery.trim()
@@ -1282,9 +1299,9 @@ function marketInlineCard(item: ReturnType<typeof goods>[number]) {
   </li>`
 }
 function marketSaleResults() {
-  const {items,total} = searchMarketSales(goods(), marketSellGroup, marketSaleQuery, marketSaleFamily)
+  const {items,total,wholeSearch} = marketSaleSearchView()
   if (!items.length) return `<p class="market-sale-search-empty">${total ? 'По этому запросу в выбранной группе ничего нет. Измените запрос или очистите поиск.' : 'В этой группе пока нет товаров для продажи.'}</p>`
-  return `<ul class="market-inline-grid">${items.map(marketInlineCard).join('')}</ul>`
+  return `<ul class="market-inline-grid"${wholeSearch ? ' aria-label="Поиск · Всё"' : ''}>${items.map(marketInlineCard).join('')}</ul>`
 }
 function inlineSaleContext(control: Element) {
   if(island.isCrossing() || !dialog.open || panel!=='market' || marketTab!=='sell' || !dialogContent.contains(control))return
@@ -4059,7 +4076,7 @@ app.addEventListener('click', async (event) => {
       journeyDetailsOpen=false
       if(islandIds.some(id=>id===value)){boatIsland=value as typeof boatIsland;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="boat-island"][data-value="${value}"]`)?.focus({preventScroll:true})}break
     case 'market-sale-clear':
-      if(panel==='market'&&marketTab==='sell'&&dialog.open){closeContextualSale(false);marketSaleQuery='';const input=dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]');if(input){input.value='';updateMarketSaleSearch();resetMarketSaleBrowsePosition();input.focus({preventScroll:true})}}
+      if(panel==='market'&&marketTab==='sell'&&dialog.open){const input=dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]');if(input)input.value='';setMarketSaleQuery('');input?.focus({preventScroll:true})}
       break
     case 'market-sell-group':if(value==='all'||value==='harvest'||value==='kitchen'||value==='shore')selectMarketSaleGroup(value);break
     case 'recipe-search-clear':
@@ -5165,10 +5182,15 @@ app.addEventListener('focusin',event=>{
   if(panel==='market'&&marketTab==='sell'&&event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')&&matchMedia('(max-height:400px) and (orientation:landscape)').matches)
     event.target.closest<HTMLElement>('.market-inline-card')?.scrollIntoView({block:'nearest',inline:'nearest'})
 })
+app.addEventListener('compositionend', event => {
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]') && panel==='market' && marketTab==='sell')
+    setMarketSaleQuery(event.target.value)
+})
 app.addEventListener('input', event => {
   if(event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')){const context=inlineSaleContext(event.target);if(context&&marketInlineSales.edit(context.item.key,context.token,event.target.value,context.item.count,context.item.price))updateInlineSaleCard(context.card)}
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-recipe-query]')) updateRecipeBookSearch(event.target.value)
-  if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]') && panel==='market' && marketTab==='sell') { closeContextualSale(false);marketSaleQuery=event.target.value; updateMarketSaleSearch(); resetMarketSaleBrowsePosition() }
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]') && panel==='market' && marketTab==='sell'
+    && !('isComposing' in event && event.isComposing)) setMarketSaleQuery(event.target.value)
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-garden-name]') && panel === 'garden-plans' && gardenEditor.draft) gardenEditor.draft.name = event.target.value
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
     if(currentSaleControl(event.target)){saleQuantity = event.target.value; updateSaleQuote()}

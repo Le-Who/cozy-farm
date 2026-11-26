@@ -30,3 +30,14 @@ export function searchMarketSales<T extends SaleListing>(stock: readonly T[], gr
   })
   return { total: available.length, items }
 }
+
+
+/** Cross-category matches are a search result, never a change to the browse filter. */
+export function searchMarketSaleView<T extends SaleListing>(stock: readonly T[], group: MarketSaleGroup, query: string, family?: string, crossCategory = false) {
+  const current = searchMarketSales(stock, group, query, family)
+  if (crossCategory && query.trim() && group !== 'all' && !current.items.length) {
+    const all = searchMarketSales(stock, 'all', query)
+    if (all.items.length) return { ...all, wholeSearch: true }
+  }
+  return { ...current, wholeSearch: false }
+}

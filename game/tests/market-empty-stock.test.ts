@@ -6,7 +6,8 @@ import { runInNewContext } from 'node:vm'
 import { createFarm, cropIds, getMarketStock, getSale, restoreFarm, variantLabel } from '../src/farm.ts'
 import { traitIds } from '../src/climate.ts'
 import { MarketInlineSales } from '../src/market-inline-sale.ts'
-import { searchMarketSales } from '../src/market-sale-search.ts'
+import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
+import { searchMarketSaleView } from '../src/market-sale-search.ts'
 import { recipeRepeatReturnFixture } from './fixtures/recipe-repeat-return.ts'
 const s=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
 const src=stripTypeScriptTypes(s.slice(s.indexOf('function marketCards()'),s.indexOf('function treeSelector()'))+';marketCards()')
@@ -38,6 +39,7 @@ test('no matches in a stocked market keeps the search and group navigation',()=>
 test('the unlocked shop and sale groups precede a long real stock grid',()=>{
   const part=(from:string,to:string)=>s.slice(s.indexOf(from),s.indexOf(to,s.indexOf(from)))
   const render=stripTypeScriptTypes(part('function panelTabs(','function goods(')+
+    part('function marketSaleSearchView()','function marketSaleSearchStatus()')+
     part('function marketInlineCard(','function inlineSaleContext(')+
     part('function marketCards()','function treeSelector()')+';marketCards()')
   const {farm}=recipeRepeatReturnFixture('ready')
@@ -49,7 +51,7 @@ test('the unlocked shop and sale groups precede a long real stock grid',()=>{
     group:'harvest',name:row.item.kind==='variants'?variantLabel(row.item.item,row.item.trait).name:row.key}))
   assert.ok(restoreFarm(farm))
   const before=structuredClone(farm)
-  const html=runInNewContext(render,{farm,getSale,goods,searchMarketSales,marketTab:'sell',
+  const html=runInNewContext(render,{farm,getSale,goods,searchMarketSaleView,marketSaleBrowse:new MarketSaleBrowseMemory(),marketTab:'sell',
     marketSellGroup:'all',marketSaleFamily:undefined,marketSaleQuery:'',marketSaleSearchStatus:()=>'',marketBulkSaleControls:()=>'',
     marketInlineSales:new MarketInlineSales(),icon:()=>'',itemIcon:()=>'',quantity:String,numberFormat:new Intl.NumberFormat('ru'),
     button:(label:string,action:string,enabled:boolean,o?:{value?:string})=>`<button data-action="${action}" data-value="${o?.value??''}"${enabled?'':' disabled'}>${label}</button>`,
