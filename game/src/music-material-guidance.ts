@@ -1,4 +1,4 @@
-import { islandIds, type FarmState, type StockItem } from './farm.ts'
+import { canSailTo, islandIds, type FarmState, type StockItem } from './farm.ts'
 import { freightStock, freightPortNames } from './bay-freight-model.ts'
 import { BAY_MUSIC_EXPANSIONS } from './bay-music-model.ts'
 import { gardenMaterialStock } from './harbour-economy.ts'
@@ -9,6 +9,17 @@ export const musicMaterialSources: Record<string, string> = {
   shells: 'Солёная роща: обычные ракушки на берегу.',
   seaSalt: 'Солёная роща: солончаки. Соль также можно привезти торговым рейсом.',
   beeswax: 'Цветочный мыс: сбор мёда после улучшения пасеки.',
+}
+
+/** The stock guide expects a bag target, not the amount that still needs collecting. */
+export function getMusicSaltRequirement(farm: FarmState) {
+  const expansion = BAY_MUSIC_EXPANSIONS.find(item => item.level === farm.musicGarden.level + 1)
+  const salt = expansion?.materials.find(item => item.id === 'seaSalt')
+  if (!farm.village.built || !salt) return
+  const quantity = salt.quantity - freightStock(farm.freight, 'village', 'seaSalt')
+  if (farm.seaSalt >= quantity) return
+  return { kind:'stock' as const,item:{kind:'seaSalt' as const,quantity},
+    ...(!farm.saltGatheredToday && canSailTo(farm,'grove') ? {musicSaltOn:farm.day} : {}) }
 }
 
 /** Guidance reads existing goods first; it never gathers, upgrades or transfers. */

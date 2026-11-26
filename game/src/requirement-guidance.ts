@@ -3,6 +3,7 @@ import { getNurseryVariantSource, nurseryVariantNotice } from './nursery-variant
 import { getOrdinaryHoneyWait } from './ordinary-honey-guidance.ts';
 import { seaSaltRestNotice } from './salt-guidance.ts';
 import { getRegularShellSource } from './regular-shell-source.ts';
+import { getMusicSaltRequirement } from './music-material-guidance.ts';
 import { getBlockingVariantFruit, getReadyVariantSource, readyVariantNotice } from './ready-variant-guidance.ts';
 import { getLocalWarehouseSupply } from './warehouse-guidance.ts';
 import { bayProductId } from './bay-product-id.ts';
@@ -21,7 +22,7 @@ import {
 import { hasShoal, getShoalFindAt } from './shoal.ts';
 import { shellSpotCount } from './tide.ts';
 
-export type Requirement = { kind: 'stock'; item: StockItem }
+export type Requirement = { kind: 'stock'; item: StockItem; musicSaltOn?: number }
   | { kind: 'building'; building: BuildingId }
   | { kind: 'journey'; island: IslandId; id: string }
   | { kind: 'delivery' };
@@ -217,7 +218,14 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
 /** Read-only wayfinding. Following a condition never purchases, harvests, rests or delivers. */
 export function getRequirementHint(farm: FarmState, requirement: Requirement, origin?: 'saved-recipe' | 'recipe-draft'): RequirementHint {
   if (requirement.kind === 'stock') {
-    const item = requirement.item, hint = stock(farm, item);
+    const item = requirement.item;
+    if (item.kind === 'seaSalt' && requirement.musicSaltOn !== undefined) {
+      const current = getMusicSaltRequirement(farm);
+      if (current?.musicSaltOn !== requirement.musicSaltOn || current.item.quantity !== item.quantity) return route('');
+      // The material sheet already has a separate warehouse action.
+      return farm.island === 'grove' ? route('focus-place','salt') : route('sail','grove');
+    }
+    const hint = stock(farm, item);
     // Keep the exact saved recipe or active draft on Back. Other source routes stay unchanged.
     if ((origin === 'saved-recipe' || origin === 'recipe-draft') && item.kind === 'fruit' && farm.fruit[item.item] < item.quantity && hint.action.target === 'visit-tree' &&
         (farm.island === 'home' || farm.island === 'grove')) {

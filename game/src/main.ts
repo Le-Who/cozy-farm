@@ -131,7 +131,7 @@ import { mountBayShop, type BayShopCommissionPreview, type BayShopOptions, type 
 import { renderFreightPanelInto, presentFerryDeparture, presentFerryArrival, freightControl } from './bay-freight-ui'
 import { FerryArrivalPresentation } from './ferry-arrival-presentation'
 import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } from './ferry-panel-view'
-import { getMusicMaterialGuidance, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
+import { getMusicMaterialGuidance, getMusicSaltRequirement, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
 import { createBayMusic, type BayMusicViewState } from './bay-music'
 import { describeFood } from './intent-orders'
 import { bayProductId, installGardenInstrument, openedFreightPorts, reserveShopGoods, returnShopGoods, transferBayGoods, sendFerryExpedition, expeditionWallet, getFerrySupplyRequirement, getFerryReadyHarvest, gardenMaterialStock } from './harbour-economy'
@@ -2299,6 +2299,7 @@ function drawPanel() {
       const guide = getMusicMaterialGuidance(farm), stock = gardenMaterialStock(farm)
       dialogContent.innerHTML = `<p class="dialog-intro">Инструмент использует припасы и склад Лавандовой гавани. С других складов материалы нужно забрать лично.</p>${guide.materials.map(item => {
         const missing = Math.max(0,item.quantity-stock[item.id]), name = musicMaterialNames[item.id]
+        const saltSource = item.id === 'seaSalt' && getMusicSaltRequirement(farm)
         const warehouses = islandIds.filter(port => (farm.freight.warehouses[port][item.id] ?? 0) > 0)
           .sort((a,b) => Number(b === guide.warehouse)-Number(a === guide.warehouse))
         return `<section class="music-supply"><h2>${name} · ${stock[item.id]}/${item.quantity}</h2><p>${guide.sources[item.id]}</p>${warehouses.map(port => {
@@ -2306,7 +2307,7 @@ function drawPanel() {
           return `<p>${islandNames[port]}: ${amount}</p>${count && port !== 'village' ? nav(port === farm.island
             ? button(`Забрать в припасы ×${count}`,'freight-withdraw',true,{value:`${port}|${item.id}|${count}`})
             : button(`К складу: ${islandNames[port]}`,'music-warehouse-visit',canSailTo(farm,port),{value:port})) : ''}`
-        }).join('')}${missing ? `<ul class="ingredients">${requirementLink(`<span>Где собрать: ${name}</span>`,{kind:'stock',item:{...musicMaterialItems[item.id],quantity:missing}},'ingredient',name)}</ul>` : '<p>Материалы готовы для инструмента.</p>'}</section>`
+        }).join('')}${missing ? `<ul class="ingredients">${requirementLink(`<span>Где собрать: ${name}</span>`,saltSource || {kind:'stock',item:{...musicMaterialItems[item.id],quantity:missing}},'ingredient',name)}</ul>` : '<p>Материалы готовы для инструмента.</p>'}</section>`
       }).join('')}${nav(button('Вернуться в музыкальный сад','open-panel',true,{value:'bay-music'}))}`
       break
     }
@@ -3567,6 +3568,7 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
   const recipeOrigin = draftSource ? 'recipe-draft' : panel === 'recipes' && origin?.closest('.signature-page') ? 'saved-recipe' : undefined
   const hint = getRequirementHint(farm, requirement, recipeOrigin)
   const {target,value} = hint.action
+  if (!target) return // An exact in-flight source may have expired.
   if (target === 'market-sale-review' && value && farm.island === 'home') {
     beginExactSale({kind:'market',key:value})
     if (hint.notice) notify(hint.notice)
