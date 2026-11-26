@@ -38,7 +38,7 @@ const guardedActions = new Set([
   'rest-intent-request', 'rest-close-shop', 'shop-stock-select', 'shop-stock-confirm', 'recipe-shop-stock', 'recipe-harbour-shop', 'freight-withdraw',
   'neighbor-repeat-food', 'neighbor-shelf-food', 'neighbor-stored-food', 'request-repeat-exact', 'request-bea-batch', 'choose-neighbor-food',
   'transplant-source', 'transplant-destination', 'transplant-reset',
-  'unpack-egg-basket', 'unpack-egg-crate', 'finish-egg-packing', 'expedition-claim', 'expedition-send', 'expedition-offer', 'expedition-pair',
+  'unpack-egg-basket', 'unpack-egg-crate', 'finish-egg-packing', 'expedition-claim', 'expedition-send', 'expedition-offer', 'expedition-pair', 'shop-market-home',
 ])
 
 export function isGuardedAction(action: string | undefined) { return guardedActions.has(action ?? '') }

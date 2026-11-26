@@ -31,6 +31,7 @@ export type BayShopOptions = {
   onEarn(coins: number): void;
   onChange(): void;
   onClose(): void;
+  onReturnMarket?(): void;
   onOpenFreight?(): void;
   commissionCustomers?(): readonly BayShopVisitorId[];
   readyCommission?(customer: BayShopVisitorId, recipeId: string): BayShopCommissionPreview | undefined;
@@ -160,14 +161,14 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     const commissionName = earned ? bayShopVisitors.find(person => person.id === earned.customer)?.name : commission?.name;
     const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
     const priceDraft = active instanceof HTMLInputElement && active.hasAttribute('data-price') ? active.value : undefined;
-    const focusAttribute = returnStock?.id ? 'data-stock' : active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-stock-group', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
+    const focusAttribute = returnStock?.id ? 'data-stock' : active ? ['data-customer', 'data-customer-help', 'data-customer-history', 'data-slot', 'data-stock', 'data-stock-group', 'data-tab', 'data-price-factor', 'data-price', 'data-stock-quantity', 'data-stock-confirm', 'data-stock-cancel', 'data-open', 'data-return', 'data-close', 'data-shop-market-home', 'data-freight', 'data-shop-next', 'data-commissions'].find(key => active.hasAttribute(key)) : undefined;
     const focusValue = returnStock?.id ?? (focusAttribute ? active!.getAttribute(focusAttribute)! : '');
     const scroll = host.querySelector('.bay-shop-desk-content')?.scrollTop ?? 0;
     // The catalog scrolls inside the desk; the desk itself is clipped in this view.
     const listScroll = returnStock?.listScroll ?? host.querySelector('.bay-shop-products')?.scrollTop;
     rendering = true;
     host.innerHTML = `<section class="bay-shop" aria-label="Своя лавка у моря">
-      <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button><button type="button" class="bay-shop-close${options.returnToRecipe ? ' bay-shop-recipe-back' : ''}" data-close aria-label="${closeLabel}" title="${recipeReturn ? closeLabel : closeLabel + '; работа лавки не меняется'}">${options.returnToRecipe ? closeLabel : '×'}</button></div></header>
+      <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button>${options.onReturnMarket ? '<button type="button" class="bay-shop-market-home" data-shop-market-home data-action="shop-market-home">Рынок дома</button>' : ''}<button type="button" class="bay-shop-close${options.returnToRecipe ? ' bay-shop-recipe-back' : ''}" data-close aria-label="${closeLabel}" title="${recipeReturn ? closeLabel : closeLabel + '; работа лавки не меняется'}">${options.returnToRecipe ? closeLabel : '×'}</button></div></header>
       <div class="bay-shop-scene"><div class="bay-shop-stage" style="background-image:url('${escape(options.background ?? '/art/lavender/bay/shop.webp')}')">
         <div class="bay-shop-display" aria-label="Четыре места на прилавке">${state.slots.map((slot, index) => `<button type="button" class="bay-shop-shelf ${index === selected ? 'is-selected' : ''}" data-user-text data-slot="${index}" aria-pressed="${index === selected}" aria-label="Место ${index + 1}${slot ? `: ${escape(slot.product.name)}, остаток ${slot.quantity}, цена ${slot.price} монет` : ': свободно'}">
           <span class="bay-shop-shelf-product">${slot && slot.quantity > 0 ? art(slot.product) : `<span class="bay-shop-shelf-empty">${slot ? 'Продано' : '+'}</span>`}</span>${slot ? `<span class="bay-shop-shelf-label">${money(slot.price)} <span aria-hidden="true">●</span><small>×${slot.quantity}</small></span>` : ''}</button>`).join('')}</div>
@@ -275,6 +276,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       return;
     }
     if (button.hasAttribute('data-close')) { options.onClose(); return; }
+    if (button.hasAttribute('data-shop-market-home')) { options.onReturnMarket?.(); return; }
     if (button.hasAttribute('data-freight')) { options.onOpenFreight?.(); return; }
     if (button.hasAttribute('data-open')) {
       if (!canToggleOpen()) { playBaySound('menu.blocked',.8); notice = 'Сначала поставьте хотя бы один товар на прилавок.'; render(); return; }

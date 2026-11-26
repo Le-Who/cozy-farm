@@ -42,3 +42,7 @@
 /* Keep a sold shelf's available item in its own summary, not a second catalog tile. */
 .bay-shop-selected>.bay-shop-refill{grid-column:1/3;grid-row:1;grid-template-columns:30px minmax(0,1fr);justify-items:start;min-height:44px;padding:4px 21px 4px 5px;text-align:left}
 .bay-shop-refill .bay-shop-product-art{height:30px;width:30px}
+
+.bay-shop-market-home{flex:none;min-height:44px;padding:6px 9px;border:1px solid #80638c;border-radius:14px;background:#705187;color:#fff8e9;font-family:inherit;font-size:12px;font-weight:700;line-height:1.2;white-space:nowrap}
+.bay-shop-market-home:focus-visible{outline:3px solid #9b70ba;outline-offset:2px}
+@media(max-width:480px){.bay-shop-header:has(.bay-shop-market-home) h2{font-size:18px}.bay-shop-header:has(.bay-shop-market-home) .bay-shop-header-actions{gap:5px}}

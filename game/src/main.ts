@@ -1965,6 +1965,7 @@ function goBack(keyboard = false) {
 }
 let harbourScene: {destroy():void} | undefined
 let nextShopStock: string | undefined
+let nextShopMarketVisit: PanelVisit | undefined
 let selectedWarehouse = farm.island
 const ferryArrival = new FerryArrivalPresentation()
 let {port:selectedExpeditionPort,offer:selectedExpeditionOffer} = initialExpeditionPreview(farm.freight.expeditions)
@@ -2000,7 +2001,7 @@ function harbourGoods() {
   })
   return [...goods,...signatures]
 }
-function openShopScene(host:HTMLElement) {
+function openShopScene(host:HTMLElement, marketVisit?: PanelVisit) {
   const catalog = harbourGoods(), byId = new Map(catalog.map(row => [row.id,row]))
   const products = ():ReturnType<BayShopOptions['products']> => harbourGoods().map(row => {
     const kind = row.item?.kind
@@ -2023,6 +2024,11 @@ function openShopScene(host:HTMLElement) {
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
     onOpenFreight:()=>openPanel('bay-freight'),
+    ...(marketVisit ? {onReturnMarket() {
+      if (!dialog.open || panel !== 'bay-shop' || farm.island !== 'village' ||
+        !dialogContent.contains(host) || island.isCrossing()) return
+      void visitPanelAt('home','market',undefined,undefined,marketVisit)
+    }} : {}),
     commissionCustomers:()=>getShopCommissionOffers(farm).map(offer=>offer.customer),
     readyCommission,
     onOpenCommissions:(customer,preview)=>{
@@ -2224,7 +2230,7 @@ function drawPanel() {
     case 'bay-music': {
       const host=document.createElement('section')
       dialogContent.replaceChildren(host)
-      if(panel==='bay-shop')openShopScene(host);else openMusicScene(host)
+      if(panel==='bay-shop')openShopScene(host,nextShopMarketVisit);else openMusicScene(host)
       break
     }
     case 'shop-commissions':
@@ -2821,7 +2827,7 @@ function drawPanel() {
 
 // A map shortcut continues at the chosen place after the crossing. Only global
 // pages can be revisited on the new island; a local building belongs to its shore.
-async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryMorning?: number, recipeId?: string) {
+async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryMorning?: number, recipeId?: string, shopMarketReturn?: PanelVisit) {
   if (island.isCrossing()) return
   // Keep an incubation morning on the farm so its hatch is not covered by a menu.
   const ferryVisit = ferryMorning !== undefined && farm.hatchDay !== farm.day + 1 && dialog.open && panel === 'bay-freight' && next === 'rest'
@@ -2834,14 +2840,26 @@ async function visitPanelAt(destination: typeof farm.island, next: Panel, ferryM
   if (!canSailTo(farm,destination)) return
   const recipeVisit = recipeId && dialog.open && panel === 'recipes' && next === 'bay-shop' && destination === 'village'
     ? {...rememberPanel(),harbourRecipe:{id:recipeId,preview:true}} : undefined
-  const returnPath = dialog.open && panel ? [...panelHistory,recipeVisit ?? ferryVisit ?? rememberPanel()].filter(visit =>
+  const marketVisit = destination === 'village' && next === 'bay-shop' && farm.island === 'home' &&
+    dialog.open && panel === 'market' && marketTab === 'sell' ? {...rememberPanel(),focus:undefined} : undefined
+  const returnPath = dialog.open && panel ? [...panelHistory,recipeVisit ?? ferryVisit ?? marketVisit ?? rememberPanel()].filter(visit =>
     visit === recipeVisit || ['guide','boat','archive','bay-freight','inventory','journal'].includes(visit.panel)) : []
   if (fieldViewButton.getAttribute('aria-pressed') === 'true') toggleFieldView()
   closeDialog()
   await island.crossIsland(()=>perform(()=>sail(farm,destination),false,true))
   if (farm.island !== destination) return
   panelHistory.push(...returnPath)
-  openPanel(next,false)
+  if (next === 'market' && destination === 'home' && shopMarketReturn?.panel === 'market' && shopMarketReturn.marketTab === 'sell') {
+    // Only the explicitly travelled return may restore this local Market visit.
+    panelHistory.push(shopMarketReturn)
+    goBack()
+    return
+  }
+  if (marketVisit) {
+    // Pass ownership only to the scene mounted by this successful crossing.
+    nextShopMarketVisit = marketVisit
+    try { openPanel(next,false) } finally { nextShopMarketVisit = undefined }
+  } else openPanel(next,false)
 }
 
 function openGuidedMarket(tab?: string) {
