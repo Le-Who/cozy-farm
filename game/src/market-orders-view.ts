@@ -55,7 +55,7 @@ export function renderMarketOrderPicker(board: ReturnType<typeof getMarketOrderB
   }).join('')}</nav>`
 }
 
-/** Move the same ready card in the stacked layout, in visual and keyboard order. */
+/** Keep a ready hand-in or verified paired local pickup ahead of alternate orders in the stacked layout. */
 export function placeReadyMarketOrder(content: HTMLElement, stacked: boolean) {
   const workspace = content.querySelector<HTMLElement>('.market-orders-workspace')
   const picker = workspace?.querySelector<HTMLElement>(':scope > .market-order-picker')
@@ -63,15 +63,17 @@ export function placeReadyMarketOrder(content: HTMLElement, stacked: boolean) {
   const order = detail?.querySelector<HTMLElement>(':scope > .market-order[data-status="ready"]')
   const items = order?.querySelector<HTMLElement>(':scope > .order-items')
   const action = order?.querySelector<HTMLButtonElement>(':scope > [data-action="deliver-order"]:not(:disabled)')
-  if (!workspace || !picker || !detail || !order || !items || !action
+  const pickup = detail?.querySelector<HTMLButtonElement>(':scope > .market-order[data-status="waiting"] > button[data-action="market-order-pickup"]:not(:disabled)')
+  if (!workspace || !picker || !detail || (!(order && items && action) && !pickup)
     || (workspace.firstElementChild === detail) === stacked) return
 
   const focused = content.ownerDocument.activeElement
   if (stacked) {
-    order.insertBefore(action, items)
+    // Local pickup still follows the two exact ingredient quantities.
+    if (order && items && action) order.insertBefore(action, items)
     workspace.insertBefore(detail, picker)
   } else {
-    order.append(action)
+    if (order && action) order.append(action)
     workspace.append(detail)
   }
   // Crossing the breakpoint may blur the moved node. Never focus a new action.
