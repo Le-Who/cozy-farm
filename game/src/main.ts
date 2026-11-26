@@ -1788,12 +1788,13 @@ function neighboursCard() {
       const practice = here && id === 'bea' && !farm.workshopPatterns.includes(pastryShape)
       const ingredients: readonly StockItem[] = practice ? workshopIngredients : [{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }]
       const pier = here && id === 'finn' ? getFinnFishingRoute(farm) : undefined
+      const pierButton = (route: { label: string; value: string }) => button(route.label, 'finn-pier', true, { value: route.value })
       return `<section class="resident-card" data-present="${here}"><header class="resident-heading">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2></header>
         ${here ? '' : `<div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 изделия в день':'+1 место на крючке · крепче снасть'}</span></div>`}
         <div class="resident-service">${here ? (id === 'bea' ? `<div class="resident-patterns"><div class="resident-pattern-heading"><h3>Форма выпечки</h3><small>✓ Освоено</small></div>${pastryChoices()}</div><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>${practice
           ? button(`Освоить вручную: ${workshopDefinitions[pastryShape].name.toLowerCase()}`, 'practice-pattern', getWorkshopAction(farm).available, { value: pastryShape })
           : button(`Испечь ×${getBeaPastryCount(farm)}`, 'resident-service', service.available, { value: id, context: workshopDefinitions[pastryShape].name })}`
-          : pier ? `<div class="finn-hook-ready" tabindex="-1" data-finn-hook>${icon('tool-rod')}<strong>Крючок готов · +1 место</strong></div>${button(pier.label, 'finn-pier', true, { value: pier.island + ':' + pier.panel })}`
+          : pier ? `<div class="finn-hook-ready" tabindex="-1" data-finn-hook>${icon('tool-rod')}<strong>Крючок готов${pier.addsSlot ? ' · +1 место' : ''}</strong></div>${pier.alternate ? nav(pierButton(pier),pierButton(pier.alternate)) : pierButton(pier)}`
           : button('Разведать · +1 место на крючке', 'resident-service', service.available, { value: id }))
         : button('Пригласить', 'invite-resident', true, { value: id })}
         ${here&&!service.available&&!practice&&!pier?`<p class="dialog-status">${service.label}</p>`:''}
@@ -5246,8 +5247,9 @@ app.addEventListener('click', async (event) => {
     }
     case 'finn-pier': {
       if (panel !== 'village' || !dialog.open || farm.village.residents[villageSlot] !== 'finn') break
-      const pier = getFinnFishingRoute(farm)
-      if (pier && value === pier.island + ':' + pier.panel) await visitPanelAt(pier.island,pier.panel)
+      const route = getFinnFishingRoute(farm)
+      const pier = value ? [route, route?.alternate].find(choice => choice?.value === value) : undefined
+      if (pier) await visitPanelAt(pier.island,pier.panel)
       else drawPanel()
       break
     }
