@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
-import { createFarm, petChicken, endDay, restoreCurrentFarm, getCoopMorning, incubateEgg } from '../src/farm.ts'
+import { pickFruit, createFarm, petChicken, endDay, restoreCurrentFarm, getCoopMorning, incubateEgg } from '../src/farm.ts'
 import { renderHenFriendship, treatHen, henFriends } from '../src/hen-friendship.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 import { chickenCarePlayer } from './fixtures/chicken-care-player.ts'
@@ -19,7 +19,9 @@ const select = (farm: ReturnType<typeof createFarm>, value: unknown, panel = 'he
 const hasDisabled = (html: string, action: string, value: string) => new RegExp(`data-action="${action}" data-value="${value}"[^>]* disabled`).test(html)
 
 test('one selected friend replaces repeated pages; every present hen stays accessible without farm writes', () => {
-  const farm = createFarm(), before = structuredClone(farm)
+  const farm = createFarm()
+  assert.ok(pickFruit(farm,0).ok,'a real apple harvest gives every hen a usable treat to keep in the main card')
+  const before = structuredClone(farm)
   for (let id = 0; id < farm.flockSize; id++) {
     const view = renderHenFriendship(farm, null, true, id, name => `<img alt="" src="${name}.webp">`)
     assert.equal((view.match(/class="hen-friend-card"/g) ?? []).length, 1)

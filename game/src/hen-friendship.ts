@@ -121,6 +121,8 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
   const choice = henWalkChoice(farm, id, walk, sceneAvailable)
   const guideReady=guide && !walk && sceneAvailable && known && canWalkWithHen(farm,id)
   const treatedToday = bond.treatedOn === farm.day
+  // Inspection still matters, but a grid with no live action belongs in the existing notes.
+  const inspectTreats = treatedToday || !choices.some(({ option }) => option.available)
   const treatGrid = complete ? '' : `<div class="hen-treats" role="group" aria-labelledby="hen-treat-heading"${hintAtChoice ? ' aria-describedby="hen-treat-hint"' : ''}>${choices.map(({ treat, option }) => {
           return `<button type="button" class="dialog-button secondary" data-action="hen-treat" data-value="${id}:${treat}" aria-label="Угостить: ${henTreatNames[treat]} ×1 · в запасе ${option.stock}${option.known ? treat === hen.favorite ? ' · любимое' : ' · пробовала' : ''}"${option.available ? '' : ' disabled'}>${icon(treat)}<strong>${henTreatNames[treat]} ×1</strong><small>В запасе ${option.stock}</small>${option.known ? `<small>${treat === hen.favorite ? 'Любимое' : 'Пробовала'}</small>` : ''}</button>`
         }).join('')}</div>`
@@ -137,7 +139,7 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
       </div>
       <div class="hen-friend-treats"><h3 id="hen-treat-heading">Угостить</h3>
         ${hintAtChoice ? `<p id="hen-treat-hint" class="hen-treat-status">${hen.hint}</p>` : ''}
-        ${complete ? '<p class="hen-treat-status">Вы хорошо знаете друг друга. Угощения больше не нужны.</p>' : `${treatedToday ? '' : treatGrid}<p class="hen-treat-status">${treatedToday ? 'Сегодня уже угощали · снова после отдыха.' : 'Один раз в день · не заменяет корм.'}</p>`}
+        ${complete ? '<p class="hen-treat-status">Вы хорошо знаете друг друга. Угощения больше не нужны.</p>' : `${inspectTreats ? '' : treatGrid}<p class="hen-treat-status">${treatedToday ? 'Сегодня уже угощали · снова после отдыха.' : 'Один раз в день · не заменяет корм.'}</p>`}
       </div>
     </article>
     <details class="hen-friend-notes"><summary>Характер и правила</summary><div><p><strong>${hen.name}.</strong> ${hen.character}${known ? ` Любимое угощение: ${henTreatNames[hen.favorite].toLowerCase()}.` : hintAtChoice ? '' : ` ${hen.hint}`}</p>
@@ -146,6 +148,6 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
       <p>Угощения необязательны: подружиться можно одними поглаживаниями. Они не заменяют корм, не добавляют яиц и расходуют только обычный урожай.</p>
       <p>Прогулка бесплатна и не прибавляет шагов дружбы. Можно гулять с одной курочкой. Перенос рукой, отдых или поездка заканчивают прогулку: курочка возвращается на прежнее место.</p>
       ${farm.flockSize < henFriends.length && farm.coopSpecialization !== 'packing' ? '<p>В инкубаторе можно вырастить ещё одну курочку. У неё тоже будут своё имя и привычки.</p>' : ''}
-      ${treatedToday ? treatGrid : ''}</div></details>
+      ${inspectTreats ? treatGrid : ''}</div></details>
   </section>`
 }
