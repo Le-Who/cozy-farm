@@ -6,6 +6,7 @@ import { runInNewContext } from 'node:vm'
 import { createFarm, petChicken, endDay, restoreCurrentFarm, getCoopMorning, incubateEgg } from '../src/farm.ts'
 import { renderHenFriendship, treatHen, henFriends } from '../src/hen-friendship.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
+import { chickenCarePlayer } from './fixtures/chicken-care-player.ts'
 import { isGuardedAction } from '../src/action-click-guard.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
@@ -117,7 +118,8 @@ test('only an actionable, still unknown favorite moves the selected hen’s clue
     assert.ok(split > 0); assert.equal(html.split(hint).length - 1, 1)
     assert.equal(card.includes(hint), upfront); assert.equal(notes.includes(hint), !upfront)
     if (upfront) {
-      assert.ok(card.indexOf('Угостить · 1 продукт') < card.indexOf(hint))
+      assert.match(card, /<h3 id="hen-treat-heading">Угостить<\/h3>/)
+      assert.ok(card.indexOf('id="hen-treat-heading"') < card.indexOf(hint))
       assert.ok(card.indexOf(hint) < card.indexOf('data-action="hen-treat"'))
     }
     assert.doesNotMatch(card, /<small>Любимое<\/small>/); assert.deepEqual(p.state, before)
@@ -135,4 +137,46 @@ test('only an actionable, still unknown favorite moves the selected hen’s clue
   p.act('sellMarketItem', 'produce:carrot', p.state.produce.carrot)
   p.act('sellMarketItem', 'fruit:apple', p.state.fruit.apple)
   checkUnknown(2, false)
+})
+
+test('the only usable treat is not preceded by a clue for an unavailable favorite after an earned hatch', () => {
+  const p=chickenCarePlayer('garden','hatchery')
+  for(let day=0;day<3;day++){p.day();p.act('endDay')}
+  p.act('petChicken',4)
+  assert.deepEqual([p.log.length,p.state.day,p.state.flockSize,p.state.fruit.apple,p.state.produce.carrot,p.state.henFriendship.hens[4].points],[68,4,5,0,1,1])
+  const view=()=>renderHenFriendship(p.state,null,true,select(p.state,'4').selectedFriendHen)
+  const clue=henFriends[4].hint
+  function parts(html:string) {
+    const [active,notes]=html.split('<details class="hen-friend-notes">')
+    assert.ok(notes);assert.equal(html.split(clue).length-1,1);return {active,notes}
+  }
+  const before=structuredClone(p.state),missing=view(),notReady=parts(missing)
+  assert.ok(hasDisabled(missing,'pet','4')&&hasDisabled(missing,'hen-walk-start','4'))
+  assert.ok(!hasDisabled(missing,'hen-treat','4:carrot')&&hasDisabled(missing,'hen-treat','4:apple'))
+  assert.ok(notReady.notes.includes(clue),'unaffordable favorite stays discoverable in existing notes')
+  assert.ok(!notReady.active.includes(clue)&&!missing.includes('aria-describedby="hen-treat-hint"'),'only available choices have live guidance')
+  assert.deepEqual(p.state,before)
+  const carrot=restoreCurrentFarm(structuredClone(before))!
+  assert.ok(treatHen(carrot,4,'carrot').ok);assert.equal(carrot.henFriendship.hens[4].points,2)
+  p.act('pickFruit',0)
+  const ready=parts(view()),eligible=structuredClone(p.state)
+  assert.ok(ready.active.includes(clue)&&!ready.notes.includes(clue))
+  assert.ok(ready.active.indexOf(clue)<ready.active.indexOf('data-action="hen-treat"'))
+  assert.match(ready.active,/aria-describedby="hen-treat-hint"/)
+  assert.ok(!hasDisabled(ready.active,'hen-treat','4:apple'))
+  assert.deepEqual(p.state,eligible)
+  assert.ok(treatHen(p.state,4,'apple').ok)
+  assert.equal(p.state.henFriendship.hens[4].points,3);assert.equal(p.state.fruit.apple,1)
+  assert.equal(p.state.chickensFed,eligible.chickensFed);assert.equal(hasDisabled(view(),'hen-walk-start','4'),false)
+})
+
+test('the treat heading names the action only; each of the three buttons states its own cost and stock', () => {
+  const f=createFarm(),saved=structuredClone(f),html=renderHenFriendship(f)
+  assert.match(html,/<h3 id="hen-treat-heading">Угостить<\/h3>/)
+  assert.match(html,/aria-labelledby="hen-treat-heading"/)
+  for(const choice of ['Морковь','Зелень','Яблоко']) {
+    assert.ok(html.includes(`<strong>${choice} ×1</strong>`))
+    assert.match(html,new RegExp(`aria-label="Угостить: ${choice} ×1 · в запасе `))
+  }
+  assert.deepEqual(f,saved)
 })

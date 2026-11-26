@@ -114,7 +114,7 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
   const petted = farm.pettedChickens.includes(id), known = bond.tasted.includes(hen.favorite)
   const complete = bond.points === maxHenFriendship && known
   const choices = henTreatIds.map(treat => ({ treat, option: getHenTreat(farm, id, treat) }))
-  const hintAtChoice = !known && choices.some(({ option }) => option.available)
+  const hintAtChoice = !known && choices.some(({ treat, option }) => treat === hen.favorite && option.available)
   const choice = henWalkChoice(farm, id, walk, sceneAvailable)
   const guideReady=guide && !walk && sceneAvailable && known && canWalkWithHen(farm,id)
   const avatar = (index: number) => `<span class="hen-friend-avatar" style="--hen-pose:${[0, 2, 7, 4, 6][index]}" aria-hidden="true"></span>`
@@ -128,7 +128,7 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
         <div class="hen-walk-choice"><button type="button" class="dialog-button secondary" data-action="${choice.action}" data-value="${id}"${choice.enabled ? '' : ' disabled'}>${choice.label}</button><small>${choice.reason}</small></div>
         <button type="button" class="dialog-button secondary hen-field-guide" data-action="hen-guide" data-value="${guideReady ? `${id}:${guide.kind}:${guide.index}` : ''}"${guideReady?'':' disabled hidden'}>${guideReady?guideLabel(hen.favorite):''}</button>
       </div>
-      <div class="hen-friend-treats"><h3 id="hen-treat-heading">Угостить · 1 продукт</h3>
+      <div class="hen-friend-treats"><h3 id="hen-treat-heading">Угостить</h3>
         ${hintAtChoice ? `<p id="hen-treat-hint" class="hen-treat-status">${hen.hint}</p>` : ''}
         ${complete ? '<p class="hen-treat-status">Вы хорошо знаете друг друга. Угощения больше не нужны.</p>' : `<div class="hen-treats" role="group" aria-labelledby="hen-treat-heading"${hintAtChoice ? ' aria-describedby="hen-treat-hint"' : ''}>${choices.map(({ treat, option }) => {
           return `<button type="button" class="dialog-button secondary" data-action="hen-treat" data-value="${id}:${treat}" aria-label="Угостить: ${henTreatNames[treat]} ×1 · в запасе ${option.stock}${option.known ? treat === hen.favorite ? ' · любимое' : ' · пробовала' : ''}"${option.available ? '' : ' disabled'}>${icon(treat)}<strong>${henTreatNames[treat]} ×1</strong><small>В запасе ${option.stock}</small>${option.known ? `<small>${treat === hen.favorite ? 'Любимое' : 'Пробовала'}</small>` : ''}</button>`
