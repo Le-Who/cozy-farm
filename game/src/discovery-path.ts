@@ -14,7 +14,7 @@ import { bayShopDailyLimit } from './bay-shop-model.ts';
 import {
   boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeHoney, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
-  foodDescriptors, getFestivalStatus, getMarketOrders, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
+  foodDescriptors, getFestivalStatus, getIntentOffers, getMarketOrders, getNeighborPlans, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
   treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
 } from './farm.ts';
 import {ruCount} from './ru.ts';
@@ -269,7 +269,15 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
       if (meal.served) return rest(farm, 'следующий общий ужин');
       const signature = getReadySignatureSuppers(farm)[0];
       const missing = meal.items.find(item => (item.kind !== 'handmade' || !signature) && ingredientCount(farm, item) < item.quantity);
-      if (missing) return missing.kind === 'fish' ? supperFish(farm) : supply(farm, missing, 'общий ужин');
+      if (missing) {
+        // A selected, ready meeting can also count toward the second cottage; do not send its player away.
+        const meeting = farm.island === 'village' ? getNeighborPlans(farm).find(plan =>
+          plan.phase === 'arranging' && plan.food && getIntentOffers(farm, plan.intentId)
+            .some(offer => offer.id === plan.food?.id && offer.available)) : undefined;
+        if (meeting?.food) return task('shared-suppers', meeting.title, meeting.food.name,
+          `ui-${meeting.resident}`, { label: 'К встрече', target: 'open-neighbor', value: meeting.resident }, farm.village.meals, 2);
+        return missing.kind === 'fish' ? supperFish(farm) : supply(farm, missing, 'общий ужин');
+      }
       if (signature && !farm.handmade[shape]) return arrive(task('shared-suppers', 'Принесите готовое блюдо к общему столу',
         `Авторское блюдо уже есть. Выберите у стола 1 порцию и подайте с 1 рыбой. Два ужина в разные дни откроют второй домик.`,
         'ui-signature-bright', { label: 'Выбрать блюдо к ужину', target: 'village-meal' }, farm.village.meals, 2));
