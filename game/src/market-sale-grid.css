@@ -90,6 +90,18 @@
  .market-inline-footer{gap:8px}.market-inline-stepper{grid-template-columns:44px 44px 44px}.market-inline-sell{font-size:16px;padding:5px}
  .market-inline-tools{gap:6px}.market-inline-tools .market-total{flex-wrap:wrap;gap:4px 8px}
 }
+/* Portrait stock rows keep the existing inline controls without spending space on idle feedback. */
+@media(max-width:600px) and (orientation:portrait){
+ [data-market-sale-browser] .market-inline-card{grid-template-columns:56px minmax(0,1fr);grid-template-rows:minmax(56px,auto) auto;row-gap:0}
+ [data-market-sale-browser] .market-inline-art,[data-market-sale-browser] .market-inline-art>.icon,[data-market-sale-browser] .market-inline-art>.variant-art{width:56px;height:56px}
+ [data-market-sale-browser] .market-inline-copy{display:flex;align-items:center;flex-wrap:wrap;gap:2px 10px}
+ [data-market-sale-browser] .market-inline-name{flex:0 0 100%;margin:0;font-size:18px}
+ [data-market-sale-browser] :is(.market-inline-stock,.market-inline-price){min-width:0;margin:0}
+ [data-market-sale-browser] .market-inline-footer{margin-top:6px}
+ /* Keep the status node in place for screen readers; nonempty feedback wraps to its natural size. */
+ [data-market-sale-browser] .market-inline-status{min-height:0;overflow-wrap:anywhere}
+ [data-market-sale-browser] .market-inline-status:not(:empty){margin-top:6px}
+}
 @media(max-height:400px) and (orientation:landscape){
  .farm-dialog:has([data-market-sale-browser]) .dialog-panel{height:calc(100dvh - 12px);max-height:calc(100dvh - 12px);padding:6px 10px}
  .farm-dialog:has([data-market-sale-browser]) .dialog-content{overflow:auto}
