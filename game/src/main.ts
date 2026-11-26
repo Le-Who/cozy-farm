@@ -157,6 +157,7 @@ import { getRequirementHint, type Requirement } from './requirement-guidance'
 import { getClimate, weatherNames, type Trait } from './climate'
 import { ferryCommissionUse, openFerryCommissionRecipe } from './ferry-commission-use'
 import { FerryPeachPlanting } from './ferry-peach-planting'
+import { getFerryGroveBunSource } from './ferry-grove-bun-source'
 import { lastPortionShopStock, signatureTastingGuide } from './signature-tasting-guidance'
 import { RecipeBookNavigation, recipeBookNarrow, selectedBookId, sortedBookRecipes, type RecipeBookView } from './recipe-book-view'
 import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
@@ -2261,7 +2262,7 @@ function drawPanel() {
       reconcileFreightPorts(farm.freight,openedFreightPorts(farm))
       const goods=harbourGoods()
       renderFreightPanelInto(dialogContent,farm.freight,{day:farm.day,harvestTier:farm.festivals.completed.harvest,coins:farm.coins,boatOwned:farm.boatOwned,villageBuilt:farm.village.built,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,playerPort:farm.island,selectedPort:selectedWarehouse,waxAvailable:farm.capeLevel>=2,routeEditorOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? freightPlanOpen,
-        openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),commissionUse:ferryCommissionUse(farm),peachPlanting:ferryPeachPlanting.current(farm),readyHarvest:offer=>getFerryReadyHarvest(farm,offer),icon})
+        openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),commissionUse:ferryCommissionUse(farm),peachPlanting:ferryPeachPlanting.current(farm),readyHarvest:offer=>getFerryReadyHarvest(farm,offer),groveBun:offer=>getFerryGroveBunSource(farm,offer),icon})
       break
     }
     case 'intents': dialogContent.innerHTML = communityBoard(farm, communityArt); break
@@ -3887,6 +3888,14 @@ app.addEventListener('click', async (event) => {
       }
       const requirement = getFerrySupplyRequirement(farm,offerId,itemId)
       if (requirement) await showRequirement(requirement,control)
+      break
+    }
+    case 'expedition-bun-warehouse': {
+      if (panel !== 'bay-freight' || !dialog.open || !dialogContent.contains(control) || island.isCrossing() || selectedExpeditionPort !== 'orchard') break
+      const source = getFerryGroveBunSource(farm, selectedExpeditionOffer)
+      if (!source || value !== source.key) break
+      selectedWarehouseRequest = source.item
+      await visitPanelAt(source.port,'warehouse-supply')
       break
     }
     case 'expedition-port': {

@@ -1,7 +1,8 @@
 import type { FerryCommissionUse } from './ferry-commission-use.ts'
 import type { FerryPeachChoice } from './ferry-peach-planting.ts'
 import type { getFerryReadyHarvest } from './harbour-economy.ts'
-import { freightPorts, freightStock,
+import type { getFerryGroveBunSource } from './ferry-grove-bun-source.ts'
+import { freightPorts, freightPortNames, freightStock,
   setFreightStops, setFreightMode, setFreightPickup, startFreight, pauseFreight,
   type BayFreightState, type FreightPort, type FreightResult } from './bay-freight-model.ts';
 import { expeditionPorts, expeditionPortNames, expeditionPortDescriptions, expeditionTrades, expeditionOfferIds, quoteExpedition, portDemand, portProjectComplete, portProjects, expeditionStock, type ExpeditionPort, type ExpeditionManifest } from './ferry-expeditions.ts';
@@ -25,6 +26,7 @@ export type FreightPanelContext = {
   commissionUse?: FerryCommissionUse;
   peachPlanting?: FerryPeachChoice;
   readyHarvest?: (offerId: string) => ReturnType<typeof getFerryReadyHarvest>;
+  groveBun?: (offerId: string) => ReturnType<typeof getFerryGroveBunSource>;
   playerPort: FreightPort;
   selectedPort?: FreightPort;
   routeEditorOpen?: boolean;
@@ -108,6 +110,9 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const smallerLabel = smaller ? `Посмотреть: ${cargoLabel(smaller.outgoing).join(' + ')} → ${[...cargoLabel(smaller.incoming), ...(smaller.earnCoins ? [ruCount(smaller.earnCoins, 'монета', 'монеты', 'монет')] : [])].join(' + ')}` : '';
   const sourceAction = smaller ? button(esc(smallerLabel), 'expedition-offer', smaller.id, 'class="expedition-source"')
     : !restock && hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : `${id}|${missing.id}`, 'class="expedition-source"') : '';
+  const groveBun = !restock && !smaller && !localBun && missing && missing.id === 'handmade:round' ? ctx.groveBun?.(id) : undefined;
+  const warehouseAction = groveBun ? button(`К складу: ${esc(freightPortNames[groveBun.port])}`,
+    'expedition-bun-warehouse', groveBun.key, 'class="expedition-source"') : '';
   const harvest = smaller ? ctx.readyHarvest?.(id) : undefined;
   const harvestAction = harvest ? button(`К урожаю: ${esc(product('wheat',ctx).name.toLowerCase())} ×${harvest.ordinary}`,
     'expedition-source', `${id}|wheat|${harvest.key}`, 'class="bay-freight-primary"') : '';
@@ -196,7 +201,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
         }).join('')}</div></details>` : ''}
           ${cargoUse ? '' : receipt}
         </div>
-        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь.</small>` : phase === 'ready' ? `${button(claimLabel, 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения.</small>` : `${cargoChoices || `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}`}</footer>
+        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь.</small>` : phase === 'ready' ? `${button(claimLabel, 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения.</small>` : `${cargoChoices || `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${warehouseAction} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}`}</footer>
       </div>
     </div>
   </section>`;
