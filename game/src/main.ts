@@ -425,7 +425,7 @@ let cookingMode:'dish'|'signature'='dish'
 const kitchenGroups = ['tart', 'preserves', 'dishes'] as const
 type KitchenGroup = typeof kitchenGroups[number]
 // Unset until a workbench opens; explicit selections and Back retain their own group.
-type KitchenSelection = KitchenGroup | { ready?: DishId; returned?: boolean }
+type KitchenSelection = KitchenGroup | { ready?: DishId; returned?: boolean; guidedFrom?: KitchenSelection }
 let kitchenGroup: KitchenSelection | undefined
 let kitchenDish: DishId = 'grilledFish'
 let honeyKitchenDish: HoneyKitchenRecipe = 'honeyBiscuits'
@@ -2945,6 +2945,13 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     kitchenGroup = { ready:kitchenGroup.ready }
   if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
   else if (next === 'kitchen' && remember && next !== panel && farm.fish[cookingFish] === 0) cookingFish = getGrillFish(farm)
+  // A task previews a recipe; the next ordinary kitchen visit keeps the player's choice.
+  if (next === 'kitchen' && remember && next !== panel && !recipeTarget && typeof kitchenGroup === 'object' && 'guidedFrom' in kitchenGroup)
+    kitchenGroup = kitchenGroup.guidedFrom
+  if (next === 'kitchen' && recipeTarget === 'orchardTart' && farm.island === 'home' && getCookAction(farm,recipeTarget).available) {
+    const guidedFrom = typeof kitchenGroup === 'object' && 'guidedFrom' in kitchenGroup ? kitchenGroup.guidedFrom : kitchenGroup
+    kitchenGroup = { ready:recipeTarget, guidedFrom }
+  }
   if (next === 'kitchen' && kitchenGroup === undefined) {
     const ordinaryHomeEntry = farm.island === 'home' && remember && next !== panel && !entry && !recipeTarget
       && (!dialog.open || panel === 'rest' || panel === 'guide' || panel === 'boat' || panel === 'upgrades')
@@ -3643,6 +3650,11 @@ app.addEventListener('click', async (event) => {
     const task = currentTask()
     if (!task || !('action' in task)) { openPanel('journal'); return }
     action = task.action.target; value = task.action.value
+    if (action === 'kitchen' && value === 'orchardTart' && farm.island === 'home') {
+      island.visit({ kind: farm.buildingLevels.farmhouse >= 2 ? 'kitchen' : 'farmhouse' })
+      openPanel('kitchen',true,farm.island,'page.unfold',value)
+      return
+    }
     if (action === 'open-panel' && value === 'seeds' && 'seedPreview' in task && task.seedPreview) {
       openGuidedSeeds(task.seedPreview)
       return

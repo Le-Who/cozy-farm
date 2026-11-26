@@ -312,7 +312,7 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
   if (!seen.islands) return task('islands', 'Откройте бухту', 'Карта показывает острова и ближайший шаг к открытию каждого маршрута.', 'island', { label: 'К островам', target: 'open-panel', value: 'boat' });
   const cooked = farm.bayDiscoveries.some(id => id in dishDefinitions) || Object.values(farm.dishes).some(count => count > 0);
   if (!cooked && !established) return getCookAction(farm, 'orchardTart').available
-    ? task('first-cooking', 'Испеките первый садовый тарт', 'На домашней кухне нужны 2 яблока, 1 пшеница и 1 яйцо.', 'ui-tree-apple', { label: 'На кухню', target: 'kitchen' })
+    ? task('first-cooking', 'Испеките первый садовый тарт', 'На домашней кухне нужны 2 яблока, 1 пшеница и 1 яйцо.', 'ui-tree-apple', { label: 'На кухню', target: 'kitchen', value: 'orchardTart' })
     : recipe(farm, 'orchardTart', 'первое блюдо');
   if (!farm.boatOwned) return farm.coins < boatPrice ? coins(farm, boatPrice, 'деревянная лодка')
     : task('boat', 'Спустите лодку на воду', 'Лодка открывает Солёную рощу с садом, солончаками и гаванью.', 'boat', { label: 'К причалу', target: 'visit-boat' });
