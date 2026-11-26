@@ -19,6 +19,30 @@ const ease = (t: number) => { const x = clamp(t, 0, 1); return x * x * (3 - 2 * 
 const mix = (a: CovePoint, b: CovePoint, t: number): CovePoint => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 const distance = (a: CovePoint, b: CovePoint) => Math.hypot(a.x - b.x, a.y - b.y);
 
+const egretShallows = { x: 1402, y: 711 };
+
+/** The resident's existing shore and feeding spot, composed for a deliberate local look. */
+export function coveObservationPose(mode: Ecology['animals']['egret']['mode'], seconds: number, reduced: boolean): CovePose {
+  const wading = mode === 'wade';
+  const progress = wading ? (reduced ? 1 : ease(seconds / 2.2)) : 0;
+  return {
+    ...mix(coveSceneAnchors.perch, egretShallows, progress),
+    frame: !wading ? 0 : progress === 1 ? 2 : Math.floor(Math.max(0, seconds) * 5) % 2,
+    flip: progress > 0, angle: 0, opacity: 1,
+  };
+}
+
+/** Same Cove view, with optional framing tighter on the whole egret route. */
+export function coveFraming(view: { width: number; height: number }, observation: number, sceneScale: number, shortLandscape = false) {
+  const height = Math.max(120, view.height - (shortLandscape ? 110 : 200));
+  const base = Math.min(view.width / (430 * sceneScale), height / (280 * sceneScale));
+  return {
+    scale: base * (1 + .30 * observation),
+    nativeFocus: mix(coveSceneAnchors.focus, { x: 1420, y: 682 }, observation),
+    screenLift: view.height * (.1 + .02 * observation),
+  };
+}
+
 export function coveChannelPoint(t: number): CovePoint {
   const a = { x: 1271, y: 690 }, b = { x: 1453, y: 744 };
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t + Math.sin(t * Math.PI) * -8 };
@@ -70,7 +94,7 @@ export function stepCoveMotion(state: CoveMotion, ecology: Ecology, elapsed: num
   const birdCycle = t * ecology.animals.egret.speed % 22;
   const birdMove = birdCycle < 7 ? ease(birdCycle / 7) : birdCycle < 12 ? 1 : 1 - ease((birdCycle - 12) / 8);
   const birdTarget = alert ? { x: 1470, y: 654 } : wade
-    ? mix(coveSceneAnchors.perch, { x: 1402, y: 711 }, birdMove)
+    ? mix(coveSceneAnchors.perch, egretShallows, birdMove)
     : { x: 1439 + Math.sin(t * .21) * 3, y: coveSceneAnchors.perch.y };
   move(state.egret, birdTarget, dt, reduced, alert ? 5 : 3.5);
   const walking = Math.hypot(state.egret.x - state.egret.previousX, state.egret.y - state.egret.previousY) > .07;

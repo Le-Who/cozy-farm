@@ -2440,7 +2440,7 @@ function drawPanel() {
     case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile},currentCommunityRequest()?.intentId);break
     case 'cove': {
       const action=getCoveActions(farm)
-      dialogContent.innerHTML=action.available?coveControls(farm):`<div class="cove-locked">${icon('ui-shell')}<p>Найдите ракушку, чтобы обустроить берег.</p>${button('Найти ракушки','cove-shells')}</div>`
+      dialogContent.innerHTML=action.available?coveControls(farm,island.isCoveObserving()):`<div class="cove-locked">${icon('ui-shell')}<p>Найдите ракушку, чтобы обустроить берег.</p>${button('Найти ракушки','cove-shells')}</div>`
       break
     }
     case 'shoal': {
@@ -4508,6 +4508,12 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'cove-cancel': if (panel === 'cove' && value) perform(() => cancelCovePlan(farm, value), false, true); break
+    case 'cove-watch': {
+      if (panel !== 'cove' || !dialog.open || !dialogContent.contains(control) || !getCoveActions(farm).available) break
+      const observing = !island.isCoveObserving()
+      if (island.setCoveObservation(observing)) control.setAttribute('aria-pressed', String(observing))
+      break
+    }
     case 'cove-fish':openPanel('fishing');break
     case 'shoal-pick': {
       const id=shoalFindIds.find(id=>id===value)

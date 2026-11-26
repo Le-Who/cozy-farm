@@ -171,13 +171,14 @@ function coveEffectSummary(habitat:CoveFishingHabitat):string{
   const lantern=hasLanternfishDepth(habitat)?'может встретиться рыба-фонарь':'для рыбы-фонаря мелко'
   return `${habitat.cover==='kelp'?'Обычно морской окунь, иногда окунь':'Окунь чаще'} · ${flow}; ${lantern}. ${habitat.refuge==='stones'?'Камни укрывают краба и смягчают рывки рыб.':'На песке краб ищет корм.'}`
 }
-export function coveControls(farm:FarmState):string{
+export function coveControls(farm:FarmState, observing=false):string{
   const shoreline=farm.shoreline,action=getCoveActions(farm),{ecology,choices,forecast}=action
+  const birdDescription = ecology.animals.egret.mode === 'wade' ? 'Цапля выходит на мелководье.' : 'Цапля наблюдает с насеста.'
   const groups:[keyof CoveChoices,string,string,readonly [string,string][]][]=[['flow','cove-current','Течение',[['sheltered','Тихое'],['open','Открытое']]],['cover','cove-kelp-right','Растения',[['kelp','Водоросли'],['meadow','Луг']]],['refuge','cove-refuge','Берег',[['sand','Песок'],['stones','Камни']]]]
   return `<div class="cove-console"><div class="cove-tools">${groups.map(([key,image,name,options])=>`<fieldset><legend><img src="${import.meta.env.BASE_URL}art/lavender/${image}.webp" alt="">${name}</legend>${options.map(([value,label])=>`<button type="button" data-action="cove-choice" data-value="${key}:${value}" aria-pressed="${choices[key]===value}">${label}</button>`).join('')}</fieldset>`).join('')}</div>
     ${action.appliedToday?'<p class="cove-confirmation" role="status">Утренний прилив применил план. Обустройство берега готово.</p>':''}
     <p class="cove-effect"><strong>Сейчас:</strong> ${coveChoiceSummary(ecology.choices)}. ${shoreline.settled?coveEffectSummary(ecology.fishing):'Естественный берег.'}</p>
     ${forecast?`<p class="cove-effect cove-forecast" role="status"><strong>После прилива, день ${forecast.day}:</strong> ${coveChoiceSummary(forecast.ecology.choices)}. ${coveEffectSummary(forecast.ecology.fishing)}</p>
       <div class="cove-plan"><span>Прилив наступит после отдыха дома.</span>${control('Отменить план','cove-cancel',action.planKey!)}</div>`:''}
-    <div class="cove-footer"><span>${shoreline.pending?'':shoreline.settled?`Обустройство действует с дня ${shoreline.settledOn}`:'Выберите обустройство берега'}</span>${control('На рыбалку','cove-fish','')}${control('Домой','sail','home')}</div></div>`
+    <div class="cove-footer"><span>${shoreline.pending?'':shoreline.settled?`Обустройство действует с дня ${shoreline.settledOn}`:'Выберите обустройство берега'}</span>${action.available ? control('Понаблюдать за цаплей','cove-watch','',true,`aria-pressed="${observing}" aria-description="${birdDescription}"`) : ''}${control('На рыбалку','cove-fish','')}${control('Домой','sail','home')}</div></div>`
 }

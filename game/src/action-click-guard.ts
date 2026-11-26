@@ -24,7 +24,7 @@ const guardedActions = new Set([
   'signature-base', 'signature-slot', 'signature-fruit', 'start-signature',
   'recipe-surplus-choose', 'recipe-surplus-quantity', 'recipe-surplus-refresh', 'recipe-surplus-reset', 'recipe-surplus-confirm', 'recipe-surplus-recipe',
   'berry-renewal-seeds', 'berry-renewal-source', 'berry-renewal-reset', 'berry-renewal-bed', 'berry-renewal-confirm',
-  'picnic-field', 'cape-bouquet', 'grove-pearl-display',
+  'picnic-field', 'cape-bouquet', 'grove-pearl-display', 'cove-watch',
   'garden-shop', 'garden-shop-scope', 'garden-shop-back', 'garden-buy-seeds', 'garden-save-seeds',
   'garden-slot', 'garden-edit', 'garden-copy', 'garden-cancel', 'garden-brush', 'garden-paint', 'garden-save', 'garden-follow', 'garden-delete', 'garden-remove', 'garden-bed',
   'visit-invite', 'visit-finish', 'visit-reply', 'visit-introduce-hen', 'visit-do', 'visit-book-home',

@@ -7,7 +7,7 @@ import { playBaySound } from './game-sound'
 import {BedPointerGuard} from './bed-work-intent'
 import {compactFieldHintRooms, fieldHintOverlaps, type FieldHintBands} from './field-hint'
 import { bayAudio } from './bay-audio'
-import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, grovePearlCabinet, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
+import { chickenCount, cropDefinitions, getCapeBloom, getCapeHoney, getCoveActions, getDayPhase, getFairGuest, getGoal, getHarborOrder, getShoreItem, grovePearlCabinet, hasBayDisplay, isHoneyWind, isProjectComplete, treeDefinitions, type Bed, type BedAction, type BuildingId, type CropId, type FarmState, type ProjectId, type ShoreTarget, type ResidentId, residentIds, getVillageHomeCount } from './farm';
 import { cookeryFinishTraits, type SignatureRecipe } from './culinary';
 import { finishedIngredient } from './ingredient-finish';
 import { createRasterLibrary } from './raster';
@@ -22,7 +22,7 @@ import { festivalFruitArt } from './festival-fruit';
 import { festivalRewardArt } from './festival-art';
 import { defaultHenPositions, henIdlePoint, projectHenToGround, type HenNativePoint } from './hen-roaming';
 import { getCoveEcology } from './shoreline';
-import { createCoveMotion, stepCoveMotion, coveChannelPoint, coveSceneAnchors } from './shoreline-view';
+import { createCoveMotion, stepCoveMotion, coveChannelPoint, coveSceneAnchors, coveFraming, coveObservationPose } from './shoreline-view';
 import { getNeighborPlans } from './farm';
 import { getNeighborSceneState, neighborWorkFrame, neighborPropSettle, neighborFoodArt, stepNeighborWalker, type NeighborScenePlan } from './neighbor-scene';
 import { harbourCamera, harbourPointVisible, harbourViewForPoint, harbourRouteNeedsOverview, harbourFocus, type HarbourView, type HarbourViewport } from './harbour-view';
@@ -386,6 +386,8 @@ export function createIsland(
   const harbourViewport = (): HarbourViewport => ({ ...viewport, ...harbourInsets });
   let coveFocus = false;
   let coveBlend = 0;
+  let coveObservation: number | undefined;
+  let coveObservationBlend = 0;
   let pointerStart: { id: number; x: number; y: number } | undefined;
   let heldHen: { index: number; point: Point; offset:Point; dragging: boolean } | undefined;
   let shorePickup: { site: ShoreArea; began?: number; commit: () => boolean } | undefined;
@@ -1226,7 +1228,8 @@ export function createIsland(
 
   function paintCove(farm: FarmState, dt: number, time: number): void {
     const ecology = getCoveEcology(farm.shoreline, farm.day);
-    const choices = farm.shoreline.pending ?? ecology.choices;
+    const watching = coveObservation !== undefined;
+    const choices = watching ? ecology.choices : farm.shoreline.pending ?? ecology.choices;
     const actors = stepCoveMotion(coveMotion, ecology, dt, nativeHenPoint(farmer), motion.matches);
     // Physical choices preview immediately; animals and fishing keep the last settled tide.
     const draw = (key: string, point: Point, size: number, options: Parameters<typeof art.draw>[6] = {}) => {
@@ -1256,10 +1259,11 @@ export function createIsland(
       { frame: crabWalk ? crab.frame : 0, fullCell: true, baseline: 118 / 128, footY: crabPoint.y, angle: crab.angle, flip: crab.flip, opacity: crab.opacity });
     if (choices.refuge === 'stones') draw('cove-refuge', { x: coveSceneAnchors.refuge.x, y: coveSceneAnchors.refuge.y + 9 }, 95);
     draw('cove-perch', { x: 1440, y: 680 }, 77, { footY: scenePoint(1440, 640).y });
-    const birdFoot = scenePoint(actors.egret.x, actors.egret.y);
+    const egret = coveObservation === undefined ? actors.egret
+      : coveObservationPose(ecology.animals.egret.mode, (performance.now() - coveObservation) / 1000, motion.matches);
+    const birdFoot = scenePoint(egret.x, egret.y);
     world.shape('shade', birdFoot.x, birdFoot.y, 7, 2.2, '#646a59', .16, -1);
-    draw('cove-egret', actors.egret, 73,
-      { frame: actors.egret.frame, flip: actors.egret.flip, baseline: .78 });
+    draw('cove-egret', egret, 73, { frame: egret.frame, flip: egret.flip, baseline: .78 });
     if (getClimate(farm.day).weather === 'sun' || getClimate(farm.day).weather === 'rainbow') {
       for (let i = 0; i < ecology.animals.butterflies.count; i++) {
         const point = choices.cover === 'kelp' ? coveSceneAnchors.meadow[0] : coveSceneAnchors.meadow[i % 2];
@@ -1292,9 +1296,15 @@ export function createIsland(
     const dt = motion.matches ? 0 : clamp((moment - (lastPhysics || moment - 16)) / 1000, 0.001, 0.05);
     lastPhysics = moment;
     const coveTarget = coveFocus && atGrove ? 1 : 0;
-    if (Math.abs(coveBlend - coveTarget) > .0001) {
-      coveBlend = motion.matches ? coveTarget : coveBlend + (coveTarget - coveBlend) * (1 - Math.exp(-dt * 9));
-      if (Math.abs(coveBlend - coveTarget) < .0001) coveBlend = coveTarget;
+    const observeTarget = coveTarget && coveObservation !== undefined ? 1 : 0;
+    if (coveBlend !== coveTarget || coveObservationBlend !== observeTarget) {
+      const approach = (current: number, target: number) => {
+        if (motion.matches) return target;
+        const next = current + (target - current) * (1 - Math.exp(-dt * 9));
+        return Math.abs(next - target) < .0001 ? target : next;
+      };
+      coveBlend = approach(coveBlend, coveTarget);
+      coveObservationBlend = approach(coveObservationBlend, observeTarget);
       updateCameraView();
     }
     const traveling = arrival ? clamp(1 - (moment - arrival) / 950, 0, 1) : 0;
@@ -1759,10 +1769,10 @@ export function createIsland(
     const fieldHeight = Math.max(140, viewport.height - (shortLandscape ? 123 : 190));
     const baseScale = closeUp ? Math.min(viewport.width / 486, fieldHeight / 278) : wide;
     const baseCenter = closeUp ? scenePoint(784, 577) : { x: WORLD.w / 2, y: WORLD.h / 2 };
-    const coveHeight = Math.max(120, viewport.height - (shortLandscape ? 110 : 200));
-    const coveScale = Math.min(viewport.width / (430 * sceneScale), coveHeight / (280 * sceneScale));
-    const focus = scenePoint(1320, 700);
-    const coveCenter = { x: focus.x, y: focus.y + viewport.height * .1 / coveScale };
+    const cove = coveFraming(viewport, coveObservationBlend, sceneScale, shortLandscape);
+    const coveScale = cove.scale;
+    const focus = scenePoint(cove.nativeFocus.x, cove.nativeFocus.y);
+    const coveCenter = { x: focus.x, y: focus.y + cove.screenLift / coveScale };
     return { scale: baseScale + (coveScale - baseScale) * coveBlend,
       center: { x: baseCenter.x + (coveCenter.x - baseCenter.x) * coveBlend,
         y: baseCenter.y + (coveCenter.y - baseCenter.y) * coveBlend } };
@@ -2258,7 +2268,9 @@ export function createIsland(
       }
       if (currentIsland !== next.island) {
         bayAudio.stopEffects(farmSoundEvents);
-        if (next.island !== 'grove') { coveFocus = false; coveBlend = 0; }
+        if (next.island !== 'grove') {
+          coveFocus = false; coveBlend = 0; coveObservation = undefined; coveObservationBlend = 0;
+        }
         heldHen=undefined;pointerStart=undefined;
         harbourView = 'overview'; harbourJourney = false;
         harbourViewChanged?.(harbourView, false);
@@ -2383,9 +2395,21 @@ export function createIsland(
     },
     setCoveFocus(active: boolean): void {
       coveFocus = active;
-      if (motion.matches) { coveBlend = active && state?.island === 'grove' ? 1 : 0; updateCameraView(); }
+      if (!active) coveObservation = undefined;
+      if (motion.matches) {
+        coveBlend = active && state?.island === 'grove' ? 1 : 0;
+        if (!active) coveObservationBlend = 0;
+        updateCameraView();
+      }
       hovered = undefined;
       requestPaint();
+    },
+    isCoveObserving(): boolean { return coveObservation !== undefined; },
+    setCoveObservation(active: boolean): boolean {
+      if (!coveFocus || !state || !getCoveActions(state).available || crossing) return false;
+      coveObservation = active ? performance.now() : undefined;
+      requestPaint();
+      return true;
     },
     setFishing(active: boolean): void {
       fishing = active;
