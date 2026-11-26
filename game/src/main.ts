@@ -64,7 +64,7 @@ import './market-return.css'
 import { fairJamPicnicChoice, renderFairReturn } from './fair-return'
 import './fair-return.css'
 import { getLocalWarehouseSupply, warehouseRequest, warehouseSupplyCopy, warehouseConfirmation, warehouseConfirmationValue, withdrawWarehouseSupply } from './warehouse-guidance'
-import { getReadySignatureSuppers, getSupperFishRecovery, renderSignatureSuppers, renderSupperResult, supperCottageReady } from './shared-supper'
+import { getReadySignatureSuppers, getSupperFishRecovery, getSupperFishFork, renderSupperFishFork, reviewedSupperFish, tableSupperFish, renderSignatureSuppers, renderSupperResult, supperCottageReady } from './shared-supper'
 import './shared-supper.css'
 import { renderShopRest, closeShopBeforeRest } from './shop-rest'
 import './shop-rest.css'
@@ -2735,14 +2735,16 @@ function drawPanel() {
     case 'village-project': dialogContent.innerHTML = villageProjectCard(); break
     case 'village': dialogContent.innerHTML = neighboursCard(); break
     case 'village-meal': {
-      const meal = getVillageMeal(farm, pastryShape)
-      const signatures = getReadySignatureSuppers(farm)
+      const fork = getSupperFishFork(farm)
+      const choice = fork ? {fork,fish:(dialog.open ? tableSupperFish(dialogContent,fork) : undefined) ?? 'seaBass' as const} : undefined
+      const meal = getVillageMeal(farm, pastryShape, choice?.fish)
+      const signatures = getReadySignatureSuppers(farm, choice?.fish)
       dialogContent.innerHTML = meal.served ? renderSupperResult(farm,icon('upgrade-farmhouse-card'),button('Домой','sail',true,{value:'home',secondary:supperCottageReady(farm)}))
         : `<p class="shared-supper-intro">Выберите одно угощение: ручную выпечку или готовое авторское блюдо. Ужин расходует 1 порцию выбранного угощения и 1 рыбу.</p>
-          <ul class="ingredients">${meal.items.filter(item=>item.kind==='fish').map(stockTile).join('')}</ul>
-          ${farm.fish.perch + farm.fish.seaBass === 0 ? renderHarbourFishChoice(farm,'supper') : '<p>Подойдёт обычный окунь или морской окунь. Выше показано, какая рыба пойдёт к столу.</p>'}
-          ${renderSignatureSuppers(farm,recipe=>signatureResultPicture(recipe,{icon}))}
-          <details class="shared-supper-pastry" ${!signatures.length || meal.available ? 'open' : ''}><summary>Ручная выпечка</summary>${pastryChoices()}<ul class="ingredients">${meal.items.filter(item=>item.kind==='handmade').map(stockTile).join('')}</ul>${nav(button('Подать выпечку · 1 порция','share-meal',meal.available))}</details>`
+          ${choice ? renderSupperFishFork(farm,choice.fork,choice.fish,fish=>icon(fishImage(fish))) : `<ul class="ingredients">${meal.items.filter(item=>item.kind==='fish').map(stockTile).join('')}</ul>
+          ${farm.fish.perch + farm.fish.seaBass === 0 ? renderHarbourFishChoice(farm,'supper') : '<p>Подойдёт обычный окунь или морской окунь. Выше показано, какая рыба пойдёт к столу.</p>'}`}
+          ${renderSignatureSuppers(farm,recipe=>signatureResultPicture(recipe,{icon}),choice)}
+          <details class="shared-supper-pastry" ${!signatures.length || meal.available ? 'open' : ''}><summary>Ручная выпечка</summary>${pastryChoices()}<ul class="ingredients">${meal.items.filter(item=>item.kind==='handmade').map(stockTile).join('')}</ul>${nav(button('Подать выпечку · 1 порция','share-meal',meal.available,choice?{value:`supper:${choice.fork.key}:${choice.fish}`,context:fishDefinitions[choice.fish].name}:{}))}</details>`
       break
     }
     case 'fishing': {
@@ -4452,7 +4454,20 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'taste-signature':{const id=residentIds.find(id=>id===control.dataset.resident);if(panel==='recipes'&&dialog.open&&value&&id&&selectedBookId(farm,recipeBook.view)===value)perform(()=>tasteSignature(farm,value!,id),false);break}
-    case 'supper-signature': if(value)finishSharedSupper(()=>deliverSignature(farm,value!)); break
+    case 'supper-fish': {
+      if (panel !== 'village-meal' || !dialog.open || !dialogContent.contains(control)) break
+      const fork = getSupperFishFork(farm)
+      const group = fork && dialogContent.querySelector<HTMLElement>(`[data-supper-fish="${fork.key}"]`)
+      if (!group || control.parentElement !== group || value !== 'perch' && value !== 'seaBass') break
+      const pastry = dialogContent.querySelector<HTMLDetailsElement>('.shared-supper-pastry')?.open
+      group.querySelectorAll<HTMLButtonElement>('button').forEach(option => option.setAttribute('aria-pressed',String(option === control)))
+      drawPanel()
+      const details = dialogContent.querySelector<HTMLDetailsElement>('.shared-supper-pastry')
+      if (details && pastry !== undefined) details.open = pastry
+      dialogContent.querySelector<HTMLButtonElement>(`[data-supper-fish] [data-value="${value}"]`)?.focus({preventScroll:true})
+      break
+    }
+    case 'supper-signature': if(value?.startsWith('supper:')) { const picked=panel==='village-meal'&&dialog.open&&dialogContent.contains(control)&&reviewedSupperFish(farm,dialogContent,value); if(picked&&picked.id) { const {id,fish}=picked; finishSharedSupper(()=>deliverSignature(farm,id,fish)) } } else if(value)finishSharedSupper(()=>deliverSignature(farm,value!)); break
     case 'supper-cottage':
       if(panel==='village-meal' && supperCottageReady(farm)) activateTarget({kind:'village-home',index:1})
       break
@@ -5198,7 +5213,7 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
-    case 'share-meal': finishSharedSupper(() => serveVillageMeal(farm, pastryShape), true); break
+    case 'share-meal': if(value?.startsWith('supper:')) { const picked=panel==='village-meal'&&dialog.open&&dialogContent.contains(control)&&reviewedSupperFish(farm,dialogContent,value); if(picked&&!picked.id)finishSharedSupper(()=>serveVillageMeal(farm,pastryShape,picked.fish),true) } else finishSharedSupper(() => serveVillageMeal(farm, pastryShape), true); break
     case 'resident-service': {
       const id = residentIds.find(id => id === value)
       const fromTasting = id === 'bea' && !!panelHistory.at(-1)?.tastingBakery

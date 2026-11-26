@@ -1,4 +1,4 @@
-import { canSailTo, fishDefinitions, getFishAction, getSignatureStock, getVillageHomeCount, getVillageMeal, islandIds, orchardIslandIds, sail, type FarmState } from './farm.ts'
+import { canSailTo, fishDefinitions, getFishAction, getHarborOrder, getSignatureStock, getVillageHomeCount, getVillageMeal, islandIds, orchardIslandIds, sail, workshopShapes, type FarmState, type SupperFish } from './farm.ts'
 import { freightStock } from './bay-freight-model.ts'
 import { getFishSource } from './fish-guidance.ts'
 import { getLocalWarehouseSupply } from './warehouse-guidance.ts'
@@ -34,20 +34,50 @@ export function getSupperFishRecovery(farm: FarmState) {
   return { kind: 'rest' } as const
 }
 
-/** Existing signature supper rules, exposed without reserving or spending anything. */
-export function getReadySignatureSuppers(farm: FarmState) {
+/** Show a choice only when the stock default would break a fully supplied, different job. */
+export function getSupperFishFork(farm: FarmState) {
   const meal = getVillageMeal(farm)
+  if (farm.island !== 'village' || !farm.village.built || meal.served || meal.fish !== 'seaBass'
+    || farm.fish.seaBass !== 1 || !farm.fish.perch
+    || !workshopShapes.some(shape => farm.handmade[shape] > 0) && !getSignatureStock(farm).some(({count}) => count > 0)) return
+  const order = getHarborOrder(farm)
+  if (!order || order.status === 'completed'
+    || !order.items.some(({item,available}) => item.kind === 'fish' && item.item === 'seaBass' && available > 0)
+    || !order.items.every(({item,delivered,available}) => delivered + available === item.quantity)) return
+  return { key: `${farm.day}:${farm.orders.harbor.completed}`, reward: order.reward }
+}
+type SupperFishFork = NonNullable<ReturnType<typeof getSupperFishFork>>
+const species = (value?: string): SupperFish | undefined => value === 'perch' || value === 'seaBass' ? value : undefined
+export function tableSupperFish(root: HTMLElement, fork: SupperFishFork): SupperFish | undefined {
+  return species(root.querySelector<HTMLButtonElement>(`[data-supper-fish="${fork.key}"] button[aria-pressed="true"]`)?.dataset.value)
+}
+export function renderSupperFishFork(farm: FarmState, fork: SupperFishFork, selected: SupperFish, picture: (fish: SupperFish) => string) {
+  const delay = `Отложит заказ на ${ruCount(fork.reward,'монету','монеты','монет')}`
+  return `<div class="recipe-fish-choices shared-supper-fish" role="group" aria-label="Рыба к ужину" data-supper-fish="${fork.key}">${(['seaBass','perch'] as const).map(fish =>
+    `<button type="button" data-action="supper-fish" data-value="${fish}" aria-pressed="${selected===fish}">${picture(fish)}<span>${fishDefinitions[fish].name} ×${farm.fish[fish]}</span>${fish==='seaBass'?`<small>${delay}</small>`:''}</button>`).join('')}</div>`
+}
+export function reviewedSupperFish(farm: FarmState, root: HTMLElement, value: string) {
+  const [,day,order,fish,id] = /^supper:(\d+):(\d+):(perch|seaBass)(?::(s[1-9]\d{0,5}))?$/.exec(value) ?? []
+  const selected = species(fish), fork = getSupperFishFork(farm)
+  // Recheck the same open table, not merely an earlier rendered count or order price.
+  if (!fork || fork.key !== `${day}:${order}` || !selected || selected !== tableSupperFish(root, fork)) return
+  return {fish:selected,id}
+}
+
+/** Existing signature supper rules, exposed without reserving or spending anything. */
+export function getReadySignatureSuppers(farm: FarmState, fish?: SupperFish) {
+  const meal = getVillageMeal(farm,undefined,fish)
   const available = farm.island === 'village' && farm.village.built && !meal.served && farm.fish[meal.fish] >= 1
     && Number.isSafeInteger(farm.workToday + 1) && Number.isSafeInteger(farm.village.meals + 1)
   return getSignatureStock(farm).filter(({ count }) => count > 0).map(({ recipe, count }) => ({ recipe, count, fish: meal.fish, available }))
 }
 
-export function renderSignatureSuppers(farm: FarmState, picture: (recipe: SignatureRecipe) => string): string {
+export function renderSignatureSuppers(farm: FarmState, picture: (recipe: SignatureRecipe) => string, selection?: {fork: SupperFishFork;fish: SupperFish}): string {
   if (!farm.village.built || getVillageMeal(farm).served) return ''
-  const choices = getReadySignatureSuppers(farm)
+  const choices = getReadySignatureSuppers(farm,selection?.fish)
   if (!choices.length) return ''
   return `<section class="shared-supper-recipes" aria-label="Готовые блюда к ужину"><h2>Готовое блюдо вместо выпечки</h2>
-    <div class="shared-supper-choices">${choices.map(({recipe,count,fish,available}) => `<button type="button" class="shared-supper-choice" data-action="supper-signature" data-value="${escape(recipe.id)}" ${available?'':'disabled'} aria-label="Подать ${escape(recipe.name)}. Расход: 1 порция и 1 рыба — ${fishDefinitions[fish].name.toLowerCase()}. В запасе: ${ruCount(count, 'порция', 'порции', 'порций')}.">
+    <div class="shared-supper-choices">${choices.map(({recipe,count,fish,available}) => `<button type="button" class="shared-supper-choice" data-action="supper-signature" data-value="${escape(selection ? `supper:${selection.fork.key}:${fish}:${recipe.id}` : recipe.id)}" ${available?'':'disabled'} aria-label="Подать ${escape(recipe.name)}. Расход: 1 порция и 1 рыба — ${fishDefinitions[fish].name.toLowerCase()}. В запасе: ${ruCount(count, 'порция', 'порции', 'порций')}.">
       <span class="shared-supper-picture" aria-hidden="true">${picture(recipe)}</span><strong>${escape(recipe.name)}</strong><span>В запасе: ×${count}</span><small>Подать 1 порцию</small>
     </button>`).join('')}</div></section>`
 }

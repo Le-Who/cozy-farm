@@ -37,7 +37,7 @@ const guardedActions = new Set([
   'incubator-basket', 'incubator-warehouse-egg', 'incubator-warehouse-basket', 'incubate-egg', 'incubate-rare-egg', 'visit-rest', 'sleep', 'ferry-return', 'boat-funds', 'buy-boat', 'first-ferry-route', 'expedition-rest', 'expedition-discovery', 'expedition-restock', 'expedition-source', 'expedition-bun-warehouse', 'work-context', 'resume-recipe-draft', 'reset-recipe-draft',
   'forget-signature', 'follow-task', 'buy-feed', 'festival-contribute', 'market-next-rest', 'market-order-select', 'market-order-pickup', 'bread-basket-review', 'cookery-order-review', 'deliver-order', 'deliver-harbor', 'withdraw-harbor', 'harbor-next-rest', 'harbor-order-route',
   'show-requirement', 'warehouse-supply', 'warehouse-supply-withdraw', 'recipe-repeat-home', 'recipe-warehouse-withdraw',
-  'store-tree', 'return-nursery-tree', 'fruit-tree-seed', 'nursery-sail-plot', 'supper-signature', 'share-meal', 'supper-cottage', 'serve-guest', 'fair-jam-picnic',
+  'store-tree', 'return-nursery-tree', 'fruit-tree-seed', 'nursery-sail-plot', 'supper-fish', 'supper-signature', 'share-meal', 'supper-cottage', 'serve-guest', 'fair-jam-picnic',
   'sell-item', 'sell-signature', 'sale-again', 'confirm-sale', 'sell', 'sell-order-surplus', 'make-signature', 'batch-signature',
   'inline-sale-confirm', 'inline-sale-again',
   'rest-intent-request', 'rest-close-shop', 'shop-stock-select', 'shop-stock-confirm', 'recipe-shop-stock', 'recipe-harbour-shop', 'freight-withdraw',

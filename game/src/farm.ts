@@ -1628,22 +1628,24 @@ export function inviteResident(farm: FarmState, id: ResidentId | null, slot: num
   return { ok: true, message: id ? `${residentDefinitions[id].name} теперь живёт в домике.` : 'Домик готов принять нового соседа.' };
 }
 
-export function getVillageMeal(farm: FarmState, shape: WorkshopShape = farm.workshopPatterns[0] ?? 'round') {
+export type SupperFish = 'perch' | 'seaBass';
+
+export function getVillageMeal(farm: FarmState, shape: WorkshopShape = farm.workshopPatterns[0] ?? 'round', chosenFish?: SupperFish) {
   const preferred = farm.village.residents.includes('finn') ? 'seaBass' : 'perch';
   const other = preferred === 'perch' ? 'seaBass' : 'perch';
   // Show and consume the same ordinary fish. Rare catches are never an automatic substitute.
-  const fish: FishId = farm.fish[preferred] > 0 || farm.fish[other] === 0 ? preferred : other;
+  const fish: SupperFish = chosenFish ?? (farm.fish[preferred] > 0 || farm.fish[other] === 0 ? preferred : other);
   const items: readonly StockItem[] = [{ kind: 'handmade', item: shape, quantity: 1 }, { kind: 'fish', item: fish, quantity: 1 }];
   const served = farm.village.mealOn === farm.day;
   const available = farm.island === 'village' && farm.village.built && !served && isId(workshopShapes, shape)
-    && items.every((item) => ingredientCount(farm, item) >= item.quantity);
+    && (fish === 'perch' || fish === 'seaBass') && items.every((item) => ingredientCount(farm, item) >= item.quantity);
   return { available, served, items, shape, fish, meals: farm.village.meals,
     label: served ? 'Сегодня соседи уже поужинали.' : 'Принесите к общему столу 1 свою выпечку и 1 рыбу.' };
 }
 
-export function serveVillageMeal(farm: FarmState, shape: WorkshopShape): ActionResult {
+export function serveVillageMeal(farm: FarmState, shape: WorkshopShape, chosenFish?: SupperFish): ActionResult {
   if (!isId(workshopShapes, shape)) return failure('Выберите свою выпечку.');
-  const meal = getVillageMeal(farm, shape);
+  const meal = getVillageMeal(farm, shape, chosenFish);
   if (!meal.available) return failure(meal.label);
   for (const item of meal.items) removeStock(farm, item);
   farm.village.meals += 1;
@@ -1939,9 +1941,9 @@ export function tasteSignature(farm:FarmState,id:string,resident:ResidentId):Act
   if(liked){memory.liked++;memory.bonus=true;if(!memory.favoriteIds.includes(id))memory.favoriteIds.push(id)}
   return {ok:true,message:`${taste.name} запомнит блюдо «${recipe.name}».${liked?resident==='bea'?beaHelpMessage:' К следующей рыбалке Финн подготовит особенно прочный крючок.':' В другой день попробуйте любимый фрукт или текстуру этого соседа.'}`};
 }
-export function deliverSignature(farm:FarmState,id:string):ActionResult{
-  const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id),fish=getVillageMeal(farm).fish;
-  if(!recipe||farm.island!=='village'||!farm.village.built||farm.village.mealOn===farm.day||(farm.culinary.stock[id]??0)<1||farm.fish[fish]<1)return failure('Принесите к общему столу гавани одно авторское блюдо и одну рыбу.');
+export function deliverSignature(farm:FarmState,id:string,chosenFish?:SupperFish):ActionResult{
+  const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id),fish=getVillageMeal(farm,undefined,chosenFish).fish;
+  if((fish!=='perch'&&fish!=='seaBass')||!recipe||farm.island!=='village'||!farm.village.built||farm.village.mealOn===farm.day||(farm.culinary.stock[id]??0)<1||farm.fish[fish]<1)return failure('Принесите к общему столу гавани одно авторское блюдо и одну рыбу.');
   if(!Number.isSafeInteger(farm.workToday+1)||!Number.isSafeInteger(farm.village.meals+1))return failure('Журнал ужинов заполнен.');
   farm.culinary.stock[id]--;farm.fish[fish]--;farm.village.meals++;farm.village.mealOn=farm.day;farm.village.supperDish=signatureTableDish(recipe);farm.workToday++;return {ok:true,message:`Блюдо «${recipe.name}» подано к общему ужину. ${farm.village.meals===2?'Второй домик готов!':''}`};
 }

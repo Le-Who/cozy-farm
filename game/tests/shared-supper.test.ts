@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { completeSignature, deliverSignature, endDay, forgetSignature, getVillageHomeCount, inviteResident, restoreFarm, serveVillageMeal, bakeWorkshop, sellSignature, sail, getVillageMeal, workshopShapes, workshopDefinitions, residentIds, residentDefinitions, getResidentService, getBeaPastryCount, getWorkshopAction, workshopIngredients } from '../src/farm.ts'
 import { getDiscoveryTask } from '../src/discovery-path.ts'
-import { getReadySignatureSuppers, renderSignatureSuppers, renderSupperResult, supperCottageReady } from '../src/shared-supper.ts'
+import { getReadySignatureSuppers, getSupperFishFork, renderSupperFishFork, tableSupperFish, renderSignatureSuppers, renderSupperResult, supperCottageReady } from '../src/shared-supper.ts'
 import { isGuardedAction, ActionClickGuard, ActivationKeyGuard } from '../src/action-click-guard.ts'
 import { sharedSupperFixture } from './fixtures/shared-supper.ts'
 
@@ -200,7 +200,7 @@ test('tomorrow’s cottage table starts on the ready pastry, not yesterday’s s
   const ctx:any={farm,panel:'village',value:undefined,pastryShape:'round',villageSlot:slot,dialog:{open:true,querySelectorAll:()=>[]},
     panelHistory:history,panelRenderVersion:1,dialogContent:{innerHTML:'',scrollTop:30,querySelector:()=>null,querySelectorAll:()=>[]},
     getVillageMeal,getVillageHomeCount,workshopShapes,workshopDefinitions,residentIds,residentDefinitions,getResidentService,getBeaPastryCount,getWorkshopAction,workshopIngredients,getFinnFishingRoute:noop,
-    getReadySignatureSuppers,renderSignatureSuppers,renderSupperResult,supperCottageReady,
+    getReadySignatureSuppers,getSupperFishFork,renderSupperFishFork,tableSupperFish,renderSignatureSuppers,renderSupperResult,supperCottageReady,
     signatureResultPicture:()=>'',renderHarbourFishChoice:()=>'',pastryIcons:{},villageHomeProgress:()=>'',neighborHelpCard:()=>'',
     icon:()=>'',stockTile:()=>'',button:(label:string,action:string,enabled=true)=>`<button data-action="${action}"${enabled?'':' disabled'}>${label}</button>`,
     nav:(...parts:string[])=>parts.join(''),app:{dataset:{}},toast:{},dialogFeedback:{},island:{isCrossing:()=>false,setViewMode:noop,setCoveFocus:noop},
