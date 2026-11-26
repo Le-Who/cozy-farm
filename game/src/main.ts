@@ -428,6 +428,7 @@ type KitchenSelection = KitchenGroup | { ready?: DishId; returned?: boolean }
 let kitchenGroup: KitchenSelection | undefined
 let kitchenDish: DishId = 'grilledFish'
 let honeyKitchenDish: HoneyKitchenRecipe = 'honeyBiscuits'
+let pickedHoneyKitchenDish: HoneyKitchenRecipe = honeyKitchenDish
 type KitchenTart = 'orchardTart' | 'strawberryTart' | 'blueberryTart' | 'raspberryTart' | 'mixed'
 type KitchenPreserves = 'appleJam' | 'orchardPreserves' | 'custom'
 type SignatureFamily = 'berries' | 'preserves' | undefined
@@ -2871,7 +2872,7 @@ function openGuidedSeeds(crop: CropId) {
     highlightControl(dialogContent.querySelector<HTMLElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)'))
   }
 }
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string }) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string; honeyRecipe?: HoneyKitchenRecipe }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
@@ -2897,6 +2898,11 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (remember && next === 'village-meal' && panel === 'village' && !getVillageMeal(farm, pastryShape).available) {
     // Snapshot the cottage's choice first; the table can start with stock that is ready.
     pastryShape = workshopShapes.find(shape => getVillageMeal(farm, shape).available) ?? pastryShape
+  }
+  // A source visit shows the requested recipe without replacing the normal manual choice.
+  if (next === 'honey-kitchen') {
+    if (entry?.honeyRecipe) honeyKitchenDish = entry.honeyRecipe
+    else if (remember && next !== panel) honeyKitchenDish = pickedHoneyKitchenDish
   }
   if (next === 'kitchen' && remember && next !== panel && typeof kitchenGroup === 'object' && kitchenGroup.returned)
     kitchenGroup = { ready:kitchenGroup.ready }
@@ -3517,6 +3523,14 @@ async function showRequirement(requirement: Requirement, origin?: HTMLElement, d
     openPanel('kitchen',true,farm.island,'page.unfold',undefined,{grillFish:fish})
   }
   else if (target === 'warehouse-supply') { selectedWarehouseRequest=warehouseRequest(value);openPanel('warehouse-supply') }
+  else if (target === 'open-panel' && value === 'honey-kitchen' && requirement.kind === 'stock' && requirement.item.kind === 'dishes') {
+    const dish = chooseHoneyKitchenRecipe(requirement.item.item, {panel:'honey-kitchen',open:true,island:farm.island,capeLevel:farm.capeLevel})
+    if (!dish || !getCookAction(farm,dish).available) return
+    openPanel('honey-kitchen',true,farm.island,'page.unfold',undefined,{honeyRecipe:dish})
+    if (dialog.open && panel === 'honey-kitchen' && honeyKitchenDish === dish)
+      highlightControl(dialogContent.querySelector<HTMLElement>(`[data-action="honey-kitchen-recipe"][data-value="${dish}"]`))
+    return
+  }
   else if (target === 'open-panel' && value === 'seeds' && hint.seedPreview) { openGuidedSeeds(hint.seedPreview); return }
   else if (target === 'open-panel' && value && value in panelTitles) openPanel(value as Panel)
   else {openPanel('boat');return}
@@ -4092,7 +4106,7 @@ app.addEventListener('click', async (event) => {
     }
     case 'honey-kitchen-recipe': {
       const dish = chooseHoneyKitchenRecipe(value, {panel,open:dialog.open,island:farm.island,capeLevel:farm.capeLevel})
-      if (dish !== undefined) { honeyKitchenDish = dish; drawPanel(); dialogContent.scrollTop = 0 }
+      if (dish !== undefined) { honeyKitchenDish = pickedHoneyKitchenDish = dish; drawPanel(); dialogContent.scrollTop = 0 }
       break
     }
     case 'kitchen-group': {
