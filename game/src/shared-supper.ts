@@ -1,4 +1,5 @@
-import { canSailTo, fishDefinitions, getFishAction, getSignatureStock, getVillageHomeCount, getVillageMeal, orchardIslandIds, type FarmState } from './farm.ts'
+import { canSailTo, fishDefinitions, getFishAction, getSignatureStock, getVillageHomeCount, getVillageMeal, islandIds, orchardIslandIds, sail, type FarmState } from './farm.ts'
+import { freightStock } from './bay-freight-model.ts'
 import { getFishSource } from './fish-guidance.ts'
 import { getLocalWarehouseSupply } from './warehouse-guidance.ts'
 import { ruCount } from './ru.ts'
@@ -11,15 +12,26 @@ const supperFishItem = (item: 'perch' | 'seaBass') => ({ kind: 'fish', item, qua
 /** One ordinary fish is interchangeable at supper; a charter's exact fish are not. */
 export function getSupperFishRecovery(farm: FarmState) {
   const preferred = getVillageMeal(farm).fish
-  for (const fish of [preferred, preferred === 'perch' ? 'seaBass' : 'perch'] as const) {
-    const item = supperFishItem(fish)
-    if (getLocalWarehouseSupply(farm, item)) return { kind: 'warehouse', item } as const
+  const items = [supperFishItem(preferred), supperFishItem(preferred === 'perch' ? 'seaBass' : 'perch')] as const
+  for (const item of items) {
+    if (getLocalWarehouseSupply(farm, item)) return { kind: 'warehouse', port: farm.island, item } as const
   }
   const shore = orchardIslandIds.find(island => island === farm.island && getFishAction(farm).available)
     ?? [getFishSource(farm, preferred), ...orchardIslandIds].find(island =>
       canSailTo(farm, island) && getFishAction({ ...farm, island }).available)
-  return shore ? { kind: 'shore', shore, item: supperFishItem(shore === 'home' ? 'perch' : 'seaBass') } as const
-    : { kind: 'rest' } as const
+  if (shore) return { kind: 'shore', shore, item: supperFishItem(shore === 'home' ? 'perch' : 'seaBass') } as const
+  // A full catch limit does not mean tomorrow if a warehouse already has today's fish.
+  for (const port of islandIds) {
+    if (port === farm.island || !canSailTo(farm, port)) continue
+    const stored = items.filter(item => freightStock(farm.freight, port, item.item) > 0)
+    if (!stored.length) continue
+    const arrival = structuredClone(farm)
+    if (!sail(arrival, port).ok) continue
+    for (const item of stored) {
+      if (getLocalWarehouseSupply(arrival, item)) return { kind: 'warehouse', port, item } as const
+    }
+  }
+  return { kind: 'rest' } as const
 }
 
 /** Existing signature supper rules, exposed without reserving or spending anything. */

@@ -29,9 +29,11 @@ export function harbourFishNeeded(farm: FarmState): boolean {
 export function renderHarbourFishChoice(farm: FarmState, purpose: 'building' | 'supper' = 'building'): string {
   if (purpose === 'building' && !harbourFishNeeded(farm)) return ''
   const route = getHarbourFishRoute(farm)
-  const recovery = purpose === 'supper' && farm.island === 'village' && farm.village.built ? getSupperFishRecovery(farm).kind : 'shore'
-  const catchLabel = recovery === 'rest' ? 'К отдыху дома' : recovery === 'warehouse' ? 'К рыбе на складе' : 'Поймать бесплатно'
-  const fishing = recovery === 'rest' ? 'Рыбалка снова завтра. ' : recovery === 'warehouse' ? '' : 'Поймайте рыбу сами или привезите паромом. '
+  const recovery = purpose === 'supper' && farm.island === 'village' && farm.village.built ? getSupperFishRecovery(farm) : undefined
+  const catchLabel = recovery?.kind === 'rest' ? 'К отдыху дома' : recovery?.kind === 'warehouse'
+    ? recovery.port === farm.island ? 'К рыбе на складе' : {home:'На домашний склад',grove:'На склад в рощу',cape:'На склад мыса',village:'На склад гавани'}[recovery.port]
+    : 'Поймать бесплатно'
+  const fishing = recovery?.kind === 'rest' ? 'Рыбалка снова завтра. ' : recovery?.kind === 'warehouse' ? '' : 'Поймайте рыбу сами или привезите паромом. '
   return `<section class="harbour-fish-choice" aria-label="Два пути за рыбой"><h2>${purpose === 'building' ? 'Улов для гавани' : 'Рыба к общему столу'}</h2>
     ${purpose === 'supper' ? '<p>Для ужина подойдёт обычный окунь или морской окунь.</p>' : ''}
     <p>${fishing}У Соляного маяка 2 обычных морских окуня стоят ${route.price} монет. Это покупка из местного запаса, не ваш улов.</p>

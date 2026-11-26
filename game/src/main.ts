@@ -3745,7 +3745,11 @@ app.addEventListener('click', async (event) => {
         || getVillageMeal(farm).served || farm.fish.perch + farm.fish.seaBass > 0) break
       const recovery = getSupperFishRecovery(farm)
       if (recovery.kind === 'rest') await visitPanelAt('home','rest')
-      else await showRequirement({kind:'stock',item:recovery.item},control)
+      else if (recovery.kind === 'warehouse' && recovery.port !== farm.island) {
+        if (island.isCrossing()) break
+        selectedWarehouseRequest = recovery.item
+        await visitPanelAt(recovery.port,'warehouse-supply')
+      } else await showRequirement({kind:'stock',item:recovery.item},control)
       break
     }
     case 'harbour-fish-trade': {

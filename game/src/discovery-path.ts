@@ -171,7 +171,11 @@ function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTas
 function supperFish(farm: FarmState): DiscoveryTask {
   const purpose = 'общий ужин';
   const recovery = getSupperFishRecovery(farm);
-  if (recovery.kind === 'warehouse') return supply(farm,recovery.item,purpose);
+  if (recovery.kind === 'warehouse') {
+    if (recovery.port === farm.island) return supply(farm,recovery.item,purpose);
+    const label = {home:'Домой',grove:'В рощу',cape:'На Цветочный мыс',village:'В Лавандовую гавань'}[recovery.port];
+    return task(`${purpose}-stored-fish`,'Рыба на складе','Заберите одну рыбу к ужину.','ui-bag',{label,target:'sail',value:recovery.port});
+  }
   if (recovery.kind === 'rest') return rest(farm,purpose);
   const destination = recovery.shore;
   return task(`${purpose}-fish`,'Поймайте рыбу к ужину','К общему столу подойдёт окунь или сибас.', 'fish',

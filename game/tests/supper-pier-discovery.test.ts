@@ -5,6 +5,8 @@ import { runInNewContext } from 'node:vm'
 import * as Farm from '../src/farm.ts'
 import * as Supper from '../src/shared-supper.ts'
 import { getRequirementHint } from '../src/requirement-guidance.ts'
+import { freightStock } from '../src/bay-freight-model.ts'
+import { getLocalWarehouseSupply, warehouseConfirmation, warehouseConfirmationValue, withdrawWarehouseSupply } from '../src/warehouse-guidance.ts'
 import { renderHarbourFishChoice } from '../src/harbour-fish-route.ts'
 import test from 'node:test'
 import { getDiscoveryTask, getSupplyGuidance } from '../src/discovery-path.ts'
@@ -104,11 +106,12 @@ const start=source.indexOf("    case 'harbour-fish-catch':"),end=source.indexOf(
 assert.ok(start>0&&end>start)
 const clickCatch=stripTypeScriptTypes(`(async()=>{switch('harbour-fish-catch'){${source.slice(start,end)}}})()`)
 
-async function followTable(farm:Farm.FarmState,panel='village-meal',open=true) {
+async function followTable(farm:Farm.FarmState,panel='village-meal',open=true,crossing=false) {
  const shown:unknown[]=[], calls:string[]=[], clone=Farm.restoreCurrentFarm(JSON.parse(JSON.stringify(farm)))!
  const terminal=()=>({day:clone.day,coins:clone.coins,fish:clone.fish,work:clone.workToday,mealOn:clone.village.mealOn,meals:clone.village.meals,freight:clone.freight})
  const before=structuredClone(terminal())
- const ctx={...Farm,...Supper,farm:clone,panel,dialog:{open},control:{},
+ const ctx={...Farm,...Supper,farm:clone,panel,dialog:{open},control:{},island:{isCrossing:()=>crossing},
+  selectedWarehouseRequest:undefined as Farm.StockItem | undefined,
   async visitPanelAt(island:Farm.IslandId,target:string) {
     calls.push(`open:${island}:${target}`)
     if(clone.island!==island)assert.ok(Farm.sail(clone,island).ok)
@@ -125,7 +128,7 @@ async function followTable(farm:Farm.FarmState,panel='village-meal',open=true) {
   }}
  await runInNewContext(clickCatch,ctx)
  assert.deepEqual(terminal(),before,'routing alone cannot cast, spend, sleep, complete supper or dispatch ferry')
- return {calls,shown}
+ return {calls,shown,...(ctx.selectedWarehouseRequest ? {request:structuredClone(ctx.selectedWarehouseRequest)} : {})}
 }
 
 const fishReq=(item:'perch'|'seaBass',quantity=1)=>({kind:'stock',item:{kind:'fish',item,quantity}})
@@ -181,4 +184,56 @@ test('a locally stored earned bass keeps the player by the table rather than sen
  assert.deepEqual(f,before)
  p.act('transferBayGoods','withdraw','village','seaBass',1)
  assert.deepEqual(await followTable(p.state),{calls:[],shown:[]},'stale table choice cannot route when fish has just arrived')
+})
+
+
+test('both spent piers do not hide earned bass stored in Grove; crossing, taking one, and serving are separate choices',async()=>{
+  const player=beforeSupper(1)
+  spendDailyQuota(player,'home');player.act('sellMarketItem','fish:perch',player.state.fish.perch)
+  spendDailyQuota(player,'grove');player.act('transferBayGoods','deposit','grove','seaBass',player.state.fish.seaBass)
+  player.visit('village');player.reload()
+  const farm=player.state,before=structuredClone(farm), request={kind:'fish',item:'seaBass',quantity:1} as const
+  assert.deepEqual([player.actions,farm.day,farm.coins,farm.fishCaughtToday.home,farm.fishCaughtToday.grove,freightStock(farm.freight,'grove','seaBass')],[121,14,83,3,4,4])
+  assert.deepEqual([getFishAction({...farm,island:'home'}).available,getFishAction({...farm,island:'grove'}).available],[false,false])
+  assert.deepEqual([farm.fish.perch,farm.fish.seaBass, getVillageMeal(farm).served],[0,0,false])
+  assert.deepEqual(hint(player)?.action,{label:'В рощу',target:'sail',value:'grove'})
+  assert.match(html(farm),/data-action="harbour-fish-catch">На склад в рощу/)
+  assert.match(html(farm),/data-action="harbour-fish-trade"/)
+  assert.doesNotMatch(html(farm),/Поймать бесплатно|К отдыху дома/)
+  assert.deepEqual(await followTable(farm),{calls:['open:grove:warehouse-supply'],shown:[],request})
+  assert.deepEqual(await followTable(farm,'village-meal',true,true),{calls:[],shown:[]},'stale click cannot navigate while already crossing')
+  assert.equal(getLocalWarehouseSupply(farm,request),undefined,'no local transfer before explicitly crossing')
+  assert.deepEqual(farm,before)
+  player.visit('grove')
+  assert.deepEqual([player.state.fish.seaBass,freightStock(player.state.freight,'grove','seaBass'),player.state.village.meals],[0,4,1])
+  assert.equal(hint(player)?.action.target,'warehouse-supply')
+  const supply=getLocalWarehouseSupply(player.state, request)
+  assert.ok(supply);assert.deepEqual([supply.port,supply.stored,supply.quantity],['grove',4,1])
+  const expected=warehouseConfirmation(warehouseConfirmationValue(supply))
+  const remote=structuredClone(before)
+  assert.equal(withdrawWarehouseSupply(remote, request, expected).ok,false,'no cross-island take, even with a valid Grove token')
+  assert.deepEqual(remote,before)
+  assert.equal(withdrawWarehouseSupply(player.state,request,expected).ok,true)
+  assert.equal(withdrawWarehouseSupply(player.state,request,expected).ok,false,'a second press cannot take another fish')
+  player.reload()
+  assert.deepEqual([player.state.fish.seaBass,freightStock(player.state.freight,'grove','seaBass'),player.state.village.meals],[1,3,1])
+  player.visit('village')
+  assert.equal(hint(player)?.action.target,'village-meal')
+  player.act('serveVillageMeal','round')
+  assert.deepEqual([player.state.day,player.state.coins,player.state.fish.seaBass,player.state.village.meals,getVillageHomeCount(player.state),player.state.village.residents[1]],[14,83,0,2,2,null])
+  assert.deepEqual(await followTable(player.state),{calls:[],shown:[]},'next day never suggested because of a stale button')
+})
+
+test('a remote stock does not replace an open ordinary shore or a usable local warehouse',async()=>{
+  const player=beforeSupper(1)
+  spendDailyQuota(player,'home')
+  player.act('transferBayGoods','deposit','home','perch',1)
+  player.act('sellMarketItem','fish:perch',player.state.fish.perch)
+  player.visit('village')
+  assert.deepEqual(await followTable(player.state),{calls:['sail:grove','visit-pier'],shown:[fishReq('seaBass')]})
+  spendDailyQuota(player,'grove');player.act('transferBayGoods','deposit','grove','seaBass',1)
+  player.visit('village');player.act('transferBayGoods','deposit','village','seaBass',player.state.fish.seaBass)
+  assert.equal(Supper.getSupperFishRecovery(player.state).kind,'warehouse')
+  assert.deepEqual(await followTable(player.state),{calls:['warehouse-supply:seaBass|1'],shown:[fishReq('seaBass')]},'existing local fish wins over both remote choices without replacing the paid one')
+  assert.match(html(player.state),/data-action="harbour-fish-trade"/)
 })
