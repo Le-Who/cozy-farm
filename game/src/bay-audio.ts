@@ -210,12 +210,23 @@ export class BayAudio {
   }
 
   playNote(id: BayInstrumentId, midi: number, time = this.currentTime, velocity = .7): void {
+    this.instrumentVoice(id, midi, time, velocity)
+  }
+
+  /** Use the real instrument timbre without owning or stopping any other voice. */
+  previewNote(id: BayInstrumentId, midi: number) {
+    if (this.settings.muted || this.settings.volume === 0 || this.settings.music === 0) return
+    const voice = this.instrumentVoice(id, midi, this.currentTime, .7)
+    if (voice) return { until: voice.end, stop: () => this.releaseVoice(voice) }
+  }
+
+  private instrumentVoice(id: BayInstrumentId, midi: number, time: number, velocity: number): Voice | undefined {
     if (!this.context || this.context.state !== 'running') return
     const at = Math.max(time, this.currentTime), level = Math.max(.01, Math.min(1, velocity))
     const choices = this.instrumentSamples(id), targetMidi = id === 'bass' ? midi - 24 : midi
     if (choices.length) {
       const sample = choices.reduce((best, next) => Math.abs(next.rootMidi! - targetMidi) < Math.abs(best.rootMidi! - targetMidi) ? next : best)
-      this.sampleVoice(sample, at, level, true, id === 'shaker' || id === 'ceramic' ? undefined : targetMidi)
+      return this.sampleVoice(sample, at, level, true, id === 'shaker' || id === 'ceramic' ? undefined : targetMidi)
     }
   }
 
@@ -273,7 +284,7 @@ export class BayAudio {
     return voice
   }
 
-  private sampleVoice(sample: BaySample, time: number, velocity: number, music: boolean, midi?: number, event?: string): void {
+  private sampleVoice(sample: BaySample, time: number, velocity: number, music: boolean, midi?: number, event?: string): Voice {
     const ctx = this.context!, buffer = this.samples.get(sample.url)!
     const rate = midi !== undefined && sample.rootMidi !== undefined ? Math.pow(2, (midi - sample.rootMidi) / 12) : 1
     const organic = !music && event && /^(flock\.|field\.|gather\.|orchard\.)/.test(event)
@@ -293,6 +304,7 @@ export class BayAudio {
     const source = ctx.createBufferSource(); source.buffer = buffer; source.playbackRate.value = speed
     source.connect(voice.envelope); voice.sources.push(source); source.start(time); source.stop(voice.end)
     source.onended = () => this.releaseVoice(voice)
+    return voice
   }
 
   private releaseVoice(voice: Voice): void {

@@ -254,3 +254,45 @@ test('cancelled pending contacts never start and suspend immediately clears rele
     assert.equal(audio.getDiagnostics().activeVoices,1,'a new gesture still starts normally after resuming')
   })
 })
+
+test('an instrument preview uses the same authored source as a normal note, with independent cancellation', async () => {
+  await withAudio(async (audio, context) => {
+    audio.loadSampleManifest({
+      'instrument.shaker': [{url:'shaker-low'},{url:'shaker-high'}],
+      'instrument.bass': [{url:'bass-low',rootMidi:37.946,tuned:true}],
+    })
+    const loads: string[] = []
+    globalThis.fetch = async url => { loads.push(String(url)); return new Response(new Uint8Array(4)) }
+    assert.equal(await audio.primeInstruments(['bass']),true)
+    assert.deepEqual(loads,['bass-low'])
+    audio.playNote('bass',60)
+    const ordinary = context.sources[0]
+    assert.equal(await audio.primeInstruments(['shaker']),true)
+    assert.deepEqual(loads,['bass-low','shaker-low','shaker-high'])
+    audio.playNote('shaker',60)
+    const preview = audio.previewNote('shaker',60)
+    assert.ok(preview)
+    const [,ordinaryShaker,oneShot] = context.sources
+    assert.equal(oneShot.buffer,ordinaryShaker.buffer,'real percussion stock, not a generic UI cue')
+    assert.equal(oneShot.playbackRate.value,1)
+    assert.equal(oneShot.stopAt,preview.until)
+    assert.equal(oneShot.loop,false)
+    preview.stop();preview.stop()
+    assert.equal(oneShot.disconnects,1)
+    assert.equal(ordinary.disconnects,0,'no global stop of the arrangement')
+    assert.equal(ordinaryShaker.disconnects,0)
+    const bass = audio.previewNote('bass',60)
+    assert.ok(bass)
+    assert.equal(context.sources.at(-1)?.buffer,ordinary.buffer)
+    assert.equal(context.sources.at(-1)?.playbackRate.value,ordinary.playbackRate.value)
+    assert.notEqual(ordinary.buffer,oneShot.buffer)
+    audio.setSettings({music:0});assert.equal(audio.previewNote('shaker',60),undefined)
+    audio.setSettings({music:.8,muted:true});assert.equal(audio.previewNote('bass',60),undefined)
+    audio.setSettings({muted:false,volume:0});assert.equal(audio.previewNote('shaker',60),undefined)
+    audio.setSettings({volume:.7})
+    assert.equal(audio.previewNote('marimba',60),undefined,'no generic beep when no actual voice is decoded')
+    assert.equal(context.sources.length,4)
+    context.advanceTo(4)
+    assert.equal(audio.getDiagnostics().activeVoices,0,'the preview also naturally ends with no cleanup timer')
+  })
+})

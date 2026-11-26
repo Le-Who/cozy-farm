@@ -22,6 +22,7 @@
 
 .bay-music-festival-list { display: grid; gap: 8px; margin-top: 18px; }
 .bay-music-festival-list:empty { display: none; }
+.bay-music-sheet .bay-music-preview-note { min-height: 44px; }
 .bay-music-festival-list button { min-height: 44px; padding: 10px 14px; text-align: left; }
 
 .bay-music-concert{display:flex;align-items:center;gap:14px;min-width:0;font:12px/1.4 system-ui,sans-serif;color:#715b7b}

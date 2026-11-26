@@ -35,6 +35,7 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
   let sheetFocus: HTMLElement | null = null
   let running = false, preparing = false, recording = false, destroyed = false, nextStep = 0, nextTime = 0, currentStep = -1, stepsPerformed = 0, rewarded = false
   let timer = 0, frame = 0, transportRevision = 0, auditionRevision = 0
+  let instrumentPreview: { until?: number; stop?: () => void } | undefined
   const scheduled: { step: number; time: number }[] = [], abort = new AbortController(), signal = abort.signal
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL, art = `${base}art/lavender/bay/`
@@ -51,7 +52,7 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
     <div class="bay-music-sheet-backdrop" hidden><section class="bay-music-sheet" role="dialog" aria-modal="true" aria-labelledby="bay-music-sheet-title"><header><h2 id="bay-music-sheet-title"></h2><button type="button" class="bay-music-sheet-close" aria-label="Вернуться к инструментам">×</button></header><div class="bay-music-sheet-body">
       <div data-sheet-content="library" hidden><p class="bay-music-sheet-intro">Изменения сохраняются сами. Здесь можно оставить три любимые версии.</p><div class="bay-music-presets"><label>Название мелодии<input class="bay-music-name" maxlength="40" aria-label="Название мелодии"></label><label>Место для записи<select aria-label="Ячейка сохранения"><option value="0">Запись 1</option><option value="1">Запись 2</option><option value="2">Запись 3</option></select></label><div class="bay-music-sheet-actions"><button type="button" class="bay-music-save">Сохранить версию</button><button type="button" class="bay-music-load">Открыть версию</button></div></div><div class="bay-music-festival-list">${state.festivalUnlocked ? Array.from({length:Math.max(1,state.festivalLevel ?? 1)},(_,i) => `<button type="button" class="bay-music-festival" data-edition="${i+1}">${bayFestivalPattern(i+1).name}</button>`).join('') : ''}</div></div>
       <div data-sheet-content="settings" hidden><div class="bay-music-settings"><label class="bay-music-tempo">Темп <input type="range" min="54" max="132" step="1" value="${state.tempo}" aria-label="Темп мелодии"><output>${state.tempo}</output></label><label class="bay-music-master">Общая громкость <input type="range" min="0" max="100" value="${Math.round(bayAudio.settings.volume * 100)}" aria-label="Общая громкость"></label><label class="bay-music-music-level">Музыка <input type="range" min="0" max="100" value="${Math.round(bayAudio.settings.music * 100)}" aria-label="Громкость музыки"></label><button type="button" class="bay-music-mute" aria-pressed="${bayAudio.settings.muted}" aria-label="${bayAudio.settings.muted ? 'Включить весь звук' : 'Выключить весь звук'}">${bayAudio.settings.muted ? 'Включить звук' : 'Выключить звук'}</button></div><h3>Громкость инструментов</h3><div class="bay-music-mixer">${BAY_INSTRUMENTS.map(instrument => `<label data-mixer="${instrument.id}"><span>${instrument.name}</span><input type="range" data-volume="${instrument.id}" min="0" max="100" aria-label="Громкость: ${instrument.name}"></label>`).join('')}</div><button type="button" class="bay-music-clear">Очистить выбранную дорожку</button><p class="bay-music-help">Пробел — играть и остановить. A S D F G H — инструменты. 1–8 — ноты. Выберите ноту и коснитесь шага, чтобы изменить мелодию. При включённой записи касания инструментов попадают в звучащую дорожку.</p></div>
-      <div data-sheet-content="materials" hidden><div class="bay-music-expansion-preview"><img alt="" draggable="false"><div><h3></h3><p>Припасы и склад Лавандовой гавани</p></div></div><div class="bay-music-materials"></div><p class="bay-music-materials-hint"></p><div class="bay-music-sheet-actions"><button type="button" class="bay-music-expand">Собрать инструмент</button><button type="button" class="bay-music-freight">Материалы и склады</button></div></div>
+      <div data-sheet-content="materials" hidden><div class="bay-music-expansion-preview"><img alt="" draggable="false"><div><h3></h3><button type="button" class="bay-music-preview-note">Послушать</button></div></div><div class="bay-music-materials"></div><p class="bay-music-materials-hint"></p><div class="bay-music-sheet-actions"><button type="button" class="bay-music-expand">Собрать инструмент</button><button type="button" class="bay-music-freight">Материалы и склады</button></div></div>
     </div><p class="bay-music-sheet-status" role="status" aria-live="polite"></p></section></div>
   </div>`
   const sheetFooter = document.createElement('footer'); sheetFooter.className = 'bay-music-sheet-footer'
@@ -69,6 +70,8 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
   const remember = () => options.onViewChange?.({selected,note:selectedNote,preset:Number(presetSelect.value),sheet})
   const save = () => options.onSave?.(normalizeBayMusicState(state))
   const say = (message: string) => { status.textContent = message; status.parentElement!.hidden = !message; query<HTMLElement>('.bay-music-sheet-status').textContent = message }
+  const listen = query<HTMLButtonElement>('.bay-music-preview-note')
+  const nextInstrument = () => BAY_INSTRUMENTS.find(item => item.level === state.level + 1)
   const instrumentLevel = (id: BayInstrumentId) => BAY_INSTRUMENTS.find(instrument => instrument.id === id)!.level
   const available = (id: BayInstrumentId) => instrumentLevel(id) <= state.level
   const audible = () => !bayAudio.settings.muted && bayAudio.settings.volume > 0 && bayAudio.settings.music > 0
@@ -131,11 +134,12 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
     expand.hidden = !expansion; expand.textContent = 'Собрать инструмент'
     const materialNames: Record<string,string> = {shells:'Ракушки',seaSalt:'Морская соль',beeswax:'Пчелиный воск'}
     const sources = options.getMaterialSources?.() ?? musicMaterialSources
-    const preview = query<HTMLElement>('.bay-music-expansion-preview')
-    preview.hidden = !expansion
-    if (expansion) {
-      preview.querySelector('img')!.src = `${art}music-${expansion.level === 1 ? 'shaker' : 'bass'}.webp`
+    const preview = query<HTMLElement>('.bay-music-expansion-preview'), next = nextInstrument()
+    preview.hidden = !expansion || !next
+    if (expansion && next) {
+      preview.querySelector('img')!.src = `${art}music-${next.id}.webp`
       preview.querySelector('h3')!.textContent = expansion.name
+      listen.setAttribute('aria-label', `Послушать: ${next.name}`)
     }
     const materialStock = options.getMaterialStock?.() ?? options.materialStock ?? {}
     const ready = expansion?.materials.every(item => (materialStock[item.id] ?? 0) >= item.quantity) ?? false
@@ -149,6 +153,7 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
   }
 
   function showSheet(next: BayMusicViewState['sheet']): void {
+    if (next !== 'materials') cancelInstrumentPreview()
     if(next)duet.cancel()
     if (next && !sheet) sheetFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     sheet = next
@@ -202,6 +207,7 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
     frame = requestAnimationFrame(draw)
   }
   function stop(message?: string): void {
+    cancelInstrumentPreview()
     solo()
     transportRevision++; auditionRevision++; preparing = false; running = false; clearInterval(timer); cancelAnimationFrame(frame); frame = 0; bayAudio.stopMusic(); scheduled.length = 0; currentStep = -1; stepsPerformed = 0
     playButton.textContent = '▶ Играть'; playButton.setAttribute('aria-pressed', 'false'); root.classList.remove('is-playing', 'is-preparing')
@@ -247,6 +253,30 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
     bayAudio.playNote(id, BAY_SCALE[note], bayAudio.currentTime, track.volume)
   }
 
+  function cancelInstrumentPreview(): void {
+    instrumentPreview?.stop?.()
+    instrumentPreview = undefined
+  }
+  async function previewExpansion(): Promise<void> {
+    const id = nextInstrument()?.id
+    if (!id || sheet !== 'materials' || destroyed || document.hidden) return
+    const tell = (message: string) => { query<HTMLElement>('.bay-music-sheet-status').textContent = message }
+    if (running || preparing) { tell('Сначала остановите мелодию.'); return }
+    if (!audible()) { tell('Музыка выключена.'); return }
+    if (instrumentPreview && (instrumentPreview.until === undefined || instrumentPreview.until > bayAudio.currentTime)) return
+    const request: NonNullable<typeof instrumentPreview> = instrumentPreview = {}
+    const current = () => instrumentPreview === request && !destroyed && !document.hidden
+      && sheet === 'materials' && nextInstrument()?.id === id && !running && !preparing && audible()
+    const ready = await bayAudio.unlock() && current() && await bayAudio.primeInstruments([id])
+    if (!current()) {
+      if (instrumentPreview === request) instrumentPreview = undefined
+      return
+    }
+    const voice = ready ? bayAudio.previewNote(id, BAY_SCALE[0]) : undefined
+    if (voice) { Object.assign(request,voice); tell('') }
+    else { instrumentPreview = undefined; tell('Звук инструмента пока недоступен.'); }
+  }
+
   async function restoreSound(): Promise<void> {
     if (!running || !audible()) return
     const revision = transportRevision
@@ -261,7 +291,8 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
     if (button.dataset.sheet) { showSheet(button.dataset.sheet as BayMusicViewState['sheet']); return }
     if (button.classList.contains('bay-music-sheet-close')) { showSheet(null); return }
     if (button.classList.contains('bay-music-shop')) { options.onOpenShop?.(); return }
-    if (button.classList.contains('bay-music-freight')) { remember(); options.onOpenSupplies?.(); return }
+    if (button === listen) { void previewExpansion(); return }
+    if (button.classList.contains('bay-music-freight')) { cancelInstrumentPreview(); remember(); options.onOpenSupplies?.(); return }
     if(button===duetButton){
       if(withBea){solo();say('')}
       else if(!running&&!preparing&&!recording){withBea=true;duetButton.setAttribute('aria-pressed','true');primeReply();say('Сыграйте две ноты. Беа ответит.')}
@@ -319,7 +350,12 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
     if (/^Digit[1-8]$/.test(event.code)&&(!withBea||!event.repeat)) { selectedNote = Number(event.code.slice(-1))-1; update(); void strike(selected,true) }
 
   }, {signal})
-  document.addEventListener('visibilitychange', () => { if(document.hidden)solo(); if (document.hidden && (running || preparing)) stop('Нажмите «Играть», чтобы продолжить.') }, {signal})
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      cancelInstrumentPreview(); solo()
+      if (running || preparing) stop('Нажмите «Играть», чтобы продолжить.')
+    }
+  }, {signal})
   update(); query<HTMLButtonElement>('.bay-music-close').focus()
   if (options.viewState?.sheet) showSheet(options.viewState.sheet)
   return { destroy() { if (destroyed) return; destroyed = true; stop(); abort.abort(); cancelAnimationFrame(frame); save(); root.remove(); if (previousFocus?.isConnected) previousFocus.focus() } }
