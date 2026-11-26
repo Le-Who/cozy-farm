@@ -230,6 +230,14 @@ export function getRequirementHint(farm: FarmState, requirement: Requirement, or
       return farm.island === 'grove' ? route('focus-place','salt') : route('sail','grove');
     }
     const hint = stock(farm, item);
+    // A full ordinary batch in one orchard avoids a detour from the village kitchen.
+    if (origin && item.kind === 'fruit' && farm.island === 'village'
+      && hint.action.target === 'sail' && hint.action.value === 'home' && canSailTo(farm, 'grove')) {
+      const missing = item.quantity - farm.fruit[item.item];
+      const ready = (island: 'home' | 'grove') => farm.trees[island].reduce((sum, tree) =>
+        sum + (tree?.tree === item.item ? tree.fruitReady - Number(!!tree.trait) : 0), 0);
+      if (missing > 1 && ready('home') < missing && ready('grove') >= missing) return route('sail', 'grove');
+    }
     // Keep the exact saved recipe or active draft on Back. Other source routes stay unchanged.
     if ((origin === 'saved-recipe' || origin === 'recipe-draft') && item.kind === 'fruit' && farm.fruit[item.item] < item.quantity && hint.action.target === 'visit-tree' &&
         (farm.island === 'home' || farm.island === 'grove')) {
