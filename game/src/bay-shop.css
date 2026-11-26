@@ -38,3 +38,7 @@
 .bay-shop-stock-groups button[aria-pressed=true]{background:#e8daee;border-color:#a58ab5;color:#654b76}
 .bay-shop-stock-groups button:focus-visible{outline:2px solid #705187;outline-offset:-3px}
 @media(max-height:500px){.bay-shop-stock-groups button{font-size:11px}}
+
+/* Keep a sold shelf's available item in its own summary, not a second catalog tile. */
+.bay-shop-selected>.bay-shop-refill{grid-column:1/3;grid-row:1;grid-template-columns:30px minmax(0,1fr);justify-items:start;min-height:44px;padding:4px 21px 4px 5px;text-align:left}
+.bay-shop-refill .bay-shop-product-art{height:30px;width:30px}

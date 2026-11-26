@@ -70,7 +70,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   let savedShopState = JSON.stringify(state);
   function saveChanges() { options.onChange(); savedShopState = JSON.stringify(state); }
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
-  let pending: { id: string; identity: string; quantity: string; listScroll: number } | undefined;
+  let pending: { id: string; identity: string; quantity: string; listScroll: number; soldShelf?: number } | undefined;
   let stockGroup: StockGroup = 'all';
   let tab: 'stock' | 'journal' = 'stock', notice = '', noticeTimer = 0, destroyed = false, frame = 0, lastTime = performance.now();
   let lastPhase = !state.open && !state.visitor ? 'idle' : '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
@@ -98,25 +98,43 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     }
     return `${person.name}: ${visitor.outcome ? visitorMessages[visitor.outcome.kind] : 'До встречи!'}`;
   }
-  function previewStock(product: BayShopStock, preferred: number): boolean {
-    const slot = shopStockSlot(state, product, preferred);
+  function soldShelfStock(products: readonly GroupedStock[]) {
+    const shelf = state.slots[selected];
+    if (shelf?.quantity !== 0) return;
+    return products.find(product => product.quantity > 0 && product.id === shelf.product.id &&
+      product.identity === shelf.product.identity && shopQuantityPreview(state,selected,product,1).valid);
+  }
+  function stockForPending(products: readonly GroupedStock[]) {
+    const quote = pending;
+    if (!quote) return;
+    const product = quote.soldShelf === undefined ? products.find(p => p.id === quote.id && p.identity === quote.identity)
+      : quote.soldShelf === selected ? soldShelfStock(products) : undefined;
+    return product?.id === quote.id && product.identity === quote.identity ? product : undefined;
+  }
+  function previewStock(product: BayShopStock, preferred: number, soldShelf?: number): boolean {
+    const slot = soldShelf ?? shopStockSlot(state, product, preferred);
     if (!shopQuantityPreview(state,slot,product,1).valid) return false;
     selected = slot;
-    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-products')?.scrollTop ?? 0 };
+    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-products')?.scrollTop ?? 0, soldShelf };
     return true;
+  }
+  function stockButton(product: GroupedStock, soldShelf?: number) {
+    const pin = soldShelf === undefined ? '' : ` data-stock-sold-shelf="${soldShelf}" data-stock-identity="${escape(product.identity)}"`;
+    return `<button type="button" class="bay-shop-product${pin ? ' bay-shop-refill' : ''}" data-user-text data-stock="${escape(product.id)}" data-action="shop-stock-select"${pin} aria-label="Выбрать товар: ${escape(product.name)}. В запасе: ${product.quantity}"><span class="bay-shop-product-art">${art(product)}</span><span data-user-text>${escape(product.name)}</span><small>×${product.quantity}</small>${product.signature ? '<em title="Мой рецепт" aria-label="Мой рецепт">♥</em>' : ''}</button>`;
   }
   function stockControls(): string {
     const slot = state.slots[selected], products = options.products().filter(p => p.quantity > 0);
     if (pending) {
-      const product = products.find(item => item.id === pending!.id && item.identity === pending!.identity);
-      if (!product) return `<p>Этот товар уже закончился.</p><button type="button" data-stock-cancel>Вернуться к припасам</button>`;
+      const product = stockForPending(products);
+      if (!product) return `<p>${pending.soldShelf === undefined ? 'Этот товар уже закончился.' : 'Проверьте количество и свободное место на полке.'}</p><button type="button" data-stock-cancel>Вернуться к припасам</button>`;
       const preview = shopQuantityPreview(state, selected, product, Number(pending.quantity));
       return `<div class="bay-shop-quantity"><h3 data-user-text>${escape(product.name)}</h3><p>Место ${selected + 1} · в припасах и на складе гавани: ${product.quantity}</p>
         <form data-stock-form><label>Количество на полку<input data-stock-quantity type="number" inputmode="numeric" min="1" max="${preview.maximum}" step="1" value="${escape(pending.quantity)}" aria-label="Количество на полку"></label>
         <p data-stock-preview role="status"></p><div class="bay-shop-quantity-actions"><button type="submit" data-stock-confirm data-action="shop-stock-confirm">Выставить</button><button type="button" data-stock-cancel>Отмена</button></div></form></div>`;
     }
+    const refill = soldShelfStock(products);
     const selectedPanel = slot ? `<div class="bay-shop-selected">
-      <span class="bay-shop-selected-art">${art(slot.product)}</span><div><strong data-user-text>${escape(slot.product.name)}</strong><span>На полке ×${slot.quantity}</span></div>
+      ${refill ? stockButton(refill,selected) : `<span class="bay-shop-selected-art">${art(slot.product)}</span><div><strong data-user-text>${escape(slot.product.name)}</strong><span>На полке ×${slot.quantity}</span></div>`}
       <label class="bay-shop-price">За 1 шт. <span><input data-price type="number" inputmode="numeric" min="1" max="10000" step="1" value="${slot.price}" aria-label="Цена за одну штуку в монетах"><span aria-hidden="true">●</span></span></label>
       <div class="bay-shop-price-presets" aria-label="Быстрая цена">${[[.8, '−20%'], [1, 'Обычно'], [1.35, '+35%']].map(([factor, label]) => `<button type="button" data-price-factor="${factor}" aria-label="${label}: ${Math.max(1, Math.round(slot.product.basePrice * Number(factor)))} монет" aria-pressed="${slot.price === Math.max(1, Math.round(slot.product.basePrice * Number(factor)))}">${label}</button>`).join('')}</div>
       <button type="button" class="bay-shop-return" data-return aria-label="${shopReturnLabel(slot.quantity)}" title="${shopReturnLabel(slot.quantity)}">↶</button>
@@ -129,9 +147,8 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       : '<div class="bay-shop-stock-heading"><strong>Припасы</strong></div>';
     const visible = stockGroup === 'all' ? products : products.filter(product => productGroup(product) === stockGroup);
     return `${selectedPanel}${heading}
-      <div class="bay-shop-products" id="bay-shop-stock-grid">${visible.length ? visible.map(product => {
-        return `<button type="button" class="bay-shop-product" data-user-text data-stock="${escape(product.id)}" data-action="shop-stock-select" aria-label="Выбрать товар: ${escape(product.name)}. В запасе: ${product.quantity}"><span class="bay-shop-product-art">${art(product)}</span><span data-user-text>${escape(product.name)}</span><small>×${product.quantity}</small>${product.signature ? '<em title="Мой рецепт" aria-label="Мой рецепт">♥</em>' : ''}</button>`;
-      }).join('') : `<div class="bay-shop-stock-empty"><p>Привезите продукты или испеките булочки.</p>${options.onOpenFreight ? '<button type="button" data-freight>К парому</button>' : ''}</div>`}</div>`;
+      <div class="bay-shop-products" id="bay-shop-stock-grid">${visible.length ? visible.filter(product => product !== refill).map(product => stockButton(product)).join('')
+        : `<div class="bay-shop-stock-empty"><p>Привезите продукты или испеките булочки.</p>${options.onOpenFreight ? '<button type="button" data-freight>К парому</button>' : ''}</div>`}</div>`;
   }
   function commissionCustomer() {
     return tab === 'journal' ? bayShopVisitors.find(person => person.id === customerView.selected && options.commissionCustomers?.().includes(person.id)) : undefined;
@@ -272,9 +289,10 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     }
     if (button.hasAttribute('data-stock-cancel')) {
       const origin = pending;
+      const exactShelf = origin?.soldShelf === undefined || stockForPending(options.products()) !== undefined;
       pending = undefined;
       const ownedCancel = (event as MouseEvent).detail === 0 && document.activeElement === button;
-      const available = origin && options.products().some(p => p.id === origin.id && p.identity === origin.identity && p.quantity > 0);
+      const available = origin && exactShelf && options.products().some(p => p.id === origin.id && p.identity === origin.identity && p.quantity > 0);
       render(available ? { id: ownedCancel ? origin.id : undefined, listScroll: origin.listScroll } : undefined);
       return;
     }
@@ -298,16 +316,20 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       return;
     }
     if (button.dataset.stock) {
-      const product = options.products().find(p => p.id === button.dataset.stock);
+      const pin = button.getAttribute('data-stock-sold-shelf');
+      const products = options.products();
+      const product = pin === null ? products.find(p => p.id === button.dataset.stock) : soldShelfStock(products);
+      if (pin !== null && (tab !== 'stock' || pending || pin !== String(selected) ||
+        product?.id !== button.dataset.stock || product.identity !== button.getAttribute('data-stock-identity'))) { render(); return; }
       if (!product || product.quantity < 1) return;
-      if (!previewStock(product, selected)) { playBaySound('menu.blocked',.8); notice = 'Все места заняты. Уберите товар кнопкой ↶.'; render(); return; }
+      if (!previewStock(product, selected, pin === null ? undefined : selected)) { playBaySound('menu.blocked',.8); notice = 'Все места заняты. Уберите товар кнопкой ↶.'; render(); return; }
       notice = ''; render();
       host.querySelector<HTMLInputElement>('[data-stock-quantity]')?.focus();
     }
   }
   function paintQuantity(): void {
     if (!pending) return;
-    const product = options.products().find(item => item.id === pending!.id && item.identity === pending!.identity);
+    const product = stockForPending(options.products());
     const output = host.querySelector<HTMLElement>('[data-stock-preview]'), confirm = host.querySelector<HTMLButtonElement>('[data-stock-confirm]');
     if (!product || !output || !confirm) return;
     const preview = shopQuantityPreview(state, selected, product, Number(pending.quantity));
@@ -323,9 +345,11 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!(event.target instanceof Element) || !event.target.matches('[data-stock-form]')) return;
     event.preventDefault();
     if (!pending) return;
-    const product = options.products().find(item => item.id === pending!.id && item.identity === pending!.identity), quantity = Number(pending.quantity);
+    const product = stockForPending(options.products()), quantity = Number(pending.quantity);
     if (!product || !placeShopQuantity(state, selected, product, quantity, options.takeStock)) {
-      playBaySound('menu.blocked',.8); notice = 'Проверьте количество и свободное место на полке.'; render(); return;
+      const staleShelf = !product && pending.soldShelf !== undefined ? {listScroll:pending.listScroll} : undefined;
+      if (staleShelf) pending = undefined;
+      playBaySound('menu.blocked',.8); notice = 'Проверьте количество и свободное место на полке.'; render(staleShelf); return;
     }
     lastRefusal = undefined; earnedOrder = undefined;
     if (quotedProduct && options.catalog) syncBayShopProducts(state, options.catalog);

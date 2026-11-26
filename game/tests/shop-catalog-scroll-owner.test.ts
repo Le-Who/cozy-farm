@@ -134,7 +134,7 @@ test('the existing layout makes the product grid the scroll owner rather than it
 test('the same earned deep product stays in place when an unconfirmed quantity is cancelled',t=>{
   for(const detail of [0,1]){
     const {farm,id,items,actions}=earned(), ui=scene(farm), before=structuredClone(farm)
-    ui.click('[data-slot="0"]')
+    ui.click('[data-slot="1"]')
     const inventoryScroll=318
     ui.get('.bay-shop-products').scrollTop=inventoryScroll
     ui.click(`[data-stock="${id}"]`)
@@ -143,7 +143,7 @@ test('the same earned deep product stays in place when an unconfirmed quantity i
     ui.click('[data-stock-cancel]',detail)
     t.diagnostic(JSON.stringify({day:farm.day,actions,catalogItems:items.length,position:items.findIndex(item=>item.id===id)+1,input:detail?'pointer':'keyboard',before:inventoryScroll,after:ui.get('.bay-shop-products').scrollTop}))
     assert.equal(ui.get('.bay-shop-products').scrollTop,inventoryScroll)
-    assert.equal(ui.focused,ui.get(detail?'[data-slot="0"]':`[data-stock="${id}"]`))
+    assert.equal(ui.focused,ui.get(detail?'[data-slot="1"]':`[data-stock="${id}"]`))
     assert.equal(ui.transfers,0)
     assert.deepEqual(farm,before)
     ui.destroy()
@@ -250,4 +250,70 @@ test('first ordinary harbor arrival has at most four product rows and keeps the 
   assert.deepEqual(groups(ui.host.innerHTML),[]);assert.match(ui.host.innerHTML,/<strong>Припасы<\/strong>/)
   assert.deepEqual(listing(ui.host.innerHTML),Array.from(products,row=>row.id));assert.deepEqual(p.state,before)
   ui.destroy()
+})
+
+test('earned Day14 selected sold shelf has one direct exact refill without changing the chosen category or saved price',t=>{
+  const {farm,id,recipe,items,actions}=earned(),ui=scene(farm), before=structuredClone(farm)
+  assert.deepEqual([farm.day,actions,items.length,farm.bayShop.slots[0]?.price,farm.culinary.stock[recipe]],[14,118,23,19,1])
+  ui.click('[data-stock-group="harvest"]')
+  ui.click('[data-slot="0"]')
+  const pin=()=>ui.get('[data-stock-sold-shelf="0"]')
+  assert.equal(pin().getAttribute('data-stock'),id)
+  assert.equal(listing(ui.host.innerHTML).filter(v=>v===id).length,1)
+  assert.ok(groups(ui.host.innerHTML).some(([group,active])=>group==='harvest'&&active==='true'))
+  assert.deepEqual(farm,before)
+  ui.get('.bay-shop-products').scrollTop=108
+  ui.click('[data-stock-sold-shelf="0"]')
+  assert.equal(ui.get('[data-stock-quantity]').value,'1')
+  assert.equal(ui.transfers,0)
+  assert.deepEqual(farm,before)
+  ui.click('[data-stock-cancel]')
+  assert.equal(ui.focused,pin());assert.equal(ui.get('.bay-shop-products').scrollTop,108)
+  assert.ok(groups(ui.host.innerHTML).some(([group,active])=>group==='harvest'&&active==='true'))
+  ui.click('[data-stock-group="kitchen"]')
+  const kitchen=listing(ui.host.innerHTML)
+  assert.ok(kitchen.includes('dish:orchardTart'))
+  assert.equal(kitchen.filter(v=>v===id).length,1,'same product appears only once, not also in its original category')
+  ui.click('[data-slot="1"]')
+  assert.doesNotMatch(ui.host.innerHTML,/data-stock-sold-shelf=/)
+  assert.ok(listing(ui.host.innerHTML).includes(id),'normal catalogue entry while a different shelf is selected')
+  ui.click('[data-slot="0"]');ui.click('[data-stock-sold-shelf="0"]')
+  ui.submit()
+  assert.deepEqual([ui.transfers,farm.culinary.stock[recipe],farm.bayShop.slots[0]?.quantity,farm.bayShop.slots[0]?.price,farm.coins],
+    [1,0,1,19,before.coins])
+  assert.equal(ui.focused,ui.get('[data-slot="0"]'))
+  assert.doesNotMatch(ui.host.innerHTML,/data-stock-sold-shelf=/)
+  const soldBefore=farm.bayShop.sold, coinsBefore=farm.coins
+  if(!farm.bayShop.open)ui.click('[data-open]')
+  for(let elapsed=0;elapsed<60&&farm.bayShop.sold===soldBefore;elapsed++)ui.advance()
+  assert.deepEqual([farm.bayShop.sold-soldBefore,farm.coins-coinsBefore,farm.bayShop.slots[0]?.quantity,ui.transfers],[1,19,0,1],
+    'a real subsequent visitor pays the saved price exactly once')
+  assert.doesNotMatch(ui.host.innerHTML,/data-stock-sold-shelf=/,'no refill after the genuinely last unit is sold')
+  t.diagnostic(JSON.stringify({day:farm.day,actions,all:items.length,originalSavedPrice:19,previewTransfers:0,
+    exactStockPlacement:ui.transfers,visitorPayment:farm.coins-coinsBefore,soldOnce:true,otherKitchen:true}))
+  ui.destroy()
+})
+
+test('sold shelf quote cannot refill, reserve, or reroute a stale shelf or depleted product',()=>{
+  for(const mode of ['shelf-before-click','stock-before-click','replacement-before-click','shelf-after-preview'] as const) {
+    const {farm,id,items}=earned(),ui=scene(farm)
+    ui.click('[data-slot="0"]')
+    assert.ok(ui.get('[data-stock-sold-shelf="0"]'))
+    if(mode==='shelf-after-preview')ui.click('[data-stock-sold-shelf="0"]')
+    if(mode==='stock-before-click')assert.ok(reserveShopGoods(farm,id,1))
+    else {
+      assert.equal(model.removeBayShopStock(farm.bayShop,0)?.quantity,0)
+      if(mode==='replacement-before-click'){
+        const other=items.find(item=>item.id==='dish:orchardTart')!
+        assert.ok(reserveShopGoods(farm,other.id,1))
+        assert.ok(model.stockBayShop(farm.bayShop,0,other,1))
+      }
+    }
+    const afterChange=structuredClone(farm)
+    if(mode==='shelf-after-preview')ui.submit()
+    else ui.click('[data-stock-sold-shelf="0"]')
+    assert.equal(ui.transfers,0,mode);assert.deepEqual(farm,afterChange,mode)
+    assert.doesNotMatch(ui.host.innerHTML,/data-stock-(?:quantity|sold-shelf)\b/i,mode)
+    ui.destroy()
+  }
 })
