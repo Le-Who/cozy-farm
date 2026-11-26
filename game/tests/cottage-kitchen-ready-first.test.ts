@@ -12,7 +12,7 @@ import { commissionPlayer } from './fixtures/commission-player.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true)
-const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','recipeCards','kitchenReadyDishes','kitchenFamilies','openPanel','goBack','focusKey','neighboursCard','pastryChoices']
+const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','recipeCards','kitchenReadyDishes','kitchenFamilies','openPanel','goBack','leaveScene','focusKey','neighboursCard','pastryChoices']
 const definitions = names.map(name => {
   const node = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)
   assert.ok(node, name); return node.getText(ast)
@@ -43,10 +43,20 @@ function screen(farm: F.FarmState) {
     kitchenGroups: ['tart','preserves','dishes'], kitchenGroup: undefined, kitchenTart: 'orchardTart', kitchenPreserves: 'appleJam', kitchenDish: 'honeyCake', cookingFish: 'seaBass',
     panel: 'village', panelHistory: [], villageSlot:0,pastryShape:'round', neighborHelpCard:noop,villageHomeProgress:noop,getFinnFishingRoute:noop, marketSaleBrowse: new MarketSaleBrowseMemory(), inventoryGroup: 'shore', marketTab: 'sell', marketCategory: 'trees', selectedWarehouseRequest: undefined, pickedMarketOrder: undefined,
     salePresentation: { place: undefined }, island: { visit(target:object){state.walkTargets.push(target)},isCrossing: () => false, setViewMode: noop, setCoveFocus: noop, crossIsland: async (fn: () => unknown) => fn() },
-    dialog: { open: true, showModal: noop, querySelectorAll: () => buttons(state.html,markFocus).filter(node=>!node.disabled) }, dialogContent: { scrollTop: 19, querySelectorAll: () => [], querySelector: () => null },
+    dialog: { open: true, showModal: noop, querySelectorAll: () => buttons(state.html,markFocus).filter(node=>!node.disabled) }, dialogContent: { scrollTop: 19, querySelectorAll: () => [], querySelector(selector:string) {
+      if (selector === '[data-kitchen-return-dish]') {
+        const heading = state.html.match(/<h2 data-kitchen-return-dish tabindex="-1">([^<]+)<\/h2>/)?.[1]
+        return heading ? { focus: ({preventScroll}:{preventScroll:boolean}) => { assert.ok(preventScroll);markFocus('heading:'+heading) }, scrollIntoView: noop } : null
+      }
+      if (selector === '[data-action="recipe-family"][aria-pressed="true"]') {
+        const selected=state.html.match(/<button[^>]+data-action="recipe-family"[^>]+data-value="([^"]+)" aria-pressed="true"/)?.[1]
+        return selected ? buttons(state.html,markFocus).find(node=>node.dataset.action==='recipe-family'&&node.dataset.value===selected) : null
+      }
+      return null
+    } },
     transplantSelection: { reset: noop }, berryNurserySelection: { reset: noop }, berryRenewalSelection: { reset: noop }, gardenEditor: { reset: noop }, recipeSurplusSelection: { reset: noop },
     seedPickerBed: undefined, previewSeed: farm.selectedSeed, celebratedFestival: undefined, stopHarbour: noop, stopFishing: noop, stopWorkshop: noop, stopCookery: noop, stopArrangement: noop,
-    playBaySound: noop, app: { dataset: {} }, toast: {}, dialogFeedback: {}, closeButton: { focus: () => markFocus('close') }, updateCommunityReturn: noop,
+    playBaySound: noop, bayAudio: {primeEvents: async () => {}}, app: { dataset: {} }, toast: {}, dialogFeedback: {}, closeButton: { focus: () => markFocus('close') }, updateCommunityReturn: noop,
     recipeBook: { load: noop }, restoreFerryPanelView: noop, panelRenderVersion: 0, requestAnimationFrame: (fn: () => void) => fn(),
     draws: 0, html: '', saves: 0, focusTrace:[] as string[], clickFocus:undefined, visits: [] as string[], walkTargets:[] as object[],
     perform: (fn: () => {ok: boolean}) => { const result = fn(); if (result.ok) state.saves++; return result.ok },
@@ -201,4 +211,104 @@ test('after actually cooking the last two apples, Back shows the same unavailabl
  assert.deepEqual(active(s),[{id:'appleJam',disabled:true}]);assert.equal(s.focusTrace.at(-1),'close')
  assert.ok(F.getCookAction(f,'grilledFish',fish).available)
  s.goBack(true);assert.equal(s.panel,'village');assert.equal(s.focusTrace.at(-1),'kitchen');assert.deepEqual(f,made)
+})
+
+const cookeryProduction = source.slice(source.indexOf("    case 'cookery': {"),source.indexOf("    case 'village-project':"))
+const cookeryMount = ts.transpileModule(`switch('cookery'){ ${cookeryProduction} }`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText
+const jamResult={family:'preserves',processing:'silky',fruit:[],steps:['mix','pour']} as const
+
+function homeKitchenPrep(sharedLastApples=false) {
+ const p=sharedLastApples ? commissionPlayer(opening.slice(0,80)) : earnedCottageAlternatives().p
+ p.fruit('apple',2);p.visit('home')
+ if(sharedLastApples){
+  for(let days=0;!p.state.produce.wheat;days++){
+   assert.ok(days<8)
+   if(F.getBedStage(p.state.beds[0])==='ripe')p.act('workBed',0)
+   if(p.state.produce.wheat)break
+   if(p.state.beds[0].kind==='tilled'){
+    if(!p.state.seeds.wheat)p.act('buySeeds','wheat')
+    if(p.state.selectedSeed!=='wheat')p.act('selectSeed','wheat')
+    p.act('workBed',0)
+   }
+   if(F.getBedAction(p.state,0).kind==='water'){if(!p.state.water)p.act('refillWater');p.act('workBed',0)}
+   p.night()
+  }
+  if(p.state.honey)p.act('sellMarketItem','honey',p.state.honey)
+ }
+ const f=p.state,s=screen(f),fish=F.getGrillFish(f);s.panel='rest';s.cookingFish=fish
+ assert.match(source,/button\('Открыть кухню', 'kitchen'\)/)
+ s.choose('kitchen',undefined,undefined)
+ assert.deepEqual(JSON.parse(JSON.stringify(s.walkTargets)),[{kind:'kitchen'}])
+ assert.equal(s.panelHistory[0].panel,'rest')
+ assert.equal(f.fruit.apple,2)
+ assert.deepEqual(F.dishIds.filter(dish=>F.getCookAction(f,dish,fish).available),[sharedLastApples?'orchardTart':'grilledFish','appleJam'])
+ s.click('recipe-family','appleJam','ready')
+ s.click('cook','appleJam')
+ assert.equal(s.panel,'cookery')
+ Object.assign(s,{signatureBase:'tart',signatureSlots:[null,null],signatureRepeatId:undefined,signatureFamily:undefined,cookeryGame:undefined,
+  iconUrl:(picture:string)=>picture,signatureFruitIds:['apple'],signatureFruitNames:{apple:'Яблоко'},signatureBookCapacity:()=>({canCreate:true}),
+  createCookery(_host:unknown,options:Record<string,any>){s.cookeryOptions=options;return {destroy(){}}}})
+ runInNewContext(cookeryMount,s)
+ assert.equal(s.cookeryOptions.recipe.id,'appleJam');assert.equal(s.cookeryOptions.returnLabel,'На кухню')
+ return {p,s,f,fish}
+}
+
+test('Home cottage retains the chosen recipe after spending its last apples and shows the next actual dish without picking it',t=>{
+ const {p,s,f,fish}=homeKitchenPrep(),before=structuredClone(f)
+ assert.deepEqual([p.actions,f.day],[91,9])
+ assert.equal(s.cookeryOptions.onComplete(jamResult),true)
+ assert.equal(s.cookeryOptions.onComplete(jamResult),true,'same completion callback cannot spend twice')
+ const done=structuredClone(f);assert.equal(s.saves,1)
+ assert.equal(f.fruit.apple,0);assert.equal(f.dishes.appleJam,before.dishes.appleJam+1);assert.equal(f.coins,before.coins)
+ s.cookeryOptions.onCancel()
+ assert.equal(s.panel,'kitchen');assert.equal(f.island,'home')
+ assert.deepEqual(f,done);assert.ok(F.getCookAction(f,'grilledFish',fish).available)
+ const rendered=s.html;const ready=rendered.indexOf('aria-label="Можно приготовить"'),books=rendered.indexOf('aria-label="Разделы кухни"')
+ t.diagnostic(JSON.stringify({day:f.day,ordinaryActions:p.actions,sameIsland:f.island,visibleRecipe:active(s),focus:s.focusTrace.at(-1),fishStillReady:true,jamGained:f.dishes.appleJam-before.dishes.appleJam,saves:s.saves}))
+ assert.deepEqual(active(s),[{id:'appleJam',disabled:true}],'return to the original recipe, not a different cooking action')
+ assert.equal(s.focusTrace.at(-1),'heading:Яблочное варенье')
+ assert.ok(ready>=0&&books>ready)
+ assert.match(rendered,/<button[^>]+data-family="ready" data-value="grilledFish" aria-pressed="false"/)
+ assert.match(rendered,/data-action="open-panel"[^>]*data-value="recipes"/)
+ assert.deepEqual([...rendered.matchAll(/data-action="kitchen-group" data-value="([^"]+)"/g)].map(m=>m[1]),['tart','preserves','dishes'])
+ s.choose('recipe-family','appleJam','ready')
+ assert.equal(s.html,rendered,'a stale ready choice cannot select the spent recipe')
+ s.click('recipe-family','grilledFish','ready')
+ assert.deepEqual(active(s),[{id:'grilledFish',disabled:false}])
+ assert.equal(s.focusTrace.at(-1),'recipe-family:grilledFish','focus stays on browsing, not on cooking')
+ assert.deepEqual(f,done);assert.equal(s.saves,1)
+ s.goBack(true)
+ assert.equal(s.panel,'rest');assert.equal(f.island,'home');assert.deepEqual(f,done)
+})
+
+test('an unfinished Home Cancel preserves the exact live recipe and focus without spending or travelling',()=>{
+ const {s,f}=homeKitchenPrep(),before=structuredClone(f)
+ s.cookeryOptions.onCancel()
+ assert.equal(f.island,'home');assert.equal(s.panel,'kitchen');assert.equal(s.saves,0)
+ assert.deepEqual(active(s),[{id:'appleJam',disabled:false}]);assert.deepEqual(f,before)
+ assert.equal(s.focusTrace.at(-1),'cook:appleJam')
+ assert.doesNotMatch(s.html,/data-kitchen-return-dish/)
+})
+
+test('two real dishes sharing the last apples do not leave a false ready choice after completion',()=>{
+ const {s,f,fish}=homeKitchenPrep(true)
+ assert.equal(s.cookeryOptions.onComplete(jamResult),true);const done=structuredClone(f)
+ s.cookeryOptions.onCancel()
+ assert.deepEqual(F.dishIds.filter(dish=>F.getCookAction(f,dish,fish).available),[])
+ assert.equal(s.panel,'kitchen');assert.equal(f.island,'home')
+ assert.deepEqual(active(s),[{id:'appleJam',disabled:true}]);assert.equal(s.focusTrace.at(-1),'heading:Яблочное варенье')
+ assert.doesNotMatch(s.html,/aria-label="Можно приготовить"/)
+ assert.deepEqual(f,done);assert.equal(s.saves,1)
+})
+
+
+test('a fresh kitchen visit picks the live recipe rather than carrying a previous spent-return marker',()=>{
+ const {s,f}=homeKitchenPrep()
+ assert.equal(s.cookeryOptions.onComplete(jamResult),true);s.cookeryOptions.onCancel()
+ assert.deepEqual(active(s),[{id:'appleJam',disabled:true}])
+ const done=structuredClone(f)
+ s.goBack(true)
+ assert.equal(s.panel,'rest');s.openPanel('kitchen')
+ assert.deepEqual(active(s),[{id:'grilledFish',disabled:false}]);assert.doesNotMatch(s.html,/data-kitchen-return-dish/)
+ assert.deepEqual(f,done);assert.equal(s.saves,1);assert.equal(f.island,'home')
 })

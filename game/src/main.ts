@@ -424,7 +424,7 @@ let cookingMode:'dish'|'signature'='dish'
 const kitchenGroups = ['tart', 'preserves', 'dishes'] as const
 type KitchenGroup = typeof kitchenGroups[number]
 // Unset until a workbench opens; explicit selections and Back retain their own group.
-type KitchenSelection = KitchenGroup | { ready?: DishId }
+type KitchenSelection = KitchenGroup | { ready?: DishId; returned?: boolean }
 let kitchenGroup: KitchenSelection | undefined
 let kitchenDish: DishId = 'grilledFish'
 let honeyKitchenDish: HoneyKitchenRecipe = 'honeyBiscuits'
@@ -988,7 +988,7 @@ function recipeDestination(dish: DishId) {
   return farm.island === 'village' && farm.village.built ? 'village' as const : 'home' as const
 }
 
-function recipeCards(recipes: readonly DishId[]) {
+function recipeCards(recipes: readonly DishId[], returnedDish?: DishId) {
   return `<div class="recipe-list">${recipes.map((dish) => {
     const recipe = dishDefinitions[dish]
     const destination = recipeDestination(dish)
@@ -1002,7 +1002,7 @@ function recipeCards(recipes: readonly DishId[]) {
     const route = salt && getRequirementHint(farm, {kind:'stock',item:salt}).action
     const source = route?.target === 'warehouse-supply' ? 'На местном складе' : route?.target === 'sail' && route.value === 'grove' ? 'Плыть в Солёную рощу' : ''
     return `<section class="recipe${locked ? ' recipe-locked' : ''}">
-      <header class="recipe-summary">${icon(dishIcons[dish], 'recipe-art')}<div><h2>${recipe.name}</h2>
+      <header class="recipe-summary">${icon(dishIcons[dish], 'recipe-art')}<div><h2${dish === returnedDish ? ' data-kitchen-return-dish tabindex="-1"' : ''}>${recipe.name}</h2>
         <p class="recipe-value" title="Стоимость ингредиентов → цена блюда">${icon('tool-crate')} <span class="sr-only">Сырьё: </span>${rawValue} <span aria-hidden="true">→</span> ${icon('coin')} <span class="sr-only">Блюдо: </span><strong>${recipe.sellPrice}</strong></p></div></header>
       ${fishChoices}${locked ? '' : `<ul class="ingredients">${ingredients.map(item => item === salt && source ? stockTileWithSource(item,source) : stockTile(item)).join('')}</ul>`}
       ${locked ? `<p class="recipe-reason">${action.label}</p>${button('Улучшения','upgrades',true,{secondary:true})}`
@@ -1022,9 +1022,11 @@ function kitchenFamilies() {
   const cottage = kitchenGroup === undefined && farm.island === 'village' && farm.village.built && origin?.panel === 'village' ? origin : undefined
   const cottageChoice = cottage?.cottageKitchenShelf
   const ready = landing || cottageChoice ? kitchenReadyDishes() : []
-  const picked = cottage?.cottageKitchenDish ?? cottageChoice ?? ready.find(dish => dish === landing?.ready) ?? ready[0]
-  // A finished dish can fall out of the live shelf. On Back, keep its disabled card rather than arming another choice.
-  const readyShelf = ready.length > 1 && (!cottageChoice || ready.includes(cottageChoice))
+  // Keep a spent Home recipe only on its cooking return. The existing ready
+  // shelf can offer what's left without changing the user's selection.
+  const spentHomeChoice = landing?.returned && landing.ready && !getCookAction(farm,landing.ready,cookingFish).available ? landing.ready : undefined
+  const picked = cottage?.cottageKitchenDish ?? cottageChoice ?? spentHomeChoice ?? ready.find(dish => dish === landing?.ready) ?? ready[0]
+  const readyShelf = (ready.length > 1 || !!spentHomeChoice && ready.length > 0) && (!cottageChoice || ready.includes(cottageChoice))
   const group = readyShelf ? 'ready' : picked
     ? isTartDish(picked) ? 'tart' : picked === 'appleJam' || picked === 'orchardPreserves' ? 'preserves' : 'dishes'
     : typeof kitchenGroup === 'string' ? kitchenGroup : 'tart'
@@ -1049,7 +1051,7 @@ function kitchenFamilies() {
         { id: 'custom', image: 'ui-signature-bright', name: 'Варенье: выбрать фрукты', short:'Своя смесь' }
       ])
       : familyChoices('dishes', other, otherDishes.map(id=>({ id, image:dishIcons[id], name:dishDefinitions[id].name })))
-  const recipe = picked ? recipeCards([picked]) : group === 'tart'
+  const recipe = picked ? recipeCards([picked],spentHomeChoice) : group === 'tart'
     ? kitchenTart === 'mixed' ? `<section class="recipe kitchen-custom"><h2>Ягодный тарт</h2>${button('Выбрать ягоды', 'family-signature', true, { value: 'berries' })}</section>` : recipeCards([kitchenTart])
     : group === 'preserves'
       ? kitchenPreserves === 'custom' ? `<section class="recipe kitchen-custom"><h2>Фруктовое варенье</h2>${button('Выбрать фрукты', 'family-signature', true, { value: 'preserves' })}</section>` : recipeCards([kitchenPreserves])
@@ -1841,6 +1843,10 @@ function rememberPanel(): PanelVisit {
 function goBack(keyboard = false) {
   const previous=panelHistory.pop()
   if(!previous)return
+  const homeKitchenReturn = panel === 'cookery' && previous.panel === 'kitchen'
+    && typeof previous.kitchenGroup === 'object' && previous.kitchenGroup.ready
+    && farm.island === 'home' && cookingMode === 'dish' && previous.kitchenGroup.ready === cookingDish
+    && !getCookAction(farm,cookingDish,previous.cookingFish).available ? cookingDish : undefined
   const restFeedReturn = keyboard && panel === 'chicken-feed' && previous.panel === 'rest'
     && previous.restFeedMixDay === farm.day && farm.island === 'home' && farm.feed > 0 && !farm.chickensFed
   // Today's table button is gone after supper; return focus to the same cottage.
@@ -1868,6 +1874,7 @@ function goBack(keyboard = false) {
   signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;expandedRepeatId=previous.expandedRepeatId;cookingMode=previous.cookingMode
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;honeyKitchenDish=previous.honeyKitchenDish;signatureFamily=previous.signatureFamily
+  if (homeKitchenReturn) kitchenGroup = { ready:homeKitchenReturn, returned:true }
   if (previous.marketOrder) selectedMarketOrder = previous.marketOrder.lane
   openPanel(previous.panel,false,farm.island,'page.fold')
   if (previous.marketSaleGrid && dialog.open && panel === 'market' && marketTab === 'sell') {
@@ -1922,6 +1929,11 @@ function goBack(keyboard = false) {
       reserve?.scrollIntoView({block:'nearest'})
     }
     else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
+    else if (homeKitchenReturn) {
+      // Do not put a repeated Enter on the next available Cook action.
+      const recipe = dialogContent.querySelector<HTMLElement>('[data-kitchen-return-dish]')
+      recipe?.focus({preventScroll:true}); recipe?.scrollIntoView({block:'nearest'})
+    }
     else if (restFeedReturn) {
       const feed = dialogContent.querySelector<HTMLButtonElement>('.rest-before-morning [data-action="feed"]:not(:disabled)')
       const row = feed?.closest<HTMLElement>('.dialog-row')
@@ -2844,6 +2856,8 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     // Snapshot the cottage's choice first; the table can start with stock that is ready.
     pastryShape = workshopShapes.find(shape => getVillageMeal(farm, shape).available) ?? pastryShape
   }
+  if (next === 'kitchen' && remember && next !== panel && typeof kitchenGroup === 'object' && kitchenGroup.returned)
+    kitchenGroup = { ready:kitchenGroup.ready }
   if (next === 'kitchen' && entry?.grillFish) { kitchenGroup='dishes'; kitchenDish='grilledFish'; cookingFish=entry.grillFish }
   else if (next === 'kitchen' && remember && next !== panel && farm.fish[cookingFish] === 0) cookingFish = getGrillFish(farm)
   if (next === 'kitchen' && kitchenGroup === undefined) {
@@ -4036,10 +4050,14 @@ app.addEventListener('click', async (event) => {
           && origin?.panel === 'village' && origin.cottageKitchenShelf ? origin : undefined
         if (!cottage && (farm.island !== 'home' || typeof kitchenGroup !== 'object')) break
         const ready = kitchenReadyDishes(), dish = ready.find(id => id === value), previousChoice = cottage?.cottageKitchenShelf
-        if (ready.length > 1 && dish && (!previousChoice || ready.includes(previousChoice))) {
+        const spentHomeChoice = !cottage && typeof kitchenGroup === 'object' && kitchenGroup.returned && kitchenGroup.ready
+          && !getCookAction(farm,kitchenGroup.ready,cookingFish).available
+        if ((ready.length > 1 || spentHomeChoice) && dish && (!previousChoice || ready.includes(previousChoice))) {
           if (cottage) cottage.cottageKitchenShelf = dish
           else kitchenGroup = { ready: dish }
           drawPanel()
+          if (spentHomeChoice && ready.length === 1)
+            dialogContent.querySelector<HTMLButtonElement>('[data-action="recipe-family"][aria-pressed="true"]')?.focus({preventScroll:true})
         }
         break
       }
