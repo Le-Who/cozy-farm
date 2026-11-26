@@ -1743,7 +1743,7 @@ export function changeCove(farm:FarmState,change:Partial<CoveChoices>):ActionRes
   if(!action.available)return failure(action.label);
   if(!isRecord(change)||Object.keys(change).length===0||Object.keys(change).some(key=>!['flow','cover','refuge'].includes(key)))return failure('Выберите течение, растительность или укрытие.');
   const choices={...action.choices,...change};if(!isCoveChoices(choices))return failure('Выберите материалы для бухты.');
-  if(sameCove(choices,farm.shoreline.pending??farm.shoreline.settled))return failure('Этот вариант уже выбран.');
+  if(sameCove(choices,farm.shoreline.pending??farm.shoreline.settled??action.choices))return failure('Этот вариант уже выбран.');
   farm.shoreline.pending=sameCove(choices,farm.shoreline.settled)?null:{...choices};farm.shoreline.changedOn=farm.day;
   return {ok:true,message:farm.shoreline.pending?'Ночной прилив преобразит бухту.':'Запланированные изменения отменены.'};
 }
