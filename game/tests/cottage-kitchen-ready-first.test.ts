@@ -149,3 +149,56 @@ test('manual categories and explicit recipe navigation, missing or ambiguous foo
  assert.deepEqual(active(unranked),[{id:'orchardTart',disabled:false}]);assert.equal(unranked.panelHistory[0].cottageKitchenDish,undefined)
  assert.deepEqual(p.state,before)
 })
+function earnedCottageAlternatives() {
+ const p=commissionPlayer(opening.slice(0,80))
+ p.fruit('apple',2);p.visit('grove')
+ if(!p.state.saltGatheredToday)p.act('gatherSeaSalt')
+ if(!p.state.fish.perch&&!p.state.fish.seaBass){
+  const trip=p.act('beginFishingTrip');p.act('finishFishingTrip',trip.token,1)
+ }
+ p.visit('home')
+ if(p.state.produce.wheat)p.act('sellMarketItem','produce:wheat',p.state.produce.wheat)
+ p.visit('village')
+ const fish=F.getGrillFish(p.state)
+ assert.deepEqual([p.actions,p.state.day,p.state.village.residents[0],fish],[90,9,'bea','seaBass'])
+ assert.deepEqual(F.dishIds.filter(dish=>F.getCookAction(p.state,dish,fish).available),['grilledFish','appleJam'])
+ return {p,fish}
+}
+
+test('earned Bea cottage with a blocked default presents both cookable dishes before the other categories, without taking either',()=>{
+ const {p,fish}=earnedCottageAlternatives(), before=structuredClone(p.state)
+ for(const dish of ['grilledFish','appleJam'] as const) {
+  const s=screen(p.state);s.kitchenDish='grilledFish';s.cookingFish=fish;s.drawPanel()
+  s.dialogContent.scrollTop=41;s.click('kitchen')
+  assert.match(s.html,/class="kitchen-workbench kitchen-ready-workbench"/)
+  const ready=s.html.indexOf('aria-label="Можно приготовить"'), browse=s.html.indexOf('aria-label="Разделы кухни"')
+  assert.ok(ready>=0&&browse>ready)
+  assert.deepEqual([...s.html.matchAll(/data-family="ready" data-value="([^"]+)"/g)].map(x=>x[1]),['grilledFish','appleJam'])
+  assert.deepEqual(active(s),[{id:'grilledFish',disabled:false}])
+  assert.match(s.html,/data-action="open-panel"[^>]*data-value="recipes"/)
+  assert.deepEqual([...s.html.matchAll(/data-action="kitchen-group" data-value="([^"]+)"/g)].map(x=>x[1]),['tart','preserves','dishes'])
+  s.click('recipe-family',dish,'ready')
+  assert.deepEqual(active(s),[{id:dish,disabled:false}])
+  s.dialogContent.scrollTop=27;s.click('cook',dish)
+  assert.equal(s.panel,'cookery');assert.equal(s.cookingDish,dish)
+  assert.equal(s.saves,0);assert.deepEqual(p.state,before)
+  s.goBack(true);assert.equal(s.panel,'kitchen');assert.equal(s.dialogContent.scrollTop,27)
+  assert.deepEqual(active(s),[{id:dish,disabled:false}]);assert.equal(s.focusTrace.at(-1),'cook:'+dish)
+  s.goBack(true);assert.equal(s.panel,'village');assert.equal(s.villageSlot,0);assert.equal(s.dialogContent.scrollTop,41)
+  assert.equal(s.focusTrace.at(-1),'kitchen');assert.equal(s.saves,0);assert.deepEqual(p.state,before)
+ }
+})
+
+test('after actually cooking the last two apples, Back shows the same unavailable jam instead of arming the other valid dish',()=>{
+ const {p,fish}=earnedCottageAlternatives(),f=p.state
+ const initial=structuredClone(f),s=screen(f);s.kitchenDish='grilledFish';s.cookingFish=fish;s.drawPanel();s.click('kitchen')
+ s.click('recipe-family','appleJam','ready');s.click('cook','appleJam')
+ assert.deepEqual(f,initial)
+ assert.equal(f.fruit.apple,2)
+ assert.ok(F.cookDish(f,'appleJam',{family:'preserves',processing:'silky',fruit:[],steps:['mix','pour']}).ok)
+ const made=structuredClone(f)
+ s.goBack(true);assert.equal(s.panel,'kitchen')
+ assert.deepEqual(active(s),[{id:'appleJam',disabled:true}]);assert.equal(s.focusTrace.at(-1),'close')
+ assert.ok(F.getCookAction(f,'grilledFish',fish).available)
+ s.goBack(true);assert.equal(s.panel,'village');assert.equal(s.focusTrace.at(-1),'kitchen');assert.deepEqual(f,made)
+})

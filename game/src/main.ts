@@ -1018,12 +1018,13 @@ function kitchenFamilies() {
   // KitchenSelection is local navigation, never saved to the farm. A landing
   // visit follows live stock; an explicitly browsed category stays put on Back.
   const landing = farm.island === 'home' && typeof kitchenGroup === 'object' ? kitchenGroup : undefined
-  const ready = landing ? kitchenReadyDishes() : []
   const origin = panelHistory.at(-1)
-  const cottageDish = kitchenGroup === undefined && farm.island === 'village' && farm.village.built && origin?.panel === 'village'
-    ? origin.cottageKitchenDish : undefined
-  const picked = cottageDish ?? ready.find(dish => dish === landing?.ready) ?? ready[0]
-  const readyShelf = ready.length > 1
+  const cottage = kitchenGroup === undefined && farm.island === 'village' && farm.village.built && origin?.panel === 'village' ? origin : undefined
+  const cottageChoice = cottage?.cottageKitchenShelf
+  const ready = landing || cottageChoice ? kitchenReadyDishes() : []
+  const picked = cottage?.cottageKitchenDish ?? cottageChoice ?? ready.find(dish => dish === landing?.ready) ?? ready[0]
+  // A finished dish can fall out of the live shelf. On Back, keep its disabled card rather than arming another choice.
+  const readyShelf = ready.length > 1 && (!cottageChoice || ready.includes(cottageChoice))
   const group = readyShelf ? 'ready' : picked
     ? isTartDish(picked) ? 'tart' : picked === 'appleJam' || picked === 'orchardPreserves' ? 'preserves' : 'dishes'
     : typeof kitchenGroup === 'string' ? kitchenGroup : 'tart'
@@ -1759,6 +1760,7 @@ function neighboursCard() {
 let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
   cottageKitchenDish?: DishId; // Sole ready dish for this ordinary cottage visit; not a session preference.
+  cottageKitchenShelf?: DishId; // Same visit owns the selected live dish when the default card was blocked.
   harbourRecipe?: {id: string; preview: boolean}; // Only carried by this recipe's explicit crossing.
   commissionRecipe?: { line:string; prepared:boolean }; // This exact order line opened the book.
   tastingBakery?: string; // An explicit stop from this particular saved recipe.
@@ -2836,9 +2838,11 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     if (cottage && plainCottageEntry) {
       const ready = kitchenReadyDishes()
       if (ready.length === 1) cottage.cottageKitchenDish = ready[0]
+      else if (ready.length > 1 && (kitchenTart === 'mixed' || !getCookAction(farm,kitchenTart,cookingFish).available))
+        cottage.cottageKitchenShelf = ready[0]
     }
-    // The cottage entry can survive Back even after its apples or other ingredients are spent.
-    if (!cottage?.cottageKitchenDish || entry || recipeTarget || (remember && !plainCottageEntry && next !== panel))
+    // Both cottage landings survive Back even after the selected dish's ingredients are spent.
+    if (!(cottage?.cottageKitchenDish || cottage?.cottageKitchenShelf) || entry || recipeTarget || (remember && !plainCottageEntry && next !== panel))
       kitchenGroup = ordinaryHomeEntry ? {} : 'tart'
   }
   if (next === 'recipes') {
@@ -4005,9 +4009,17 @@ app.addEventListener('click', async (event) => {
     }
     case 'recipe-family': {
       if (control.dataset.family === 'ready') {
-        if (panel !== 'kitchen' || !dialog.open || farm.island !== 'home' || typeof kitchenGroup !== 'object') break
-        const ready = kitchenReadyDishes(), dish = ready.find(id => id === value)
-        if (ready.length > 1 && dish) { kitchenGroup = { ready: dish }; drawPanel() }
+        if (panel !== 'kitchen' || !dialog.open) break
+        const origin = panelHistory.at(-1)
+        const cottage = kitchenGroup === undefined && farm.island === 'village' && farm.village.built
+          && origin?.panel === 'village' && origin.cottageKitchenShelf ? origin : undefined
+        if (!cottage && (farm.island !== 'home' || typeof kitchenGroup !== 'object')) break
+        const ready = kitchenReadyDishes(), dish = ready.find(id => id === value), previousChoice = cottage?.cottageKitchenShelf
+        if (ready.length > 1 && dish && (!previousChoice || ready.includes(previousChoice))) {
+          if (cottage) cottage.cottageKitchenShelf = dish
+          else kitchenGroup = { ready: dish }
+          drawPanel()
+        }
         break
       }
       if (control.dataset.family === 'tart' && (value === 'mixed' || dishIds.some(dish=>dish===value&&isTartDish(dish)))) { kitchenTart = value as KitchenTart; kitchenGroup = 'tart' }
