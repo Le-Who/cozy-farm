@@ -21,6 +21,8 @@
 .cookery-finish:hover:enabled{filter:brightness(1.06)}
 .cookery-finish:disabled{cursor:default;filter:saturate(.7)}
 .cookery-game[data-stage="finished"] .cookery-finish{font-size:19px!important}
+.cookery-game .cookery-order[data-primary="true"]{background:#705187;color:#fff7eb;border-color:#5b3f68}
+.cookery-game:has(.cookery-order[data-primary="true"]:not([hidden])) .cookery-finish{filter:saturate(.55)}
 .cookery-game .cookery-order{position:absolute;z-index:6;left:24px;bottom:22px;max-width:calc(100% - 246px);min-height:44px;padding:6px 12px;border:2px solid #976ca3;border-radius:12px;background:#fff4e5;color:#603568;font:700 14px/1.2 ui-rounded,"Trebuchet MS",sans-serif}
 .cookery-source-cue,.cookery-tool-cue{position:absolute;width:44px;height:44px;transform:translate(-50%,-50%);pointer-events:none;border:2px dashed #fff6d8b0;border-radius:50%;filter:drop-shadow(0 1px 2px #9a583a66);animation:cookery-cue-breathe 2s ease-in-out infinite}
 @keyframes cookery-cue-breathe{50%{opacity:.5;transform:translate(-50%,-50%) scale(1.08)}}

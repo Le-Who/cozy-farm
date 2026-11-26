@@ -1784,6 +1784,7 @@ type PanelVisit = {
   commissionRecipe?: { line:string; prepared:boolean }; // This exact order line opened the book.
   tastingBakery?: string; // An explicit stop from this particular saved recipe.
   neighborComposerPlan?: string; // Only set by this visit's explicit “Свой рецепт” button.
+  dailyIntentComposerOrder?: string; // Owns an exact draft from a daily request, not the last global selection.
   ferryMorning?: number; // This ferry visit's explicit trip to the Home forecast.
   restFeedMixDay?: number; // Keyboard entered from today's actual Rest mix button.
   recipeBook: RecipeBookView;
@@ -2594,6 +2595,14 @@ function drawPanel() {
         return order?.status === 'ready' ? order : undefined
       }
       const fromRequestedFood = composer?.panel === 'request-food'
+      const ownDailyIntent = signature && !repeatId && composer?.panel === 'signature' && source?.panel === 'intent'
+        ? source.dailyIntentComposerOrder : undefined
+      const readyDailyIntent = () => {
+        if (!ownDailyIntent || !made || !resultRecipeId || farm.island !== 'home' || panel !== 'cookery' || !dialog.open || island.isCrossing()
+          || panelHistory.at(-1) !== composer || panelHistory.at(-2) !== source || communityOrderId !== ownDailyIntent) return
+        const order = selectedDailyIntent(farm,communityRequest)
+        return order?.id === ownDailyIntent && order.offers.some(offer => offer.id === `signature:${resultRecipeId}` && offer.available) ? order : undefined
+      }
       const editingForNeighbor = () => signature && !made && !repeatId && composer?.panel === 'signature'
         && source?.panel === 'neighbor' && !!source.neighborComposerPlan && panelHistory.at(-1) === composer
         && communityRequest?.kind === 'neighbor' && communityRequest.planId === source.neighborComposerPlan
@@ -2610,7 +2619,18 @@ function drawPanel() {
           selectedFruit,fruitOptions:selectedFruit.map(part=>({id:part.id,name:signatureFruitNames[part.id as typeof signatureFruitIds[number]],art:part.id==='apple'?'apple-slice':part.id==='pear'?'pear-piece':part.id==='peach'?'peach-slice':part.id})),
           ingredients:(signature?getSignatureAction(farm,draft).items:ingredients).map(item=>({name:stockLabel(item).name,icon:iconUrl(stockLabel(item).image),count:item.quantity,...(item.kind==='variants'?{trait:item.trait}:{})})) },
         get returnLabel() { return editingDraft() ? 'К выбору ингредиентов' : fromRequestedFood ? 'К рецепту' : signature ? 'Мои рецепты' : 'На кухню' },
-        ...(!signature && preparedDish === 'orchardPreserves' ? {readyOrder() {
+        ...(ownDailyIntent ? {readyOrder() {
+          const order = readyDailyIntent()
+          if (!order) return
+          return {name:order.title,label:'К просьбе',primary:true,open() {
+            if (readyDailyIntent()?.id !== order.id) return
+            // Drop the paid scene's composer and request, but retain the request board for Back.
+            panelHistory.length -= 2
+            openPanel('intent',false)
+            const heading = dialogContent.querySelector<HTMLElement>('.community-intent h2')
+            if (heading) { heading.tabIndex = -1; heading.focus({preventScroll:true}) }
+          }}
+        }} : !signature && preparedDish === 'orchardPreserves' ? {readyOrder() {
           const order = readyPreservesOrder()
           if (!order) return
           return {name: order.name, open() {
@@ -4033,10 +4053,14 @@ app.addEventListener('click', async (event) => {
     case 'resume-community': await resumeCommunityRequest(control === communityResume ? 'recipe' : 'request'); break
     case 'intent-own-recipe': {
       const plan = panel === 'neighbor' && communityRequest?.kind === 'neighbor' ? communityRequest.planId : undefined
+      const order = panel === 'intent' && dialog.open && communityRequest?.kind === 'intent'
+        && communityRequest.orderId === communityOrderId ? communityOrderId : undefined
       signatureBase = 'tart'; signatureSlots = [null, null]; signatureSlot = 0; signatureRepeatId = undefined; signatureFamily = undefined
       openPanel('signature')
       const origin = panelHistory.at(-1)
       if (plan && panel === 'signature' && origin?.panel === 'neighbor') origin.neighborComposerPlan = plan
+      if (order && panel === 'signature' && origin?.panel === 'intent' && order === origin.communityOrderId)
+        origin.dailyIntentComposerOrder = order
       break
     }
     case 'honey-kitchen-recipe': {

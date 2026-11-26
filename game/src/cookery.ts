@@ -28,7 +28,7 @@ export type CookeryRecipe = {
 }
 export type CookeryOptions = {
   recipe: CookeryRecipe; onComplete: (result: CookeryResult) => boolean; onCancel: () => void; returnLabel?: string;
-  readyOrder?: () => { name: string; open: () => void } | undefined;
+  readyOrder?: () => { name: string; label?: string; primary?: boolean; open: () => void } | undefined;
 }
 type Ellipse = { cx: number; cy: number; rx: number; ry: number }
 type Asset = { url: string; width: number; height: number; innerRimEllipse?: Ellipse; mixSurfaceEllipse?: Ellipse; foregroundUrl?: string }
@@ -342,7 +342,16 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     if (options.readyOrder && orderButton) {
       const order = model.stage === 'finished' && loaded && !contextLost ? options.readyOrder() : undefined
       orderButton.hidden = !order
-      if (order) orderButton.setAttribute('aria-label', `К заказу «${order.name}»`)
+      if (order) {
+        const label = order.label ?? 'К заказу'
+        orderButton.textContent = label
+        orderButton.setAttribute('aria-label', `${label} «${order.name}»`)
+        if (order.primary) {
+          orderButton.setAttribute('data-primary','true')
+          // Keep both hit targets in place when Finish becomes the book option.
+          if (orderButton.nextElementSibling !== finish) finish.before(orderButton)
+        }
+      }
     }
     sourceCue.hidden = model.stage !== 'fruit' || !!drag
     updateToolCue()
