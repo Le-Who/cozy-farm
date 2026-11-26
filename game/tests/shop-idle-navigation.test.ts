@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { createBayShop, setBayShopOpen, advanceBayShop, advanceBayShopDay, bayShopPhaseDuration } from '../src/bay-shop-model.ts'
 
 class SceneHost extends EventTarget {

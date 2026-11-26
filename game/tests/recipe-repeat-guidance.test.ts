@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { getRecipeRepeatGuide, renderRecipeRepeatGuide } from '../src/recipe-repeat-guidance.ts'
 import { repeatSignature, restoreFarm, sail, unpackEggBasket, completeSignature, favoriteSignature, forgetSignature, createFarm } from '../src/farm.ts'
 import { isGuardedAction } from '../src/action-click-guard.ts'

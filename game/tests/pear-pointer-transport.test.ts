@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 import { after, before, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import * as THREE from 'three'
 import type { HoneyPoint } from '../src/honey-cookery-model.ts'
 

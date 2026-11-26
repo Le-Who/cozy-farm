@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {createServer} from 'vite';
+import { createServer } from './fixtures/ssr-vite.ts';
 import {commissionPlayer} from './fixtures/commission-player.ts';
 import {contributeFestival, finishFestival, getArchive, getFestivalStatus, restoreFarm} from '../src/farm.ts';
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { getRecipeRepeatGuide, renderRecipeRepeatGuide } from '../src/recipe-repeat-guidance.ts'
 import { RecipeBookNavigation } from '../src/recipe-book-view.ts'
 import { earnedRecipeBookPlayer } from './fixtures/earned-recipe-book.ts'

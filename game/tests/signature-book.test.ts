@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { createFarm, completeSignature, repeatSignature, forgetSignature, sellSignature, nameSignature, favoriteSignature, restoreFarm, cookDish } from '../src/farm.ts'
 import { signatureBookCapacity } from '../src/signature-book.ts'
 import type { SignatureDraft, CookeryResult } from '../src/culinary.ts'

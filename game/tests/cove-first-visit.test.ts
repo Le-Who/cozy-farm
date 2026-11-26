@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'vite';
+import { createServer } from './fixtures/ssr-vite.ts';
 import * as F from '../src/farm.ts';
 import { createFishingModel } from '../src/fishing-model.ts';
 import { covePresets } from '../src/shoreline.ts';

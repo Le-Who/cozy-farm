@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { captureFerryPanelView, restoreFerryPanelView } from '../src/ferry-panel-view.ts'
 import { ferryCommissionUse } from '../src/ferry-commission-use.ts'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { fileURLToPath } from 'node:url'
 import { orchardCustomerReturn } from './fixtures/ferry-commission-return.ts'
 

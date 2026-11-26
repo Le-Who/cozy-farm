@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {test} from 'node:test'
-import {createServer} from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import {repeatSignature,serveNeighborPlan} from '../src/farm.ts'
 import {transferBayGoods} from '../src/harbour-economy.ts'
 import {neighborFoodFixture} from './fixtures/neighbor-food.ts'

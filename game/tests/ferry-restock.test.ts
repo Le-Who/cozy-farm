@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { fileURLToPath } from 'node:url'
 import { createFarm, workBed, sellMarketItem, buyBoat, endDay, restoreFarm } from '../src/farm.ts'
 import { expeditionWallet, sendFerryExpedition, receiveFerryExpedition, getFerrySupplyRequirement } from '../src/harbour-economy.ts'

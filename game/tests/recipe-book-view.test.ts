@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { commissionPlayer } from './fixtures/commission-player.ts'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { transferBayGoods } from '../src/harbour-economy.ts'
 import { createFarm, completeSignature, getSignatureAction, sellMarketItem } from '../src/farm.ts'
 

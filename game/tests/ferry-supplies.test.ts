@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { delayedLastFerryReceiptFarm } from './fixtures/last-ferry-receipt.ts'
 import { getLocalWarehouseSupply, withdrawWarehouseSupply } from '../src/warehouse-guidance.ts'
 import { fileURLToPath } from 'node:url'

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {test} from 'node:test'
-import {createServer} from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import {signatureTastingGuide} from '../src/signature-tasting-guidance.ts'
 import {endDay,forgetSignature,restoreFarm,sail,tasteSignature} from '../src/farm.ts'
 import {neighborTastingsFixture} from './fixtures/neighbor-tastings.ts'

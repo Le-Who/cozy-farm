@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { getVillageMeal, getNeighborPlans } from '../src/farm.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 

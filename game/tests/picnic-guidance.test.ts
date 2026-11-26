@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { createFarm, restoreFarm, completeSignature, useSignature, repeatSignature, cookDish, endDay, beginFishingTrip, cancelFishingTrip, workBed, collectEggs } from '../src/farm.ts'
 import { type CookeryResult, type SignatureProcessing, signatureProcessingIds } from '../src/culinary.ts'
 import { createFishingPractice } from '../src/fishing-practice.ts'

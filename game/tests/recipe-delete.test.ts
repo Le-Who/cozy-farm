@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { forgetSignature, repeatSignature, restoreFarm } from '../src/farm.ts'
 import { ActivationKeyGuard, installActionClickGuard, isGuardedAction } from '../src/action-click-guard.ts'
 import { recipeDeleteFixture } from './fixtures/recipe-delete.ts'

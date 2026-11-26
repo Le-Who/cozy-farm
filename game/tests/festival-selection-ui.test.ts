@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'vite';
+import { createServer } from './fixtures/ssr-vite.ts';
 import { createFarm, beginFestival, cancelFestival, contributeFestival } from '../src/farm.ts';
 
 test('festival panel explicitly selects a program and exposes only safe cancellation', async () => {

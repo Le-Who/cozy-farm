@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { createFarm } from '../src/farm.ts'
 import { rememberRecipeDraft } from '../src/recipe-draft.ts'
 import { isGuardedAction } from '../src/action-click-guard.ts'

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
-import { createServer } from 'vite'
+import { createServer } from './fixtures/ssr-vite.ts'
 import { getShopCommission, getShopCommissionOffers, finishShopCommission } from '../src/shop-commissions.ts'
 import { ferryCommissionUse, openFerryCommissionRecipe } from '../src/ferry-commission-use.ts'
 import { expeditionWallet, receiveFerryExpedition } from '../src/harbour-economy.ts'
