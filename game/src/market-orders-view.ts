@@ -69,7 +69,7 @@ export function placeReadyMarketOrder(content: HTMLElement, stacked: boolean) {
 
   const focused = content.ownerDocument.activeElement
   if (stacked) {
-    // Local pickup still follows the two exact ingredient quantities.
+    // Local pickup still follows the exact displayed ingredient quantities.
     if (order && items && action) order.insertBefore(action, items)
     workspace.insertBefore(detail, picker)
   } else {

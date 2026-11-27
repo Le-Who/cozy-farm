@@ -143,7 +143,7 @@ test('existing keyboard focus, same order and desktop placement survive resizing
   assert.deepEqual(farm,before)
 })
 
-test('ordinary waiting, one-source review and delivered receipts keep current stacked placement',()=>{
+test('only a fully actionable single-source pickup is promoted beside ordinary waiting and delivered controls',()=>{
   const noStock=cold()
   assert.ok(transferBayGoods(noStock,'withdraw','home','wheat',1).ok)
   assert.ok(F.sellMarketItem(noStock,'produce:wheat',1).ok)
@@ -152,8 +152,12 @@ test('ordinary waiting, one-source review and delivered receipts keep current st
   missing.layout(true);assert.deepEqual(names(missing.workspace),['picker','detail'])
   const one=cold();assert.ok(transferBayGoods(one,'withdraw','home','eggs',1).ok)
   const single=mount(one,'pantry')
-  assert.match(single.html,/data-action="warehouse-supply"/)
-  single.layout(true);assert.deepEqual(names(single.workspace),['picker','detail'])
+  assert.match(single.html,/data-action="market-order-pickup"/)
+  assert.match(single.html,/>В запасе: 0 · со склада \+2</)
+  assert.doesNotMatch(single.html,/data-action="warehouse-supply"|data-action="deliver-order"/)
+  single.layout(true);assert.deepEqual(names(single.workspace),['detail','picker'])
+  assert.deepEqual(names(single.order),['order heading','requirements','pickup'])
+  assert.equal(single.doc.activeElement,single.close);assert.equal(single.control.focused,0)
   const delivered=mount(cold(),'garden')
   assert.match(delivered.html,/Сегодня доставлено/)
   delivered.layout(true);assert.deepEqual(names(delivered.workspace),['picker','detail'])

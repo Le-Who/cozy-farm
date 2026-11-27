@@ -10,11 +10,11 @@ const canUseForPickup = (item: StockItem): item is PickupItem =>
   // Keep withdrawals that can discover a resource on their existing individual route.
   item.kind !== 'shells' && item.kind !== 'shoalFinds' && item.kind !== 'variants' && item.kind !== 'beeswax'
 
-/** Review exactly two fully local shortages; all other paths keep their old tools. */
+/** Review one or two fully local shortages; all other paths keep their old tools. */
 export function quoteMarketOrderPickup(farm: FarmState, order: MarketOrder, readSupply: SupplySource = getLocalWarehouseSupply) {
   if (farm.island !== 'home' || order.status !== 'waiting') return
   const missing = order.items.filter(item => ingredientCount(farm,item) < item.quantity)
-  if (missing.length !== 2) return
+  if (!missing.length || missing.length > 2) return
   const lines = []
   const ids = new Set<string>()
   for (const item of missing) {
@@ -47,13 +47,13 @@ export function pickUpMarketOrderStock(farm: FarmState, lane: string | undefined
   const quote = order && quoteMarketOrderPickup(farm,order)
   if (!quote || quote.token !== expected) return changed()
   // Verify both on a detached state through the existing transfer checks. A
-  // failed second line cannot alter the current save, payments or progress.
+  // failed line cannot alter the current save, payments or progress.
   const prepared = structuredClone(farm)
   for (const line of quote.lines) {
     if (!withdrawWarehouseSupply(prepared,line.item,line.supply).ok) return changed()
   }
   if (!restoreFarm(prepared) || getMarketOrders(prepared).find(entry => entry.lane === lane)?.status !== 'ready') return changed()
-  // One existing all-or-nothing stock debit, then only the two precomputed bag
+  // One existing all-or-nothing stock debit, then only the precomputed bag
   // cells. No live loop of gameplay actions and no whole-farm replacement.
   if (!consumeFreightStock(farm.freight,'home',quote.lines.map(({supply})=>({id:supply.id,quantity:supply.quantity})))) return changed()
   for (const {item} of quote.lines) copyPreparedStock(farm,prepared,item)

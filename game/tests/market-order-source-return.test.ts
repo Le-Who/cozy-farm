@@ -5,6 +5,7 @@ import {runInNewContext} from 'node:vm'
 import {stripTypeScriptTypes} from 'node:module'
 import * as F from '../src/farm.ts'
 import * as W from '../src/warehouse-guidance.ts'
+import {pickUpMarketOrderStock} from '../src/market-order-pickup.ts'
 import {bayProductId} from '../src/bay-product-id.ts'
 import {getMarketOrderBoard,renderMarketOrderPicker} from '../src/market-orders-view.ts'
 import {getNextMarketOrders,renderNextMarketOrder} from '../src/market-return.ts'
@@ -13,6 +14,7 @@ import {commissionPlayer} from './fixtures/commission-player.ts'
 const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
 const take=(start:string,end:string)=>main.slice(main.indexOf(start),main.indexOf(end,main.indexOf(start)))
 const navigation=stripTypeScriptTypes(take('function focusKey(','let harbourScene:'))
+const pickup=stripTypeScriptTypes('switch(action){'+take("    case 'market-order-pickup':","    case 'market-order-select':")+'}')
 const view=stripTypeScriptTypes(take('function requirementLink(','const islandNames')+
  take('function marketOrderStockTile(','let selectedMarketOrder')+take('function marketOrders()','function deliveryItems'))
 const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
@@ -29,7 +31,7 @@ function earned(keepWheat:boolean,partial:boolean){
  return p
 }
 
-for(const scenario of ['cancel','eggs','partial','ready','shortcut'] as const)test(`first breakfast crate remembers its ingredient and reading position on Back: ${scenario}`,()=>{
+for(const scenario of ['cancel','eggs','partial','ready','shortcut'] as const)test(scenario==='shortcut'?'first breakfast crate focuses the same detail after explicit single-line pickup':`first breakfast crate remembers its ingredient and reading position on Back: ${scenario}`,()=>{
  const p=earned(scenario==='ready'||scenario==='shortcut',scenario==='partial'),farm=p.state,order=F.getMarketOrders(farm).find(o=>o.lane==='pantry')!
  assert.equal(order.name,'Ящик к завтраку');assert.equal(order.status,'waiting')
  assert.equal(getMarketOrderBoard(farm).selected,'garden','another ready order must not steal the chosen waiting crate')
@@ -59,7 +61,23 @@ for(const scenario of ['cancel','eggs','partial','ready','shortcut'] as const)te
   }
  }
  render()
- const source=buttons.find(b=>b.label===(scenario==='shortcut'?'warehouse-supply':scenario==='partial'?'wheat':'eggs'))!
+ if(scenario==='shortcut'){
+  const inline=buttons.find(b=>b.label==='market-order-pickup')!
+  assert.ok(inline);const original=structuredClone(farm)
+  const transfers: boolean[]=[]
+  runInNewContext(pickup,{...ctx,action:'market-order-pickup',value:inline.dataset.value,control:inline,pickUpMarketOrderStock,
+   dialogContent:{...content,contains:(c:Control)=>buttons.includes(c)},
+   perform:(fn:()=>F.ActionResult)=>{const result=fn();transfers.push(result.ok);return result.ok}})
+  assert.deepEqual(transfers,[true]);assert.equal(ctx.panel,'market')
+  assert.equal(ctx.selectedMarketOrder,'pantry');assert.equal((focused as Control|null)?.label,'detail:pantry')
+  const after=structuredClone(original)
+  assert.ok(W.withdrawWarehouseSupply(after,order.items[0],W.getLocalWarehouseSupply(after,order.items[0])).ok)
+  assert.deepEqual(farm,after)
+  assert.equal(content.scrollTop,92);assert.equal(picker.scrollTop,37)
+  assert.equal(F.getMarketOrders(farm).find(o=>o.lane==='pantry')!.status,'ready')
+  return
+ }
+ const source=buttons.find(b=>b.label===(scenario==='partial'?'wheat':'eggs'))!
  source.focus();ctx.panelHistory.push(run('rememberPanel()'));ctx.panel='warehouse-supply'
  const withdraw=(item:F.StockItem)=>assert.ok(W.withdrawWarehouseSupply(farm,item,W.getLocalWarehouseSupply(farm,item)).ok)
  if(scenario==='partial'){

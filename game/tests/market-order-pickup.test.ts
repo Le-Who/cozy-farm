@@ -10,6 +10,7 @@ import { getMarketOrderBoard, renderMarketOrderPicker } from '../src/market-orde
 import { pickUpMarketOrderStock } from '../src/market-order-pickup.ts'
 import { ActionClickGuard, ActivationKeyGuard, isGuardedAction } from '../src/action-click-guard.ts'
 import { getLocalWarehouseSupply, warehouseRequest, withdrawWarehouseSupply } from '../src/warehouse-guidance.ts'
+import {getRequirementHint} from '../src/requirement-guidance.ts'
 import { earned416Mixed } from './fixtures/earned-416-market-orders.ts'
 
 const before=earned416Mixed(), base=before.state
@@ -94,14 +95,18 @@ test('one actual pickup and separate Deliver match both singles exactly: same ca
  assert.deepEqual(cohort,single);assert.equal(cohort.coins-sameStart.coins,21)
 })
 
-test('plain requirements, one missing item, foreign supplies and stale quantities use existing fallbacks; no partial commit',()=>{
+test('one fully covered line needs no modal; partial, foreign and stale shortages cannot commit',()=>{
  const farm=restore()
  const quote=getMarketOrderBoard(farm,'pantry').pickup!
  const noQuote=(s:F.FarmState)=>assert.doesNotMatch(render(s),/data-action="market-order-pickup"/)
  const one=restore()
  assert.ok(transferBayGoods(one,'withdraw','home','eggs',1).ok)
- noQuote(one)
- assert.match(render(one),/data-action="warehouse-supply" data-value="wheat\|2"/)
+ assert.deepEqual(getMarketOrderBoard(one,'pantry').pickup?.lines.map(({supply})=>[supply.id,supply.quantity]),[['wheat',2]])
+ assert.match(render(one),/data-action="market-order-pickup"/)
+ assert.doesNotMatch(render(one),/data-action="warehouse-supply"/)
+ const singleBefore=structuredClone(one)
+ assert.equal(pickUpMarketOrderStock(one,'pantry',quote.token).ok,false,'an older two-line quote cannot turn into a partial transaction')
+ assert.deepEqual(one,singleBefore)
  const short=restore()
  assert.ok(transferBayGoods(short,'withdraw','home','wheat',1).ok)
  assert.ok(F.sellMarketItem(short,'produce:wheat',1).ok)
@@ -142,4 +147,37 @@ test('closed, detached, another order or another market tab cannot spend; held a
  const keys=new ActivationKeyGuard()
  assert.equal(keys.blocks({key:'Enter',repeat:false},true),false)
  assert.equal(keys.blocks({key:'Enter',repeat:true},true),true)
+})
+
+test('earned D196 jam and grain takes exactly the one missing owned line inline, then separately pays 32',()=>{
+ const farm=restore(), baseline=structuredClone(farm)
+ const lane='kitchen', html=render(farm,lane), board=getMarketOrderBoard(farm,lane)
+ assert.equal(board.order?.name,'Варенье и зерно')
+ assert.deepEqual([farm.day,farm.dishes.appleJam,farm.produce.wheat,farm.freight.warehouses.home.wheat,board.order!.reward],[196,1,0,2,32])
+ const token=html.match(/data-action="market-order-pickup" data-value="([^"]+)"/)?.[1]
+ assert.ok(token,'the fully covered single line can use the same direct pickup as the two-line order')
+ assert.deepEqual(board.pickup?.lines.map(({supply})=>[supply.id,supply.quantity]),[['wheat',2]])
+ assert.match(html,/Пшеница.*со склада ещё 2/)
+ assert.match(html,/data-action="show-requirement" data-value="produce:wheat"/,'the exact optional warehouse review remains reachable')
+ assert.doesNotMatch(html,/data-action="deliver-order"|data-action="warehouse-supply"/)
+ assert.deepEqual(farm,baseline)
+
+ const byWarehouse=restore();const requirement=warehouseRequest('wheat|2')!
+ const review=getRequirementHint(farm,{kind:'stock',item:requirement})
+ assert.deepEqual([review.action.target,review.action.value],['warehouse-supply','wheat|2'])
+ assert.deepEqual(farm,baseline)
+ assert.ok(withdrawWarehouseSupply(byWarehouse,requirement,getLocalWarehouseSupply(byWarehouse,requirement)).ok)
+ const {mutations,focused}=dispatch(farm,'market-order-pickup',token,{lane})
+ assert.deepEqual(mutations.map(m=>m.ok),[true]);assert.deepEqual(focused,['order-detail'])
+ assert.deepEqual(farm,byWarehouse);assert.equal(farm.coins,baseline.coins);assert.deepEqual(farm.orders,baseline.orders)
+ assert.match(render(farm,lane),/data-action="deliver-order" data-value="kitchen"/)
+ const picked=structuredClone(farm)
+ assert.equal(dispatch(farm,'market-order-pickup',token,{lane}).mutations[0].ok,false)
+ assert.deepEqual(farm,picked)
+ assert.ok(dispatch(farm,'deliver-order',lane,{lane}).mutations[0].ok)
+ assert.equal(farm.coins-baseline.coins,32);assert.equal(farm.orders.kitchen.deliveredOn,196)
+ assert.equal(farm.freight.warehouses.home.wheat,undefined)
+ assert.equal(getMarketOrderBoard(farm,'pantry').pickup,undefined,'the second order cannot also claim that wheat')
+ assert.ok(F.deliverMarketOrder(byWarehouse,lane).ok)
+ assert.deepEqual(farm,byWarehouse)
 })
