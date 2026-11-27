@@ -6,6 +6,7 @@ import * as F from '../src/farm.ts'
 import { getDiscoveryTask } from '../src/discovery-path.ts'
 import { getSupperFishRecovery, renderSupperResult } from '../src/shared-supper.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
+import { harbourTradePlayer } from './fixtures/harbour-trade-player.ts'
 
 const read = (file:string) => readFileSync(new URL(file,import.meta.url),'utf8')
 const opening: {name:string;args:unknown[]}[] = JSON.parse(read('./fixtures/home-progress-actions.json'))
@@ -95,4 +96,106 @@ test('a prepared on-site tea after the first regular dinner on that same day doe
   assert.notEqual(discover(f)?.action.target,'open-neighbor')
   assert.ok(F.finishNeighborPlan(f,intentId,table).ok,'the gathering itself can still earn its normal independent payoff')
   assert.equal(f.village.meals,1);assert.equal(F.getVillageHomeCount(f),1)
+})
+
+function firstHarbour(resident: F.ResidentId) {
+  const p=harbourTradePlayer(opening)
+  p.build('mill-buy');p.visit('village')
+  assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.handmade.round,p.state.dishes.orchardTart,
+    p.state.fish.perch,p.state.fish.seaBass,p.state.village.meals,F.getVillageHomeCount(p.state)],
+    [88,13,29,1,1,0,0,0,1])
+  p.act('inviteResident',resident,0)
+  return cold(p.state)
+}
+
+test('D13 Finn’s first local lunch is ready from the carried bun before the player joins or chooses food', () => {
+  const f=firstHarbour('finn'), id='finn:1', before=structuredClone(f)
+  const expectLocal=() => {
+    const next=discover(f)
+    assert.deepEqual(next?.action,{label:'К встрече',target:'open-neighbor',value:'finn'})
+    assert.equal(next?.label,'Обед у воды')
+    assert.equal(next?.detail,F.workshopDefinitions.round.name)
+    assert.deepEqual([next?.progress,next?.target],[0,2])
+    return next!
+  }
+  const initial=expectLocal()
+  const main=read('../src/main.ts'), start=main.indexOf("    case 'open-neighbor':"), end=main.indexOf("    case 'neighbor-help-house':",start)
+  assert.ok(start>=0&&end>start)
+  const opened:string[]=[]
+  const context={farm:f,action:initial.action.target,value:initial.action.value,residentIds:F.residentIds,getNeighborPlans:F.getNeighborPlans,
+    communityResident:'bea',requestedFood:'dish:orchardTart',communityRequest:undefined as {planId:string}|undefined,
+    openPanel:(panel:string)=>opened.push(panel)}
+  runInNewContext(`switch (action) {${main.slice(start,end)}}`,context)
+  assert.deepEqual(opened,['neighbor']);assert.equal(context.communityRequest?.planId,id)
+  assert.equal(context.requestedFood,undefined)
+  assert.equal(F.getNeighborPlans(f)[0].phase,'preparing')
+  assert.deepEqual(f,before,'the existing invitation does not join, spend, sail or select a dish')
+  assert.ok(F.joinNeighborPlan(f,id).ok)
+  assert.equal(F.getNeighborPlans(f)[0].food,null)
+  const joined=structuredClone(f)
+  expectLocal()
+  assert.deepEqual(f,joined)
+  assert.ok(F.serveNeighborPlan(f,id,'handmade:round').ok)
+  assert.deepEqual([f.coins,f.handmade.round,f.village.meals],[29,1,0])
+  expectLocal() // Existing selected ready route takes over.
+  assert.ok(F.finishNeighborPlan(f,id,{...table,kind:'basket'}).ok)
+  assert.deepEqual([f.island,f.coins,f.handmade.round,f.dishes.orchardTart,f.fish.seaBass,f.village.meals,F.getVillageHomeCount(f)],
+    ['village',61,0,1,0,1,1])
+  assert.notEqual(discover(f)?.action.target,'open-neighbor','a second meal is not available that day')
+})
+
+test('early invitation without a carried match, remote Finn, and a funded ordinary dinner keep normal guidance', () => {
+  const bea=firstHarbour('bea'), plain=firstHarbour('finn'), before=structuredClone(bea)
+  assert.deepEqual(discover(bea)?.action,{label:'Домой',target:'sail',value:'home'})
+  assert.deepEqual(bea,before)
+  assert.ok(F.sail(plain,'grove').ok)
+  assert.equal(discover(plain)?.action.target,'visit-pier','away from the village the normal fish source remains')
+  const cast=F.beginFishingTrip(plain)
+  assert.ok(cast.ok&&cast.token)
+  assert.ok(F.finishFishingTrip(plain,cast.token,[{kind:'fish',species:'seaBass',variant:'regular'}]).ok)
+  assert.ok(F.sail(plain,'village').ok)
+  assert.equal(discover(plain)?.action.target,'village-meal','funded ordinary dinner stays primary')
+  assert.equal(F.getNeighborPlans(plain)[0].phase,'preparing')
+  const absent=firstHarbour('finn')
+  assert.ok(F.sail(absent,'home').ok)
+  assert.ok(F.sellMarketItem(absent,'handmade:round',1).ok)
+  assert.ok(F.sail(absent,'village').ok)
+  assert.equal(F.getIntentOffers(absent,'hearty').some(offer=>offer.available),false)
+  assert.notEqual(discover(absent)?.action.target,'open-neighbor')
+})
+
+test('D13 Finn lunch remains local with two genuinely earned carried pastry choices and picks neither for the player', () => {
+  const p=harbourTradePlayer(opening)
+  assert.deepEqual([p.actions,p.state.day,p.state.selectedSeed,p.state.seeds.wheat,p.state.eggs],[72,8,'wheat',3,1])
+  // One extra seed uses the same two already-required farming mornings.
+  for(const i of [0,2]){p.act('workBed',i);p.act('workBed',i)}
+  p.night()
+  for(const i of [0,2])if(F.getBedAction(p.state,i).kind==='water')p.act('workBed',i)
+  p.night()
+  for(const i of [0,2])p.act('workBed',i)
+  assert.deepEqual([p.state.day,p.state.produce.wheat],[10,4])
+  p.build('mill-buy')
+  assert.deepEqual([p.state.day,p.state.produce.wheat,p.state.eggs],[13,2,1])
+  p.act('bakeWorkshop','folded');p.visit('village');p.act('inviteResident','finn',0)
+  assert.deepEqual([p.actions,p.state.coins,p.state.fish.perch,p.state.fish.seaBass],[93,29,0,0])
+  const f=cold(p.state), before=structuredClone(f)
+  const ready=()=>F.getIntentOffers(f,'hearty').filter(offer=>offer.available).map(offer=>offer.id)
+  assert.deepEqual(ready(),['handmade:round','handmade:folded'])
+  assert.equal(F.getVillageMeal(f).available,false)
+  const expectLocal=()=>{
+    const goal=discover(f)
+    assert.deepEqual(goal?.action,{label:'К встрече',target:'open-neighbor',value:'finn'})
+    assert.equal(goal?.detail,'Угощение готово')
+    assert.equal(F.getNeighborPlans(f)[0].food,null)
+  }
+  expectLocal()
+  assert.deepEqual(f,before)
+  assert.ok(F.joinNeighborPlan(f,'finn:1').ok)
+  expectLocal()
+  assert.deepEqual(ready(),['handmade:round','handmade:folded'])
+  assert.ok(F.serveNeighborPlan(f,'finn:1','handmade:folded').ok)
+  assert.equal(discover(f)?.detail,F.workshopDefinitions.folded.name)
+  assert.deepEqual([f.handmade.round,f.handmade.folded,f.coins],[1,1,29])
+  assert.ok(F.finishNeighborPlan(f,'finn:1',{...table,kind:'basket'}).ok)
+  assert.deepEqual([f.handmade.round,f.handmade.folded,f.coins,f.village.meals],[1,0,61,1])
 })

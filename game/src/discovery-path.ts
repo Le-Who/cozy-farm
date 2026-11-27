@@ -316,12 +316,20 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
       const missing = meal.items.find(item => (item.kind !== 'handmade' || !signature) && ingredientCount(farm, item) < item.quantity);
       if (missing) {
         // A selected, ready meeting can also count toward the second cottage; do not send its player away.
-        const meeting = farm.island === 'village' ? getNeighborPlans(farm).find(plan =>
-          plan.phase === 'arranging' && plan.food && getIntentOffers(farm, plan.intentId)
-            .some(offer => offer.id === plan.food?.id && offer.available)) : undefined;
+        const local = farm.island === 'village' ? getNeighborPlans(farm) : [];
+        const meeting = local.find(plan => plan.phase === 'arranging' && plan.food && getIntentOffers(farm, plan.intentId)
+          .some(offer => offer.id === plan.food?.id && offer.available));
         if (meeting?.food) return task('shared-suppers', meeting.title, meeting.food.name,
           `ui-${meeting.resident}`, { label: 'К встрече', target: 'open-neighbor', value: meeting.resident }, farm.village.meals, 2);
-        return missing.kind === 'fish' ? supperFish(farm) : supply(farm, missing, 'общий ужин');
+        if (missing.kind !== 'fish') return supply(farm, missing, 'общий ужин');
+        const fish = supperFish(farm);
+        // The first local Finn lunch can use a carried serving before the player chooses it.
+        const lunch = fish.action.target === 'sail' ? local.find(plan => plan.episode === 'finnShore' && plan.memoryCount === 0
+          && (plan.phase === 'preparing' || plan.phase === 'joined')) : undefined;
+        const portions = lunch ? getIntentOffers(farm, lunch.intentId).filter(offer => offer.available) : [];
+        if (lunch && portions.length) return task('shared-suppers', lunch.title, portions.length === 1 ? portions[0].name : 'Угощение готово',
+          'ui-finn', { label: 'К встрече', target: 'open-neighbor', value: lunch.resident }, farm.village.meals, 2);
+        return fish;
       }
       if (signature && !farm.handmade[shape]) return arrive(task('shared-suppers', 'Принесите готовое блюдо к общему столу',
         `Авторское блюдо уже есть. Выберите у стола 1 порцию и подайте с 1 рыбой. Два ужина в разные дни откроют второй домик.`,
