@@ -2,7 +2,7 @@ import { BeaDuet } from './bea-duet'
 import type { FestivalConcertState } from './festival-concert-guidance'
 import { bayAudio } from './bay-audio'
 import { BAY_CONCERT_STEPS, bayConcertProgress } from './bay-concert-progress'
-import { BAY_INSTRUMENTS, BAY_MUSIC_EXPANSIONS, BAY_NOTE_NAMES, BAY_SCALE, bayActiveVoices, bayFestivalPattern, bayPerformanceQuality, cloneBayPattern, normalizeBayMusicState, type BayInstrumentId, type BayMusicState, type BayPattern } from './bay-music-model'
+import { BAY_INSTRUMENTS, BAY_MUSIC_EXPANSIONS, BAY_NOTE_NAMES, BAY_SCALE, bayActiveVoices, bayFestivalPattern, bayPerformanceQuality, cloneBayPattern, createBayMusicState, normalizeBayMusicState, type BayInstrumentId, type BayMusicState, type BayPattern } from './bay-music-model'
 import './bay-music.css'
 import { musicMaterialSources } from './music-material-guidance'
 
@@ -36,7 +36,8 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
   let running = false, preparing = false, recording = false, destroyed = false, nextStep = 0, nextTime = 0, currentStep = -1, stepsPerformed = 0, rewarded = false
   let timer = 0, frame = 0, transportRevision = 0, auditionRevision = 0
   let instrumentPreview: { until?: number; stop?: () => void } | undefined
-  let pendingReplacement: { slot: number; previous: BayPattern; draftKey: string } | undefined
+  let pendingReplacement: ({ kind: 'slot'; slot: number; previous: BayPattern } |
+    { kind: 'festival'; edition: number; opener: HTMLButtonElement }) & { draftKey: string } | undefined
   const scheduled: { step: number; time: number }[] = [], abort = new AbortController(), signal = abort.signal
   const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const base = import.meta.env.BASE_URL, art = `${base}art/lavender/bay/`
@@ -51,7 +52,7 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
       <div class="bay-music-note-palette" role="group" aria-label="Высота следующей ноты">${BAY_NOTE_NAMES.map((name, index) => `<button type="button" data-note="${index}" aria-pressed="${index === 0}"><span>${name.replace(' ↑', '′')}</span><kbd aria-hidden="true">${index + 1}</kbd></button>`).join('')}</div>
     </div>
     <div class="bay-music-sheet-backdrop" hidden><section class="bay-music-sheet" role="dialog" aria-modal="true" aria-labelledby="bay-music-sheet-title"><header><h2 id="bay-music-sheet-title"></h2><button type="button" class="bay-music-sheet-close" aria-label="Вернуться к инструментам">×</button></header><div class="bay-music-sheet-body">
-      <div data-sheet-content="library" hidden><p class="bay-music-sheet-intro">Изменения сохраняются сами. Здесь можно оставить три любимые версии.</p><div class="bay-music-presets"><label>Название мелодии<input class="bay-music-name" maxlength="40" aria-label="Название мелодии"></label><label>Место для записи<select aria-label="Ячейка сохранения"><option value="0">Запись 1</option><option value="1">Запись 2</option><option value="2">Запись 3</option></select></label><div class="bay-music-sheet-actions bay-music-library-actions"><button type="button" class="bay-music-save" aria-controls="bay-music-confirm-replace">Сохранить версию</button><button type="button" class="bay-music-load">Открыть версию</button><button type="button" id="bay-music-confirm-replace" class="bay-music-confirm-replace" hidden>Заменить</button></div></div><div class="bay-music-festival-list">${state.festivalUnlocked ? Array.from({length:Math.max(1,state.festivalLevel ?? 1)},(_,i) => `<button type="button" class="bay-music-festival" data-edition="${i+1}">${bayFestivalPattern(i+1).name}</button>`).join('') : ''}</div></div>
+      <div data-sheet-content="library" hidden><p class="bay-music-sheet-intro">Изменения сохраняются сами. Здесь можно оставить три любимые версии.</p><div class="bay-music-presets"><label>Название мелодии<input class="bay-music-name" maxlength="40" aria-label="Название мелодии"></label><label>Место для записи<select aria-label="Ячейка сохранения"><option value="0">Запись 1</option><option value="1">Запись 2</option><option value="2">Запись 3</option></select></label><div class="bay-music-sheet-actions bay-music-library-actions"><button type="button" class="bay-music-save" aria-controls="bay-music-confirm-replace">Сохранить версию</button><button type="button" class="bay-music-load">Открыть версию</button><button type="button" id="bay-music-confirm-replace" class="bay-music-confirm-replace" hidden>Заменить</button></div></div><div class="bay-music-festival-list">${state.festivalUnlocked ? Array.from({length:Math.max(1,state.festivalLevel ?? 1)},(_,i) => `<button type="button" class="bay-music-festival" data-edition="${i+1}" aria-controls="bay-music-confirm-replace">Открыть «${bayFestivalPattern(i+1).name}»</button>`).join('') : ''}</div></div>
       <div data-sheet-content="settings" hidden><div class="bay-music-settings"><label class="bay-music-tempo">Темп <input type="range" min="54" max="132" step="1" value="${state.tempo}" aria-label="Темп мелодии"><output>${state.tempo}</output></label><label class="bay-music-master">Общая громкость <input type="range" min="0" max="100" value="${Math.round(bayAudio.settings.volume * 100)}" aria-label="Общая громкость"></label><label class="bay-music-music-level">Музыка <input type="range" min="0" max="100" value="${Math.round(bayAudio.settings.music * 100)}" aria-label="Громкость музыки"></label><button type="button" class="bay-music-mute" aria-pressed="${bayAudio.settings.muted}" aria-label="${bayAudio.settings.muted ? 'Включить весь звук' : 'Выключить весь звук'}">${bayAudio.settings.muted ? 'Включить звук' : 'Выключить звук'}</button></div><h3>Громкость инструментов</h3><div class="bay-music-mixer">${BAY_INSTRUMENTS.map(instrument => `<label data-mixer="${instrument.id}"><span>${instrument.name}</span><input type="range" data-volume="${instrument.id}" min="0" max="100" aria-label="Громкость: ${instrument.name}"></label>`).join('')}</div><button type="button" class="bay-music-clear">Очистить выбранную дорожку</button><p class="bay-music-help">Пробел — играть и остановить. A S D F G H — инструменты. 1–8 — ноты. Выберите ноту и коснитесь шага, чтобы изменить мелодию. При включённой записи касания инструментов попадают в звучащую дорожку.</p></div>
       <div data-sheet-content="materials" hidden><div class="bay-music-expansion-preview"><img alt="" draggable="false"><div><h3></h3><button type="button" class="bay-music-preview-note">Послушать</button></div></div><div class="bay-music-materials"></div><p class="bay-music-materials-hint"></p><div class="bay-music-sheet-actions"><button type="button" class="bay-music-expand">Собрать инструмент</button><button type="button" class="bay-music-freight">Материалы и склады</button></div></div>
     </div><p class="bay-music-sheet-status" role="status" aria-live="polite"></p></section></div>
@@ -293,12 +294,14 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
   }
 
   function clearReplacement(): void {
-    if (!pendingReplacement) return
+    const pending = pendingReplacement
+    if (!pending) return
     pendingReplacement = undefined
+    const opener = pending.kind === 'festival' ? pending.opener : saveButton
     const wasFocused = document.activeElement === replaceButton
     replaceButton.hidden = true
-    saveButton.removeAttribute('aria-expanded')
-    if (wasFocused) saveButton.focus({preventScroll:true})
+    opener.removeAttribute('aria-expanded')
+    if (wasFocused) opener.focus({preventScroll:true})
   }
   function writeVersion(slot: number, draft: BayPattern): void {
     state.saved[slot] = draft
@@ -306,13 +309,14 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
   }
   function requestVersion(): void {
     if (sheet !== 'library') return
+    clearReplacement()
     const slot = Number(presetSelect.value)
     if (!Number.isInteger(slot) || slot < 0 || slot >= state.saved.length) return
     const draft = cloneBayPattern(state), previous = state.saved[slot]
     if (!previous) { writeVersion(slot,draft); return }
     const draftKey = JSON.stringify(draft)
     if (JSON.stringify(previous) === draftKey) { clearReplacement(); say('Версия мелодии сохранена.'); return }
-    pendingReplacement = { slot, previous, draftKey }
+    pendingReplacement = { kind: 'slot', slot, previous, draftKey }
     replaceButton.textContent = `Заменить «${previous.name.trim() || 'Моя мелодия'}»`
     replaceButton.hidden = false
     saveButton.setAttribute('aria-expanded','true')
@@ -321,9 +325,38 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
     const consent = pendingReplacement
     if (!consent || sheet !== 'library') return
     const draft = cloneBayPattern(state)
-    if (Number(presetSelect.value) !== consent.slot || state.saved[consent.slot] !== consent.previous
-        || JSON.stringify(draft) !== consent.draftKey) { clearReplacement(); return }
+    if (JSON.stringify(draft) !== consent.draftKey) { clearReplacement(); return }
+    if (consent.kind === 'festival') {
+      const { edition, opener } = consent
+      const valid = opener.isConnected && Number(opener.dataset.edition) === edition && hasFestivalEdition(edition)
+      clearReplacement()
+      if (valid) openVersion(bayFestivalPattern(edition))
+      return
+    }
+    if (Number(presetSelect.value) !== consent.slot || state.saved[consent.slot] !== consent.previous) { clearReplacement(); return }
     writeVersion(consent.slot,draft)
+  }
+  function openVersion(pattern: BayPattern): void {
+    stop(); state = { ...state, ...cloneBayPattern(pattern) }; query<HTMLInputElement>('.bay-music-tempo input').value = String(state.tempo); query<HTMLOutputElement>('.bay-music-tempo output').value = String(state.tempo); update(); save(); say('Сохранённая мелодия открыта.')
+  }
+  function hasFestivalEdition(edition: number): boolean {
+    return state.festivalUnlocked === true && Number.isSafeInteger(edition) && edition >= 1 && edition <= Math.max(1, state.festivalLevel ?? 1)
+  }
+  function requestFestivalVersion(opener: HTMLButtonElement, pattern: BayPattern): void {
+    const edition = Number(opener.dataset.edition)
+    if (sheet !== 'library' || !hasFestivalEdition(edition)) return
+    clearReplacement()
+    const draft = cloneBayPattern(state), key = JSON.stringify(draft), factory = cloneBayPattern(createBayMusicState())
+    // Factory and saved tracks may have different property ordering from the live normalized draft.
+    const isDraft = (other: BayPattern | null) => other !== null && JSON.stringify(cloneBayPattern(normalizeBayMusicState(other))) === key
+    const empty = (!draft.name.trim() || draft.name === factory.name) && draft.tempo === factory.tempo
+      && BAY_INSTRUMENTS.every(({id, level}) => level > state.level || draft.tracks[id].steps.every(note => note < 0))
+    const knownScore = Array.from({length: Math.max(1, state.festivalLevel ?? 1)}, (_, index) => bayFestivalPattern(index + 1)).some(isDraft)
+    if (empty || isDraft(factory) || isDraft(pattern) || state.saved.some(isDraft) || knownScore) { openVersion(pattern); return }
+    pendingReplacement = { kind: 'festival', edition, opener, draftKey: key }
+    replaceButton.textContent = `Заменить «${draft.name.trim() || 'Моя мелодия'}»`
+    replaceButton.hidden = false
+    opener.setAttribute('aria-expanded','true')
   }
 
   root.addEventListener('click', event => {
@@ -359,9 +392,14 @@ export function createBayMusic(host: HTMLElement, options: BayMusicOptions): { d
       else if (event.detail <= 1) confirmVersion()
     }
     else if (button.classList.contains('bay-music-load') || button.classList.contains('bay-music-festival')) {
+      const pattern = button.classList.contains('bay-music-festival') && state.festivalUnlocked ? bayFestivalPattern(Number(button.dataset.edition)) : state.saved[Number(presetSelect.value)]
+      if (button.classList.contains('bay-music-festival')) {
+        event.stopPropagation()
+        if (pattern) requestFestivalVersion(button, pattern)
+        return
+      }
       clearReplacement()
-      const pattern = button.classList.contains('bay-music-festival') && state.festivalUnlocked ? bayFestivalPattern(Number(button.dataset.edition)) : state.saved[Number(presetSelect.value)]; if (!pattern) return
-      stop(); state = { ...state, ...cloneBayPattern(pattern) }; query<HTMLInputElement>('.bay-music-tempo input').value = String(state.tempo); query<HTMLOutputElement>('.bay-music-tempo output').value = String(state.tempo); update(); save(); say('Сохранённая мелодия открыта.')
+      if (pattern) openVersion(pattern)
     } else if (button === expand) {
       const level = options.onRequestMaterials?.()
       if (typeof level === 'number') { state.level = Math.max(0,Math.min(2,Math.floor(level))); selected = level === 1 ? 'shaker' : 'bass'; update(); save(); showSheet(null); say('Новый инструмент готов. Коснитесь его в саду.') }

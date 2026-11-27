@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {stripTypeScriptTypes as strip} from 'node:module'
 import {runInNewContext as vm} from 'node:vm'
-import {cloneBayPattern,normalizeBayMusicState,bayFestivalPattern,type BayMusicState} from '../src/bay-music-model.ts'
-import {restoreCurrentFarm,getShellAt,type FarmState} from '../src/farm.ts'
+import {cloneBayPattern,normalizeBayMusicState,bayFestivalPattern,createBayMusicState,BAY_INSTRUMENTS,bayActiveVoices,bayPerformanceQuality,type BayMusicState} from '../src/bay-music-model.ts'
+import {restoreCurrentFarm,getShellAt,getBedStage,getBedAction,type FarmState} from '../src/farm.ts'
 import {installGardenInstrument} from '../src/harbour-economy.ts'
 import {commissionPlayer} from './fixtures/commission-player.ts'
 
@@ -59,12 +59,12 @@ function mount(source:FarmState){
   pendingReplacement:undefined,duet:{cancel(){}},cancelInstrumentPreview(){},remember(){},
   selected:'marimba',selectedNote:0,running:false,preparing:false,recording:false,withBea:false,
   options:{onSave:(musicGarden:BayMusicState)=>{farm.musicGarden=copy(musicGarden);writes++; assert.deepEqual(restoreCurrentFarm(copy(farm)),farm)}},
-  state:normalizeBayMusicState(farm.musicGarden),normalizeBayMusicState,cloneBayPattern,bayFestivalPattern,
+  state:normalizeBayMusicState(farm.musicGarden),normalizeBayMusicState,cloneBayPattern,bayFestivalPattern,createBayMusicState,BAY_INSTRUMENTS,
   nameInput:target(),presetSelect:{value:'',options:[{},{},{}],addEventListener:(ev:string,f:(e:any)=>void)=>events.set(ev,f)},
   saveButton:query('.bay-music-save'),replaceButton:query('.bay-music-confirm-replace'),playButton:{},recordButton:{},listen:{},expand:{},duetButton:{},
-  query,update(){vm(picker,s)},say(message:string){statuses.push(message)},strike(){},paintConcert(){},stop(){},
+  query,update(){vm(picker,s)},say(message:string){statuses.push(message)},strike(){},paintConcert(){},stop(){stops++},
  }
- let writes=0;
+ let writes=0,stops=0;
  const outside=target('melodies');outside.focus();s.replaceButton.hidden=true
  vm(preset,s);vm(operations+handlers,s);s.update();
  const click=(t:UiTarget,detail=1)=>{
@@ -82,7 +82,16 @@ function mount(source:FarmState){
   return prevented
  }
  const cold=()=>restoreCurrentFarm(copy(farm))!;
- return {s,farm,focus,outside,cold,click,open,slot,name,tempo,note,key,query,statuses,get writes(){return writes}}
+ const festivalButton=()=>{
+  const code=music.match(/<div class="bay-music-festival-list">.*?<\/div>/)?.[0]
+  assert.ok(code,'use the actual reward markup')
+  const html=vm('`'+code+'`',s) as string
+  const row=html.match(/<button ([^>]*?) data-edition="1"([^>]*)>([^<]+)<\/button>/)
+  assert.ok(row,html)
+  return {html,button:target('bay-music-festival',{edition:'1'}),label:row[3]}
+ }
+ return {s,farm,focus,outside,cold,click,open,slot,name,tempo,note,key,query,statuses,festivalButton,get writes(){return writes},get stops(){return stops}}
+
 }
 function createTwo(){
  const f=mount(earned());f.open();f.name('Свет в гавани');f.tempo(96);
@@ -167,4 +176,92 @@ test('library reserves one disclosure row and one existing status line before Sa
  assert.match(css,/\.bay-music-sheet:has\(\.bay-music-library-actions:not\(\[hidden\]\)\)>\.bay-music-sheet-status\{display:block;min-height:34px\}/)
  assert.match(css,/\.bay-music \[hidden\]\{display:none!important\}/)
  assert.doesNotMatch(music,/class="bay-music-confirm-replace[^>]*data-action/)
+})
+
+
+/** Ordinary production supplies and four completed rounds. Clock, paint, and audio outputs are not invoked. */
+function firstFestivalScore() {
+ const history=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+ const p=commissionPlayer(history)
+ p.act('beginFestival','stage')
+ p.fruit('apple',5);p.visit('home');p.act('cookDish','appleJam');p.visit('village')
+ p.act('contributeFestival','treat','orchardTart');p.act('contributeFestival','treat','appleJam')
+ p.night()
+ for(let n=0;p.state.produce.wheat<1;n++){
+  assert.ok(n<8,'ordinary wheat matures')
+  const live=p.state.beds.findIndex(b=>b.kind==='crop'&&b.crop==='wheat')
+  if(live>=0){
+   if(getBedStage(p.state.beds[live])==='ripe'){p.act('workBed',live);continue}
+   if(getBedAction(p.state,live).kind==='water'){if(!p.state.water)p.act('refillWater');p.act('workBed',live)}
+   p.night();continue
+  }
+  const free=p.state.beds.findIndex(b=>b.kind==='tilled');assert.ok(free>=0)
+  if(!p.state.seeds.wheat)p.act('buySeeds','wheat')
+  if(p.state.selectedSeed!=='wheat')p.act('selectSeed','wheat')
+  p.act('workBed',free)
+ }
+ p.visit('village')
+ for(let i=0;i<3;i++)p.act('contributeFestival','fruit','apple')
+ p.act('contributeFestival','greens','wheat');p.night();p.visit('village')
+ assert.equal(p.state.musicGarden.festivalUnlocked,false)
+ const state=p.state.musicGarden
+ const complete=strip(between('  function draw()', '  function stop(')+';draw();')
+ vm(complete,{state, destroyed:false,running:true,scheduled:Array.from({length:64},(_,i)=>({step:i%16,time:i/6})),
+  bayAudio:{currentTime:20},root:{querySelectorAll:()=>[]},currentStep:-1,available:()=>true,pulse(){},
+  BAY_INSTRUMENTS,bayActiveVoices,bayPerformanceQuality,BAY_CONCERT_STEPS:64,stepsPerformed:0,rewarded:false,
+  save(){},options:{},paintConcert(){},requestAnimationFrame:()=>0,frame:0})
+ assert.equal(state.performances,1)
+ p.reload();p.act('contributeFestival','concert','concert');p.night();p.visit('village')
+ p.act('finishFestival')
+ assert.deepEqual([p.state.musicGarden.festivalLevel,p.state.musicGarden.festivalUnlocked,p.state.musicGarden.saved],[1,true,[null,null,null]])
+ return p.state
+}
+
+test('an earned festival title cannot overwrite a genuinely edited current draft until separate confirmation',()=>{
+ const baseline=firstFestivalScore()
+ const edited=mount(baseline);edited.name('Личная мелодия');edited.note('marimba',1,2)
+ const original=edited.cold()
+ const f=mount(original);f.open()
+ const {html,button,label}=f.festivalButton()
+ button.focus();f.click(button)
+ assert.deepEqual(f.cold(),original,'opening the earned title must not silently erase the only copy of the active song')
+ assert.match(label,/Открыть.*Вечер садовой сцены/)
+ assert.match(html,/aria-controls="bay-music-confirm-replace"/)
+ assert.equal(f.s.replaceButton.textContent,'Заменить «Личная мелодия»')
+ assert.equal(f.writes,0);assert.equal(f.stops,0)
+ assert.equal(button.attributes.get('aria-expanded'),'true')
+ assert.equal(f.focus.activeElement,button)
+ f.click(button,2)
+ assert.equal(f.key('Enter',f.s.replaceButton,true),true)
+ f.click(f.s.replaceButton,2)
+ assert.deepEqual(f.cold(),original)
+ f.s.replaceButton.focus();f.key('Escape',f.s.replaceButton)
+ assert.equal(f.s.replaceButton.hidden,true)
+ assert.equal(f.focus.activeElement,f.outside)
+ assert.deepEqual(f.cold(),original)
+ f.open();button.focus();f.click(button);f.s.replaceButton.focus()
+ assert.equal(f.key('Enter',f.s.replaceButton),false)
+ f.click(f.s.replaceButton,0)
+ const expected={...original,musicGarden:{...original.musicGarden,...bayFestivalPattern(1)}}
+ assert.deepEqual(f.cold(),expected)
+ assert.equal(f.writes,1);assert.equal(f.stops,1)
+ assert.equal(f.focus.activeElement,button)
+ assert.equal(f.s.replaceButton.hidden,true)
+ assert.equal(button.attributes.has('aria-expanded'),false)
+ f.click(f.s.replaceButton);assert.equal(f.writes,1)
+ // Clear the four actual available parts by clicking each already selected note. Locked tracks
+ // still contain factory notes, but they are not editable/audible and must not mark this as a draft.
+ const silent=mount(baseline)
+ for(const {id,level} of BAY_INSTRUMENTS)if(level<=baseline.musicGarden.level)
+  baseline.musicGarden.tracks[id].steps.forEach((note,index)=>{if(note>=0)silent.note(id,index,note)})
+ assert.equal(bayActiveVoices(silent.cold().musicGarden),0)
+ assert.equal(silent.cold().musicGarden.tracks.shaker.steps.some(note=>note>=0),true)
+ // Original built-in or blank draft, same festival score, and explicit named copy all open directly.
+ for(const raw of [baseline,silent.cold(),f.cold(),(()=>{const backup=mount(original);backup.open();backup.click(backup.s.saveButton);return backup.cold()})()]){
+  const direct=mount(raw);direct.open();direct.click(direct.festivalButton().button)
+  assert.deepEqual(compact(direct.cold().musicGarden),bayFestivalPattern(1))
+  assert.deepEqual(direct.cold().musicGarden.saved,raw.musicGarden.saved)
+  assert.equal(direct.s.replaceButton.hidden,true)
+  assert.equal(direct.writes,1)
+ }
 })
