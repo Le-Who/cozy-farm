@@ -1,5 +1,5 @@
-import { bedsPerRow, eggsPerCrate, facilitySpecializations, getWaterCapacity, incubationDays, maxFlockSize, type FacilityBranch, type FarmState } from './farm.ts';
-import { ruCount } from './ru.ts';
+import { bedsPerRow, cropDefinitions, eggsPerCrate, facilitySpecializations, getFirstCoopOrderPreview, getWaterCapacity, incubationDays, maxFlockSize, type FacilityBranch, type FarmState } from './farm.ts';
+import { formatRuNumber, ruCount } from './ru.ts';
 
 /** Explain existing permanent choices without buying them or preparing their resources. */
 export function getFacilityChoiceDetails(farm: FarmState, branch: FacilityBranch) {
@@ -32,5 +32,15 @@ export function getFacilityChoiceDetails(farm: FarmState, branch: FacilityBranch
 
 export function renderFacilityChoiceDetails(farm: FarmState, branch: FacilityBranch) {
   const detail=getFacilityChoiceDetails(farm,branch);
-  return `<section class="facility-choice-details" aria-label="Условия направления"><h2>${detail.name}</h2><ul>${detail.lines.map(line=>`<li>${line}</li>`).join('')}</ul><p>Откроются заказы этого направления на рынке.</p></section>`;
+  const coop = branch === 'hatchery' || branch === 'packing';
+  const order = coop ? getFirstCoopOrderPreview(farm, branch) : undefined;
+  const items = order?.items.map(item => {
+    if (item.kind === 'eggs') return ruCount(item.quantity,'яйцо','яйца','яиц');
+    if (item.kind === 'eggCrates') return `Ящик яиц ×${formatRuNumber(item.quantity)}`;
+    if (item.kind === 'produce') return `${cropDefinitions[item.item].name} ×${formatRuNumber(item.quantity)}`;
+  });
+  const summary = order && items?.every(item => item !== undefined)
+    ? `Первый заказ: ${items.join(' + ')} · +${ruCount(order.reward,'монета','монеты','монет')}`
+    : 'Откроются заказы этого направления на рынке.';
+  return `<section class="facility-choice-details" aria-label="Условия направления"><h2>${detail.name}</h2><ul>${detail.lines.map(line=>`<li>${line}</li>`).join('')}</ul><p${coop ? ' id="coop-first-order"' : ''}>${summary}</p></section>`;
 }

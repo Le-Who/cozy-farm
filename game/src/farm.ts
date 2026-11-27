@@ -2192,6 +2192,14 @@ export function getFirstFarmhouseOrderPreview(farm: FarmState, branch: Specializ
   return { name: order.name, reward: supplyOrderReward(farm, order), items: order.items.map(item => ({ ...item })) };
 }
 
+/** Quote the existing first flock order without choosing or preparing a facility. */
+export function getFirstCoopOrderPreview(farm: FarmState, branch: CoopSpecialization) {
+  if (farm.island !== 'home' || farm.buildingLevels.coop !== 2 || farm.coopSpecialization
+    || !isId(coopSpecializationIds, branch) || farm.orders.flock.completed !== 0 || farm.orders.flock.deliveredOn !== 0) return;
+  const { name, reward, items } = marketOrder(farm, 'flock', facilityMenus[branch]);
+  return { name, reward, items: items.map(item => ({ ...item })) };
+}
+
 export function getMarketOrders(farm: FarmState) {
   return orderLanes.flatMap((lane) => {
     const menu = marketOrderMenu(farm, lane);

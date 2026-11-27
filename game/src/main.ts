@@ -957,7 +957,7 @@ function specializationCards() {
       const order = houseBranch ? getFirstFarmhouseOrderPreview(farm, id) : undefined
       const path = specializationStages[id].mask.path
       return `<button class="specialization-option" type="button" data-action="preview-specialization" data-value="${id}"
-        aria-pressed="${id === previewSpecialization}">
+        aria-pressed="${id === previewSpecialization}"${id === previewSpecialization && (id === 'hatchery' || id === 'packing') ? ' aria-describedby="coop-first-order"' : ''}>
         <img class="specialization-preview" src="${import.meta.env.BASE_URL}art/${path}.webp" alt="" draggable="false">
         <strong>${definition.name}</strong>
         ${order ? `<span>Первый заказ: «${order.name}» · ${quantity(order.reward, 'монета')}</span>
