@@ -992,7 +992,9 @@ function stockLabel(item: StockItem): { name: string; image: string } {
 }
 
 function stockTile(item: StockItem) {
-  const source = item.kind === 'variants' && panel === 'recipes' ? getRequirementHint(farm,{kind:'stock',item}).sourceLabel : undefined
+  const source = item.kind === 'fruit' && panel === 'kitchen' && farm.island === 'home' && ingredientCount(farm, item) < item.quantity
+    ? getRequirementHint(farm, {kind:'stock',item}, 'home-kitchen').sourceLabel
+    : item.kind === 'variants' && panel === 'recipes' ? getRequirementHint(farm,{kind:'stock',item}).sourceLabel : undefined
   return stockTileWithSource(item,source)
 }
 function stockTileWithSource(item: StockItem, source = '') {
@@ -3642,10 +3644,14 @@ function highlightControl(element: HTMLElement | null) {
 
 async function showRequirement(requirement: Requirement, origin?: HTMLElement, depth = 0): Promise<void> {
   const draftSource = panel === 'signature' && dialog.open && origin?.closest('.recipe-studio .recipe-cost') && dialogContent.contains(origin)
-  const recipeOrigin = draftSource ? 'recipe-draft' : panel === 'recipes' && origin?.closest('.signature-page') ? 'saved-recipe' : undefined
+  const recipeOrigin = draftSource ? 'recipe-draft' : panel === 'recipes' && origin?.closest('.signature-page') ? 'saved-recipe'
+    : panel === 'kitchen' && farm.island === 'home' && depth === 0 && dialog.open
+      && requirement.kind === 'stock' && requirement.item.kind === 'fruit'
+      && origin?.closest('.recipe .ingredients') && dialogContent.contains(origin) ? 'home-kitchen' : undefined
   const hint = getRequirementHint(farm, requirement, recipeOrigin)
   const {target,value} = hint.action
   if (!target) return // An exact in-flight source may have expired.
+  if (target === 'review-returned-ferry') { openPanel('bay-freight'); return }
   if (target === 'market-sale-review' && value && farm.island === 'home') {
     beginExactSale({kind:'market',key:value})
     if (hint.notice) notify(hint.notice)

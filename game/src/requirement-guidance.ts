@@ -228,7 +228,7 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
 }
 
 /** Read-only wayfinding. Following a condition never purchases, harvests, rests or delivers. */
-export function getRequirementHint(farm: FarmState, requirement: Requirement, origin?: 'saved-recipe' | 'recipe-draft'): RequirementHint {
+export function getRequirementHint(farm: FarmState, requirement: Requirement, origin?: 'saved-recipe' | 'recipe-draft' | 'home-kitchen'): RequirementHint {
   if (requirement.kind === 'stock') {
     const item = requirement.item;
     if (item.kind === 'seaSalt' && requirement.musicSaltOn !== undefined) {
@@ -238,8 +238,18 @@ export function getRequirementHint(farm: FarmState, requirement: Requirement, or
       return farm.island === 'grove' ? route('focus-place','salt') : route('sail','grove');
     }
     const hint = stock(farm, item);
+    // Like the existing Journal receipt, review never claims. Leave local
+    // orchard and warehouse choices ahead of cargo; avoid only the Grove trip.
+    if (origin === 'home-kitchen' && farm.island === 'home' && farm.boatOwned && item.kind === 'fruit'
+      && hint.action.target === 'sail' && hint.action.value === 'grove') {
+      const missing = item.quantity - ingredientCount(farm, item), voyage = farm.freight.expeditions.active;
+      if (missing > 0 && voyage?.phase === 'ready' && voyage.returnsOn <= farm.day
+        && voyage.kind === 'trade' && voyage.port === 'orchard'
+        && voyage.incoming.some(lot => lot.id === bayProductId(item) && lot.quantity >= missing))
+        return { ...route('review-returned-ferry'), sourceLabel: 'К грузу' };
+    }
     // A full ordinary batch in one orchard avoids a detour from the village kitchen.
-    if (origin && item.kind === 'fruit' && farm.island === 'village'
+    if ((origin === 'saved-recipe' || origin === 'recipe-draft') && item.kind === 'fruit' && farm.island === 'village'
       && hint.action.target === 'sail' && hint.action.value === 'home' && canSailTo(farm, 'grove')) {
       const missing = item.quantity - farm.fruit[item.item];
       const ready = (island: 'home' | 'grove') => farm.trees[island].reduce((sum, tree) =>
