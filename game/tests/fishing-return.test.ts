@@ -209,3 +209,79 @@ test('a lone shore, equal usable bonus, exhausted shores, or a saved paid previe
   assert.equal(getFinnFishingRoute(next.state)?.addsSlot,true)
   assert.equal(getFinnFishingRoute(next.state)?.alternate,undefined,'same bonus on both shores preserves the ordinary single Home target')
 })
+
+test('Finn sends an earned cold Grove cast straight to its owner without spending the new hook', async () => {
+  const p=commissionPlayer(earnedOpening())
+  p.visit('home');p.act('sendFerryExpedition','mill-buy');p.night()
+  assert.equal(p.state.handmade.round,0)
+  p.act('receiveFerryExpedition');p.visit('village')
+  p.act('joinNeighborPlan','finn:1');p.act('serveNeighborPlan','finn:1','handmade:round')
+  p.act('finishNeighborPlan','finn:1',{kind:'basket',settled:true,placements:[
+    {slot:'food',x:0,y:0},{slot:'cup',x:.4,y:.2},{slot:'flowers',x:-.4,y:.2},
+  ]})
+  assert.equal(p.state.neighbors.finn.helpReady,true)
+  const solo=structuredClone(p.state)
+  assert.equal(getFinnFishingRoute(solo),undefined)
+  assert.ok(F.runResidentService(solo,'finn').ok)
+  assert.equal(getFinnFishingRoute(solo)?.value,'home:fishing')
+  assert.equal(getFinnFishingRoute(solo)?.addsSlot,true)
+  const home=structuredClone(p.state)
+  assert.ok(F.sail(home,'home').ok);assert.ok(F.beginFishingTrip(home).ok)
+  assert.ok(F.sail(home,'village').ok);assert.ok(F.runResidentService(home,'finn').ok)
+  assert.equal(getFinnFishingRoute(reload(home))?.value,'home:fishing')
+  assert.equal(getFinnFishingRoute(reload(home))?.addsSlot,false)
+
+  p.visit('grove')
+  const original=p.act('beginFishingTrip')
+  assert.deepEqual([original.config.capacity,original.config.resilience],[2,2])
+  p.reload() // Cold open from the committed cast, not closing its active scene.
+  p.visit('village')
+  assert.equal(getFinnFishingRoute(p.state),undefined,'no route before explicitly asking Finn')
+  p.act('runResidentService','finn');p.reload()
+
+  const farm=p.state, before=structuredClone(farm), route=getFinnFishingRoute(farm)!
+  assert.deepEqual([route.island,route.panel,route.label,route.addsSlot,route.alternate],
+    ['grove','fishing','В рощу · продолжить',false,undefined])
+  assert.deepEqual(farm,before)
+  const click=stripTypeScriptTypes(`(async()=>{
+    ${exactCode('async function visitPanelAt(', 'function openGuidedMarket(')}
+    switch ('finn-pier') { ${exactCode("    case 'finn-pier':","    case 'buy-boat':")} }
+  })()`)
+  const mount=stripTypeScriptTypes(exactCode('function mountFishing(', 'function pastryChoices(')+';mountFishing()')
+  type Controls={capacity:number;resilience:number;resumed:boolean;onCast():boolean;onCancel():void}
+  let controls:Controls|undefined
+  const crossed:F.IslandId[]=[], opened:string[]=[], mutations:string[]=[]
+  const ctx={...F,getFinnFishingRoute,farm,value:route.value,panel:'village' as string|null,villageSlot:1,
+    dialog:{open:true},panelHistory:[{panel:'guide'}] as {panel:string}[],
+    island:{isCrossing:()=>false,crossIsland:async(commit:()=>boolean)=>{assert.ok(commit());crossed.push(farm.island)},setFishing(){}},
+    fieldViewButton:{getAttribute:()=> 'false'},rememberPanel:()=>({panel:ctx.panel}),
+    closeDialog(){ctx.dialog.open=false;ctx.panel=null;ctx.panelHistory.length=0},
+    openPanel(panel:string){ctx.panel=panel;ctx.dialog.open=true;opened.push(panel)},drawPanel(){},
+    perform(fn:()=>{ok:boolean}){const done=fn();if(done.ok)mutations.push('sail');return done.ok},
+    saveFarm(){mutations.push('cast')},stopFishing(){},fishingPractice:undefined,fishingGame:undefined as unknown,
+    fishingToken:undefined as number|undefined,dialogContent:{innerHTML:'',querySelector:()=>({querySelector:()=>null})},
+    createFishingGame(_host:unknown,options:Controls){controls=options;return{destroy(){}}},
+  }
+  ctx.villageSlot=0;await runInNewContext(click,ctx);assert.deepEqual(crossed,[])
+  ctx.villageSlot=1;ctx.value='grove:fishing';await runInNewContext(click,ctx)
+  ctx.value='grove:fishing:resume:0';await runInNewContext(click,ctx)
+  assert.deepEqual(crossed,[],'a generic or stale old-token button cannot travel')
+  ctx.value=route.value;await runInNewContext(click,ctx)
+  assert.deepEqual([crossed,opened,mutations],[['grove'],['fishing'],['sail']])
+  assert.deepEqual(ctx.panelHistory,[{panel:'guide'}],'global Back stays; no remote former cottage is pushed')
+  assert.deepEqual(farm,{...before,island:'grove'})
+  runInNewContext(mount,ctx)
+  assert.ok(controls)
+  assert.deepEqual([controls.resumed,controls.capacity,controls.resilience],[true,2,2])
+  controls.onCancel();assert.deepEqual(farm,{...before,island:'grove'},'leaving untouched review does not cancel')
+  ctx.openPanel('fishing');runInNewContext(mount,ctx)
+  assert.ok(controls.onCast())
+  assert.equal(ctx.fishingToken,original.token)
+  assert.deepEqual(mutations,['sail'],'resuming cannot buy or replace the paid lease')
+  assert.ok(F.finishFishingTrip(farm,original.token,1).ok)
+  assert.equal(farm.village.scouting,true);assert.equal(farm.neighbors.finn.helpReady,true)
+  assert.equal(farm.pendingFishingTrip,null);assert.equal(farm.coins,before.coins)
+  assert.ok(F.sail(farm,'home').ok);assert.ok(F.endDay(farm).ok);assert.ok(F.sail(farm,'grove').ok)
+  const next=F.beginFishingTrip(reload(farm))
+  assert.deepEqual([next.config?.capacity,next.config?.resilience],[3,5])
+})
