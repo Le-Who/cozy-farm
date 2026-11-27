@@ -3,7 +3,7 @@ import { getMarketBasket, getMarketOrders, getMarketStock, marketKey, sellMarket
 import { getMarketOrderBoard } from './market-orders-view.ts'
 
 /** Preserve each currently actionable Home choice, not simultaneous delivery of shared stock. */
-export function getMarketOrderSurplusQuote(farm: FarmState) {
+function collectMarketOrderReserves(farm: FarmState) {
   if (farm.island !== 'home') return
   const orders = getMarketOrders(farm)
   const ready = orders.filter(order => order.status === 'ready')
@@ -43,6 +43,18 @@ export function getMarketOrderSurplusQuote(farm: FarmState) {
   for (const [key, amount] of retained) {
     if (!Number.isSafeInteger(amount) || amount < 1 || (carried.get(key) ?? 0) < amount) return
   }
+  return { market, retained, choices, warehouseChoices, includesWarehouse }
+}
+
+/** Ordinary stock already owed to an actionable local order is not a seed surplus. */
+export function getMarketOrderReservedStock(farm: FarmState): ReadonlyMap<string, number> | undefined {
+  return collectMarketOrderReserves(farm)?.retained
+}
+
+export function getMarketOrderSurplusQuote(farm: FarmState) {
+  const reserve = collectMarketOrderReserves(farm)
+  if (!reserve) return
+  const { market, retained, choices, warehouseChoices, includesWarehouse } = reserve
   const requests = market.flatMap(({key,count}) => {
     const extra = count - (retained.get(key) ?? 0)
     return extra > 0 ? [{key,quantity:extra}] : []

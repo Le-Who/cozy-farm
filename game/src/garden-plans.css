@@ -15,6 +15,10 @@
 .garden-plans button:focus-visible,.garden-mode:focus-visible{outline:3px solid var(--deep);outline-offset:2px}
 
 .garden-shopping-list{list-style:none;padding:0;display:grid;gap:8px}.garden-shopping-list li{padding:10px;border:1px solid var(--rule);border-radius:12px;background:var(--paper-light);overflow-wrap:anywhere}.garden-shopping-list strong,.garden-shopping-list span{display:block}.garden-shopping .garden-brushes button{padding:10px;font-size:13px;flex:1 1 150px;white-space:normal}
+/* Optional affordable exchange belongs to its existing crop row, not a new section. */
+.garden-shopping-list li.garden-shopping-exchange{display:flex;align-items:center;flex-wrap:wrap;gap:5px 12px}
+.garden-shopping-exchange>div{flex:1 1 190px;min-width:0}
+.garden-shopping-exchange small{display:block;color:var(--muted)}
 .garden-shopping .garden-mode-note>span{display:block}
 
 /* Keep the compact document flow; only a saved preview gets desktop columns. */

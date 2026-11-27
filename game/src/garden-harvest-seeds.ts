@@ -1,16 +1,20 @@
 import { type FarmState, type ActionResult } from './farm.ts'
 import { gardenSeedQuote, type GardenSeedScope } from './garden-seed-basket.ts'
 import { saveCropSeeds, seedSavingQuote } from './seed-saving.ts'
+import { getMarketOrderReservedStock } from './market-order-surplus.ts'
 
-/** Only show alternatives on an unaffordable current list. One explicit exchange,
- * at the existing seed-saving rate, never buys the remainder or sows a bed. */
+/** Keep the existing underfunded recovery. With sufficient coins, show only
+ * strictly cheaper ordinary surplus, never a unit needed by a local order. */
 export function gardenHarvestSeeds(farm:FarmState,slot:number,scope:GardenSeedScope) {
   const basket=gardenSeedQuote(farm,slot,scope)
-  if(!basket||basket.affordable)return []
+  if(!basket?.packs)return []
+  const retained=basket.affordable ? getMarketOrderReservedStock(farm) : undefined
+  if(basket.affordable && !retained)return []
   return basket.lines.flatMap(line=>{
     if(!line.packs)return []
     const crop=seedSavingQuote(farm,line.crop)
     if(!crop?.available)return []
+    if(retained && (crop.saleValue>=crop.marketPrice || crop.produce<=Math.max(1,retained.get('produce:'+crop.crop)??0)))return []
     const after=basket.total-crop.marketPrice
     return [{crop:line.crop,name:crop.name,remaining:crop.remaining,pack:crop.pack,after,
       token:[basket.token,farm.coins,crop.token].join('~'),exchange:crop.token}]
