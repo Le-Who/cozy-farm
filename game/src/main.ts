@@ -149,7 +149,7 @@ import './honey-kitchen-menu.css'
 import './neighbor-house.css'
 import { ruPlural } from './ru'
 import { archiveCards } from './archive'
-import { getIslandJourneys } from './journey'
+import { getIslandJourneys, getShoalJourneyReturn } from './journey'
 import { getDiscoveryTask } from './discovery-path'
 import { getDiscoveryJournal } from './discovery-journal'
 import { getFruitSource, nurseryFruitDetail } from './orchard-guidance'
@@ -2932,7 +2932,7 @@ function drawPanel() {
       const action = destination.nextAction
       const firstFerry = farm.island === 'home' && destination.id === 'grove' && farm.boatOwned && farm.freight.expeditions.serial === 0
         ? firstFerryCargoOffer(farm.freight.expeditions, farm.day, expeditionWallet(farm), selectedExpeditionPort, selectedExpeditionOffer) : undefined
-      const capeStatus = getCapeJourneyStatus(farm, destination.id)
+      const returnStatus = getCapeJourneyStatus(farm, destination.id) ?? destination.shoalReturn?.copy
       const requirements = destination.requirements.filter(item => !item.complete)
       const unpaidBoat = action?.target === 'buy-boat' && !action.enabled
       const nextStep = unpaidBoat
@@ -2952,11 +2952,12 @@ function drawPanel() {
           <div class="journey-overview">
             <div class="journey-picture"><img src="${import.meta.env.BASE_URL}art/lavender/${destination.id}-plate.webp" alt="" draggable="false"></div>
             <div class="journey-caption"><div class="journey-heading"><h2>${destination.name}</h2></div>
-              <p>${destination.description}</p>${capeStatus ? `<p class="journey-return-status">${escapeHtml(capeStatus)}</p>` : ''}${destination.current ? `<span class="journey-here">Вы здесь${supperTomorrow ? ' · Ужин завтра' : ''}</span>` : ''}
+              <p>${destination.description}</p>${returnStatus ? `<p class="journey-return-status">${escapeHtml(returnStatus)}</p>` : ''}${destination.current ? `<span class="journey-here">Вы здесь${supperTomorrow ? ' · Ужин завтра' : ''}</span>` : ''}
             </div>
           </div>
           <nav class="island-places" aria-label="Действия на острове">
             ${nextStep || localPlaces}
+            ${destination.shoalReturn?.routeDay ? button('На Лунную отмель','shoal-route',true,{value:destination.shoalReturn.routeDay,secondary:true}) : ''}
             ${destination.current && farm.boatOwned ? button('Грузовой паром','open-panel',true,{value:'bay-freight',secondary:true})
               : firstFerry ? button('Грузовой паром','first-ferry-route',true,{value:`${farm.day}:${firstFerry}`,secondary:true}) : ''}
           </nav>
@@ -4619,6 +4620,13 @@ app.addEventListener('click', async (event) => {
     case 'boat-island':
       journeyDetailsOpen=false
       if(islandIds.some(id=>id===value)){boatIsland=value as typeof boatIsland;drawPanel();dialogContent.scrollTop=0;dialogContent.querySelector<HTMLButtonElement>(`[data-action="boat-island"][data-value="${value}"]`)?.focus({preventScroll:true})}break
+    case 'shoal-route': {
+      if (panel !== 'boat' || !dialog.open || boatIsland !== 'grove' || !value
+        || !dialogContent.contains(control) || !control.closest('.journey-card[data-island="grove"]')
+        || getShoalJourneyReturn(farm,'grove')?.routeDay !== value) break
+      await visitPanelAt('grove','shoal')
+      break
+    }
     case 'market-sale-clear':
       if(panel==='market'&&marketTab==='sell'&&dialog.open){const input=dialogContent.querySelector<HTMLInputElement>('[data-market-sale-query]');if(input)input.value='';setMarketSaleQuery('');input?.focus({preventScroll:true})}
       break

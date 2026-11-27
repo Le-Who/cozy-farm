@@ -1,4 +1,6 @@
 import { ruCount } from './ru.ts';
+import { getShoalFindAt, hasShoal, shoalDefinitions } from './shoal.ts';
+import { shoalReturnCopy } from './shoal-return.ts';
 import {
   boatPrice,
   buildingDefinitions,
@@ -45,6 +47,7 @@ export type IslandJourney = {
   requirements: JourneyRequirement[];
   nextAction?: JourneyAction;
   dockProjectReady?: boolean;
+  shoalReturn?: { copy: string; routeDay?: string };
 };
 
 function requirement(id: string, label: string, icon: string, current: number, target = 1): JourneyRequirement {
@@ -64,6 +67,17 @@ function villageSupply(item: StockItem, delivered: number, available: number): J
     : item.kind === 'fish' ? { label: fishDefinitions[item.item].name, icon: 'fish' }
     : { label: 'Цветочный мёд', icon: 'ui-honey' };
   return { ...requirement(`supply-${item.kind}`, detail.label, detail.icon, delivered, item.quantity), available };
+}
+
+/** Plan a return to a known find without starting a trip or granting the find. */
+export function getShoalJourneyReturn(farm: FarmState, destination: IslandId): IslandJourney['shoalReturn'] {
+  if (destination !== 'grove' || farm.island === 'grove' || !canSailTo(farm, destination)
+    || !hasShoal(farm) || !farm.shoalDiscoveries.includes('pearl')) return;
+  const canInvite = !farm.discoveryPreferences.quiet && !farm.neighborVisits.active && getShoalFindAt(farm, 'pearl') === 'pearl';
+  return {
+    copy: `${shoalDefinitions.pearl.name} · ${shoalReturnCopy(farm, 'pearl')}`,
+    ...(canInvite ? { routeDay: String(farm.day) } : {}),
+  };
 }
 
 /** The route's permission comes from the farm; this model explains the next reachable step. */
@@ -123,8 +137,10 @@ export function getIslandJourneys(farm: FarmState): IslandJourney[] {
   return destinations.map(destination => {
     const current = farm.island === destination.id;
     const unlocked = canSailTo(farm, destination.id);
+    const shoalReturn = getShoalJourneyReturn(farm, destination.id);
     return {
       ...destination, current, unlocked,
+      ...(shoalReturn ? { shoalReturn } : {}),
       ...(current && destination.id === 'grove' && pier.status === 'ready' ? { dockProjectReady: true } : {}),
       nextAction: current ? undefined : unlocked ? sailTo(destination.id, `В путь · ${destination.name}`) : destination.nextAction,
     };
