@@ -1054,6 +1054,8 @@ function kitchenFamilies() {
   // visit follows live stock; an explicitly browsed category stays put on Back.
   const landing = farm.island === 'home' && typeof kitchenGroup === 'object' ? kitchenGroup : undefined
   const origin = panelHistory.at(-1)
+  const festivalJam = farm.island === 'village' && origin?.panel === 'festival' && typeof kitchenGroup === 'object'
+    && 'guidedFrom' in kitchenGroup && kitchenGroup.ready === 'appleJam' ? kitchenGroup.ready : undefined
   const cottage = kitchenGroup === undefined && farm.island === 'village' && farm.village.built && origin?.panel === 'village' ? origin : undefined
   const cottageChoice = cottage?.cottageKitchenShelf
   const available = farm.island === 'home' || cottageChoice ? kitchenReadyDishes() : []
@@ -1062,7 +1064,7 @@ function kitchenFamilies() {
   // Keep a spent Home recipe only on its cooking return. The existing ready
   // shelf can offer what's left without changing the user's selection.
   const spentHomeChoice = landing?.returned && landing.ready && !getCookAction(farm,landing.ready,cookingFish).available ? landing.ready : undefined
-  const picked = cottage?.cottageKitchenDish ?? cottageChoice ?? spentHomeChoice ?? ready.find(dish => dish === landing?.ready) ?? ready[0]
+  const picked = festivalJam ?? cottage?.cottageKitchenDish ?? cottageChoice ?? spentHomeChoice ?? ready.find(dish => dish === landing?.ready) ?? ready[0]
   const readyShelf = (ready.length > 1 || !!spentHomeChoice && ready.length > 0) && (!cottageChoice || ready.includes(cottageChoice))
   const group = readyShelf ? 'ready' : picked
     ? isTartDish(picked) ? 'tart' : picked === 'appleJam' || picked === 'orchardPreserves' ? 'preserves' : 'dishes'
@@ -3108,7 +3110,10 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   // A task previews a recipe; the next ordinary kitchen visit keeps the player's choice.
   if (next === 'kitchen' && remember && next !== panel && !recipeTarget && typeof kitchenGroup === 'object' && 'guidedFrom' in kitchenGroup)
     kitchenGroup = kitchenGroup.guidedFrom
-  if (next === 'kitchen' && recipeTarget === 'orchardTart' && farm.island === 'home' && getCookAction(farm,recipeTarget).available) {
+  if (next === 'kitchen' && (
+    recipeTarget === 'orchardTart' && farm.island === 'home' ||
+    recipeTarget === 'appleJam' && farm.island === 'village' && panel === 'festival'
+  ) && getCookAction(farm,recipeTarget).available) {
     const guidedFrom = typeof kitchenGroup === 'object' && 'guidedFrom' in kitchenGroup ? kitchenGroup.guidedFrom : kitchenGroup
     kitchenGroup = { ready:recipeTarget, guidedFrom }
   }
@@ -4095,7 +4100,18 @@ app.addEventListener('click', async (event) => {
     }
     case 'festival-source': {
       const [requirement,id]=(value??'').split('|')
-      const source=getFestivalStatus(farm).active?.requirements.find(row=>row.id===requirement)?.alternatives.find(alt=>alt.id===id)
+      const active=getFestivalStatus(farm).active
+      const row=active?.requirements.find(row=>row.id===requirement)
+      const source=row?.alternatives.find(alt=>alt.id===id)
+      if (farm.island === 'village' && active?.tradition === 'harvest' && active.edition === 1 && active.stage === 2
+        && row?.id === 'treat' && source?.item?.kind === 'dishes' && source.item.item === 'appleJam') {
+        if (!dialog.open || panel !== 'festival' || !dialogContent.contains(control) || active.waitingNight
+          || row.delivered >= row.quantity || source.available > 0) break
+        if (getCookAction(farm, 'appleJam').available) {
+          openPanel('kitchen', true, farm.island, 'page.unfold', 'appleJam')
+          break
+        }
+      }
       if(source?.item) await showRequirement({kind:'stock',item:{...source.item,quantity:source.quantity}},control)
       else if(source?.signature) { openRecipeBook(source.signature,true);focusRecipeAction() }
       break
