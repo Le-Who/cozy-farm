@@ -84,7 +84,7 @@ test('opening and reopening the journal never changes saves or grants rewards', 
   assert.equal(JSON.stringify(farm), before);
 });
 
-test('a guest changes only the Journal music crossing into an explicit choice', () => {
+test('a guest changes the Journal music crossing into an explicit choice', () => {
   const p=commissionPlayer(JSON.parse(readFileSync(new URL('./fixtures/market-order-selection-commands.json',import.meta.url),'utf8')).slice(0,-1));
   const farm=p.state; assert.equal(farm.day,14); assert.equal(farm.island,'home');
   const activity=()=>getDiscoveryJournal(farm).activities.find(a=>a.panel==='bay-music')!;
@@ -100,19 +100,22 @@ test('a guest changes only the Journal music crossing into an explicit choice', 
 
 test('only a live journal choice can sail the current guest away', async () => {
   const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
-  const start=source.indexOf("    case 'journal-music': {"),end=source.indexOf("    case 'open-panel':",start);
+  const start=source.indexOf("    case 'journal-festival':"),end=source.indexOf("    case 'open-panel':",start);
   assert.ok(start>=0 && end>start);
-  const click=stripTypeScriptTypes(`(async()=>{switch('journal-music'){${source.slice(start,end)}}})()`,{mode:'transform'});
-  for(const [guest,quoted,expanded,attached,expected] of [
-    [1,'1',false,true,0], [2,'1',true,true,0], [1,undefined,false,true,0],
-    [1,'1',true,false,0], [null,'1',true,true,0],
-    [1,'1',true,true,1], [null,undefined,false,true,1],
-  ] as const) {
-    const calls:string[]=[];
-    await runInNewContext(click,{panel:'journal',dialog:{open:true},dialogContent:{contains:()=>attached},
-      farm:{island:'home',village:{built:true},neighborVisits:{active:guest?{serial:guest}:null}},
-      control:{dataset:{visit:quoted},closest:()=>expanded},visitPanelAt:(dest:string,panel:string)=>calls.push(`${dest}:${panel}`)});
-    assert.deepEqual(calls,expected?['village:bay-music']:[]);
+  const click=stripTypeScriptTypes(`(async()=>{switch(action){${source.slice(start,end)}}})()`,{mode:'transform'});
+  for(const [action,destination] of [['journal-music','bay-music'],['journal-festival','festival']] as const) {
+    for(const [guest,quoted,expanded,attached,expected] of [
+      [1,'1',false,true,0], [2,'1',true,true,0], [1,undefined,false,true,0],
+      [1,'1',true,false,0], [null,'1',true,true,0],
+      [1,'1',true,true,1], [null,undefined,false,true,1],
+    ] as const) {
+      const calls:string[]=[];
+      await runInNewContext(click,{action,value:destination,panel:'journal',dialog:{open:true},dialogContent:{contains:()=>attached},
+        farm:{island:'home',village:{built:true},neighborVisits:{active:guest?{serial:guest}:null}},
+        control:{dataset:{visit:quoted},closest:(selector:string)=>expanded && selector==='details.journal-visit-crossing[open]'},
+        visitPanelAt:(dest:string,panel:string)=>calls.push(`${dest}:${panel}`)});
+      assert.deepEqual(calls,expected?[`village:${destination}`]:[]);
+    }
   }
 });
 
@@ -128,4 +131,27 @@ test('staying collapses only the Journal crossing and returns focus to its summa
   await runInNewContext(click,{panel:'journal',dialog:{open:true},dialogContent:{contains:()=>true},
     control:{closest:()=>card},closeDialog:()=>closed++});
   assert.equal(closed,0);assert.equal(card.open,false);assert.equal(focused,1);
+});
+
+test('after an earned Bea meeting, the Journal festival card asks before ending her active home visit', () => {
+  const p=commissionPlayer(JSON.parse(readFileSync(new URL('./fixtures/market-order-selection-commands.json',import.meta.url),'utf8')).slice(0,-1));
+  const farm=p.state;
+  assert.deepEqual([farm.day,farm.island], [14,'home']);
+  const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8');
+  const from=source.indexOf('${journal.activities.map('), end=source.indexOf("}).join('')}</nav>",from);
+  assert.ok(from>=0&&end>from);
+  const render=stripTypeScriptTypes(source.slice(from+2,end)+"}).join('')");
+  const view = () => runInNewContext(render,{journal:getDiscoveryJournal(farm),icon:()=>''}) as string;
+  const ordinary=view();
+  assert.match(ordinary, /<button[^>]*data-value="festival">\s*<strong>Праздники гавани<\/strong>/);
+  assert.ok(inviteNeighborVisit(farm,'beaFlock').ok);
+  const before=structuredClone(farm), withGuest=view();
+  const festival = [...withGuest.matchAll(/<details class="journal-visit-crossing">.*?<\/details>/g)]
+    .map(([html])=>html).find(html=>html.includes('<strong>Праздники гавани</strong>'));
+  assert.ok(festival, 'Festival browsing must not dismiss the Home guest with its first tap');
+  assert.match(festival, /<summary><strong>Праздники гавани<\/strong>.*Беа вернётся в гавань, если отплыть\.<\/small><\/summary>/);
+  assert.match(festival, /data-action="journal-stay">Остаться на ферме/);
+  assert.match(festival, new RegExp(`data-action="journal-festival" data-value="festival" data-visit="${farm.neighborVisits.active!.serial}">Плыть в гавань`));
+  assert.match(withGuest,/data-action="open-panel" data-value="bay-shop"/,'no unrelated journal routes change');
+  assert.deepEqual(farm,before);
 });
