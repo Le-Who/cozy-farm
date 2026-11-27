@@ -429,8 +429,9 @@ export function createIsland(
   let companion: HenCompanion | undefined;
   let companionDay = 0;
   function fieldRoute(id:number) {
-    if (!state || !world.available || crossing || heldHen || companion || !canWalkWithHen(state,id)) return;
-    const hen=hens[id], from=nativeHenPoint({x:hen.px.value,y:hen.py.value});
+    if (!state || !world.available || crossing || heldHen || !canWalkWithHen(state,id)) return;
+    if (companion && (companion.id !== id || companion.returning || companion.guide)) return;
+    const hen=hens[id], from=companion?.point ?? nativeHenPoint({x:hen.px.value,y:hen.py.value});
     return henFieldRoute(state,id,from,target=>{
       const site=homeSites.find(area=>sameTarget(area.target,target));
       // Wait on the aisle beside the produce, leaving the crop's main hit point open.
@@ -2169,7 +2170,8 @@ export function createIsland(
       const route=fieldRoute(id);
       if (!state || !route || guideKey(route.target)!==key) return;
       const hen=hens[id];
-      companion=createHenCompanion(id,nativeHenPoint({x:hen.px.value,y:hen.py.value}));
+      // Keep the active follower and her live point; only the chosen destination changes.
+      companion??=createHenCompanion(id,nativeHenPoint({x:hen.px.value,y:hen.py.value}));
       companion.guide={target:route.target,stop:route.stop};companion.path=route.path;companion.target=route.stop;
       companionDay=state.day;henWalkChanged?.();requestPaint();
       return route.target;

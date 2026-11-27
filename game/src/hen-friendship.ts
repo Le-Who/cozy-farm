@@ -84,6 +84,9 @@ export function henFriendshipStage(points: number) {
 }
 
 const guideLabel=(favorite:HenTreat)=>`Пойти за курочкой ${{carrot:'к моркови',leafyGreens:'к зелени',apple:'к яблоне'}[favorite]}`
+function canOfferHenGuide(walk: HenCompanionStatus | null, id: number) {
+  return !walk || walk.id === id && !walk.returning && !walk.guiding
+}
 function henWalkChoice(farm: FarmState, id: number, walk: HenCompanionStatus | null, sceneAvailable: boolean) {
   const walking = walk?.id === id
   const reason = walking ? walk.returning ? 'Возвращается на своё место.' : walk.guiding ? 'Показывает, где созрело любимое угощение.' : 'Идёт с вами.'
@@ -110,7 +113,7 @@ export function refreshHenWalkChoice(root: HTMLElement, farm: FarmState, walk: H
   reason.textContent = choice.reason
   const lead=root.querySelector<HTMLButtonElement>('[data-action="hen-guide"]')
   if (lead) {
-    lead.hidden=lead.disabled=!guide || !!walk || !sceneAvailable
+    lead.hidden=lead.disabled=!guide || !canOfferHenGuide(walk,id) || !sceneAvailable
     lead.textContent=guide ? guideLabel(henFriends[id].favorite) : ''
     lead.dataset.value=guide ? `${id}:${guide.kind}:${guide.index}` : ''
   }
@@ -128,7 +131,7 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
   const choices = henTreatIds.map(treat => ({ treat, option: getHenTreat(farm, id, treat) }))
   const hintAtChoice = !known && choices.some(({ treat, option }) => treat === hen.favorite && option.available)
   const choice = henWalkChoice(farm, id, walk, sceneAvailable)
-  const guideReady=guide && !walk && sceneAvailable && known && canWalkWithHen(farm,id)
+  const guideReady=guide && canOfferHenGuide(walk,id) && sceneAvailable && known && canWalkWithHen(farm,id)
   const treatedToday = bond.treatedOn === farm.day
   // Inspection still matters, but a grid with no live action belongs in the existing notes.
   const inspectTreats = treatedToday || !choices.some(({ option }) => option.available)
