@@ -76,3 +76,24 @@ export function sellMarketOrderSurplus(farm: FarmState, token: unknown): ActionR
   const quote = getMarketOrderSurplusQuote(farm)
   return quote?.token === token ? sellMarketBasket(farm, quote.requests, quote.basketToken) : stale
 }
+
+/** Only ordinary beds and fruit trees, never the current text-search results. */
+export function getMarketHarvestSurplusQuote(farm: FarmState) {
+  const reserve = collectMarketOrderReserves(farm)
+  if (!reserve) return
+  const requests = reserve.market.flatMap(({item,key,count}) => {
+    if (item.kind !== 'produce' && item.kind !== 'fruit') return []
+    const quantity = count - (reserve.retained.get(key) ?? 0)
+    return quantity > 0 ? [{key,quantity}] : []
+  })
+  // Single stocked kinds already have the exact inline amount control.
+  if (requests.length < 2) return
+  const basket = getMarketBasket(farm,requests)
+  return basket && {...basket,requests}
+}
+
+export function sellMarketHarvestSurplus(farm: FarmState, token: string | undefined): ActionResult {
+  const quote = getMarketHarvestSurplusQuote(farm)
+  return quote && quote.token === token ? sellMarketBasket(farm,quote.requests,quote.token)
+    : {ok:false,message:'Заказы или запасы изменились. Проверьте, что можно продать.'}
+}

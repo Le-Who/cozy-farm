@@ -18,7 +18,7 @@ function section(start:string,end:string){
 }
 const appSrc=stripTypeScriptTypes([
  section('function goods()','function fishImage('),section('function stockLabel(','function stockTile('),
- section('function marketSellView()','function marketBulkSaleControls()'),section('function marketSaleResults()','function inlineSaleContext('),
+ section('function marketSellView()','function marketBulkSaleControls('),section('function marketSaleResults()','function inlineSaleContext('),
  section('function updateMarketSaleSearch()','function marketCareProducts('),
  section("app.addEventListener('compositionend', event => {","app.addEventListener('keydown', event => {"),
 ].join('\n'))

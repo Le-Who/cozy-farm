@@ -39,7 +39,7 @@ const guardedActions = new Set([
   'show-requirement', 'warehouse-supply', 'warehouse-supply-withdraw', 'recipe-repeat-home', 'recipe-warehouse-withdraw',
   'store-tree', 'return-nursery-tree', 'fruit-tree-seed', 'nursery-sail-plot', 'supper-fish', 'supper-signature', 'share-meal', 'supper-cottage', 'serve-guest', 'fair-jam-picnic',
   'sell-item', 'sell-signature', 'sale-again', 'confirm-sale', 'sell', 'sell-order-surplus', 'make-signature', 'batch-signature',
-  'inline-sale-confirm', 'inline-sale-again',
+  'inline-sale-confirm', 'inline-sale-again', 'review-harvest-sale', 'confirm-harvest-sale',
   'rest-intent-request', 'rest-close-shop', 'shop-stock-select', 'shop-stock-confirm', 'recipe-shop-stock', 'recipe-harbour-shop', 'freight-withdraw',
   'neighbor-repeat-food', 'neighbor-shelf-food', 'neighbor-stored-food', 'request-repeat-exact', 'request-bea-batch', 'choose-neighbor-food',
   'transplant-source', 'transplant-destination', 'transplant-reset',

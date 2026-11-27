@@ -18,7 +18,7 @@ function between(a:string,b:string){
 // Use the actual UI naming/group policy, not pretend localizations of earned stock.
 const view=stripTypeScriptTypes(between('function goods()','function fishImage(')+
  between('function stockLabel(','function stockTile(')+between('function marketSaleResults()','function inlineSaleContext(')+
- between('function marketSaleSearchView()','function marketBulkSaleControls()')+';({goods,marketSaleResults,marketSaleSearchStatus,wholeInventorySaleView})')
+ between('function marketSaleSearchView()','function marketBulkSaleControls(')+';({goods,marketSaleResults,marketSaleSearchStatus,wholeInventorySaleView})')
 type Row=ReturnType<typeof F.getMarketStock>[number]&{name:string;group:string}
 function seller(farm:F.FarmState,query:string,group:MarketSaleGroup='all',family?:string){
  const placeholders=new Proxy({},{get:()=>''})

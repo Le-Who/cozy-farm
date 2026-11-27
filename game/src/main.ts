@@ -5,7 +5,7 @@ import { standingVisitTree, showStandingVisitTree } from './standing-tree-visit'
 import { projectContributionCopy, projectLevelCopy, projectRewardLabel } from './project-readiness-copy'
 import './market-project-readiness.css'
 import { MarketInlineSales, inlineReceiptText } from './market-inline-sale'
-import { getMarketOrderSurplusQuote, sellMarketOrderSurplus } from './market-order-surplus'
+import { getMarketHarvestSurplusQuote, getMarketOrderSurplusQuote, sellMarketHarvestSurplus, sellMarketOrderSurplus } from './market-order-surplus'
 import { MarketSaleBrowseMemory } from './market-sale-browse'
 import { marketSaleFamilies } from './market-sale-family'
 import { SalePresentation } from './sale-presentation'
@@ -1340,7 +1340,11 @@ function marketSaleSearchStatus() {
 function wholeInventorySaleView() {
   return marketSellGroup === 'all' && !marketSaleQuery.trim()
 }
-function marketBulkSaleControls() {
+function marketBulkSaleControls(ordinaryHarvest = false) {
+  if (ordinaryHarvest && !salePresentation.place) {
+    const quote = getMarketHarvestSurplusQuote(farm)
+    return quote ? button('Излишки с грядок и деревьев','review-harvest-sale',true,{secondary:true,value:escapeHtml(quote.token)}) : ''
+  }
   if (!wholeInventorySaleView()) return ''
   const sale = getSale(farm)
   if (!sale.items) return ''
@@ -1432,7 +1436,7 @@ function updateMarketSaleSearch() {
   if (clear) clear.disabled = !marketSaleQuery
   const total=dialogContent.querySelector<HTMLElement>('.market-total')
   if(total){
-    const bulk=marketBulkSaleControls()
+    const bulk=marketBulkSaleControls(marketSellGroup==='harvest'&&!marketSaleQuery.trim()&&!marketSaleFamily)
     total.hidden=!bulk; total.innerHTML=bulk
     if(salePresentation.place)total.querySelector('button')?.setAttribute('title','Сначала закройте выбор отдельного товара')
   }
@@ -1467,14 +1471,14 @@ function marketCards() {
     if (getSale(farm).items === 0) return `<section data-market-sale-browser>${sellControls}
       <p class="market-sale-search-empty" data-market-sale-empty tabindex="-1" role="status">Пока нет товаров для продажи.</p>
       ${destinations ? `<footer class="market-inline-tools">${destinations}</footer>` : ''}</section>`
-    const bulk = marketBulkSaleControls()
+    const bulk = marketBulkSaleControls(marketSellGroup==='harvest'&&!marketSaleQuery.trim()&&!marketSaleFamily)
     return `<section data-market-sale-browser>${sellControls}
       <div class="market-sale-filters"><div class="market-sale-search"><label for="market-sale-query"><span class="sr-only">Найти товар</span><input id="market-sale-query" data-market-sale-query type="search" maxlength="100" value="${escapeHtml(marketSaleQuery)}" placeholder="Найти товар" aria-controls="market-sale-results" autocomplete="off"></label><button type="button" class="dialog-button secondary" data-action="market-sale-clear" aria-label="Очистить"${marketSaleQuery?'':' disabled'}><span aria-hidden="true">×</span></button></div>
       <nav class="market-inline-groups" aria-label="Группа товаров">${panelTabs('market-sell-group',marketSellGroup,[['all','Всё'],['harvest','Урожай'],['kitchen','Кухня'],['shore','Берег']])}</nav></div>
       ${marketSellGroup==='harvest'?`<div class="market-inline-family"><select data-market-sale-family aria-label="Товар и его варианты"><option value="harvest"${!marketSaleFamily?' selected':''}>Весь урожай</option>${marketFamilyOptions(marketSaleFamily)}</select></div>`:''}
       <p class="market-sale-search-status${marketSaleQuery||marketSellGroup!=='all'?'':' sr-only'}" role="status" aria-live="polite">${marketSaleSearchStatus()}</p>
       <div id="market-sale-results">${marketSaleResults()}</div>
-      ${marketSellGroup==='all'||destinations?`<footer class="market-inline-tools">${marketSellGroup==='all'?`<div class="market-total" tabindex="-1"${bulk?'':' hidden'}>${bulk}</div>`:''}${destinations}</footer>`:''}</section>`
+      ${marketSellGroup==='all'||marketSellGroup==='harvest'||destinations?`<footer class="market-inline-tools">${marketSellGroup==='all'||marketSellGroup==='harvest'?`<div class="market-total" tabindex="-1"${bulk?'':' hidden'}>${bulk}</div>`:''}${destinations}</footer>`:''}</section>`
   }
 
   const categories=`<nav class="market-category-icons${marketCategory==='buildings'?' market-building-categories':''}" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}<span>${category.name}</span></button>`).join('')}</nav>`
@@ -1867,6 +1871,7 @@ type PanelVisit = {
   marketNextOpen: string[];
   marketOrder?: {lane:string; pickerScroll:number; source?:string; warehouse:boolean};
   marketSaleGrid?: {key:string; scroll:number};
+  harvestSale?: {quote:NonNullable<ReturnType<typeof getMarketHarvestSurplusQuote>>; sold?:boolean; stale?:boolean; goalRewardText?:string};
   guideGardenOpen: boolean;
   homeServicesOpen: boolean;
   gardenSupplies: {slot: number; revision: number; open: boolean} | undefined;
@@ -2208,6 +2213,18 @@ function mountFarmCookery(host: HTMLElement, options: CookeryOptions, mount: typ
     () => Number(farm.concertDay === farm.day), earnHarbourSale, () => { if (localDay()) saveHarbour() })
   return mount(host, options, workClock)
 }
+function harvestSaleCard(review: NonNullable<PanelVisit['harvestSale']>) {
+  const {quote,sold,stale,goalRewardText} = review
+  const summary = `${quantity(quote.items,'предмет')} · ${quantity(quote.total,'монета')}`
+  const receipt = `${sold?'Продано: ':''}${summary}`
+  return `<section class="exact-sale" data-harvest-sale-review><div class="exact-sale-product">
+    <h2 tabindex="-1">Обычные излишки с грядок и деревьев</h2><p>Редкости и запасы для заказов останутся.</p>
+    </div><div class="exact-sale-editor"><p class="exact-sale-receipt" role="status" tabindex="-1">${goalRewardText?`<span>${receipt}<br>${escapeHtml(goalRewardText)}</span>`:receipt}</p>
+    ${sold ? nav(button('К товарам','back',true,{secondary:true}))
+      : nav(button('Продать','confirm-harvest-sale',!stale,{value:escapeHtml(quote.token),context:summary}),button('Отмена','back',true,{secondary:true}))
+        + `<details><summary>Состав · ${quote.lines.length}</summary><ul>${quote.lines.map(line=>`<li>${escapeHtml(stockLabel(line.item).name)} ×${numberFormat.format(line.quantity)}</li>`).join('')}</ul></details>`}
+    </div></section>`
+}
 function exactSaleCard(contextual: boolean) {
       const stock = selectedSale && (saleStock(farm, selectedSale) ?? (saleReceipt ? {count:0,price:saleReceipt.total/saleReceipt.quantity} : undefined))
       if (!selectedSale || !stock) return '<p class="dialog-intro">Товар недоступен.</p>'
@@ -2356,6 +2373,8 @@ function drawPanel() {
       dialogContent.innerHTML = renderRecipeSurplus(farm, recipeSurplusSelection, item => stockLabel(item).name)
       break
     case 'sale': {
+      const review = panelHistory.at(-1)?.harvestSale
+      if (review) { dialogContent.innerHTML = harvestSaleCard(review); break }
       dialogContent.innerHTML = exactSaleCard(false)
       updateSaleQuote()
       break
@@ -5096,6 +5115,34 @@ app.addEventListener('click', async (event) => {
     case 'choose-seed':
       if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value===seedChoice(farm,previewSeed,seedPickerBed).token) chooseSeed(previewSeed,value)
       break
+    case 'review-harvest-sale': {
+      if(!dialog.open || panel!=='market' || marketTab!=='sell' || marketSellGroup!=='harvest'
+        || marketSaleQuery.trim() || marketSaleFamily || salePresentation.place || !dialogContent.contains(control)) break
+      const quote = getMarketHarvestSurplusQuote(farm)
+      if (!quote || quote.token !== value) { updateMarketSaleSearch(); break }
+      // The ordinary review retains this exact Sell visit for both Back and Cancel.
+      panelHistory.push({...rememberPanel(),harvestSale:{quote}})
+      openPanel('sale',false)
+      dialogContent.querySelector<HTMLElement>('[data-harvest-sale-review] h2')?.focus({preventScroll:true})
+      break
+    }
+    case 'confirm-harvest-sale': {
+      const review = panelHistory.at(-1)?.harvestSale
+      if(!dialog.open || panel!=='sale' || !review || review.sold || review.stale || review.quote.token!==value
+        || !dialogContent.contains(control) || !control.closest('[data-harvest-sale-review]')) break
+      if (perform(()=>{
+        const result = sellMarketHarvestSurplus(farm,value)
+        if(result.ok){review.sold=true;review.goalRewardText=result.goalRewardText}
+        return result
+      },false,true)) {
+        playBaySound('trade.receive')
+        dialogContent.querySelector<HTMLElement>('[data-harvest-sale-review] .exact-sale-receipt')?.focus({preventScroll:true})
+      } else {
+        review.stale=true
+        control.disabled=true
+      }
+      break
+    }
     case 'sell-order-surplus':
       if(dialog.open && panel==='market' && marketTab==='sell' && wholeInventorySaleView() && !salePresentation.place && dialogContent.contains(control)) {
         if(perform(() => sellMarketOrderSurplus(farm,value))) playBaySound('trade.receive')

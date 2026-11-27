@@ -12,7 +12,7 @@ import {MarketInlineSales} from '../src/market-inline-sale.ts'
 import {MarketSaleBrowseMemory} from '../src/market-sale-browse.ts'
 import {searchMarketSaleView} from '../src/market-sale-search.ts'
 import {marketSaleFamilies} from '../src/market-sale-family.ts'
-import {getMarketOrderSurplusQuote} from '../src/market-order-surplus.ts'
+import {getMarketHarvestSurplusQuote,getMarketOrderSurplusQuote} from '../src/market-order-surplus.ts'
 import {recipeRepeatReturnFixture} from './fixtures/recipe-repeat-return.ts'
 import {ruPlural} from '../src/ru.ts'
 
@@ -46,7 +46,7 @@ function earned(destination='grove'){
 function screen(farm,query='морковь'){
  const saved=[],crossings=[],visits=[]
  const reset={reset:noop},icon=name=>`<img alt="" data-icon="${name}">`
- const state:any={...F,farm,saleStock,exactSaleQuote,searchMarketSaleView,marketSaleFamilies,getMarketOrderSurplusQuote,ruPlural,escapeHtml,icon,itemIcon:icon,pastryIcons:{round:'round',long:'long',folded:'folded'},numberFormat:new Intl.NumberFormat('ru-RU'),
+ const state:any={...F,farm,saleStock,exactSaleQuote,searchMarketSaleView,marketSaleFamilies,getMarketHarvestSurplusQuote,getMarketOrderSurplusQuote,ruPlural,escapeHtml,icon,itemIcon:icon,pastryIcons:{round:'round',long:'long',folded:'folded'},numberFormat:new Intl.NumberFormat('ru-RU'),
   panel:'inventory',panelHistory:[{panel:'guide'}],inventoryGroup:'shore',marketTab:'buy',marketCategory:'trees',marketSellGroup:'harvest',marketSaleQuery:query,marketSaleFamily:'fruit:apple',marketTreeSpaceVisit:undefined,
   salePresentation:new SalePresentation(),marketInlineSales:new MarketInlineSales(),marketSaleBrowse:new MarketSaleBrowseMemory(),selectedSale:undefined,saleQuantity:'',saleReceipt:undefined,
   selectedMarketOrder:undefined,pickedMarketOrder:undefined,hiveFlower:undefined,
