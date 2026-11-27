@@ -968,7 +968,7 @@ function flockFeedRow(alternate = '') {
 }
 
 function seedCards() {
-  return renderSeedPicker(farm, previewSeed, seedPickerBed, {icon, button}, renderGardenMode(farm), (farm.island === 'home' ? nav(button('Свои планы огорода', 'open-panel', true, {value:'garden-plans', secondary:true}),button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Размножить ягодный куст','open-panel',true,{value:'berry-nursery',secondary:true}),button('Свой ягодник','open-panel',true,{value:'berry-renewal',secondary:true})) : ''))
+  return renderSeedPicker(farm, previewSeed, seedPickerBed, {icon, button}, renderGardenMode(farm, false, !seedChoice(farm, previewSeed, seedPickerBed).manualBed), (farm.island === 'home' ? nav(button('Свои планы огорода', 'open-panel', true, {value:'garden-plans', secondary:true}),button('Пересадить культуру', 'open-panel', true, {value:'transplant', secondary:true}),button('Размножить ягодный куст','open-panel',true,{value:'berry-nursery',secondary:true}),button('Свой ягодник','open-panel',true,{value:'berry-renewal',secondary:true})) : ''))
 }
 
 function stockLabel(item: StockItem): { name: string; image: string } {

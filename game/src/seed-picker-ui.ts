@@ -1,5 +1,4 @@
 import { cropIds, cropDefinitions, seedPackSize, type CropId, type FarmState } from './farm.ts'
-import { activeGardenPlan } from './garden-plans.ts'
 import { seedChoice } from './seed-choice.ts'
 import { renderSeedSaving, seedSavingQuote } from './seed-saving.ts'
 import { ruCount } from './ru.ts'
@@ -13,14 +12,14 @@ const cropChoiceNames: Record<CropId, string> = { carrot:'морковь', cabba
 /** Browsing and the prominent action retain the existing separate selection contract. */
 export function renderSeedPicker(farm: FarmState, previewSeed: CropId, bed: number | undefined, art: SeedPickerArt, mode = '', navigation = '') {
   const seed = cropDefinitions[previewSeed], choice = seedChoice(farm, previewSeed, bed)
-  const label = choice.planned ? choice.label : `Выбрать ${cropChoiceNames[previewSeed]}${activeGardenPlan(farm) ? ' вручную' : ''}`
+  const label = choice.planned ? choice.label : `Выбрать ${cropChoiceNames[previewSeed]}${choice.pausesPlan ? ' вручную' : ''}`
   const affordable = farm.coins >= seed.seedPrice
   const quote = !choice.available ? seedSavingQuote(farm,previewSeed) : undefined
   const exchange = !affordable && quote?.available ? quote : undefined
   // Keep both ways to refill the empty packet before the other crops.
   const showBoth = affordable && quote?.available
   const buy = !choice.available ? art.button(`Купить ×${seedPackSize}`, 'buy-seeds', affordable, {crop:previewSeed, context:`Семена: ${seed.name.toLowerCase()}, цена: ${ruCount(seed.seedPrice,'монета','монеты','монет')}`, cost:{icon:'coin',amount:seed.seedPrice}}) : ''
-  const primary = choice.available ? art.button(label, 'choose-seed', true, {value:choice.token, crop:previewSeed, context:''})
+  const primary = choice.available ? art.button(label, 'choose-seed', choice.validTarget, {value:choice.token, crop:previewSeed, context:''})
     : exchange ? art.button(`Обменять на ${ruCount(exchange.pack,'семя','семени','семян')}`,'save-crop-seeds',true,{value:exchange.token,context:`цена, обычный урожай: ${seed.name.toLowerCase()} ×1`}) : buy
   const detail = choice.available ? choice.detail
     : exchange ? `Цена: ${seed.name.toLowerCase()} ×1 из обычного урожая. Посев отдельно.`

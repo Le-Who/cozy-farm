@@ -904,12 +904,12 @@ export function propagateBerry(farm: FarmState, source: number, destination: num
   return { ok: true, message: `${cropDefinitions[mother.crop].name}: две молодые посадки на грядках ${source + 1} и ${destination + 1}. Урожай не собран. ${mother.trait ? 'Особенность сохранена у обеих.' : 'Обе посадки пока обычные.'}` };
 }
 
-export function selectSeed(farm: FarmState, crop: CropId): ActionResult {
+export function selectSeed(farm: FarmState, crop: CropId, mode: 'manual' | 'keep-plan' = 'manual'): ActionResult {
   if (!isCropId(crop)) return failure('Выберите семена.');
   const name = cropDefinitions[crop].name;
   if (farm.seeds[crop] === 0) return failure(`Купите семена на рынке: ${name.toLowerCase()}.`);
   farm.selectedSeed = crop;
-  if (farm.gardenPlans.active !== null) { farm.gardenPlans.active = null; farm.gardenPlans.revision = Math.min(1_000_000, farm.gardenPlans.revision + 1) }
+  if (mode === 'manual' && farm.gardenPlans.active !== null) { farm.gardenPlans.active = null; farm.gardenPlans.revision = Math.min(1_000_000, farm.gardenPlans.revision + 1) }
   return { ok: true, message: `Выбраны семена: ${name.toLowerCase()}.` };
 }
 
