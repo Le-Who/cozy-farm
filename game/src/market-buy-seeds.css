@@ -106,3 +106,27 @@
   [data-market-seed-browser] .market-seed-grid .dialog-button:focus-visible {scroll-margin-block-start:7.5rem}
  }
 }
+
+/* Short desktop: let the existing price share the Buy row without compressing the art or text columns. */
+@media(min-width:1100px) and (min-height:700px) and (max-height:820px){
+ [data-market-seed-browser] .market-seed-grid>section {
+  grid-template-columns:112px minmax(0,1fr) minmax(108px,.95fr);
+  grid-template-rows:auto auto auto minmax(46px,auto);
+  grid-template-areas:"art title title" "art pack pack" "art stock stock" "art price buy";
+  align-content:start;gap:2px 8px;padding:8px 10px;
+ }
+ [data-market-seed-browser] .market-seed-art {grid-area:art;width:112px;height:112px}
+ [data-market-seed-browser] .market-seed-art>.icon {width:112px;height:112px}
+ [data-market-seed-browser] .market-seed-copy {display:contents}
+ [data-market-seed-browser] .market-seed-copy h2 {grid-area:title;margin:0}
+ [data-market-seed-browser] .market-seed-copy p {margin:0}
+ [data-market-seed-browser] .market-seed-copy p:first-of-type {grid-area:pack}
+ [data-market-seed-browser] .market-seed-stock {grid-area:stock}
+ [data-market-seed-browser] .market-seed-price {grid-area:price;justify-self:start}
+ [data-market-seed-browser] .market-seed-grid>section>:is(.dialog-button,.market-seed-limit) {
+  grid-area:buy;justify-self:stretch;min-width:0;
+ }
+ [data-market-seed-browser] .market-seed-grid .dialog-button {
+  width:100%;min-width:0;line-height:1.1;padding:3px 6px;white-space:normal;overflow-wrap:anywhere;
+ }
+}
