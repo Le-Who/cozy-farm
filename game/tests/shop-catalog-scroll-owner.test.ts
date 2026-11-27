@@ -15,6 +15,7 @@ import { bayProductId } from '../src/bay-product-id.ts'
 import { describeFood } from '../src/intent-orders.ts'
 import { ruCount } from '../src/ru.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
+import { earned416Mixed } from './fixtures/earned-416-market-orders.ts'
 
 const src=(name:string)=>readFileSync(new URL('../src/'+name,import.meta.url),'utf8')
 const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
@@ -78,10 +79,10 @@ class Element {
   focus(){this.onFocus?.(this)}
 }
 class Input extends Element {}
-function scene(farm:F.FarmState){
+function scene(farm:F.FarmState, recipeProduct?:string){
   const events=new Map<string,(event:any)=>void>(), document:{activeElement:Element|null;hidden:boolean}={activeElement:null,hidden:false}
   const focus=(item:Element)=>{document.activeElement=item}
-  let html='', nodes:Element[]=[], catalog:Element|null=null, desk=new Element(), last=0, nextFrame:((n:number)=>void)|undefined, transfers=0
+  let html='', nodes:Element[]=[], catalog:Element|null=null, desk=new Element(), last=0, nextFrame:((n:number)=>void)|undefined, transfers=0, writes=0
   const parse=(raw:string)=>Object.fromEntries([...raw.matchAll(/([a-zA-Z][a-zA-Z0-9-]*)(?:="([^"]*)")?/g)].map(([,k,v])=>[k,v??'']))
   const host={
     set innerHTML(v:string){
@@ -118,9 +119,9 @@ function scene(farm:F.FarmState){
     options:{state:farm.bayShop,catalog:readCatalog(farm),products:()=>available(farm),
       takeStock:(id:string,n:number)=>{transfers++;return reserveShopGoods(farm,id,n)},
       returnStock:(id:string,n:number)=>returnShopGoods(farm,id,n),
-      onEarn:(value:number)=>{farm.coins+=value},onChange(){},onClose(){}}
+      onEarn:(value:number)=>{farm.coins+=value},onChange(){writes++},onClose(){},recipeProduct,returnToRecipe:!!recipeProduct}
   })
-  return {host, get, get focused(){return document.activeElement}, get transfers(){return transfers},
+  return {host, get, get writes(){return writes}, get focused(){return document.activeElement}, get transfers(){return transfers},
     click(selector:string,detail=0){const e=get(selector);focus(e);events.get('click')!({target:e,detail})},
     submit(){events.get('submit')!({target:get('[data-stock-form]'),preventDefault(){}})},
     advance(){last+=1000;assert.ok(nextFrame);nextFrame(last)},destroy:mounted.destroy}
@@ -316,4 +317,59 @@ test('sold shelf quote cannot refill, reserve, or reroute a stale shelf or deple
     assert.doesNotMatch(ui.host.innerHTML,/data-stock-(?:quantity|sold-shelf)\b/i,mode)
     ui.destroy()
   }
+})
+
+test('earned D194 exact recipe previews a truly sold-out shelf without erasing it before confirmation',()=>{
+  const p=earned416Mixed(false);
+  assert.deepEqual([p.actions,p.state.day,F.getSale(p.state).items],[543,193,416]);
+  const recipe=p.cook();p.cook(recipe);
+  const id='signature:'+recipe, four=scene(p.state)
+  for(const [slot,product] of ['carrot','tomato','apple','pumpkin'].entries()){
+    four.click(`[data-slot="${slot}"]`);four.click(`[data-stock="${product}"]`);four.submit()
+  }
+  four.click('[data-open]');four.destroy()
+  const cold=(f:F.FarmState)=>F.restoreCurrentFarm(JSON.parse(JSON.stringify(f)))!
+  const full=cold(p.state), blocked=scene(full,id)
+  assert.deepEqual(full.bayShop.slots.map(s=>s?.quantity),[1,1,1,1])
+  assert.match(blocked.host.innerHTML,/Все места заняты/);assert.doesNotMatch(blocked.host.innerHTML,/data-stock-quantity/)
+  assert.equal(blocked.transfers,0);assert.equal(blocked.writes,0);blocked.destroy()
+  p.reload();p.night();p.visit('village')
+  const base=p.state
+  assert.deepEqual([base.day,base.coins,base.bayShop.sold,base.culinary.stock[recipe],base.bayShop.slots.map(s=>s?.quantity)],[194,79,4,2,[0,0,0,0]])
+
+  const keep=cold(base), expected=structuredClone(keep), decision=scene(keep,id)
+  assert.match(decision.host.innerHTML,/Место 1[^<]*carrot/,'named old listing must stay visible before replacement')
+  assert.equal(decision.get('[data-stock-quantity]').value,'1')
+  assert.match(decision.host.innerHTML,/К рецепту/)
+  assert.deepEqual(keep,expected);assert.equal(decision.transfers,0);assert.equal(decision.writes,0)
+  decision.click('[data-stock-cancel]')
+  assert.deepEqual(keep,expected);assert.equal(decision.transfers,0);assert.equal(decision.writes,0)
+  decision.destroy()
+
+  const exact=cold(base), ui=scene(exact,id), original=structuredClone(exact)
+  ui.submit()
+  assert.deepEqual([exact.bayShop.slots[0]?.product.id,exact.bayShop.slots[0]?.price,exact.bayShop.slots[0]?.quantity,
+    exact.culinary.stock[recipe],exact.coins,ui.transfers,ui.writes],[id,19,1,1,79,1,1])
+  assert.deepEqual(exact.bayShop.slots.slice(1),original.bayShop.slots.slice(1))
+  assert.equal(ui.focused,ui.get('[data-slot="0"]'));ui.destroy()
+
+  const stale=cold(base), held=scene(stale,id), oldListing=stale.bayShop.slots[0]!.product
+  // Another explicit restock of the quoted shelf from independently owned carrots, not manufactured stock.
+  assert.ok(reserveShopGoods(stale,oldListing.id,1));assert.ok(model.stockBayShop(stale.bayShop,0,oldListing,1))
+  const staleState=structuredClone(stale)
+  held.submit()
+  assert.deepEqual(stale,staleState);assert.equal(held.transfers,0);assert.equal(held.writes,0);held.destroy()
+
+  const onlyEmpty=cold(base)
+  assert.equal(model.removeBayShopStock(onlyEmpty.bayShop,2)?.quantity,0)
+  const free=scene(onlyEmpty,id)
+  assert.match(free.host.innerHTML,/Место 3 · в припасах/);assert.doesNotMatch(free.host.innerHTML,/вместо «/)
+  free.destroy()
+  const existing=cold(exact)
+  const direct=scene(existing,id)
+  assert.match(direct.host.innerHTML,/Место 1 · в припасах/);assert.doesNotMatch(direct.host.innerHTML,/вместо «/)
+  direct.destroy()
+  const generic=scene(cold(base))
+  assert.doesNotMatch(generic.host.innerHTML,/data-stock-quantity/,'an ordinary shop visit does not seed a replacement')
+  generic.destroy()
 })
