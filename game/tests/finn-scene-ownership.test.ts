@@ -41,6 +41,7 @@ function reachFirstFinnLunch(waveGoodbye: boolean) {
   assert.deepEqual(p.state.village.residents, ['bea', 'finn'])
   assert.equal(F.getVillageHomeCount(p.state), 2)
   assert.equal(p.state.neighbors.bea.current?.phase, 'celebrating')
+  const legacyTea = structuredClone(p.state.neighbors.bea.current)
   if (waveGoodbye) p.act('advanceNeighborPlan', 'bea:1')
   p.visit('home')
   if (!p.state.seeds.wheat) p.act('buySeeds', 'wheat')
@@ -55,6 +56,12 @@ function reachFirstFinnLunch(waveGoodbye: boolean) {
   }
   p.act('workBed', 0); p.act('bakeWorkshop', 'round'); p.visit('village')
   assert.equal(p.state.day, 16)
+  if (!waveGoodbye) {
+    // Restore the exact paid tea state that a genuinely earned D16 save could retain
+    // under the older writer. Current ordinary dawn now advances it without farewell.
+    p.state.neighbors.bea.current = legacyTea
+    p.reload()
+  }
   return p
 }
 

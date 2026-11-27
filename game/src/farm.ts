@@ -2495,7 +2495,14 @@ export function endDay(farm: FarmState): ActionResult {
   delete farm.village.supperDish;
   delete farm.capeBouquet;
   const tomorrow = farm.day + 1;
-  for (const resident of residentIds) if (farm.neighbors[resident].current?.phase === 'remembered') farm.neighbors[resident].current = prepareNeighbor(farm.neighbors[resident], tomorrow);
+  for (const resident of residentIds) {
+    const history = farm.neighbors[resident], plan = history.current, memory = history.memories.at(-1);
+    const finishedBeaTea = resident === 'bea' && plan?.phase === 'celebrating'
+      && plan.serial === history.completed && history.completed < 1_000_000
+      && episodeFor(resident, plan.serial) === 'beaTea' && memory?.episode === 'beaTea'
+      && memory.foodName === plan.food.name && memory.day >= plan.startedOn && memory.day <= farm.day;
+    if (plan?.phase === 'remembered' || finishedBeaTea) history.current = prepareNeighbor(history, tomorrow);
+  }
   const { weather } = getClimate(tomorrow);
   let cropsGrew = false;
   for (const [index, bed] of farm.beds.entries()) {
