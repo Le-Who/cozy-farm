@@ -804,7 +804,11 @@ export function createIsland(
         }
       }
     }
-    const gatheringPlan = getNeighborPlans(farm).find(plan => plan.phase === 'celebrating' || plan.phase === 'arranging');
+    const plans = getNeighborPlans(farm);
+    const fresh = plans.filter(plan => plan.phase === 'celebrating' && plan.memory?.day === farm.day);
+    const current = fresh.length ? fresh : plans.filter(plan => plan.phase === 'arranging');
+    // An earlier gathering can stay on display without pulling the new host away.
+    const gatheringPlan = current[0] ?? plans.find(plan => plan.phase === 'celebrating');
     const mealActive = villageMealCelebration && moment - villageMealCelebration < 24000;
     if (farm.village.mealOn === farm.day && (farm.village.supperDish || !getNeighborPlans(farm).some(plan => plan.memory?.day === farm.day))) {
       // Old saves know the shared fish, but not which pastry or signature dish was served.
@@ -831,7 +835,8 @@ export function createIsland(
     const actors = [...villageActors.values()];
     for (const actor of actors) {
       const scene = actor.plan && getNeighborSceneState(actor.plan);
-      const guestScene = gatheringPlan && gatheringPlan.resident !== actor.id && getNeighborSceneState(gatheringPlan);
+      const guestScene = gatheringPlan && gatheringPlan.resident !== actor.id
+        && !current.some(plan => plan.resident === actor.id) && getNeighborSceneState(gatheringPlan);
       if (guestScene && !actor.gathering && !actor.serviceRequested && !actor.fetching) {
         const guest = scenePoint(guestScene.guest.x, guestScene.guest.y);
         if (distance(actor.point, guest) > 4 && !actor.route.length) routeResident(actor, guest);
