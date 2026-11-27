@@ -580,3 +580,12 @@ button.requirement-link:focus-visible { outline:3px solid #a985b4; outline-offse
   [data-field-rail] .task-name, [data-field-rail] .task-count { grid-area: auto; font-size: 13px; line-height: 1.15; }
   [data-field-rail] .task-name { overflow-wrap: anywhere; }
 }
+
+/* Music materials: compare usable stock above separate, explicitly chosen destinations. */
+.music-stock-sheet { display: grid; gap: 8px; }
+.music-stock-sheet .music-supply { display: grid; gap: 5px; padding: 7px 9px; border: 1px solid #e1b889; border-radius: 12px; background: #fff8e9a8; }
+.music-stock-sheet .music-supply h2 { margin: 0; font-size: 17px; }
+.music-stock-sheet .music-supply small { color: var(--plum); }
+.music-stock-sheet .dialog-nav { margin: 0; }
+.music-stock-sheet .music-source-links { display: flex; flex-wrap: wrap; width: auto; min-width: 0; }
+.music-stock-sheet button.requirement-link { padding: 5px 16px 5px 10px; }

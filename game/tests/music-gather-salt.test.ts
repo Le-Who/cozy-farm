@@ -18,13 +18,13 @@ const read=(p:string)=>readFileSync(new URL(p,import.meta.url),'utf8')
 const main=read('../src/main.ts'), opening=JSON.parse(read('./fixtures/home-progress-actions.json'))
 const plain=<T,>(x:T):T=>JSON.parse(JSON.stringify(x))
 const between=(a:string,b:string)=>main.slice(main.indexOf(a),main.indexOf(b,main.indexOf(a)+a.length))
-function earned(collectSaltToday=false) {
+function earned(collectSaltToday=false, lastDayShells=3) {
   const p=commissionPlayer(opening)
   assert.deepEqual([p.state.day,p.actions,p.state.coins,p.state.seaSalt],[14,107,68,0])
   for(let day=14;day<=15;day++) {
     p.visit('grove')
     if(day===14||collectSaltToday)p.act('gatherSeaSalt')
-    for(let i=0;i<3;i++){assert.equal(F.getShellAt(p.state,i),'regular');p.act('collectShell',i)}
+    for(let i=0;i<(day===14?3:lastDayShells);i++){assert.equal(F.getShellAt(p.state,i),'regular');p.act('collectShell',i)}
     if(day===14)p.night()
   }
   p.visit('village')
@@ -32,7 +32,7 @@ function earned(collectSaltToday=false) {
 }
 
 const renderSupplies=stripTypeScriptTypes(between('function requirementLink(', '\nfunction statusItem(')
-  +between('function button(', '\nfunction quantity(')+between('function nav(', '\nfunction panelTabs(')
+  +between('function button(', '\nfunction quantity(')+between('function row(', '\nfunction panelTabs(')
   +"switch('music-supplies'){"+between("    case 'music-supplies': {","    case 'bay-freight':")+'}')
 
 function supplies(farm:F.FarmState) {
@@ -40,20 +40,23 @@ function supplies(farm:F.FarmState) {
   const content={innerHTML:''}, requirementLinks=new Map<string,Requirement>()
   runInNewContext(renderSupplies,{
     farm,...G,gardenMaterialStock,dialogContent:content,requirementLinks,panel:'music-supplies',
-    islandIds:F.islandIds,canSailTo:F.canSailTo,getBerryNurserySource,bayProductId,
+    islandIds:F.islandIds,canSailTo:F.canSailTo,getBerryNurserySource,bayProductId,getRequirementHint,
+    stockLabel:(item:F.StockItem)=>({image:item.kind}),itemIcon:()=>'',
   })
   assert.deepEqual(farm,before,'viewing supplies never pays, harvests, withdraws or travels')
-  const controls=[...content.innerHTML.matchAll(/<button([^>]+)>([\s\S]*?)<\/button>/g)].map(([,attrs,html])=>({
+  const parseControls=(markup:string)=>[...markup.matchAll(/<button([^>]+)>([\s\S]*?)<\/button>/g)].map(([,attrs,html])=>({
     action:attrs.match(/data-action="([^"]+)"/)?.[1],value:attrs.match(/data-value="([^"]+)"/)?.[1],
-    enabled:!/\bdisabled\b/.test(attrs),content:html.replace(/<[^>]*>/g,'').trim(),
+    label:attrs.match(/aria-label="([^"]+)"/)?.[1],enabled:!/\bdisabled\b/.test(attrs),content:html.replace(/<[^>]*>/g,'').trim(),
   }))
+  const controls=parseControls(content.innerHTML)
   const buttons=controls.map(({action,value,enabled})=>({action,value,enabled}))
   const links=controls.filter(x=>x.action==='show-requirement').map(x=>{
     const requirement=x.value===undefined?undefined:requirementLinks.get(x.value)
     assert.ok(requirement,'rendered action id must resolve to a live requirement')
-    return {content:x.content,requirement:plain(requirement)}
+    return {content:x.content,value:x.value,requirement:plain(requirement)}
   })
-  return {html:content.innerHTML,buttons,links,salt:links.find(l=>l.content.includes('Морская соль'))?.requirement}
+  const groups=[...content.innerHTML.matchAll(/<section[^>]*data-music-port="([^"]+)"[^>]*>([\s\S]*?)<\/section>/g)].map(([,port,html])=>({port,html,controls:parseControls(html)}))
+  return {html:content.innerHTML,buttons,links,groups,salt:links.find(l=>l.requirement.kind==='stock'&&l.requirement.item.kind==='seaSalt')?.requirement}
 }
 
 async function actuallyFollow(farm:F.FarmState, requirement:Requirement, duringCrossing?:()=>void, notices:string[] = []) {
@@ -157,7 +160,7 @@ test('stale or exhausted wild salt is not offered again; old warehouse and other
   assert.ok(quote.total>0);assert.ok(F.sellMarketBasket(freshShell,shellSale,quote.token).ok)
   assert.ok(F.sail(freshShell,'village').ok)
   const view=supplies(freshShell)
-  assert.deepEqual(view.links.find(x=>x.content.includes('Ракушки'))?.requirement,{kind:'stock',item:{kind:'shells',item:'regular',quantity:6}})
+  assert.deepEqual(view.links.find(x=>x.requirement.kind==='stock'&&x.requirement.item.kind==='shells')?.requirement,{kind:'stock',item:{kind:'shells',item:'regular',quantity:6}})
 
   const enRoute=earned(), wanted=supplies(enRoute).salt!
   const crossed=await actuallyFollow(enRoute,wanted,()=>{assert.ok(F.gatherSeaSalt(enRoute).ok)})
@@ -197,7 +200,7 @@ const ok=(r:{ok:boolean,message:string})=>assert.ok(r.ok,r.message)
 function at(farm:F.FarmState, port:F.IslandId) { if(farm.island!==port)ok(F.sail(farm,port)) }
 function cold(farm:F.FarmState) { const result=F.restoreCurrentFarm(plain(farm));assert.ok(result);return result }
 const take=(farm:F.FarmState,id:string,n:number)=>ok(transferBayGoods(farm,'withdraw',farm.island,id,n))
-const wax=(farm:F.FarmState)=>supplies(farm).links.find(l=>l.content.includes('Пчелиный воск'))?.requirement
+const wax=(farm:F.FarmState)=>supplies(farm).links.find(l=>l.requirement.kind==='stock'&&l.requirement.item.kind==='beeswax')?.requirement
 
 // Replay the real pre-upgrade Cape route; build the first instrument, make the
 // ordinary Apiary sale, then buy the kitchen. This leaves three actual wax at Cape.
@@ -248,7 +251,7 @@ test('Day30 bass source at 3/4 focuses the live hive, not inventory; warehouse a
   const farm=earnedWaxReserve(), beforeVisit=plain(farm)
   const remote=supplies(farm)
   assert.deepEqual(remote.buttons.filter(b=>b.action==='music-warehouse-visit'),[{action:'music-warehouse-visit',value:'cape',enabled:true}])
-  assert.match(remote.html,/Где собрать: Пчелиный воск/)
+  assert.match(remote.html,/aria-label="(?:Где найти|Посмотреть запас): Пчелиный воск"/)
   const visit=await useWarehouseButton(farm,'music-warehouse-visit','cape')
   assert.deepEqual(visit.moves,[['close'],['sail','cape'],['panel','music-supplies']])
   assert.deepEqual(visit.saves,[{...beforeVisit,island:'cape'}])
@@ -260,7 +263,7 @@ test('Day30 bass source at 3/4 focuses the live hive, not inventory; warehouse a
 
   const local=supplies(farm), link=wax(farm), before=plain(farm), notices:string[]=[]
   assert.match(local.html,/Пчелиный воск · 3\/4/)
-  assert.match(local.html,/aria-label="Где найти: Пчелиный воск"/)
+  assert.match(local.html,/aria-label="(?:Где найти: Пчелиный воск|К улью · Пчелиный воск)"/)
   assert.deepEqual(local.buttons.filter(b=>b.action==='freight-withdraw'||b.action==='music-warehouse-visit'),[])
   assert.ok(link)
   assert.deepEqual(await actuallyFollow(farm,link,undefined,notices),{moves:[['close'],['focus',{kind:'hive'}]],saves:[]},
@@ -330,4 +333,63 @@ test('real freight already unloaded at the Harbour reduces only the bag target',
   assert.match(supplies(farm).html,/Пчелиный воск · 3\/4/)
   const before=plain(farm)
   assert.equal(installGardenInstrument(farm),undefined);assert.deepEqual(farm,before)
+})
+
+test('Day15 music places three independent Grove choices together and keeps the Home warehouse and exact salt action',async()=>{
+  const farm=earned(false,2), before=plain(farm), view=supplies(farm)
+  assert.deepEqual([farm.day,farm.coins,farm.shells.regular,farm.seaSalt,farm.saltGatheredToday],[15,68,5,2,false])
+  assert.match(view.html,/Ракушки · 5\/6/)
+  assert.match(view.html,/Морская соль · 2\/3/)
+  assert.deepEqual(view.groups.map(g=>g.port),['grove','home'],'one region card for both Grove ingredients before other stock')
+  const [grove,home]=view.groups
+  assert.deepEqual(grove.controls.map(a=>[a.action,a.value,a.enabled]),[
+    ['music-warehouse-visit','grove',true],['show-requirement','music-shells',true],['show-requirement','music-seaSalt',true],
+  ])
+  assert.deepEqual(grove.controls.map(a=>a.label),['К складу, Солёная роща','К ракушкам · Ракушки','К солончаку · Морская соль'])
+  assert.match(grove.html,/Морская соль ×8/)
+  assert.deepEqual(home.controls.map(a=>[a.action,a.value]),[['music-warehouse-visit','home']])
+  assert.match(home.html,/Ракушки ×8/)
+  assert.match(grove.html,/Торговый рейс/)
+  assert.equal(view.buttons.filter(a=>a.action==='open-panel'&&a.value==='bay-music').length,1)
+  assert.equal((view.html.match(/<p[ >]/g)??[]).length,0,'counts and destinations replace duplicated explanatory paragraphs')
+  assert.deepEqual(farm,before)
+  const shell=view.links.find(l=>l.value==='music-shells')!
+  assert.deepEqual(getRequirementHint(farm,shell.requirement).action,{label:'',target:'sail',value:'grove'})
+  assert.deepEqual(await actuallyFollow(farm,view.salt!),{
+    moves:[['close'],['sail','grove'],['close'],['focus',{kind:'salt'}]],saves:[{...before,island:'grove'}],
+  })
+  assert.equal(F.getShellAt(farm,2),'regular')
+  const onGrove=supplies(farm)
+  assert.ok(onGrove.groups[0].controls.some(a=>a.action==='freight-withdraw'&&a.value==='grove|seaSalt|1'))
+  assert.deepEqual(getRequirementHint(farm,shell.requirement).action,{label:'',target:'focus-shell',value:'2'})
+  ok(F.collectShell(farm,2))
+  const shellReady=supplies(farm)
+  assert.equal(shellReady.links.some(l=>l.value==='music-shells'),false)
+  assert.deepEqual(shellReady.links.map(l=>l.value),['music-seaSalt'],'redraw preserves the actionable material focus key, not a reused slot index')
+})
+
+test('Day30 music groups exact Cape stock and source before passive balances without advertising a premature hive',async()=>{
+  const farm=earnedWaxReserve(), pre=plain(farm), atHarbour=supplies(farm)
+  assert.deepEqual(atHarbour.groups.map(g=>g.port),['cape','home'])
+  const cape=atHarbour.groups[0]
+  assert.match(cape.html,/Пчелиный воск ×3/)
+  assert.match(atHarbour.groups[1].html,/Ракушки ×1/)
+  assert.match(atHarbour.html,/Ракушки · 8\/8/)
+  assert.deepEqual(cape.controls.map(a=>a.action),['music-warehouse-visit','show-requirement'])
+  assert.match(cape.html,/Посмотреть запас/)
+  assert.doesNotMatch(cape.html,/К улью/)
+  assert.deepEqual(farm,pre)
+  await useWarehouseButton(farm,'music-warehouse-visit','cape')
+  const local=supplies(farm), capelocal=local.groups[0]
+  assert.deepEqual(capelocal.controls.map(b=>[b.action,b.value]),[['freight-withdraw','cape|beeswax|3'],['show-requirement','music-beeswax']])
+  assert.equal(getRequirementHint(farm,wax(farm)!).action.target,'warehouse-supply')
+  const before=plain(farm);assert.equal(farm.beeswax,0)
+  assert.equal((await useWarehouseButton(farm,'freight-withdraw','cape|beeswax|3')).saves.length,1)
+  const after=supplies(farm), scarce=wax(farm)!
+  assert.deepEqual([farm.day,farm.coins,farm.beeswax,farm.capeHoneyOn],[before.day,before.coins,3,before.capeHoneyOn])
+  assert.deepEqual(after.groups[0].controls.map(a=>[a.action,a.value]),[['show-requirement','music-beeswax']])
+  assert.equal(after.groups[0].controls[0].label,'К улью · Пчелиный воск')
+  assert.match(after.groups[0].html,/К улью/)
+  assert.doesNotMatch(after.groups[0].html,/Посмотреть запас/)
+  assert.deepEqual(await actuallyFollow(farm,scarce),{moves:[['close'],['focus',{kind:'hive'}]],saves:[]})
 })

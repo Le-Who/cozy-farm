@@ -473,15 +473,15 @@ try {
 } catch { /* A stale menu selection never prevents loading the farm. */ }
 const requirementLinks = new Map<string, Requirement>()
 
-function requirementLink(content: string, requirement: Requirement, className: string, name: string, ready = false, description = '') {
+function requirementLink(content: string, requirement: Requirement, className: string, name: string, ready = false, description = '', presentation?: {key:string;label:string}) {
   if (ready) return `<li class="${className}" data-ready="true">${content}</li>`
-  const key = String(requirementLinks.size)
+  const key = presentation?.key ?? String(requirementLinks.size)
   requirementLinks.set(key, requirement)
   const recipeIngredient = panel === 'recipes' && requirement.kind === 'stock'
     ? ` data-recipe-ingredient="${bayProductId(requirement.item)}"` : ''
   const nursery = requirement.kind === 'stock' && getBerryNurserySource(farm, requirement.item) !== undefined
     ? `<button class="nursery-preserve" type="button" data-action="berry-nursery-ingredient" data-value="${key}" aria-label="Сохранить разновидность: ${name}">Сохранить разновидность</button>` : ''
-  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}"${recipeIngredient} aria-label="Где найти: ${name}"${description ? ` aria-describedby="requirement-source-${key}"` : ''}>${content}${description ? `<small id="requirement-source-${key}">${escapeHtml(description)}</small>` : ''}</button>${nursery}</li>`
+  return `<li class="requirement-slot"><button type="button" class="${className} requirement-link" data-ready="false" data-action="show-requirement" data-value="${key}"${recipeIngredient} aria-label="${presentation?.label ?? `Где найти: ${name}`}"${description ? ` aria-describedby="requirement-source-${key}"` : ''}>${content}${description ? `<small id="requirement-source-${key}">${escapeHtml(description)}</small>` : ''}</button>${nursery}</li>`
 }
 const islandNames = { home: 'Родной остров', grove: 'Солёная роща', cape: 'Цветочный мыс', village: 'Лавандовая гавань' }
 
@@ -2301,20 +2301,63 @@ function drawPanel() {
     }
     case 'music-supplies': {
       const guide = getMusicMaterialGuidance(farm), stock = gardenMaterialStock(farm)
-      dialogContent.innerHTML = `<p class="dialog-intro">Инструмент использует припасы и склад Лавандовой гавани. С других складов материалы нужно забрать лично.</p>${guide.materials.map(item => {
-        const missing = Math.max(0,item.quantity-stock[item.id]), name = musicMaterialNames[item.id]
-        // Stock guidance compares against the bag, excluding the Harbour reserve.
-        const bagTarget = item.quantity - (farm.freight.warehouses.village[item.id] ?? 0)
-        const saltSource = item.id === 'seaSalt' && getMusicSaltRequirement(farm)
-        const warehouses = islandIds.filter(port => (farm.freight.warehouses[port][item.id] ?? 0) > 0)
-          .sort((a,b) => Number(b === guide.warehouse)-Number(a === guide.warehouse))
-        return `<section class="music-supply"><h2>${name} · ${stock[item.id]}/${item.quantity}</h2><p>${guide.sources[item.id]}</p>${warehouses.map(port => {
-          const amount = farm.freight.warehouses[port][item.id]!, count = Math.min(missing,amount)
-          return `<p>${islandNames[port]}: ${amount}</p>${count && port !== 'village' ? nav(port === farm.island
-            ? button(`Забрать в припасы ×${count}`,'freight-withdraw',true,{value:`${port}|${item.id}|${count}`})
-            : button(`К складу: ${islandNames[port]}`,'music-warehouse-visit',canSailTo(farm,port),{value:port})) : ''}`
-        }).join('')}${missing ? `<ul class="ingredients">${requirementLink(`<span>Где собрать: ${name}</span>`,saltSource || {kind:'stock',item:{...musicMaterialItems[item.id],quantity:bagTarget}},'ingredient',name)}</ul>` : '<p>Материалы готовы для инструмента.</p>'}</section>`
-      }).join('')}${nav(button('Вернуться в музыкальный сад','open-panel',true,{value:'bay-music'}))}`
+      type Port = typeof islandIds[number]
+      type Place = { balances:string[]; pickups:string[]; sources:string[]; visit:boolean; saltTrade:boolean }
+      const places = new Map<Port, Place>()
+      const otherSources: string[] = []
+      const at = (port: Port): Place => {
+        const found = places.get(port)
+        if (found) return found
+        const place = {balances:[],pickups:[],sources:[],visit:false,saltTrade:false}
+        places.set(port,place)
+        return place
+      }
+      const materials = guide.materials.map(item => {
+        const name = musicMaterialNames[item.id], material = musicMaterialItems[item.id]
+        const reserve = farm.freight.warehouses.village[item.id] ?? 0, bag = stock[item.id] - reserve
+        const missing = Math.max(0,item.quantity-stock[item.id])
+        if (item.id === 'seaSalt') at('grove').saltTrade = true
+        for (const port of islandIds) {
+          const amount = farm.freight.warehouses[port][item.id] ?? 0
+          if (port === 'village' || amount <= 0) continue
+          const place = at(port), count = Math.min(missing,amount)
+          place.balances.push(`${name} ×${amount}`)
+          if (count && port === farm.island)
+            place.pickups.push(button(`Забрать в припасы ×${count}`,'freight-withdraw',true,{value:`${port}|${item.id}|${count}`,context:name}))
+          if (count && port !== farm.island) place.visit = true
+        }
+        if (missing) {
+          // Display groups, never replace routes: the same request is resolved again at actual arrival.
+          const saltSource = item.id === 'seaSalt' && getMusicSaltRequirement(farm)
+          const requirement: Requirement = saltSource || {kind:'stock',item:{...material,quantity:item.quantity-reserve}}
+          const {action} = getRequirementHint(farm,requirement)
+          const port = action.target === 'sail' ? islandIds.find(id => id === action.value)
+            : action.target === 'focus-shell' || action.target === 'visit-hive' || action.target === 'warehouse-supply'
+              || action.target === 'focus-place' && (action.value === 'salt' || action.value === 'farmhouse')
+              || action.target === 'open-panel' && (action.value === 'cape-upgrade' || action.value === 'rest') ? farm.island : undefined
+          const arrival = port && port !== farm.island ? getRequirementHint({...farm,island:port},requirement).action : action
+          const label = arrival.target === 'focus-shell' ? 'К ракушкам' : arrival.target === 'focus-place' && arrival.value === 'salt' ? 'К солончаку'
+            : arrival.target === 'visit-hive' ? 'К улью' : arrival.target === 'warehouse-supply' ? `Посмотреть запас: ${name}`
+            : `Где взять: ${name}`
+          const link = requirementLink(`<span>${label}</span>`,requirement,'ingredient',name,false,'',{key:`music-${item.id}`,label:label.includes(name) ? label : `${label} · ${name}`})
+          ;(port ? at(port).sources : otherSources).push(link)
+        }
+        return row(stockLabel(material).image,`${name} · ${stock[item.id]}/${item.quantity}${missing ? '' : ' ✓'}`,
+          `В припасах ${bag} · На складе Гавани ${reserve}`)
+      }).join('')
+      const ranked = [...places].sort(([,a],[,b]) => Number(!!b.sources.length)-Number(!!a.sources.length))
+      const active = (place: Place) => place.visit || place.pickups.length > 0 || place.sources.length > 0
+      const sources = (links:string[]) => links.length ? `<ul class="ingredients music-source-links">${links.join('')}</ul>` : ''
+      const region = ([port,place]: [Port,Place]) =>
+        `<section class="music-supply" data-music-port="${port}"><h2>${islandNames[port]}</h2>
+        ${place.balances.length ? `<small>${place.balances.join(' · ')}</small>` : ''}
+        ${place.visit || place.pickups.length || place.sources.length ? nav(place.visit
+          ? button('К складу','music-warehouse-visit',canSailTo(farm,port),{value:port,context:islandNames[port]}) : '',
+          ...place.pickups,sources(place.sources)) : ''}
+        ${place.saltTrade ? '<small>Торговый рейс: морская соль</small>' : ''}</section>`
+      dialogContent.innerHTML = `<div class="music-stock-sheet"><ul class="dialog-list" aria-label="Материалы инструмента">${materials}</ul>
+        ${ranked.filter(([,place])=>active(place)).map(region).join('')}${sources(otherSources)}
+        ${ranked.filter(([,place])=>!active(place)).map(region).join('')}${nav(button('Вернуться в музыкальный сад','open-panel',true,{value:'bay-music'}))}</div>`
       break
     }
     case 'bay-freight': {
