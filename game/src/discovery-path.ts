@@ -1,4 +1,5 @@
 import { getShopCommission, getShopCommissionOffers } from './shop-commissions.ts';
+import { getRecipeRepeatGuide } from './recipe-repeat-guidance.ts';
 import { getOrdinaryHoneyWait } from './ordinary-honey-guidance.ts';
 import { getGroveSaltWithdrawal, seaSaltRestNotice } from './salt-guidance.ts';
 import { getWindHoneySource } from './wind-honey-guidance.ts';
@@ -16,7 +17,7 @@ import {
   boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeHoney, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
   foodDescriptors, getFestivalStatus, getIntentOffers, getMarketOrders, getNeighborPlans, getProject, getSale, getShopRestForecast, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
-  treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
+  treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, getSignatureAction, getSignatureCookOutput, getTreeAction, type CropId, type DishId, type FarmState, type StockItem,
 } from './farm.ts';
 import {ruCount} from './ru.ts';
 
@@ -257,6 +258,32 @@ function starter(farm: FarmState): DiscoveryTask | undefined {
   return { ...next, id: goal.id, label: goal.label, detail: next.action.target === 'focus-bed' ? goal.detail : next.detail, progress: goal.progress, target: goal.target, reward: goal.reward };
 }
 
+/** Teach a first customer order through one exact Home prep step; repeat trips keep their normal arrival. */
+function homeCommissionPreparation(farm: FarmState, order: NonNullable<ReturnType<typeof getShopCommission>>): DiscoveryTask['action'] | undefined {
+  if (farm.island !== 'home' || order.mixed || farm.shopCommissions.completed[order.customer] !== 0
+      || !Number.isSafeInteger(farm.workToday + 1)) return;
+  const line = order.lines[0], product = `signature:${line.recipeId}`;
+  if (!line.remaining || line.inBag > 0
+      || Object.values(farm.freight.warehouses).some(stock => stock[product] > 0)
+      || farm.freight.ship.cargo.some(lot => lot.id === product && lot.quantity > 0)
+      || farm.bayShop.slots.some(slot => slot?.product.id === product && slot.quantity > 0)) return;
+  const recipe = farm.culinary.recipes.find(item => item.id === line.recipeId);
+  if (!recipe || !getSignatureCookOutput(farm, 1, recipe).fits) return;
+  const prep = getRecipeRepeatGuide(farm, recipe.id);
+  if (prep?.available) return { label: 'Открыть рецепт', target: 'commission-home-recipe', value: recipe.id };
+  if (prep?.missing.length !== 1 || !Number.isSafeInteger(farm.workToday + 2)) return;
+  const item = prep.missing[0];
+  if (item.kind !== 'fruit') return;
+  const source = getFruitSource(farm, item.item);
+  if (source.island !== 'home' || source.kind !== 'pick' || !getTreeAction(farm, source.slot).available) return;
+  const tree = farm.trees.home[source.slot];
+  if (!tree || tree.tree !== item.item) return;
+  // A found variant is a separate item. It cannot complete the plain recipe.
+  const amount = farm.fruit[item.item] + tree.fruitReady - Number(!!tree.trait);
+  if (!getSignatureAction({ ...farm, fruit: { ...farm.fruit, [item.item]: amount } }, recipe).available) return;
+  return { label: 'К плодовому дереву', target: 'visit-tree', value: String(source.slot) };
+}
+
 /** One optional next discovery, derived only from real progress and reachable supplies. */
 export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): DiscoveryTask | undefined {
   if (farm.village.built) {
@@ -273,9 +300,13 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
       return task('festival-preparation',label,festival.editionName,`festivals/${festival.tradition}`,preparation,festival.stage,3);
     }
     const commission=getShopCommission(farm);
-    if(commission)return arrive(task('shop-commission',commission.remaining ? `Заказ: ${commission.customerName}` : 'Покупатель ждёт вашу партию',
-      `«${commission.recipeName}»: отложено ${commission.delivered} из ${commission.quantity}. Срока нет.`, 'ui-signature-bright',
-      {label:'К заказу лавки',target:'open-panel',value:'shop-commissions'},commission.delivered,commission.quantity));
+    if (commission) {
+      const order = arrive(task('shop-commission',commission.remaining ? `Заказ: ${commission.customerName}` : 'Покупатель ждёт вашу партию',
+        `«${commission.recipeName}»: отложено ${commission.delivered} из ${commission.quantity}. Срока нет.`, 'ui-signature-bright',
+        {label:'К заказу лавки',target:'open-panel',value:'shop-commissions'},commission.delivered,commission.quantity));
+      const local = homeCommissionPreparation(farm, commission);
+      return local ? { ...order, action: local } : order;
+    }
     if (!farm.village.residents.some(Boolean)) return arrive(task('first-neighbour', 'Встретьте первого соседа', 'Пригласите соседа в домик у гавани.', 'ui-bea', { label: 'К первому домику', target: 'visit-cottage', value: '0' }));
     if (farm.village.meals < 2) {
       const shape = workshopShapes.find(shape => farm.handmade[shape] > 0) ?? farm.workshopPatterns[0] ?? 'round';

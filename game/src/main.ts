@@ -3893,6 +3893,11 @@ app.addEventListener('click', async (event) => {
     const task = currentTask()
     if (!task || !('action' in task)) { openPanel('journal'); return }
     action = task.action.target; value = task.action.value
+    if (action === 'commission-home-recipe' && value && farm.island === 'home' && 'id' in task && task.id === 'shop-commission') {
+      openRecipeBook(value,true)
+      focusRecipeAction()
+      return
+    }
     if ('id' in task && task.id === 'first-shop' && action === 'open-panel' && value === 'bay-shop'
       && farm.island === 'home' && farm.neighborVisits.active) {
       if (!dialog.open || panel !== 'journal') openPanel('journal')
