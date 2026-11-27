@@ -421,6 +421,12 @@ let signatureRepeatId:string|undefined
 function rememberCurrentRecipeDraft() {
   if (!signatureRepeatId && rememberRecipeDraft(farm, {base:signatureBase, slots:signatureSlots, activeSlot:signatureSlot})) saveFarm()
 }
+function rememberRecipeDraftFocus() {
+  const draft = farm.recipeDraft
+  // Switching the active portion can remember focus, but not replace a different composition.
+  if (draft && draft.base === signatureBase && draft.activeSlot !== signatureSlot
+    && JSON.stringify(draft.slots) === JSON.stringify(signatureSlots)) rememberCurrentRecipeDraft()
+}
 
 const recipeBook = new RecipeBookNavigation()
 let expandedRepeatId:string|undefined
@@ -4617,9 +4623,15 @@ app.addEventListener('click', async (event) => {
     case 'new-signature':
       signatureBase=value==='tart'?'tart':'preserves';signatureSlots=[null,null];signatureSlot=0;signatureRepeatId=undefined;signatureFamily=undefined;openPanel('signature');break
     case 'signature-base':
-      if(dialog.open && panel==='signature' && (value==='preserves'||value==='tart')){signatureBase=value;signatureRepeatId=undefined;rememberCurrentRecipeDraft();drawPanel()}break
+      if(dialog.open && panel==='signature' && (value==='preserves'||value==='tart')){
+        const changed = signatureBase !== value
+        signatureBase=value;signatureRepeatId=undefined
+        if(changed)rememberCurrentRecipeDraft()
+        else rememberRecipeDraftFocus()
+        drawPanel()
+      }break
     case 'signature-slot':
-      if(dialog.open && panel==='signature' && (value==='0'||value==='1')){signatureSlot=value==='1'?1:0;rememberCurrentRecipeDraft();drawPanel()}break
+      if(dialog.open && panel==='signature' && (value==='0'||value==='1')){signatureSlot=value==='1'?1:0;rememberRecipeDraftFocus();drawPanel()}break
     case 'signature-fruit':{
       if(!dialog.open || panel!=='signature')break
       const part=recipePlanningIngredient(farm,value,control.dataset.trait)
