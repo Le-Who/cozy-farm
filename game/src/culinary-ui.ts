@@ -68,7 +68,7 @@ function recipeBookSupper(farm: FarmState, recipeId: string): string {
 
 const capacityDescription = (canCreate:boolean) => canCreate ? '' : 'aria-describedby="recipe-capacity-note"'
 
-function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeBookView):string {
+function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeBookView,commissionPair?:string):string {
   const beaTasting=signatureTastingGuide(farm,recipe.id,'bea'), shopChoice=lastPortionShopStock(farm,recipe.id)
   const count=farm.culinary.stock[recipe.id]??0, capacity=signatureBookCapacity(farm.culinary)
   const action=getSignatureAction(farm,recipe), batch=action.available&&action.items.every(item=>ingredientCount(farm,item)>=item.quantity*3), stored=getStoredSignature(farm,recipe.id)
@@ -94,9 +94,9 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
     <div class="recipe-book-stock"><dl><div><dt>С собой</dt><dd>${count}</dd></div><div><dt>На местном складе</dt><dd>${stored?.stored??0}</dd></div></dl>${stored?control('Забрать 1 порцию','recipe-warehouse-withdraw',storedSignatureValue(stored),true):''}${count>0&&farm.village.built&&!shopChoice?(farm.island==='village'?control('Своя лавка','open-panel','bay-shop'):control('В лавку в гавань','recipe-harbour-shop',recipe.id)):''}</div></div>
     <section class="recipe-book-cooking" aria-labelledby="recipe-cooking-title"><h2 id="recipe-cooking-title" tabindex="-1" data-recipe-focus="cooking">Приготовить точно</h2>
       ${homeRouteReady?homeRoute:''}
-      <div class="signature-actions recipe-book-repeat">${control(repeatLabel('Повторить ×1',1,action.available),'make-signature',recipe.id,action.available)}${control(repeatLabel('Партия ×3',3,batch),'batch-signature',recipe.id,batch)}</div>
-      ${reason?`<p class="recipe-book-blocker" tabindex="-1" data-recipe-focus="blocker" role="status">${escapeRecipeText(reason)}</p>`:!batch?'<p class="recipe-book-blocker">Для партии ×3 нужно втрое больше каждого ингредиента.</p>':''}
-      <section class="recipe-repeat-guide" aria-label="Точный повтор рецепта"><details data-repeat-guide="${recipe.id}"${(reason&&!homeRouteReady)||view.expandedRepeatId===recipe.id?' open':''}><summary>${recipeIngredientsDisclosureLabel}</summary><ul class="ingredients">${guide.items.map(art.stock).join('')}</ul><p class="recipe-repeat-note">Тот же состав, особенности и оформление. Для партии ×3 нужно втрое больше каждого ингредиента.</p></details>${homeRouteReady?'':homeRoute}</section>
+      <div class="signature-actions recipe-book-repeat">${control(repeatLabel('Повторить ×1',1,action.available),'make-signature',recipe.id,action.available)}${commissionPair?control('Партия ×2','batch-signature',recipe.id,true,`data-commission-repeat-quote="${escapeRecipeText(commissionPair)}" aria-describedby="commission-repeat-terms"`):control(repeatLabel('Партия ×3',3,batch),'batch-signature',recipe.id,batch)}</div>
+      ${reason?`<p class="recipe-book-blocker" tabindex="-1" data-recipe-focus="blocker" role="status">${escapeRecipeText(reason)}</p>`:commissionPair?'<p class="recipe-repeat-note" id="commission-repeat-terms">Расход: 2 набора · Выход: 2 порции</p>':!batch?'<p class="recipe-book-blocker">Для партии ×3 нужно втрое больше каждого ингредиента.</p>':''}
+      <section class="recipe-repeat-guide" aria-label="Точный повтор рецепта"><details data-repeat-guide="${recipe.id}"${(reason&&!homeRouteReady)||view.expandedRepeatId===recipe.id?' open':''}><summary>${recipeIngredientsDisclosureLabel}</summary><ul class="ingredients">${guide.items.map(art.stock).join('')}</ul><p class="recipe-repeat-note">Тот же состав, особенности и оформление.${commissionPair?'':' Для партии ×3 нужно втрое больше каждого ингредиента.'}</p></details>${homeRouteReady?'':homeRoute}</section>
       ${control('Готовить вручную','manual-signature',recipe.id,capacity.canCreate,capacityDescription(capacity.canCreate))}
     </section>
     <section class="recipe-book-uses" aria-label="Применить готовые порции"><h2 tabindex="-1" data-recipe-focus="uses">Применить</h2>
@@ -132,7 +132,7 @@ export function recipeBookResults(farm:FarmState,art:Icons,view:RecipeBookView):
   return `${recipes.map(recipe=>`<div class="recipe-book-row" data-selected="${recipe.id===selectedId}"><button type="button" class="recipe-book-select" data-action="select-recipe" data-value="${recipe.id}" aria-pressed="${recipe.id===selectedId}"><span class="recipe-book-thumb">${signatureResultPicture(recipe,art)}</span><span><strong>${escapeRecipeText(recipe.name)}</strong>${traitHint(recipe)}<small>С собой ${farm.culinary.stock[recipe.id]??0}</small></span><span aria-hidden="true">›</span></button>${control(recipe.favorite?'★':'☆','favorite-signature',recipe.id,true,`aria-label="${recipe.favorite?'Убрать из избранного':'В избранное'} ${escapeRecipeText(recipe.name)}" aria-pressed="${recipe.favorite}"`)}</div>`).join('')}${!recipes.length&&view.query?.trim()?'<p class="recipe-book-search-empty">По этому названию рецептов нет. Измените запрос или очистите поиск.</p>':''}`
 }
 
-export function signatureBook(farm:FarmState,art:Icons,state:RecipeBookView|string={}):string {
+export function signatureBook(farm:FarmState,art:Icons,state:RecipeBookView|string={},commissionPair?:string):string {
   const view:RecipeBookView=typeof state==='string'?{selectedId:state,expandedRepeatId:state,mode:'detail'}:state
   const recipes=sortedBookRecipes(farm), selectedId=selectedBookId(farm,view), selected=recipes.find(recipe=>recipe.id===selectedId), capacity=signatureBookCapacity(farm.culinary)
   const draft=farm.recipeDraft
@@ -146,7 +146,7 @@ export function signatureBook(farm:FarmState,art:Icons,state:RecipeBookView|stri
       <div class="recipe-book-list" id="recipe-book-results">${recipeBookResults(farm,art,view)}</div>
       ${!recipes.length&&!draft?'<p class="recipe-book-note">Сохранённых рецептов пока нет. Начните с варенья или тарта.</p>':''}
     </section>
-    <section class="recipe-book-detail" aria-label="Выбранный рецепт">${status?`<details class="recipe-book-picnic" data-recipe-disclosure="picnic-status"${view.disclosures?.includes('picnic-status')?' open':''}><summary>Пикник действует · до сна</summary>${status}</details>`:''}${selected?bookRecipe(farm,selected,art,view):selectedId==='draft'?recipeDraftCard(farm,art):`<div class="recipe-book-empty">${art.icon('ui-signature-bright')}<p>Ваши рецепты будут здесь.</p></div>`}</section>
+    <section class="recipe-book-detail" aria-label="Выбранный рецепт">${status?`<details class="recipe-book-picnic" data-recipe-disclosure="picnic-status"${view.disclosures?.includes('picnic-status')?' open':''}><summary>Пикник действует · до сна</summary>${status}</details>`:''}${selected?bookRecipe(farm,selected,art,view,commissionPair):selectedId==='draft'?recipeDraftCard(farm,art):`<div class="recipe-book-empty">${art.icon('ui-signature-bright')}<p>Ваши рецепты будут здесь.</p></div>`}</section>
   </div>`
 }
 

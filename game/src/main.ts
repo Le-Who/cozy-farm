@@ -211,7 +211,7 @@ import {
   collectCapeHoney,
   cookDish,
   createFarm,
-  getSignatureAction,completeSignature,repeatSignature,nameSignature,favoriteSignature,forgetSignature,sellSignature,useSignature,tasteSignature,deliverSignature,getCoveActions,changeCove,
+  getSignatureAction,completeSignature,repeatSignature,getCommissionRecipePair,repeatCommissionRecipePair,nameSignature,favoriteSignature,forgetSignature,sellSignature,useSignature,tasteSignature,deliverSignature,getCoveActions,changeCove,
   moveHen as moveFarmHen,
   cropDefinitions,
   cropIds,
@@ -2550,10 +2550,13 @@ function drawPanel() {
       dialogContent.innerHTML = renderHoneyKitchenMenu(honeyKitchenDish, dish => icon(dishIcons[dish]), recipeCards)
       break
     }
-    case 'recipes':
+    case 'recipes': {
       recipeBook.view.expandedRepeatId=expandedRepeatId
-      dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile},recipeBook.view)
+      const origin=panelHistory.at(-1),pair=origin?.panel==='shop-commissions' && origin.commissionRecipe && recipeBook.view.mode==='detail'
+        ? getCommissionRecipePair(farm,origin.commissionRecipe.line,recipeBook.view.selectedId) : undefined
+      dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile},recipeBook.view,pair)
       break
+    }
     case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile},currentCommunityRequest()?.intentId);break
     case 'cove': {
       const action=getCoveActions(farm)
@@ -4069,7 +4072,10 @@ app.addEventListener('click', async (event) => {
       if(panel==='shop-commissions'&&dialog.open&&line){
         openRecipeBook(line.recipeId,true)
         const source=panelHistory.at(-1)
-        if(source?.panel==='shop-commissions' && recipeBook.view.selectedId===line.recipeId) source.commissionRecipe={line:line.actionValue,prepared:false}
+        if(source?.panel==='shop-commissions' && recipeBook.view.selectedId===line.recipeId) {
+          source.commissionRecipe={line:line.actionValue,prepared:false}
+          if(getCommissionRecipePair(farm,line.actionValue,line.recipeId))drawPanel()
+        }
         focusRecipeAction()
       }
       break
@@ -4656,7 +4662,19 @@ app.addEventListener('click', async (event) => {
       if(recipe){signatureBase=recipe.base;signatureSlots=recipe.ingredients.flatMap(part=>Array.from({length:part.quantity},()=>({...part,quantity:1})));signatureRepeatId=recipe.id;cookingMode='signature';if(getSignatureAction(farm,recipe).available)openPanel('cookery');else openPanel('signature')}
       break
     }
-    case 'batch-signature':if(value)perform(()=>repeatSignature(farm,value!,undefined,3),false,true);break
+    case 'batch-signature': {
+      if(!value)break
+      const pair=control.dataset.commissionRepeatQuote
+      if(pair===undefined){perform(()=>repeatSignature(farm,value!,undefined,3),false,true);break}
+      const origin=panelHistory.at(-1),source=origin?.panel==='shop-commissions'?origin.commissionRecipe:undefined
+      if(!source||panel!=='recipes'||!dialog.open||!dialogContent.contains(control)||recipeBook.view.mode!=='detail'||recipeBook.view.selectedId!==value)break
+      const keyboard=event.detail===0&&document.activeElement===control
+      if(perform(()=>repeatCommissionRecipePair(farm,source.line,value!,pair),false,true) && keyboard && !backButton.hidden && backButton.dataset.recipeIndex==='false'){
+        source.prepared=true
+        backButton.focus({preventScroll:true})
+      }
+      break
+    }
     case 'favorite-signature':if(value)perform(()=>favoriteSignature(farm,value!),false,true);break
     case 'forget-signature':if(value&&perform(()=>forgetSignature(farm,value!),false,true)){const target=dialogContent.querySelector<HTMLElement>('[data-action="select-recipe"]');target?.focus({preventScroll:true})}break
     case 'recipe-surplus-choose':

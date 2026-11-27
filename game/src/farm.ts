@@ -2,7 +2,7 @@ import { isSupperDish, signatureTableDish, type SupperDish } from './supper-dish
 import { createGardenPlans, restoreGardenPlans, seedForBed, type GardenPlans } from './garden-plans.ts';
 import { createNeighborVisits, restoreNeighborVisits, noteNeighborVisit, visitActivities, type NeighborVisits } from './neighbor-visits.ts';
 import { createHenFriendship, restoreHenFriendship, befriendPettedHen, henFriends, type HenFriendship } from './hen-friendship.ts';
-import { createShopCommissions, restoreShopCommissions, shopCommissionUsesRecipe, type ShopCommissions } from './shop-commissions.ts';
+import { createShopCommissions, getShopCommissionLine, restoreShopCommissions, shopCommissionUsesRecipe, type ShopCommissions } from './shop-commissions.ts';
 import { restoreRecipeDraft, completeRecipeDraft, type RecipeDraftBookmark } from './recipe-draft.ts';
 import { createDiscoveryPreferences, restoreDiscoveryPreferences, type DiscoveryPreferences } from './discovery-preferences.ts';
 import { createBayShop, restoreBayShop, advanceBayShopDay, syncBayShopProducts, bayShopDailyLimit, type BayShopState } from './bay-shop-model.ts';
@@ -1900,19 +1900,20 @@ export function getSignatureAction(farm:FarmState,draft:SignatureDraft){
   return {available,label,items};
 }
 /** Preview the committed repeat output; a picnic never changes its ingredient count. */
-export function getSignatureCookOutput(farm:FarmState,quantity:1|3,recipe?:Pick<SignatureRecipe,'id'|'batches'>){
+export function getSignatureCookOutput(farm:FarmState,quantity:1|2|3,recipe?:Pick<SignatureRecipe,'id'|'batches'>){
   const portions=quantity+Number(farm.culinary.picnic?.day===farm.day&&farm.culinary.picnic.processing==='silky');
   const fits=!recipe||((farm.culinary.stock[recipe.id]??0)+portions<=1_000_000&&recipe.batches+quantity<=1_000_000);
   return {portions,fits};
 }
-function craftSignature(farm:FarmState,draft:SignatureDraft,result:CookeryResult,quantity:number):ActionResult&{recipeId?:string}{
+function craftSignature(farm:FarmState,draft:SignatureDraft,result:CookeryResult,quantity:1|2|3):ActionResult&{recipeId?:string}{
   const normalized=normalizeSignatureDraft(draft);
-  if(!normalized||!isCookeryResult(result)||result.family!==(normalized.base==='tart'?'decorate':'preserves')||result.fruit.some(p=>!normalized.ingredients.some(part=>part.id===p.ingredientId&&((p.trait===undefined&&result.fruitTraitsVersion!==1)||part.trait===p.trait)))||quantity!==1&&quantity!==3)return failure('Выберите готовый рецепт.');
+  if(!normalized||!isCookeryResult(result)||result.family!==(normalized.base==='tart'?'decorate':'preserves')||result.fruit.some(p=>!normalized.ingredients.some(part=>part.id===p.ingredientId&&((p.trait===undefined&&result.fruitTraitsVersion!==1)||part.trait===p.trait))))return failure('Выберите готовый рецепт.');
   const action=getSignatureAction(farm,normalized),items=action.items.map(item=>({...item,quantity:item.quantity*quantity}));
   if(!action.available||!items.every(item=>ingredientCount(farm,item)>=item.quantity))return failure(action.available?'Соберите ингредиенты для всей партии.':action.label);
-  if(!Number.isSafeInteger(farm.workToday+1))return failure('Журнал работ заполнен.');
+  const work=quantity===2?2:1; // The order pair is equivalent to two individual repeats.
+  if(!Number.isSafeInteger(farm.workToday+work))return failure('Журнал работ заполнен.');
   const identity=signatureIdentity(normalized,result),existing=farm.culinary.recipes.find(recipe=>signatureIdentity(recipe,recipe.result)===identity);
-  if(quantity===3&&!existing)return failure('Сначала приготовьте этот вариант один раз, затем сможете готовить тройную партию.');
+  if(quantity>1&&!existing)return failure('Сначала приготовьте этот вариант один раз, затем сможете готовить тройную партию.');
   if(!existing&&(farm.culinary.recipes.length>=signatureRecipeLimit||farm.culinary.serial>=999999))return failure('Книга рецептов заполнена. Используйте запас блюда и уберите рецепт в архив.');
   const {portions:made,fits}=getSignatureCookOutput(farm,quantity,existing);
   if(!fits)return failure('Для этого блюда больше нет места в кладовой.');
@@ -1923,14 +1924,35 @@ function craftSignature(farm:FarmState,draft:SignatureDraft,result:CookeryResult
   noteFestivalActivity(farm.festivals,'bake');
   recipe.batches+=quantity;recipe.result=copyCookeryResult(result);farm.culinary.stock[recipe.id]=(farm.culinary.stock[recipe.id]??0)+made;
   if(made>quantity)farm.culinary.picnic=null;
-  farm.workToday++;
+  farm.workToday+=work;
   completeRecipeDraft(farm, normalized);
   return {ok:true,message:`Готово: «${recipe.name}» — ${ruCount(made, 'порция', 'порции', 'порций')}. Рецепт сохранён.`,recipeId:recipe.id};
 }
 export function completeSignature(farm:FarmState,draft:SignatureDraft,result:CookeryResult):ActionResult&{recipeId?:string}{return craftSignature(farm,draft,result,1)}
 export function repeatSignature(farm:FarmState,id:string,result?:CookeryResult,quantity=1):ActionResult&{recipeId?:string}{
   const recipe=farm.culinary.recipes.find(recipe=>recipe.id===id);
-  return recipe?craftSignature(farm,recipe,result??recipe.result,quantity):failure('Выберите уже приготовленный рецепт.');
+  if(!recipe)return failure('Выберите уже приготовленный рецепт.');
+  return quantity===1||quantity===3?craftSignature(farm,recipe,result??recipe.result,quantity):failure('Выберите готовый рецепт.');
+}
+/** Only an exact shop line may replace its unavailable triple with a two-run batch. */
+export function getCommissionRecipePair(farm:FarmState,value:string,recipeId:string|undefined) {
+  if(farm.island!=='village')return;
+  const line=getShopCommissionLine(farm,value);
+  if(!line||line.recipeId!==recipeId||line.remaining-line.inBag-line.warehouse!==2)return;
+  const recipe=farm.culinary.recipes.find(recipe=>recipe.id===recipeId)!;
+  const action=getSignatureAction(farm,recipe);
+  if(!action.available||getSignatureCookOutput(farm,1,recipe).portions!==1
+    ||!getSignatureCookOutput(farm,2,recipe).fits||!Number.isSafeInteger(farm.workToday+2))return;
+  const counts=action.items.map(item=>ingredientCount(farm,item));
+  if(action.items.some((item,i)=>counts[i]<item.quantity*2)
+    ||action.items.every((item,i)=>counts[i]>=item.quantity*3))return;
+  return JSON.stringify([value,recipeId,farm.day,line.remaining,line.inBag,line.warehouse,recipe.batches,counts]);
+}
+export function repeatCommissionRecipePair(farm:FarmState,value:string,recipeId:string,expected:string) {
+  const quote=getCommissionRecipePair(farm,value,recipeId);
+  if(!quote||quote!==expected)return failure('Заказ или запас изменился. Проверьте рецепт.');
+  const recipe=farm.culinary.recipes.find(recipe=>recipe.id===recipeId)!;
+  return craftSignature(farm,recipe,recipe.result,2);
 }
 export function getSignatureStock(farm:FarmState){return farm.culinary.recipes.map(recipe=>({recipe,count:farm.culinary.stock[recipe.id]??0}))}
 export function nameSignature(farm:FarmState,id:string,name:string):ActionResult{
