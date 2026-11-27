@@ -863,6 +863,7 @@ const facilityDetails: Record<FacilityBranch, readonly [string, string]> = {
 let specializationBuilding: BuildingId = 'farmhouse'
 let previewSpecialization: BuildingBranch | undefined
 let irrigationMode: 'row' | 'pair' = 'row'
+let irrigationRowResume: { day: number; work: number; water: number; view: number } | undefined
 
 type ButtonOptions = { secondary?: boolean; crop?: CropId; value?: string | number; context?: string; cost?: { icon: 'coin' | 'drop'; amount: number } }
 
@@ -1231,7 +1232,11 @@ function projectCard(id: ProjectId) {
 }
 
 function freshIrrigationMode(): typeof irrigationMode {
+  const resume = irrigationRowResume
+  irrigationRowResume = undefined
   if (farm.wellSpecialization !== 'pipes') return 'row'
+  if (resume && farm.island === 'home' && resume.day === farm.day && resume.work === farm.workToday
+    && resume.water === farm.water && resume.view === panelRenderVersion) return 'row'
   for (let index = 0; index < gardenRows - 1; index++) {
     if (getIrrigationPair(farm, index).available) return 'pair'
   }
@@ -5417,7 +5422,13 @@ app.addEventListener('click', async (event) => {
       const row = Number(value)
       const pair = control.dataset.action === 'irrigate-pair'
       const { targets } = pair ? getIrrigationPair(farm, row) : getIrrigationRow(farm, row)
-      if (perform(() => pair ? irrigatePair(farm, row) : irrigateRow(farm, row), true)) { island.showIrrigation(targets); playBaySound('field.irrigation', 1, 0) }
+      const continueRow = !pair && dialog.open && panel === 'irrigation' && irrigationMode === 'row' && farm.wellSpecialization === 'pipes'
+      if (perform(() => pair ? irrigatePair(farm, row) : irrigateRow(farm, row), true)) {
+        // Keep the field visible for the splash. Only the next entry to this batch keeps the chosen mode.
+        irrigationRowResume = continueRow && Array.from({ length: gardenRows }, (_, i) => i).some(i => getIrrigationRow(farm, i).available)
+          ? { day: farm.day, work: farm.workToday, water: farm.water, view: panelRenderVersion } : undefined
+        island.showIrrigation(targets); playBaySound('field.irrigation', 1, 0)
+      }
       break
     }
     case 'visit-coop': activateTarget({ kind: 'coop' }); break

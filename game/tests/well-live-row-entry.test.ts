@@ -4,10 +4,11 @@ import { test } from 'node:test'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import * as F from '../src/farm.ts'
+import { commissionPlayer } from './fixtures/commission-player.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true)
-const names = ['button','panelTabs','freshIrrigationMode','irrigationRows','focusKey','rememberPanel','openPanel','goBack']
+const names = ['button','panelTabs','freshIrrigationMode','irrigationRows','focusKey','rememberPanel','openPanel','goBack','perform']
 const definitions = names.flatMap(name => {
   const node = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)
   if (name !== 'freshIrrigationMode') assert.ok(node, name)
@@ -60,6 +61,8 @@ function earned(branch: 'pipes' | 'rain' | null = 'pipes') {
 const noop = () => {}
 function screen(farm: F.FarmState) {
   let cards: MockButton[] = []
+  let writes = 0
+  const splashes: number[][] = []
   const doc: {activeElement: MockButton | null} = {activeElement:null}
   class MockButton {
     dataset: Record<string,string>
@@ -78,16 +81,17 @@ function screen(farm: F.FarmState) {
   const resets = {reset:noop}
   const frames: (()=>void)[] = []
   const ctx: any = {...F, ...Object.fromEntries(fields.map(key=>[key,undefined])),
-    farm, closeButton, document:doc, HTMLButtonElement:MockButton, panel:undefined, panelHistory:[], panelRenderVersion:0,
-    dialog:{open:false,showModal(){this.open=true},querySelectorAll(){return cards.filter(btn=>!btn.disabled)}},
+    farm, closeButton, document:doc, HTMLButtonElement:MockButton, panel:undefined, panelHistory:[], panelRenderVersion:0, irrigationRowResume:undefined,
+    dialog:{open:false,showModal(){this.open=true},close(){this.open=false;ctx.panel=undefined;ctx.panelHistory.length=0;cards=[]},querySelectorAll(){return cards.filter(btn=>!btn.disabled)}},
     dialogContent:{scrollTop:0,querySelector:()=>null,querySelectorAll:()=>[]},
-    island:{isCrossing:()=>false,visit:noop,showIrrigation:noop,setViewMode:noop,setCoveFocus:noop}, app:{dataset:{}}, toast:{}, dialogFeedback:{},
+    island:{isCrossing:()=>false,visit:noop,showIrrigation:(targets:number[])=>splashes.push(Array.from(targets)),setViewMode:noop,setCoveFocus:noop}, app:{dataset:{}}, toast:{},
+    dialogFeedback:{classList:{toggle:noop},dataset:{}},dialogFeedbackTimer:0,window:{clearTimeout:noop,setTimeout:()=>0},
     recipeBook:{snapshot:()=>({}),load:noop}, signatureSlots:[], bayAudio:{primeEvents:noop},
     transplantSelection:resets, berryNurserySelection:resets, berryRenewalSelection:resets, gardenEditor:resets, recipeSurplusSelection:resets,
     salePresentation:resets, marketSaleBrowse:resets, stopHarbour:noop, stopFishing:noop, stopWorkshop:noop, stopCookery:noop, stopArrangement:noop,
     status:noop, playBaySound:noop, updateCommunityReturn:noop, restoreFerryPanelView:noop,
     requestAnimationFrame:(callback:()=>void)=>frames.push(callback), icon:()=>'', numberFormat:new Intl.NumberFormat('ru-RU'),
-    perform:(take:()=>F.ActionResult)=>{const result=take();assert.ok(result.ok,result.message);ctx.drawPanel();return result.ok},
+    saveFarm:()=>{writes++}, refresh:()=>{if(ctx.dialog.open)ctx.drawPanel()}, notify:noop,
     drawPanel(){ctx.panelRenderVersion++;cards=ctx.panel==='irrigation' ? [...ctx.irrigationRows().matchAll(/<button\b[^>]*>/g)].map(([tag])=>new MockButton(tag)):[]}
   }
   const ui = runInNewContext(code,ctx)
@@ -95,7 +99,7 @@ function screen(farm: F.FarmState) {
   const activeTab = () => cards.find(b=>b.dataset.action==='irrigation-mode'&&b.getAttribute('aria-pressed')==='true')?.dataset.value
   const enabled = () => cards.filter(b=>b.dataset.action.startsWith('irrigate-')&&!b.disabled).map(b=>[b.dataset.action,b.dataset.value])
   function pick(action:string,value:string){const control=button(action,value);assert.equal(control.disabled,false);control.focus();ui.choose(action,value)}
-  return {ui,ctx,pick,button,enabled,activeTab,doc,flush(){frames.splice(0).forEach(fn=>fn())}}
+  return {ui,ctx,pick,button,enabled,activeTab,doc,splashes,get writes(){return writes},flush(){frames.splice(0).forEach(fn=>fn())}}
 }
 
 test('a fresh Pipes Well with 2 water and no live pair exposes its two actionable rows without watering',()=>{
@@ -115,7 +119,9 @@ test('a fresh Pipes Well with 2 water and no live pair exposes its two actionabl
   assert.equal(f.water,0)
   assert.deepEqual(f.beds.flatMap((b,i)=>JSON.stringify(b)!==JSON.stringify(before.beds[i])?[i]:[]),[2,3])
   assert.equal(f.coins,before.coins)
-  assert.equal(s.activeTab(),'row','the last explicit watering does not silently change the open tab')
+  assert.equal(s.ctx.irrigationMode,'row','the last explicit watering does not silently change the chosen mode')
+  assert.equal(s.ctx.dialog.open,false,'the real apply dismisses to show the field')
+  assert.deepEqual(s.splashes,[[2,3]])
 })
 
 test('Pipes still defaults to Two rows when a pair works, and keeps it when neither choice works',()=>{
@@ -164,5 +170,94 @@ test('other Well upgrades still have only the existing row controls',()=>{
     assert.equal(s.enabled().length,4)
     assert.ok(s.enabled().every(([action])=>action==='irrigate-row'))
     assert.deepEqual(p.farm,before)
+  }
+})
+
+function earnedThreeRows() {
+  const commands = JSON.parse(readFileSync(new URL('./fixtures/market-order-selection-commands.json',import.meta.url),'utf8'))
+  const p = commissionPlayer(commands)
+  p.visit('home')
+  assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.buildingLevels.well],[119,15,99,2])
+  p.act('specializeFacility','pipes'); p.act('upgradeCan'); p.act('buySeeds','wheat')
+  const crops: F.CropId[] = ['carrot','cabbage','beetroot','tomato','pumpkin','wheat','leafyGreens']
+  for(let i=0;i<12;i++) {
+    for(const action of ['harvest','till']) if(F.getBedAction(p.state,i).kind===action)p.act('workBed',i,1)
+    assert.equal(F.getBedAction(p.state,i).kind,'plant')
+    const preferred = crops[i%crops.length]
+    const crop = p.state.seeds[preferred] > 0 ? preferred : crops.find(id=>p.state.seeds[id]>0)
+    assert.ok(crop)
+    if(p.state.selectedSeed!==crop)p.act('selectSeed',crop)
+    p.act('workBed',i,1)
+  }
+  assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.water],[150,15,16,12])
+  assert.deepEqual(Array.from({length:F.gardenRows},(_,i)=>F.getIrrigationRow(p.state,i).targets.length),[4,4,4,0])
+  return p.state
+}
+
+test('earned D15: each chosen single row reopens in the same mode at neutral focus, with no new watering until the next apply',()=>{
+  const f=earnedThreeRows(),before=structuredClone(f),s=screen(f)
+  s.ui.enterWell(); assert.equal(s.activeTab(),'pair')
+  s.pick('irrigation-mode','row')
+  assert.deepEqual(f,before); assert.equal(s.writes,0)
+  for(const row of [0,1,2]) {
+    const count=s.writes
+    s.pick('irrigate-row',String(row))
+    assert.equal(s.ctx.dialog.open,false)
+    assert.equal(s.writes,count+1)
+    assert.equal(f.water,12-4*(row+1))
+    assert.deepEqual(s.splashes.at(-1),Array.from({length:4},(_,i)=>row*4+i))
+    const after=structuredClone(f)
+    if(row===2)break
+    s.ui.enterWell()
+    assert.equal(s.activeTab(),'row','immediate Well reopening retains the last explicit row choice')
+    assert.equal(s.doc.activeElement,s.ctx.closeButton)
+    assert.deepEqual(f,after);assert.equal(s.writes,count+1)
+  }
+  s.ui.enterWell()
+  assert.equal(s.activeTab(),'pair');assert.deepEqual(s.enabled(),[])
+  assert.equal(f.coins,before.coins)
+  assert.deepEqual(f.beds.slice(12),before.beds.slice(12))
+  assert.deepEqual(f.seeds,before.seeds)
+  assert.equal(s.writes,3)
+})
+
+test('earned D15: pair, stopping, changing context, and refusing a stale action remain ordinary',()=>{
+  const exact=earnedThreeRows(),pairFarm=structuredClone(exact),pair=screen(pairFarm)
+  pair.ui.enterWell();pair.pick('irrigate-pair','0')
+  assert.equal(pair.ctx.dialog.open,false);assert.equal(pairFarm.water,4)
+  assert.equal(pair.writes,1)
+  assert.deepEqual(pair.splashes,[[0,1,2,3,4,5,6,7]])
+  assert.deepEqual(F.getIrrigationRow(pairFarm,2).targets,[8,9,10,11])
+  pair.ui.enterWell();assert.equal(pair.activeTab(),'pair')
+  pair.pick('irrigate-pair','1');assert.equal(pairFarm.water,0)
+  assert.deepEqual(pair.splashes.at(-1),[8,9,10,11])
+  const oneFarm=structuredClone(exact),one=screen(oneFarm)
+  // The stock path remains lawful when the player explicitly reselects the tab each time.
+  for(const i of [0,1,2]){
+    one.ui.enterWell();one.pick('irrigation-mode','row');one.pick('irrigate-row',String(i))
+  }
+  assert.ok(F.endDay(pairFarm).ok);assert.ok(F.endDay(oneFarm).ok)
+  assert.deepEqual(pairFarm,oneFarm,'no output or morning advantage for either control path')
+
+  for(const interrupt of ['manual-close','other-panel','other-work','stale-row'] as const){
+    const f=structuredClone(exact),s=screen(f)
+    s.ui.enterWell();s.pick('irrigation-mode','row')
+    if(interrupt==='manual-close')s.ctx.dialog.close()
+    else{
+      s.pick('irrigate-row','0')
+      if(interrupt==='other-panel'){s.ui.openPanel('guide');s.ctx.dialog.close()}
+      if(interrupt==='other-work')assert.ok(F.workBed(f,4,1).ok)
+      if(interrupt==='stale-row'){
+        s.ui.enterWell()
+        const before=structuredClone(f)
+        s.ui.choose('irrigate-row','0')
+        assert.deepEqual(f,before);assert.equal(s.writes,1);assert.equal(s.splashes.length,1)
+        continue
+      }
+    }
+    const before=structuredClone(f),writes=s.writes
+    s.ui.enterWell()
+    assert.equal(s.activeTab(),'pair',interrupt)
+    assert.deepEqual(f,before);assert.equal(s.writes,writes)
   }
 })
