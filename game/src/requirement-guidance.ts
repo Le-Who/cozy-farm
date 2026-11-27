@@ -69,7 +69,7 @@ function access(farm: FarmState, destination: IslandId): RequirementHint {
   return next ? { action: next } : route('open-panel', 'boat');
 }
 
-function stock(farm: FarmState, item: StockItem): RequirementHint {
+function stock(farm: FarmState, item: StockItem, requestedParfaitQuantity?: number): RequirementHint {
   if(item.kind === 'honey' && farm.honey >= item.quantity)return safe(getSupplyGuidance(farm,item,'нужные припасы'));
   if (item.kind === 'seaSalt' && farm.seaSalt >= item.quantity) return safe(getSupplyGuidance(farm,item,'нужные припасы'));
   if (item.kind === 'beeswax' && farm.beeswax >= item.quantity) return {...route('open-panel','inventory'),notice:`Пчелиный воск уже в припасах: ${farm.beeswax}. Дополнительный сбор не нужен.`};
@@ -184,7 +184,14 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
       return { ...route('grill-kitchen'), selector: '[data-action="cook"][data-value="grilledFish"]:not(:disabled)' };
     const ingredients = getCookIngredients(farm, item.item);
     const missing = ingredients.find(ingredient=>ingredientCount(farm,ingredient)<ingredient.quantity);
-    if (missing) return stock(farm,missing);
+    if (missing) {
+      // Keep the exact order dish through the ingredient lookup, which still
+      // checks its local warehouse before considering the weather.
+      const parfait = item.item === 'windParfait' && missing.kind === 'windHoney'
+        && ingredientCount(farm, item) < item.quantity
+        && ingredients.every(part => part === missing || ingredientCount(farm, part) >= part.quantity);
+      return stock(farm, missing, parfait ? item.quantity : undefined);
+    }
     if (item.item === 'honeyBiscuits' && item.quantity === 2 && farm.island === 'home'
       && farm.orders.honeyKitchen.completed === 0 && farm.dishes.honeyBiscuits === 0
       && canSailTo(farm, 'cape') && getMarketOrders(farm).some(order => order.lane === 'honeyKitchen'
@@ -213,8 +220,10 @@ function stock(farm: FarmState, item: StockItem): RequirementHint {
   if (item.kind === 'handmade' && !isProjectComplete(farm,'fair') && !farm.village.built) return getRequirementHint(farm,{kind:'journey',island:'village',id:'fair'});
   if (item.kind === 'windHoney') {
     if (farm.island === 'home' && farm.windHoney < item.quantity && getMarketOrders(farm).some(order =>
-      order.lane === 'cape' && order.status === 'waiting' && order.items.some(part =>
-        part.kind === 'windHoney' && part.quantity === item.quantity))) {
+      order.status === 'waiting' && order.items.some(part =>
+        (order.lane === 'cape' && part.kind === 'windHoney' && part.quantity === item.quantity)
+        || (order.lane === 'honeyKitchen' && part.kind === 'dishes'
+          && part.item === 'windParfait' && part.quantity === requestedParfaitQuantity)))) {
       const forecast = getWindHoneySource(farm);
       // The existing forecast is known here; travel would only turn the player back home.
       if (forecast.kind === 'wait') return { ...route('open-panel','rest'), modalNotice: forecast.detail };

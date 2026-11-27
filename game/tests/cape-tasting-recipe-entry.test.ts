@@ -73,9 +73,10 @@ function mounted(farm:F.FarmState, initialPanel='market') {
     querySelector(selector:string){return {focus(){focus.push(selector)}}},
   }
   const panelHistory:unknown[]=[]
+  const feedback={hidden:true,textContent:'',dataset:{} as Record<string,string>,classList:{remove(){}}}
   const ctx={
     ...F, ...{chooseHoneyKitchenRecipe,getRequirementHint}, farm, panel:initialPanel, dialog,dialogContent,
-    panelTitles:{'honey-kitchen':'Медовая кухня'}, closeButton,
+    panelTitles:{'honey-kitchen':'Медовая кухня',hive:'Улей',rest:'Отдых'}, closeButton,
     island:{isCrossing:()=>false, setViewMode:no,setCoveFocus:no,
       async crossIsland(move:()=>boolean){assert.ok(move());arrivals.push(farm.island)},focusTarget(place:{kind:string}){motion.push(place.kind)}},
     fieldViewButton:{getAttribute:()=> 'false'}, salePresentation:{place:undefined},
@@ -83,8 +84,8 @@ function mounted(farm:F.FarmState, initialPanel='market') {
     rememberPanel:()=>({panel:ctx.panel,honeyKitchenDish:ui.dish}),
     hiveFlower:undefined,seedPickerBed:undefined,boatIsland:undefined,journeyDetailsOpen:false,saveFarm:no,status:no, celebratedFestival:undefined, kitchenGroup:undefined,
     transplantSelection:reset,berryNurserySelection:reset,berryRenewalSelection:reset,gardenEditor:reset,recipeSurplusSelection:reset,
-    stopHarbour:no,stopFishing:no,stopWorkshop:no,stopCookery:no,stopArrangement:no,playBaySound:no,
-    app:{dataset:{}}, toast:{hidden:true},dialogFeedback:{hidden:true,textContent:''},updateCommunityReturn:no,notify:no,
+    stopHarbour:no,stopFishing:no,stopWorkshop:no,stopCookery:no,stopArrangement:no,playBaySound:no,bayAudio:{primeEvents:no},
+    app:{dataset:{}}, toast:{hidden:true},dialogFeedback:feedback,dialogFeedbackTimer:0,window:{clearTimeout:no},updateCommunityReturn:no,notify:no,
     closeDialog(){dialog.open=false;ctx.panel='field';panelHistory.length=0},
     perform(run:()=>F.ActionResult){const result=run();return result.ok},
     highlightControl(control:{focus():void}){control.focus()},
@@ -95,7 +96,7 @@ function mounted(farm:F.FarmState, initialPanel='market') {
     openPanel(panel:string,remember?:boolean):void; showRequirement(requirement:Requirement):Promise<void>;
     pick(value:string):void;dish:typeof F.capeDishIds[number];restoreDish(dish:typeof F.capeDishIds[number]):void
   }
-  return {ui,ctx,arrivals,motion,focus,panelHistory,get markup(){return markup}}
+  return {ui,ctx,arrivals,motion,focus,panelHistory,feedback,get markup(){return markup}}
 }
 
 const order=(farm:F.FarmState)=>F.getMarketOrders(farm).find(row=>row.lane==='honeyKitchen')!
@@ -158,4 +159,46 @@ test('selling the only wind honey today or completing a pair changes actual inco
   assert.equal(pair.state.coins,159)
   assert.equal(F.deliverMarketOrder(pair.state,'honeyKitchen').ok,false)
   assert.equal(pair.state.coins,159)
+})
+
+test('the earned D34 Honey Kitchen tasting shows the existing wind forecast at home until the real D38 harvest', async () => {
+  const p = earnedCapeTasting()
+  p.act('sellMarketItem','windHoney',1)
+  const farm = p.state, active = order(farm), item = active.items.find(part => part.kind === 'dishes' && part.item === 'windParfait')!
+  const requirement = {kind:'stock',item} as const
+  assert.deepEqual([p.actions,farm.day,farm.coins,farm.island,active.status,active.reward],[186,34,89,'home','waiting',88])
+  assert.deepEqual(F.getCookIngredients(farm,'windParfait').filter(part => F.ingredientCount(farm,part) < part.quantity).map(part => part.kind),['windHoney'])
+  const before = structuredClone(farm), view = mounted(farm)
+
+  await view.ui.showRequirement(requirement)
+  assert.deepEqual([view.ctx.panel,view.arrivals],['rest',[]])
+  assert.match(view.feedback.textContent,/игровой день 38, через 4 ночи/)
+  assert.deepEqual(farm,before,'forecast does not sail, rest, harvest, spend or fulfil the order')
+
+  // A bare catalog ingredient and a recipe with additional shortages keep their own guidance.
+  const raw = {kind:'stock',item:{kind:'windHoney',quantity:1}} as const
+  assert.equal(getRequirementHint(farm,raw).action.target,'sail')
+  const short = structuredClone(farm)
+  assert.equal(F.sellMarketItem(short,'fruit:peach',1).ok,true)
+  assert.equal(getRequirementHint(short,requirement).action.target,'sail')
+  const manual = structuredClone(farm)
+  assert.equal(F.sail(manual,'cape').ok,true)
+  assert.equal(getRequirementHint(manual,requirement).action.value,'hive')
+  assert.equal(F.getCapeHoney(manual).available,true)
+  assert.equal(F.getCapeHoney(manual).windHoney,0)
+
+  for (let night=0;night<4;night++) p.night()
+  const eligible = p.state, pickup = mounted(eligible)
+  assert.equal(eligible.day,38)
+  await pickup.ui.showRequirement(requirement)
+  assert.deepEqual([pickup.ctx.panel,pickup.arrivals,eligible.windHoney],['hive',['cape'],0])
+  p.act('collectCapeHoney')
+  assert.equal(p.state.windHoney,1)
+  assert.equal(F.getCookAction(p.state,'windParfait').available,true)
+  p.act('cookDish','honeyPear');p.act('cookDish','windParfait')
+  p.visit('home');p.act('deliverMarketOrder','honeyKitchen')
+  assert.equal(order(p.state).status,'delivered')
+  assert.equal(p.state.windHoney,0)
+  assert.equal(getWindHoneySource(p.state).kind,'wait')
+  assert.equal(getRequirementHint(p.state,requirement).action.target,'sail','the old tasting no longer owns this catalog lookup')
 })
