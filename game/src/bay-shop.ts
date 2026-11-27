@@ -9,7 +9,7 @@ import {
 import './bay-shop.css';
 import { BayShopCustomerView, renderBayShopCustomers } from './bay-shop-customers';
 import './bay-shop-customers.css';
-import { placeShopQuantity, shopQuantityPreview, shopStockSlot } from './bay-shop-quantity';
+import { currentShopRecipeRefill, placeShopQuantity, shopQuantityPreview, shopStockSlot, type ShopRecipeRefill } from './bay-shop-quantity';
 import { shopRemainderQuote, shopReturnLabel } from './bay-shop-price-copy';
 import { applyIngredientFinishes } from './ingredient-finish';
 
@@ -23,6 +23,7 @@ export type BayShopOptions = {
   state: BayShopState;
   stockProduct?: string;
   recipeProduct?: string;
+  recipeRefill?: ShopRecipeRefill;
   returnToRecipe?: boolean;
   catalog?: readonly BayShopProduct[];
   products(): GroupedStock[];
@@ -64,15 +65,15 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   const canToggleOpen = () => state.open || hasShelfStock();
   const customerView = new BayShopCustomerView();
   // Exact entry is only a quote. Defer catalog writes to an explicit placement.
-  const quotedProduct = options.stockProduct ?? options.recipeProduct;
-  const recipeReturn = !!options.stockProduct || options.returnToRecipe;
+  const quotedProduct = options.stockProduct ?? options.recipeRefill?.id ?? options.recipeProduct;
+  const recipeReturn = !!options.stockProduct || !!options.recipeRefill || options.returnToRecipe;
   const closeLabel = recipeReturn ? 'К рецепту' : 'Вернуться в бухту';
   if (!quotedProduct && options.catalog && syncBayShopProducts(state, options.catalog)) options.onChange();
   let savedShopState = JSON.stringify(state);
   function saveChanges() { options.onChange(); savedShopState = JSON.stringify(state); }
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
   type SoldListing = { slot: NonNullable<BayShopState['slots'][number]>; product: BayShopProduct; price: number };
-  let pending: { id: string; identity: string; quantity: string; listScroll: number; soldShelf?: number; replacing?: SoldListing } | undefined;
+  let pending: { id: string; identity: string; quantity: string; listScroll: number; soldShelf?: number; replacing?: SoldListing; refill?: ShopRecipeRefill } | undefined;
   let stockGroup: StockGroup = 'all';
   let tab: 'stock' | 'journal' = 'stock', notice = '', noticeTimer = 0, destroyed = false, frame = 0, lastTime = performance.now();
   let lastPhase = !state.open && !state.visitor ? 'idle' : '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
@@ -108,7 +109,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   }
   function stockForPending(products: readonly GroupedStock[]) {
     const quote = pending;
-    if (!quote) return;
+    if (!quote || quote.refill && !currentShopRecipeRefill(state, quote.refill)) return;
     const product = quote.soldShelf === undefined ? products.find(p => p.id === quote.id && p.identity === quote.identity)
       : quote.soldShelf === selected ? soldShelfStock(products) : undefined;
     return product?.id === quote.id && product.identity === quote.identity ? product : undefined;
@@ -121,12 +122,12 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     const slots = [...state.slots]; slots[index] = null;
     return { ...state, slots };
   }
-  function previewStock(product: BayShopStock, preferred: number, soldShelf?: number, replacing?: SoldListing): boolean {
+  function previewStock(product: BayShopStock, preferred: number, soldShelf?: number, replacing?: SoldListing, refill?: ShopRecipeRefill): boolean {
     const slot = replacing ? preferred : soldShelf ?? shopStockSlot(state, product, preferred);
     const quote = quotedShelf(slot, replacing);
     if (!quote || !shopQuantityPreview(quote,slot,product,1).valid) return false;
     selected = slot;
-    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-products')?.scrollTop ?? 0, soldShelf, replacing };
+    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-products')?.scrollTop ?? 0, soldShelf, replacing, refill };
     return true;
   }
   function stockButton(product: GroupedStock, soldShelf?: number) {
@@ -427,7 +428,12 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   }
   const resizeObserver = new ResizeObserver(fitStage); resizeObserver.observe(host);
   host.addEventListener('input', quantityInput); host.addEventListener('submit', submitStock); host.addEventListener('click', click); host.addEventListener('change', change); host.addEventListener('focusout', change);
-  if (quotedProduct) {
+  if (options.recipeRefill) {
+    const refill = options.recipeRefill;
+    const product = options.products().find(item => item.id === refill.id && item.identity === refill.id && item.quantity > 0);
+    if (product && currentShopRecipeRefill(state, refill))
+      previewStock(product, refill.shelf, refill.shelf, undefined, refill);
+  } else if (quotedProduct) {
     const product = options.products().find(item => item.id === quotedProduct && item.identity === quotedProduct
       && (options.stockProduct ? item.quantity === 1 : item.quantity > 0));
     if (product && !previewStock(product,-1) && options.recipeProduct) {

@@ -1,4 +1,32 @@
 import { canStockBayShop, stockBayShop, type BayShopState, type BayShopStock } from './bay-shop-model.ts'
+import type { FarmState } from './farm.ts'
+
+export type ShopRecipeRefill = { id: string; shelf: number; day: number; price: number; key: string }
+
+function sameProductSlot(state: BayShopState, id: string) {
+  const matching = state.slots.flatMap((slot, shelf) => slot && (slot.product.id === id || slot.product.identity === id) ? [shelf] : [])
+  if (matching.length !== 1) return
+  const shelf = matching[0], slot = state.slots[shelf]!
+  if (slot.product.id === id && slot.product.identity === id && slot.quantity === 0) return { shelf, slot }
+}
+
+/** The local recipe may refill its only old listing, never silently pick another shelf. */
+export function shopRecipeRefill(farm: FarmState, recipe: string): ShopRecipeRefill | undefined {
+  const state = farm.bayShop, id = 'signature:' + recipe, day = farm.day
+  if (farm.island !== 'village' || !farm.village.built || !state.open || state.businessDay !== day ||
+      !state.reputation[id]?.sold || !(farm.culinary.stock[recipe] > 0) ||
+      !farm.culinary.recipes.some(row => row.id === recipe)) return
+  const match = sameProductSlot(state, id)
+  if (!match || !canStockBayShop(state, match.shelf, match.slot.product, 1)) return
+  const { shelf, slot: { price } } = match
+  return { id, shelf, day, price, key: `${day}:${id}:${shelf}:${price}` }
+}
+
+export function currentShopRecipeRefill(state: BayShopState, quote: ShopRecipeRefill) {
+  if (!state.open || state.businessDay !== quote.day || !state.reputation[quote.id]?.sold) return false
+  const match = sameProductSlot(state, quote.id)
+  return !!match && match.shelf === quote.shelf && match.slot.price === quote.price
+}
 
 /** Keep an explicitly selected compatible shelf; exact recipe entry reuses its own shelf first. */
 export function shopStockSlot(state: BayShopState, product: Pick<BayShopStock, 'id' | 'identity'>, selected = -1) {

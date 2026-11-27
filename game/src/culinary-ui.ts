@@ -18,6 +18,7 @@ import './picnic-guidance.css'
 import {getReadySignatureSuppers} from './shared-supper'
 import {shopCommissionUsesRecipe} from './shop-commissions'
 import {lastPortionShopStock,signatureTastingGuide} from './signature-tasting-guidance'
+import {shopRecipeRefill} from './bay-shop-quantity'
 import {getStoredSignature,storedSignatureValue} from './stored-signature'
 
 import {evaluateFood, qualityNames, type IntentId} from './intent-orders'
@@ -71,6 +72,10 @@ const capacityDescription = (canCreate:boolean) => canCreate ? '' : 'aria-descri
 function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeBookView,commissionPair?:string):string {
   const beaTasting=signatureTastingGuide(farm,recipe.id,'bea'), shopChoice=lastPortionShopStock(farm,recipe.id)
   const count=farm.culinary.stock[recipe.id]??0, capacity=signatureBookCapacity(farm.culinary)
+  const refill=farm.island==='village'&&count>0&&!shopChoice ? shopRecipeRefill(farm,recipe.id) : undefined
+  const shopEntry = farm.island !== 'village' ? control('В лавку в гавань','recipe-harbour-shop',recipe.id)
+    : refill ? control('Своя лавка','recipe-harbour-shop',recipe.id,true,`data-shop-refill="${escapeRecipeText(refill.key)}"`)
+    : control('Своя лавка','open-panel','bay-shop')
   const action=getSignatureAction(farm,recipe), batch=action.available&&action.items.every(item=>ingredientCount(farm,item)>=item.quantity*3), stored=getStoredSignature(farm,recipe.id)
   const repeatLabel=(label:string,repeats:1|3,available:boolean)=>{
     if(!available||!Number.isSafeInteger(farm.workToday+1)) return label
@@ -91,7 +96,7 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
   return `<article class="signature-page" data-recipe="${recipe.id}">
     <header class="recipe-detail-heading"><textarea aria-label="Название рецепта" data-recipe-name="${recipe.id}" rows="1" maxlength="32">${escapeRecipeText(recipe.name)}</textarea>${control(recipe.favorite?'★':'☆','favorite-signature',recipe.id,true,`aria-label="${recipe.favorite?'Убрать из избранного':'В избранное'} ${escapeRecipeText(recipe.name)}" aria-pressed="${recipe.favorite}"`)}</header>
     <div class="recipe-book-hero"><div class="recipe-book-result">${signatureResultPicture(recipe,art)}<span>${recipe.base==='tart'?'Тарт':'Варенье'} · ${signatureProcessingDefinitions[recipe.processing].name}</span><div class="signature-stamps">${recipe.ingredients.map(part=>`<span ${part.trait?`data-trait="${part.trait}"`:''} title="${ingredientName(part)}">${finishedIcon(art.icon(ingredientArt(part.id)),part.trait?[part.trait]:[])}<b>${part.quantity}</b></span>`).join('')}</div></div>
-    <div class="recipe-book-stock"><dl><div><dt>С собой</dt><dd>${count}</dd></div><div><dt>На местном складе</dt><dd>${stored?.stored??0}</dd></div></dl>${stored?control('Забрать 1 порцию','recipe-warehouse-withdraw',storedSignatureValue(stored),true):''}${count>0&&farm.village.built&&!shopChoice?(farm.island==='village'?control('Своя лавка','open-panel','bay-shop'):control('В лавку в гавань','recipe-harbour-shop',recipe.id)):''}</div></div>
+    <div class="recipe-book-stock"><dl><div><dt>С собой</dt><dd>${count}</dd></div><div><dt>На местном складе</dt><dd>${stored?.stored??0}</dd></div></dl>${stored?control('Забрать 1 порцию','recipe-warehouse-withdraw',storedSignatureValue(stored),true):''}${count>0&&farm.village.built&&!shopChoice?shopEntry:''}</div></div>
     <section class="recipe-book-cooking" aria-labelledby="recipe-cooking-title"><h2 id="recipe-cooking-title" tabindex="-1" data-recipe-focus="cooking">Приготовить точно</h2>
       ${homeRouteReady?homeRoute:''}
       <div class="signature-actions recipe-book-repeat">${control(repeatLabel('Повторить ×1',1,action.available),'make-signature',recipe.id,action.available)}${commissionPair?control('Партия ×2','batch-signature',recipe.id,true,`data-commission-repeat-quote="${escapeRecipeText(commissionPair)}" aria-describedby="commission-repeat-terms"`):control(repeatLabel('Партия ×3',3,batch),'batch-signature',recipe.id,batch)}</div>

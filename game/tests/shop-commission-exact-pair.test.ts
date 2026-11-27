@@ -6,6 +6,7 @@ import test from 'node:test'
 import * as F from '../src/farm.ts'
 import * as C from '../src/shop-commissions.ts'
 import * as tasting from '../src/signature-tasting-guidance.ts'
+import {shopRecipeRefill} from '../src/bay-shop-quantity.ts'
 import {getStoredSignature} from '../src/stored-signature.ts'
 import {getRecipeRepeatGuide,recipeIngredientsDisclosureLabel} from '../src/recipe-repeat-guidance.ts'
 import {signatureBookCapacity} from '../src/signature-book.ts'
@@ -22,7 +23,7 @@ const renderer=runInNewContext(stripTypeScriptTypes(
   section(ui,'export const escapeRecipeText','export const ingredientArt').replace('export ','')+'\n'+
   section(ui,'const control=','\n')+'\n'+section(ui,'const capacityDescription','export function recipeBookSearchStatus')+
   '\nbookRecipe'),
- {...F,...tasting,...C,getStoredSignature,getRecipeRepeatGuide,recipeIngredientsDisclosureLabel,signatureBookCapacity,
+ {...F,...tasting,...C,shopRecipeRefill,getStoredSignature,getRecipeRepeatGuide,recipeIngredientsDisclosureLabel,signatureBookCapacity,
   ruCount,signatureFruitNames,signatureProcessingDefinitions,signatureResultPicture:()=>'',ingredientName:()=>'',finishedIcon:()=>'',ingredientArt:()=>'',recipeBookSupper:()=>'',renderPicnicOffer:()=>''})
 const routes=stripTypeScriptTypes(`function press(action,value,control){switch(action){${
   section(main,"    case 'commission-recipe':","    case 'commission-rest':")+

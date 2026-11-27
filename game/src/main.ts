@@ -164,6 +164,7 @@ import { ferryCommissionUse, openFerryCommissionRecipe } from './ferry-commissio
 import { FerryPeachPlanting } from './ferry-peach-planting'
 import { getFerryGroveBunSource } from './ferry-grove-bun-source'
 import { lastPortionShopStock, signatureTastingGuide } from './signature-tasting-guidance'
+import { shopRecipeRefill, type ShopRecipeRefill } from './bay-shop-quantity'
 import { RecipeBookNavigation, recipeBookNarrow, selectedBookId, sortedBookRecipes, type RecipeBookView } from './recipe-book-view'
 import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
@@ -1847,7 +1848,7 @@ let selectedWarehouseRequest: StockItem | undefined
 type PanelVisit = {
   cottageKitchenDish?: DishId; // Sole ready dish for this ordinary cottage visit; not a session preference.
   cottageKitchenShelf?: DishId; // Same visit owns the selected live dish when the default card was blocked.
-  harbourRecipe?: {id: string; preview: boolean}; // Only carried by this recipe's explicit crossing.
+  harbourRecipe?: {id: string; preview: boolean; refill?: ShopRecipeRefill}; // Only carried by this recipe's explicit shop entry.
   commissionRecipe?: { line:string; prepared:boolean }; // This exact order line opened the book.
   tastingBakery?: string; // An explicit stop from this particular saved recipe.
   neighborComposerPlan?: string; // Only set by this visit's explicit “Свой рецепт” button.
@@ -2123,7 +2124,8 @@ function openShopScene(host:HTMLElement, marketVisit?: PanelVisit) {
   }).filter(row => row.quantity>0)
   const source = panelHistory.at(-1)
   const recipe = source?.panel === 'recipes' ? source.harbourRecipe : undefined
-  const recipeProduct = recipe?.preview ? 'signature:' + recipe.id : undefined
+  const recipeRefill = recipe?.preview ? recipe.refill : undefined
+  const recipeProduct = recipe?.preview && !recipeRefill ? 'signature:' + recipe.id : undefined
   if (recipe) recipe.preview = false
   const readyCommission = (customer: BayShopCommissionPreview['customer'], recipeId: string): BayShopCommissionPreview | undefined => {
     if (farm.island !== 'village') return
@@ -2131,7 +2133,7 @@ function openShopScene(host:HTMLElement, marketVisit?: PanelVisit) {
     const ready = (farm.culinary.stock[recipeId] ?? 0) + (farm.freight.warehouses.village[`signature:${recipeId}`] ?? 0)
     return offer && ready >= offer.quantity ? { customer, recipeId, key: offer.key } : undefined
   }
-  const options:BayShopOptions = {state:farm.bayShop,products,catalog,stockProduct:nextShopStock,recipeProduct,returnToRecipe:!!recipe,
+  const options:BayShopOptions = {state:farm.bayShop,products,catalog,stockProduct:nextShopStock,recipeProduct,recipeRefill,returnToRecipe:!!recipe,
     takeStock:(id,n)=>{ const reserved=reserveShopGoods(farm,id,n); if(reserved)status(); return reserved },
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
     onEarn:earnHarbourSale,onChange:saveHarbour,onClose:leaveScene,
@@ -4913,10 +4915,18 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'recipe-harbour-shop': {
-      if (panel !== 'recipes' || !dialog.open || !dialogContent.contains(control) || island.isCrossing() || farm.island === 'village'
-          || !farm.village.built || !value || selectedBookId(farm,recipeBook.view) !== value || !(farm.culinary.stock[value] > 0)) break
-      control.focus({preventScroll:true})
-      await visitPanelAt('village','bay-shop',undefined,value)
+      if (panel !== 'recipes' || !dialog.open || !dialogContent.contains(control) || island.isCrossing()
+          || !farm.village.built || !value || selectedBookId(farm,recipeBook.view) !== value) break
+      if (farm.island === 'village') {
+        const refill = shopRecipeRefill(farm,value)
+        if (!refill || refill.key !== control.dataset.shopRefill || lastPortionShopStock(farm,value)) { drawPanel(); break }
+        control.focus({preventScroll:true})
+        panelHistory.push({...rememberPanel(),harbourRecipe:{id:value,preview:true,refill}})
+        openPanel('bay-shop',false)
+      } else if (!control.dataset.shopRefill && farm.culinary.stock[value] > 0) {
+        control.focus({preventScroll:true})
+        await visitPanelAt('village','bay-shop',undefined,value)
+      }
       break
     }
     case 'open-panel': if(value&&value in panelTitles)openPanel(value as Panel);break
