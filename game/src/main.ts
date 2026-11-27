@@ -1742,12 +1742,14 @@ function mountFishing(practiceOnly = false) {
   host.querySelector<HTMLButtonElement>('.fishing-practice-shore, .fishing-controls .fishing-action')?.focus({ preventScroll: true })
 }
 
-function pastryChoices() {
+function pastryChoices() { return pastryChoicesFor(pastryShape) }
+
+function pastryChoicesFor(selected: WorkshopShape) {
   const labels = { round:'Булочка', long:'Батон', folded:'Слойка' } satisfies Record<WorkshopShape,string>
   const order: readonly WorkshopShape[] = ['round','long','folded']
   return `<div class="pastry-pattern-choices" role="group" aria-label="Форма выпечки">${order.map(shape => {
     const learned=farm.workshopPatterns.includes(shape)
-    return `<button type="button" data-action="pastry-shape" data-value="${shape}" aria-pressed="${pastryShape===shape}" aria-label="${workshopDefinitions[shape].name}, ${learned?'освоено':'можно освоить в мастерской'}">${icon(pastryIcons[shape])}<span>${labels[shape]}</span>${learned?'<b class="pastry-mastered" aria-hidden="true">✓</b>':''}</button>`
+    return `<button type="button" data-action="pastry-shape" data-value="${shape}" aria-pressed="${selected===shape}" aria-label="${workshopDefinitions[shape].name}, ${learned?'освоено':'можно освоить в мастерской'}">${icon(pastryIcons[shape])}<span>${labels[shape]}</span>${learned?'<b class="pastry-mastered" aria-hidden="true">✓</b>':''}</button>`
   }).join('')}</div>`
 }
 
@@ -1778,7 +1780,9 @@ function finishSharedSupper(action: () => { ok: boolean; message: string }, past
   }
 }
 
-function neighboursCard() {
+function neighboursCard() { return renderNeighboursCard(pastryShape) }
+
+function renderNeighboursCard(shape: WorkshopShape, guided = false) {
   const homes = getVillageHomeCount(farm)
   const resident = farm.village.residents[villageSlot]
   const houseTabs = `<nav class="house-selector" aria-label="Домики соседей">${[0, 1].map(slot => {
@@ -1790,17 +1794,17 @@ function neighboursCard() {
   return `<section class="neighbor-house-page">${houseTabs}${villageSlot >= homes ? dinner : `
     <div class="resident-cards" data-occupied="${Boolean(resident)}">${residentIds.filter(id => resident ? id === resident : !farm.village.residents.includes(id)).map(id => {
       const def = residentDefinitions[id]
-      const service = getResidentService(farm, id, pastryShape)
+      const service = getResidentService(farm, id, shape)
       const here = resident === id
-      const practice = here && id === 'bea' && !farm.workshopPatterns.includes(pastryShape)
+      const practice = here && id === 'bea' && !farm.workshopPatterns.includes(shape)
       const ingredients: readonly StockItem[] = practice ? workshopIngredients : [{ kind: 'produce', item: 'wheat', quantity: 4 }, { kind: 'eggs', quantity: 2 }]
       const pier = here && id === 'finn' ? getFinnFishingRoute(farm) : undefined
       const pierButton = (route: { label: string; value: string }) => button(route.label, 'finn-pier', true, { value: route.value })
       return `<section class="resident-card" data-present="${here}"><header class="resident-heading">${icon(`ui-${id}`, 'resident-portrait')}<h2>${def.name}</h2></header>
         ${here ? '' : `<div class="neighbour-promise">${icon(id==='bea'?'ui-handmade-round':'tool-rod')}<span>${id==='bea'?'3 изделия в день':'+1 место на крючке · крепче снасть'}</span></div>`}
-        <div class="resident-service">${here ? (id === 'bea' ? `<div class="resident-patterns"><div class="resident-pattern-heading"><h3>Форма выпечки</h3><small>✓ Освоено</small></div>${pastryChoices()}</div><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>${practice
-          ? button(`Освоить вручную: ${workshopDefinitions[pastryShape].name.toLowerCase()}`, 'practice-pattern', getWorkshopAction(farm).available, { value: pastryShape })
-          : button(`Испечь ×${getBeaPastryCount(farm)}`, 'resident-service', service.available, { value: id, context: workshopDefinitions[pastryShape].name })}`
+        <div class="resident-service">${here ? (id === 'bea' ? `<div class="resident-patterns"><div class="resident-pattern-heading"><h3>Форма выпечки</h3><small>✓ Освоено</small></div>${guided ? pastryChoicesFor(shape) : pastryChoices()}</div><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>${practice
+          ? button(`Освоить вручную: ${workshopDefinitions[shape].name.toLowerCase()}`, 'practice-pattern', getWorkshopAction(farm).available, { value: shape })
+          : button(`Испечь ×${getBeaPastryCount(farm)}`, 'resident-service', service.available, { value: guided ? `bea:${shape}` : id, context: workshopDefinitions[shape].name })}`
           : pier ? `<div class="finn-hook-ready" tabindex="-1" data-finn-hook>${icon('tool-rod')}<strong>Крючок готов${pier.addsSlot ? ' · +1 место' : ''}</strong></div>${pier.alternate ? nav(pierButton(pier),pierButton(pier.alternate)) : pierButton(pier)}`
           : button('Разведать · +1 место на крючке', 'resident-service', service.available, { value: id }))
         : button('Пригласить', 'invite-resident', true, { value: id })}
@@ -3818,6 +3822,19 @@ app.addEventListener('click', async (event) => {
     const task = currentTask()
     if (!task || !('action' in task)) { openPanel('journal'); return }
     action = task.action.target; value = task.action.value
+    if ('id' in task && task.id === 'neighbour-service' && action === 'visit-cottage' && farm.island === 'village' &&
+        farm.village.residents[Number(value)] === 'bea' && !getResidentService(farm, 'bea', pastryShape).available) {
+      const shape = farm.workshopPatterns.find(shape => getResidentService(farm, 'bea', shape).available)
+      if (shape) {
+        activateTarget({ kind: 'village-home', index: Number(value) })
+        if (panel === 'village' && dialog.open) {
+          // Own only this guided card, not the player's manual workshop form or Back history.
+          dialogContent.innerHTML = renderNeighboursCard(shape, true)
+          applyIngredientFinishes(dialogContent)
+        }
+        return
+      }
+    }
     if (action === 'kitchen' && value === 'orchardTart' && farm.island === 'home') {
       island.visit({ kind: farm.buildingLevels.farmhouse >= 2 ? 'kitchen' : 'farmhouse' })
       openPanel('kitchen',true,farm.island,'page.unfold',value)
@@ -5399,10 +5416,14 @@ app.addEventListener('click', async (event) => {
     }
     case 'share-meal': if(value?.startsWith('supper:')) { const picked=panel==='village-meal'&&dialog.open&&dialogContent.contains(control)&&reviewedSupperFish(farm,dialogContent,value); if(picked&&!picked.id)finishSharedSupper(()=>serveVillageMeal(farm,pastryShape,picked.fish),true) } else finishSharedSupper(() => serveVillageMeal(farm, pastryShape), true); break
     case 'resident-service': {
-      const id = residentIds.find(id => id === value)
+      const guided = value?.startsWith('bea:')
+      const shape = guided && dialog.open && dialogContent.contains(control)
+        ? workshopShapes.find(shape => value === `bea:${shape}`) : undefined
+      if (guided && !shape) break
+      const id = guided ? 'bea' : residentIds.find(id => id === value)
       const fromTasting = id === 'bea' && !!panelHistory.at(-1)?.tastingBakery
       if (id && panel === 'village' && farm.village.residents[villageSlot] === id
-        && perform(() => runResidentService(farm, id, pastryShape), id !== 'finn' && !fromTasting, !fromTasting) && id === 'finn')
+        && perform(() => runResidentService(farm, id, shape ?? pastryShape), id !== 'finn' && !fromTasting, !fromTasting) && id === 'finn')
         dialogContent.querySelector<HTMLElement>('[data-finn-hook]')?.focus({preventScroll:true})
       break
     }
