@@ -3,7 +3,7 @@ import { storedSignatureValue } from './stored-signature';
 import { renderIntentDeadline } from './intent-deadline';
 import { getNeighborFoodRecovery } from './neighbor-food-recovery';
 import { neighborHelpStatus } from './neighbor-help';
-import { getCommunityOrders, getIntentOffers, getNeighborPlans, type FarmState, type ResidentId } from './farm';
+import { canSailTo, getCommunityOrders, getIntentOffers, getNeighborPlans, type FarmState, type ResidentId } from './farm';
 import { qualityNames, type IntentId } from './intent-orders';
 import './community-ui.css';
 
@@ -32,8 +32,12 @@ export function neighborHelpCard(farm: FarmState, resident: ResidentId, link = f
   return `<aside class="community-help" aria-label="${help.title}"><strong>${help.title}</strong><p>${help.detail}</p><p>${help.next}</p>${link ? control(`К помощи ${resident === 'bea' ? 'Беа' : 'Финна'}`, 'neighbor-help-house', resident, '', true) : ''}</aside>`;
 }
 
-function offerChoices(offers: Offer[], art: CommunityArt, context: { kind: 'intent'; id: string } | { kind: 'neighbor'; id: string }): string {
-  const choices = offers.filter(offer => offer.eligible).sort((left, right) => Number(right.available) - Number(left.available) || Number(right.available && right.source === 'signature') - Number(left.available && left.source === 'signature') || Number(right.canCook) - Number(left.canCook));
+function offerChoices(offers: Offer[], art: CommunityArt, context: { kind: 'intent'; id: string } | { kind: 'neighbor'; id: string }, fundedCape?: ReadonlySet<Offer['id']>): string {
+  const choices = offers.filter(offer => offer.eligible).sort((left, right) =>
+    Number(right.available) - Number(left.available)
+    || Number(right.available && right.source === 'signature') - Number(left.available && left.source === 'signature')
+    || Number(right.canCook) - Number(left.canCook)
+    || Number(!!fundedCape?.has(right.id)) - Number(!!fundedCape?.has(left.id)));
   const otherRecipes = offers.filter(o => o.source === 'signature' && o.count > 0 && !o.eligible)
   const other = otherRecipes.length ? `<details class="community-alternatives"><summary>Остальные мои блюда · ${otherRecipes.length}</summary>${otherRecipes.map(o => {
     const missing = o.requiredQualities.filter(q => !o.qualities.includes(q)).map(q => qualityNames[q]).join(', ')
@@ -78,13 +82,21 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
   const active = plan.phase === 'preparing' || plan.phase === 'joined' || plan.phase === 'arranging';
   const memory = plan.memory ? `<aside class="community-memory">${art.icon(`ui-${resident}`)}<p>${active ? 'Помню наше угощение:' : 'Угощение той встречи:'} «${escape(plan.memory.foodName)}».</p></aside>` : '';
   const header = `<header class="community-brief"><span class="community-portrait">${art.icon(`ui-${resident}`)}</span><div><h2>${escape(plan.title)}</h2>${active ? chips(plan.chips) : `<p class="community-phase">${phaseLabels[plan.phase]}</p>`}</div></header>`;
+  const choices = () => {
+    // Funded travel is a useful alternative, not a finished dish or local cooking.
+    const fundedCape = farm.island === 'village' && farm.capeLevel === 3 && canSailTo(farm, 'cape')
+      ? new Set(getIntentOffers({ ...farm, island: 'cape' }, plan.intentId)
+        .filter(offer => offer.source === 'dish' && offer.eligible && !offer.available && offer.canCook).map(offer => offer.id))
+      : undefined;
+    return offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id }, fundedCape);
+  };
   let content: string;
   switch (plan.phase) {
     case 'preparing':
       content = `<p class="community-invitation">${purpose[plan.episode]}</p>${prop(plan.arrangement, 'community-preparation')}${control('Присоединиться', 'join-neighbor', plan.id)}`;
       break;
     case 'joined':
-      content = offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id });
+      content = choices();
       break;
     case 'arranging': {
       const offer = getIntentOffers(farm, plan.intentId).find(offer => offer.id === plan.food?.id);
@@ -102,7 +114,7 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
         : plan.episode === 'finnLantern' ? 'К столу у фонариков'
         : plan.arrangement === 'table' ? 'Накрыть стол' : 'Собрать корзинку';
       content = `<div class="community-selected"><span class="community-selected-picture">${offer ? art.offerIcon(offer) : prop(plan.arrangement)}</span><strong>${escape(plan.food!.name)}</strong>${ready ? control(arrangeLabel, 'arrange-neighbor', plan.id) : `${recovery.message ? `<p class="community-note" role="status">${recovery.message}</p>` : ''}${stored}${repair}`}</div>
-        <details class="community-alternatives" ${!ready && !recovery.warehouse && !recovery.shelved && !remote ? 'open' : ''}><summary>Выбрать другое угощение</summary>${offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id })}</details>`;
+        <details class="community-alternatives" ${!ready && !recovery.warehouse && !recovery.shelved && !remote ? 'open' : ''}><summary>Выбрать другое угощение</summary>${choices()}</details>`;
       break;
     }
     case 'celebrating':
