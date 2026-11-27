@@ -83,7 +83,7 @@ import './coop-services.css'
 import './coop-panel.css'
 import { canMixBedtimeFeed, mixChickenFeed, renderChickenFeedMixes } from './chicken-feed'
 import './chicken-feed.css'
-import { henFriends, henFriendshipStage, refreshHenWalkChoice, renderHenFriendship, treatHen } from './hen-friendship'
+import { getHenCardIntroduction, henFriends, henFriendshipStage, refreshHenWalkChoice, renderHenFriendship, treatHen } from './hen-friendship'
 import { henCareResultFocus } from './hen-care-focus'
 import './hen-friendship.css'
 import './coop-preview.css'
@@ -5199,10 +5199,12 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'visit-introduce-hen': {
-      if(panel!=='neighbor-visits'||!dialog.open)break
+      if((panel!=='neighbor-visits'&&panel!=='hen-friendship')||!dialog.open)break
       const parts=/^([1-9]\d{0,6}):([0-4])$/.exec(value??'')
       if(!parts||farm.neighborVisits.active?.serial!==Number(parts[1]))break
-      perform(()=>introduceHenToVisitor(farm,Number(parts[2])),false,true)
+      const hen=Number(parts[2])
+      if(panel==='hen-friendship'&&(!dialogContent.contains(control)||hen!==selectedFriendHen||getHenCardIntroduction(farm,hen)?.token!==value))break
+      perform(()=>introduceHenToVisitor(farm,hen),false,true)
       break
     }
     case 'visit-find-tree': {

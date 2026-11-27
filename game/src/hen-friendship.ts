@@ -1,6 +1,7 @@
 import type {HenFieldTarget} from './hen-harvest-walk.ts'
 import { canWalkWithHen, type HenCompanionStatus } from './hen-companion.ts'
-import type { ActionResult, FarmState } from './farm.ts'
+import { canIntroduceHenToVisitor, type ActionResult, type FarmState } from './farm.ts'
+import { visitActivities } from './neighbor-visits.ts'
 
 export const henTreatIds = ['carrot', 'leafyGreens', 'apple'] as const
 export type HenTreat = typeof henTreatIds[number]
@@ -71,6 +72,13 @@ export function treatHen(farm: FarmState, id: unknown, treat: unknown): ActionRe
   return { ok: true, message: `${hen.name} ${treat === hen.favorite ? 'радостно клюёт любимое угощение' : 'с интересом пробует угощение'}.${firstFavorite ? ` Открыто любимое угощение: ${henTreatNames[treat].toLowerCase()}.` : ''}${memory ? ` ${memory}` : ''} Кормление стаи остаётся отдельным действием.` }
 }
 
+/** The live visit can still meet today's already-petted hen without a second pet. */
+export function getHenCardIntroduction(farm: FarmState, id: number) {
+  const visit = farm.neighborVisits.active
+  if (!visit || !farm.pettedChickens.includes(id) || !canIntroduceHenToVisitor(farm, id)) return
+  return { token: `${visit.serial}:${id}`, label: visitActivities[visit.activity].resident === 'bea' ? 'Познакомить с Беа' : 'Познакомить с Финном' }
+}
+
 export function henFriendshipStage(points: number) {
   return points >= 9 ? 'Близкие друзья' : points >= 6 ? 'Вам доверяет' : points >= 3 ? 'Рада знакомству' : 'Присматривается'
 }
@@ -115,6 +123,7 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
   const id = isHen(farm, selectedHen) ? selectedHen : 0
   const hen = henFriends[id], bond = farm.henFriendship.hens[id]
   const petted = farm.pettedChickens.includes(id), known = bond.tasted.includes(hen.favorite)
+  const introduction = getHenCardIntroduction(farm, id)
   const complete = bond.points === maxHenFriendship && known
   const choices = henTreatIds.map(treat => ({ treat, option: getHenTreat(farm, id, treat) }))
   const hintAtChoice = !known && choices.some(({ treat, option }) => treat === hen.favorite && option.available)
@@ -133,7 +142,8 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
     <article class="hen-friend-card" aria-label="${hen.name}">
       <div class="hen-friend-actions"><header><h2>${hen.name}</h2><span>${henFriendshipStage(bond.points)}</span></header>
         <div class="hen-friend-progress"><progress value="${bond.points}" max="${maxHenFriendship}" aria-label="Дружба · ${hen.name}"></progress><small>Дружба · ${bond.points}/${maxHenFriendship}</small></div>
-        <button type="button" class="dialog-button" data-action="pet" data-value="${id}"${petted ? ' disabled' : ''}>${petted ? 'Сегодня поглажена' : `Погладить${bond.points < maxHenFriendship ? ' · +1' : ''}`}</button>
+        ${introduction ? `<button type="button" class="dialog-button" data-action="visit-introduce-hen" data-value="${introduction.token}">${introduction.label}</button>`
+          : `<button type="button" class="dialog-button" data-action="pet" data-value="${id}"${petted ? ' disabled' : ''}>${petted ? 'Сегодня поглажена' : `Погладить${bond.points < maxHenFriendship ? ' · +1' : ''}`}</button>`}
         <div class="hen-walk-choice"><button type="button" class="dialog-button secondary" data-action="${choice.action}" data-value="${id}"${choice.enabled ? '' : ' disabled'}>${choice.label}</button><small>${choice.reason}</small></div>
         <button type="button" class="dialog-button secondary hen-field-guide" data-action="hen-guide" data-value="${guideReady ? `${id}:${guide.kind}:${guide.index}` : ''}"${guideReady?'':' disabled hidden'}>${guideReady?guideLabel(hen.favorite):''}</button>
       </div>
