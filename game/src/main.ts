@@ -2303,6 +2303,8 @@ function drawPanel() {
       const guide = getMusicMaterialGuidance(farm), stock = gardenMaterialStock(farm)
       dialogContent.innerHTML = `<p class="dialog-intro">Инструмент использует припасы и склад Лавандовой гавани. С других складов материалы нужно забрать лично.</p>${guide.materials.map(item => {
         const missing = Math.max(0,item.quantity-stock[item.id]), name = musicMaterialNames[item.id]
+        // Stock guidance compares against the bag, excluding the Harbour reserve.
+        const bagTarget = item.quantity - (farm.freight.warehouses.village[item.id] ?? 0)
         const saltSource = item.id === 'seaSalt' && getMusicSaltRequirement(farm)
         const warehouses = islandIds.filter(port => (farm.freight.warehouses[port][item.id] ?? 0) > 0)
           .sort((a,b) => Number(b === guide.warehouse)-Number(a === guide.warehouse))
@@ -2311,7 +2313,7 @@ function drawPanel() {
           return `<p>${islandNames[port]}: ${amount}</p>${count && port !== 'village' ? nav(port === farm.island
             ? button(`Забрать в припасы ×${count}`,'freight-withdraw',true,{value:`${port}|${item.id}|${count}`})
             : button(`К складу: ${islandNames[port]}`,'music-warehouse-visit',canSailTo(farm,port),{value:port})) : ''}`
-        }).join('')}${missing ? `<ul class="ingredients">${requirementLink(`<span>Где собрать: ${name}</span>`,saltSource || {kind:'stock',item:{...musicMaterialItems[item.id],quantity:missing}},'ingredient',name)}</ul>` : '<p>Материалы готовы для инструмента.</p>'}</section>`
+        }).join('')}${missing ? `<ul class="ingredients">${requirementLink(`<span>Где собрать: ${name}</span>`,saltSource || {kind:'stock',item:{...musicMaterialItems[item.id],quantity:bagTarget}},'ingredient',name)}</ul>` : '<p>Материалы готовы для инструмента.</p>'}</section>`
       }).join('')}${nav(button('Вернуться в музыкальный сад','open-panel',true,{value:'bay-music'}))}`
       break
     }
