@@ -6,6 +6,7 @@ import {runInNewContext} from 'node:vm'
 import * as F from '../src/farm.ts'
 import {transferBayGoods} from '../src/harbour-economy.ts'
 import {getMarketOrderBoard} from '../src/market-orders-view.ts'
+import {pickUpMarketOrderStock} from '../src/market-order-pickup.ts'
 import {inlineReceiptText, MarketInlineSales} from '../src/market-inline-sale.ts'
 import {earned416Mixed} from './fixtures/earned-416-market-orders.ts'
 
@@ -96,4 +97,60 @@ test('the ready pantry order is not counted lost when one already-owned local eg
  assert.ok(transferBayGoods(farm,'withdraw','home','eggs',1).ok)
  assert.ok(F.deliverMarketOrder(farm,'pantry').ok)
  assert.equal(farm.coins,83)
+})
+
+test('the same market quote warns before taking the last jar from an earned fully local pickup order',()=>{
+ const earned=earned416Mixed(true), farm=earned.state, before=structuredClone(farm)
+ assert.deepEqual([earned.actions,farm.day,farm.coins,F.getSale(farm).items,farm.dishes.appleJam,farm.freight.warehouses.home.wheat],
+  [552,196,60,416,1,2])
+ const kitchen=(s:F.FarmState)=>getMarketOrderBoard(s,'kitchen')
+ const pickup=kitchen(farm).pickup
+ assert.deepEqual(pickup?.lines.map(({supply})=>[supply.id,supply.quantity]),[['wheat',2]])
+ assert.equal(kitchen(farm).choices.find(x=>x.id==='kitchen')?.group,'warehouse')
+ const c=card(farm,'dishes:appleJam','Яблочное варенье')
+ assert.equal(c.message.textContent,'После продажи не хватит для 1 заказа')
+ assert.equal(c.message.ariaLive,'polite')
+ assert.equal((c.html().match(/После продажи не хватит для 1 заказа/g)??[]).length,1)
+ assert.match(c.html(),/Продать 1 · 14/)
+ assert.equal(c.spend.disabled,false)
+ assert.deepEqual(farm,before,'a quote must not sell, reserve, cross or collect')
+ const keep=structuredClone(before)
+ assert.ok(pickUpMarketOrderStock(keep,'kitchen',pickup!.token).ok)
+ assert.equal(keep.coins,60)
+ assert.ok(F.deliverMarketOrder(keep,'kitchen').ok)
+ assert.deepEqual([keep.coins,keep.day,keep.dishes.appleJam,keep.produce.wheat],[92,196,0,0])
+ c.confirm()
+ assert.deepEqual([farm.coins,farm.dishes.appleJam,farm.day,farm.island],[74,0,196,'home'])
+ assert.deepEqual(farm.freight,before.freight)
+ assert.deepEqual(farm.orders,before.orders)
+ assert.equal(kitchen(farm).choices.find(x=>x.id==='kitchen')?.group,'waiting')
+ assert.equal(getMarketOrderBoard(farm).choices.find(x=>x.id==='pantry')?.group,'warehouse')
+})
+
+test('no warning for a refillable local sale, unrelated fruit or an already incomplete route using another island',()=>{
+ const before=earned416Mixed(true).state
+ const pickup=(s:F.FarmState)=>getMarketOrderBoard(s,'kitchen').pickup
+ const jam=(s:F.FarmState)=>card(s,'dishes:appleJam','Яблочное варенье')
+ const keep=structuredClone(before)
+ assert.ok(F.cookDish(keep,'appleJam').ok)
+ assert.ok(transferBayGoods(keep,'deposit','home','dish:appleJam',1).ok)
+ assert.ok(pickup(keep))
+ const full=structuredClone(keep), cached=jam(keep)
+ assert.equal(cached.message.textContent,'')
+ assert.deepEqual(keep,full)
+ cached.confirm()
+ assert.deepEqual(pickup(keep)?.lines.map(({supply})=>supply.id),['dish:appleJam','wheat'])
+ assert.equal(keep.freight.warehouses.home['dish:appleJam'],1)
+ const peach=structuredClone(before)
+ assert.equal(card(peach,'fruit:peach','Персик').message.textContent,'')
+ assert.deepEqual(peach,before)
+ const away=structuredClone(before)
+ assert.ok(transferBayGoods(away,'withdraw','home','wheat',1).ok)
+ assert.ok(F.sail(away,'grove').ok)
+ assert.ok(transferBayGoods(away,'deposit','grove','wheat',1).ok)
+ assert.ok(F.sail(away,'home').ok)
+ assert.equal(pickup(away),undefined)
+ const unavailable=structuredClone(away)
+ assert.equal(jam(away).message.textContent,'')
+ assert.deepEqual(away,unavailable)
 })

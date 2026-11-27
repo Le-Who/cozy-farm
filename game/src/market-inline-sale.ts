@@ -3,6 +3,7 @@ import { ruCount } from './ru.ts'
 import { SalePresentation } from './sale-presentation.ts'
 import { getMarketOrders, marketKey, type FarmState } from './farm.ts'
 import { getLocalWarehouseSupply } from './warehouse-guidance.ts'
+import { quoteMarketOrderPickup } from './market-order-pickup.ts'
 
 type Receipt = { quantity: number; total: number; remaining: number; goalRewardText?: string }
 export function inlineReceiptText(receipt: Receipt) {
@@ -30,16 +31,20 @@ export class MarketInlineSales {
     const draft=this.draft(key,count,price)
     const quote=exactSaleQuote(draft.raw,count,price)
     const farm=quote.valid&&!draft.pending&&!draft.receipt ? this.farm?.() : undefined
-    // Count distinct alternatives ready before this sale, never a plan to deliver them together.
-    const lost=farm?.island==='home' ? getMarketOrders(farm).filter(order=>order.status==='ready'
-      && order.items.some(item=>{
+    // Count independent choices: a ready order or one exact, actionable local pickup.
+    const lost=farm?.island==='home' ? getMarketOrders(farm).filter(order=>{
+      const ready=order.status==='ready'
+      if(!ready && (order.status!=='waiting' || !farm.boatOwned)) return false
+      const affected=order.items.some(item=>{
         if (item.quantity<=quote.remaining || marketKey(item)!==key) return false
         const shortage=item.quantity-quote.remaining
         // Offset the required total so the existing owned-stock authority sees
         // exactly the deficit after this proposed sale, without changing the bag.
         const supply=getLocalWarehouseSupply(farm,{...item,quantity:item.quantity+quote.quantity})
         return supply?.quantity!==shortage
-      })).length : 0
+      })
+      return affected && (ready || !!quoteMarketOrderPickup(farm,order))
+    }).length : 0
     const orderImpact=lost ? `После продажи не хватит для ${ruCount(lost,'заказа','заказов','заказов')}` : ''
     return { token:draft.owner.token, raw:draft.raw, quote, receipt:draft.receipt, pending:draft.pending, orderImpact }
   }
