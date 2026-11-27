@@ -37,7 +37,7 @@ function harness(){
  const close=new Button('close','','Закрыть'),reset={reset:noop}
  const content={scrollTop:0,querySelector:(selector:string)=>selector==='.garden-supplies'?detail:selector==='.home-rest-services'?homeServices:null,querySelectorAll:()=>[]}
  const state:any={farm,getGrillFish,
-  communityRequest:undefined,bayAudio:{primeEvents:noop},getClimate:()=>({weather:'sun'}),weatherNames:{sun:'Ясно'},renderSelectedIntentRest:noop,renderShopRest:noop,renderRestPreview:noop,renderFerryReturn:noop,harbourGoods:noop,renderVisitRest:noop,renderPicnicStatus:noop,renderCoopCapacityWarning:noop,flockFeedRow:noop,gardenEditor:editor,panel:'garden-plans',panelHistory:[],panelRenderVersion:0,document,HTMLButtonElement:Button,dialogContent:content,
+  communityRequest:undefined,bayAudio:{primeEvents:noop},getClimate:()=>({weather:'sun'}),weatherNames:{sun:'Ясно'},renderSelectedIntentRest:noop,renderShopRest:noop,renderHomeFestivalPreparation:(state:typeof farm)=>{assert.equal(state.festivals.active,null);return ''},renderRestPreview:noop,renderFerryReturn:noop,harbourGoods:noop,renderVisitRest:noop,renderPicnicStatus:noop,renderCoopCapacityWarning:noop,flockFeedRow:noop,gardenEditor:editor,panel:'garden-plans',panelHistory:[],panelRenderVersion:0,document,HTMLButtonElement:Button,dialogContent:content,
   dialog:{open:true,showModal(){this.open=true},querySelectorAll:()=>[close,...buttons].filter(b=>!b.disabled)},closeButton:close,
   salePresentation:{place:undefined,reset:noop},marketSaleBrowse:{reset:noop},transplantSelection:reset,berryNurserySelection:reset,berryRenewalSelection:reset,recipeSurplusSelection:reset,
   recipeBook:{snapshot:()=>({}),load:noop},restoreFerryPanelView:noop,

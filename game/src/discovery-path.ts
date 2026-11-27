@@ -255,8 +255,10 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
       const festival=getFestivalStatus(farm).active!;
       const label=festival.waitingNight ? `${festival.name} · день ${festival.readyOn}`
         : festival.stage===3 ? `Провести: ${festival.name}` : festival.label;
-      return task('festival-preparation',label,festival.editionName,`festivals/${festival.tradition}`,
-        {label:'К программе праздника',target:'open-panel',value:'festival'},festival.stage,3);
+      const preparation = farm.island==='home' && festival.waitingNight && festival.stage<3 && festival.requirements.length
+        ? {label:'Что подготовить к утру',target:'festival-home-preparation',value:`${festival.tradition}:${festival.edition}:${festival.stage}:${festival.readyOn}`}
+        : {label:'К программе праздника',target:'open-panel',value:'festival'};
+      return task('festival-preparation',label,festival.editionName,`festivals/${festival.tradition}`,preparation,festival.stage,3);
     }
     const commission=getShopCommission(farm);
     if(commission)return arrive(task('shop-commission',commission.remaining ? `Заказ: ${commission.customerName}` : 'Покупатель ждёт вашу партию',

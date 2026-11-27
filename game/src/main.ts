@@ -113,7 +113,7 @@ import { hasFarmhouseSpecialization, getFarmhouseSpecializationAction } from './
 import { VersionedSave, browserSaveLock } from './versioned-save'
 import { farmSaveKeys } from './farm-save-keys'
 import { mountSaveRecovery } from './save-recovery'
-import { renderFestivalPanel } from './bay-festival-ui'
+import { renderFestivalPanel, renderHomeFestivalPreparation } from './bay-festival-ui'
 import { getFestivalConcertState } from './festival-concert-guidance'
 import { getFestivalHarvestRoute } from './festival-harvest-route'
 import { getFinnFishingRoute } from './finn-fishing-route'
@@ -2562,7 +2562,7 @@ function drawPanel() {
       const hatch = farm.hatchDay === null ? '' : farm.hatchDay === farm.day + 1
         ? 'К утру вылупится курочка.' : `Курочка вылупится утром дня ${farm.hatchDay}.`
       dialogContent.innerHTML = `<section class="rest-decision" aria-label="Отдых до утра">${renderSelectedIntentRest(farm,communityRequest)}<header class="rest-morning"><div><strong>Сейчас · день ${farm.day}</strong><span>Утром · день ${farm.day + 1} · ${weatherNames[getClimate(farm.day + 1).weather]}</span>${hatch ? `<span>${hatch}</span>` : ''}</div>${button('До утра', 'sleep', true, {value:farm.day})}</header><p class="rest-commit-note">Сон завершит этот день. Вернуться назад нельзя.</p>${renderShopRest(farm)}</section>
-        <div class="home-morning-preview">${renderRestPreview(farm,true)}${renderFerryReturn(farm,harbourGoods(),true)}</div>
+        <div class="home-morning-preview">${renderHomeFestivalPreparation(farm)}${renderRestPreview(farm,true)}${renderFerryReturn(farm,harbourGoods(),true)}</div>
         <div class="rest-before-morning">${renderVisitRest(farm)}${farm.neighborVisits.active?nav(button('Поговорить с гостем', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${renderPicnicStatus(farm,true)}${renderCoopCapacityWarning(farm,true)}${!farm.chickensFed ? `<ul class="dialog-list">${flockFeedRow()}</ul>` : ''}</div>
         <details class="home-rest-details home-rest-services"><summary>${farm.village.built&&!farm.neighborVisits.active?'Кухня, гости и улучшения':'Кухня и улучшения'}</summary><div>${farm.village.built&&!farm.neighborVisits.active?nav(button('Гостевая книга', 'open-panel',true,{value:'neighbor-visits',secondary:true})):''}${nav(button('Открыть кухню', 'kitchen'), button('Улучшения', 'upgrades', true, { secondary: true }))}</div></details>`
       if (farm.freight.expeditions.active?.phase === 'sailing' && panelHistory.at(-1)?.ferryMorning === farm.freight.expeditions.active.serial)
@@ -4012,6 +4012,17 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'festival-continue': celebratedFestival=undefined;drawPanel();break
+    case 'festival-home-preparation': {
+      const current=getDiscoveryTask(farm,farm.orientation)?.action
+      if(!value || current?.target!=='festival-home-preparation' || current.value!==value) break
+      openPanel('rest')
+      const plan=dialogContent.querySelector<HTMLDetailsElement>('[data-festival-home-preparation]')
+      if(panel==='rest' && dialog.open && plan){
+        plan.open=true
+        highlightControl(plan.querySelector('summary'))
+      }
+      break
+    }
     case 'festival-rest': await visitPanelAt('home','rest');break
     case 'festival-music': openPanel('bay-music');break
     case 'festival-freight': {

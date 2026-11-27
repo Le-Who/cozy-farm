@@ -18,7 +18,7 @@ const evaluate=(script:string,scope:object)=>runInNewContext(stripTypeScriptType
 // Render the real SSR template without starting Vite, watched caches, or a browser.
 const render:typeof import('../src/bay-festival-ui.ts').renderFestivalPanel = evaluate(
   source.slice(source.indexOf('export type FestivalViewOptions'))
-    .replace('export function renderFestivalPanel','function renderFestivalPanel')
+    .replace(/^export (?=function )/gm,'')
     .replaceAll('import.meta.env.BASE_URL','"/"')+';renderFestivalPanel',
   {...farmModel,...fruitArt,getFestivalFishingRoute,getFestivalHarvestRoute,getFestivalShoreRoute,ruCount}
 )

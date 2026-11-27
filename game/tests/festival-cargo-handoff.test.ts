@@ -28,7 +28,7 @@ const main=read('src/main.ts'), festivalSource=read('src/bay-festival-ui.ts'), f
 const between=(a:string,b:string)=>{const i=main.indexOf(a),j=main.indexOf(b,i+1);assert.ok(i>=0&&j>i,a);return main.slice(i,j)}
 const context={...F,...H,...Q,...P,...U,...T,...G,...S,...I,...W,...D,...E,...L,...M,getFestivalCargoRoute}
 const renderFestival=strip(festivalSource.slice(festivalSource.indexOf('const escape ='))
-  .replace('export function renderFestivalPanel','function renderFestivalPanel').replaceAll('import.meta.env.BASE_URL','"/"')+';renderFestivalPanel(farm)')
+  .replace(/^export (?=function )/gm,'').replaceAll('import.meta.env.BASE_URL','"/"')+';renderFestivalPanel(farm)')
 const renderFreight=strip(ferrySource.slice(ferrySource.indexOf('const labels:'))
   .replaceAll('export function ','function ').replaceAll('import.meta.env.BASE_URL','"/"')+'; renderFreightPanel(farm.freight,ctx)')
 const recipeBase=JSON.parse(read('tests/fixtures/home-progress-actions.json')) as {name:string;args:unknown[]}[]

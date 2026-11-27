@@ -40,9 +40,9 @@ function ingredientPicture(id: string, icon?: FestivalViewOptions['icon']): stri
 }
 
 /** Preview only the already chosen next step; availability is checked again when it opens. */
-function nextPreparationPreview(active: NonNullable<ReturnType<typeof getFestivalStatus>['active']>): string {
+function nextPreparationPreview(active: NonNullable<ReturnType<typeof getFestivalStatus>['active']>, atHome = false): string {
   if (!active.waitingNight || active.stage >= 3 || !active.requirements.length) return '';
-  return `<details class="festival-next-preview"><summary>Что подготовить к утру</summary>
+  return `<details class="festival-next-preview"${atHome?' data-festival-home-preparation':''}><summary>${atHome?`${escape(active.name)} · день ${active.readyOn}`:'Что подготовить к утру'}</summary>
     <p>Внести вклад можно с ${active.readyOn}-го игрового дня. Припасы не резервируются.</p>
     <p>Ниже — количество для всей оставшейся группы, если выбрать один вариант. Варианты можно сочетать.</p>
     <ul>${active.requirements.map(requirement => {
@@ -51,6 +51,12 @@ function nextPreparationPreview(active: NonNullable<ReturnType<typeof getFestiva
         <p>${requirement.alternatives.map(alternative => `${escape(alternative.label)} <b>×${remaining * alternative.quantity}</b>`).join(' или ')}</p></li>`;
     }).join('')}</ul>
   </details>`;
+}
+
+/** The same read-only preparation plan, without taking the player away from the farm. */
+export function renderHomeFestivalPreparation(farm: FarmState): string {
+  const active=farm.island==='home' ? getFestivalStatus(farm).active : null;
+  return active ? nextPreparationPreview(active,true) : '';
 }
 
 export function renderFestivalPanel(farm: FarmState, options: FestivalViewOptions = {}): string {

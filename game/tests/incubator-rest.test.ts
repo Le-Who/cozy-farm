@@ -14,9 +14,10 @@ const start=main.indexOf("    case 'rest':",main.indexOf('function drawPanel()')
 const branch=stripTypeScriptTypes("switch('rest'){"+main.slice(start,main.indexOf("    case 'journal':",start))+"}")
 // Execute the actual cottage view, stubbing only unrelated panels/formatting.
 function bedtime(farm:FarmState){
+ assert.equal(farm.festivals.active,null,'this incubation fixture has no festival plan')
  const box={innerHTML:''},empty=()=>''
  runInNewContext(branch,{farm,dialogContent:box,getClimate,weatherNames,communityRequest:undefined,
-  renderSelectedIntentRest:empty,renderShopRest:empty,renderRestPreview:empty,renderFerryReturn:empty,
+  renderSelectedIntentRest:empty,renderShopRest:empty,renderHomeFestivalPreparation:empty,renderRestPreview:empty,renderFerryReturn:empty,
   renderVisitRest:empty,renderPicnicStatus:empty,renderCoopCapacityWarning:empty,flockFeedRow:empty,
   harbourGoods:empty,nav:empty,button:(label:string,action:string,_enabled=true,opt:{value?:number}={})=>
    `<button data-action="${action}" data-value="${opt.value??''}">${label}</button>`})
