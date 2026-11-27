@@ -1889,6 +1889,14 @@ function stockSourceItem(button: HTMLButtonElement | null) {
   return requirement?.kind === 'stock' ? bayProductId(requirement.item) : undefined
 }
 function leaveScene(){if(panelHistory.length)goBack();else closeDialog()}
+function returnFromNeighborArrangement(keyboard = false) {
+  const request = arrangementRequest, origin = panelHistory.at(-1)
+  // Cancel belongs to this local visit, not the separately available travel shortcut.
+  if (panel === 'arrangement' && dialog.open && farm.island === 'village' && request?.kind === 'neighbor'
+    && origin?.panel === 'neighbor' && getNeighborPlans(farm).some(plan =>
+      plan.id === request.id && plan.resident === origin.communityResident && plan.phase === 'arranging')) goBack(keyboard)
+  else closeDialog()
+}
 function rememberPanel(): PanelVisit {
   const focused = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null
   const supplies = panel === 'garden-plans' ? dialogContent.querySelector<HTMLDetailsElement>('.garden-supplies') : null
@@ -2455,7 +2463,10 @@ function drawPanel() {
           })
           return true
         },
-        onCancel() { if (request.kind === 'neighbor') void resumeCommunityRequest(); else leaveScene() },
+        onCancel() {
+          if (request.kind === 'neighbor') { if (sameBench()) returnFromNeighborArrangement() }
+          else leaveScene()
+        },
       })
       break
     }
@@ -5646,7 +5657,7 @@ app.addEventListener('click', async (event) => {
 })
 
 function closeCurrentPanel() {
-  if (communityRequest && panel === 'arrangement' && arrangementRequest?.kind === 'neighbor') void resumeCommunityRequest()
+  if (panel === 'arrangement' && arrangementRequest?.kind === 'neighbor') returnFromNeighborArrangement()
   else closeDialog()
 }
 closeButton.addEventListener('click', closeCurrentPanel)
@@ -5655,9 +5666,9 @@ function returnFromPanel(event: Event) {
   if(closeContextualSale()){event.preventDefault();return}
   if(returnToRecipeIndex()){event.preventDefault();return}
   if (panel === 'bay-freight' && returnToFerrySupplyOrigin()) {event.preventDefault();return}
-  if (communityRequest && panel === 'arrangement' && arrangementRequest?.kind === 'neighbor') {
+  if (panel === 'arrangement' && arrangementRequest?.kind === 'neighbor') {
     event.preventDefault()
-    void resumeCommunityRequest()
+    returnFromNeighborArrangement(event.type==='keydown')
   } else if (panelHistory.length) {
     event.preventDefault()
     goBack(event.type==='keydown')

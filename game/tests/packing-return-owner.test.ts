@@ -13,6 +13,7 @@ function section(source:string,start:string,end:string){const a=source.indexOf(s
 const mount=section(main,"    case 'arrangement': {","    case 'market':")
 const resume=section(main,'function currentCommunityRequest()', 'function updateCommunityReturn()')
   + section(main,'async function resumeCommunityRequest(','function requestedRecipe()')
+const localReturn=section(main,'function returnFromNeighborArrangement(', 'function rememberPanel()')
 const close=section(main,'function closeCurrentPanel()',"closeButton.addEventListener('click'")
 const back=section(main,'function returnFromPanel(',"dialog.addEventListener('cancel'")
 const dialogKey=section(main,"dialog.addEventListener('keydown', event => {\n  if (event.key !== 'Escape'", "dialog.addEventListener('keydown',event=>{if(event.altKey")
@@ -32,7 +33,7 @@ function setup(neighbor=false,bookmark=true){
     assert.equal(F.getNeighborPlans(farm).find(p=>p.id===basket.id)?.phase,'arranging')
   }
   const before=structuredClone(farm),calls:string[]=[],pending:Promise<unknown>[]=[]
-  const state:any={...F,farm,panel:'arrangement',panelHistory:[{panel:neighbor?'neighbor':'coop'}],
+  const state:any={...F,farm,panel:'arrangement',panelHistory:neighbor?[{panel:'guide'},{panel:'village'},{panel:'neighbor',communityResident:basket.resident}]:[{panel:'coop'}],
     arrangementRequest:neighbor?{kind:'neighbor',id:basket.id}:{kind:'packing',mode:'eggs'},
     communityRequest:bookmark?{kind:'neighbor',resident:basket.resident,planId:basket.id}:undefined,requestedFood:undefined,
     dialog:{open:true,addEventListener(type:string,fn:unknown){assert.equal(type,'keydown');state.dialogKey=fn}},
@@ -47,7 +48,7 @@ function setup(neighbor=false,bookmark=true){
     perform(fn:()=>{ok:boolean}){const result=fn();if(result.ok)calls.push('save');return result.ok},
     openPanel(panel:string){state.panel=panel;state.dialog.open=true;calls.push(panel)},
   }
-  runInNewContext(js(resume+'\n'+close+'\n'+back+'\n'+dialogKey),state)
+  runInNewContext(js(resume+'\n'+localReturn+'\n'+close+'\n'+back+'\n'+dialogKey),state)
   const actualResume=state.resumeCommunityRequest
   state.resumeCommunityRequest=(...args:unknown[])=>{const task=actualResume(...args);pending.push(task);return task}
   runInNewContext(js(`switch('arrangement'){${mount}}`),state)
@@ -87,8 +88,15 @@ for(const exit of ['own-close','button-escape','loading-escape','shell-close'] a
   if(exit==='own-close')h.state.options.onCancel()
   else if(exit==='shell-close')h.state.closeCurrentPanel()
   else await h.escape(exit==='button-escape',exit==='loading-escape')
-  await Promise.all(h.pending);assert.equal(h.state.panel,'neighbor');assert.deepEqual(h.calls,['neighbor']);h.unchanged()
+  await Promise.all(h.pending);assert.equal(h.state.panel,'neighbor');assert.deepEqual(h.calls,['local-back']);
+  assert.deepEqual(h.state.panelHistory.map((node:{panel:string})=>node.panel),['guide','village']);h.unchanged()
 })
 test('the separately invoked explicit community return may still travel from Home',async()=>{
   const h=setup();await h.state.resumeCommunityRequest('request');assert.equal(h.farm.island,'village');assert.deepEqual(h.farm,{...h.before,island:'village'});assert.deepEqual(h.calls,['close','cross','save','neighbor'])
+})
+
+test('a neighbor arrangement missing its matching origin only closes locally',async()=>{
+  const h=setup(true);h.state.panelHistory.pop()
+  h.state.options.onCancel();await Promise.all(h.pending)
+  assert.deepEqual(h.calls,['close']);assert.equal(h.state.dialog.open,false);h.unchanged()
 })

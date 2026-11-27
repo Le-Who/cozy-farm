@@ -8,6 +8,9 @@ import {getBedStage,getBedAction,advanceNeighborPlan,sail,pickFruit,restoreCurre
 import {inviteNeighborVisit} from '../src/neighbor-visits.ts'
 import {syncHomeVisitor,stepHomeVisitor,visitorLanding} from '../src/neighbor-visit-scene.ts'
 import {finnPicnicRide,sailHomeWithFinn} from '../src/finn-picnic-ride.ts'
+import * as farmApi from '../src/farm.ts'
+import {communityReturnRoute} from '../src/community-return.ts'
+import {getNeighborFoodRecovery} from '../src/neighbor-food-recovery.ts'
 
 const read=(p:string)=>readFileSync(new URL(p,import.meta.url),'utf8')
 const arrangedBasket={kind:'basket',settled:true,placements:[{slot:'food',x:0,y:0},{slot:'cup',x:.4,y:.2},{slot:'flowers',x:-.4,y:.2}]} as const
@@ -74,4 +77,78 @@ test('solo return, accepted farewell and an empty orchard do not create a passen
   pickFruit(solo,0);sail(solo,'village');assert.equal(finnPicnicRide(solo),undefined)
   function stale(farm:FarmState){const before=structuredClone(farm);assert.equal(sailHomeWithFinn(farm,token).ok,false);assert.deepEqual(farm,before)}
   stale(solo);assert.ok(advanceNeighborPlan(f,'finn:1').ok);stale(f)
+})
+
+
+const shell=read('../src/main.ts')
+const section=(a:string,b:string)=>{
+  const i=shell.indexOf(a),j=shell.indexOf(b,i+a.length)
+  assert.ok(i>=0&&j>i,a)
+  return shell.slice(i,j)
+}
+const installCancel=stripTypeScriptTypes(
+  section('function currentCommunityRequest()', 'function updateCommunityReturn()')+
+  section('async function resumeCommunityRequest(','function requestedRecipe()')+
+  section('function focusKey(','let harbourScene:')+
+  section('function closeCurrentPanel()', "closeButton.addEventListener('click'")+
+  section('function returnFromPanel(', "dialog.addEventListener('cancel'")+
+  `async function press(action,value) {switch(action) {${
+    section("    case 'open-neighbor':","    case 'neighbor-help-house':")+
+    section("    case 'village-slot':","    case 'invite-resident':")+
+    section("    case 'arrange-neighbor':","    case 'finn-picnic-ride':")+
+    section("    case 'back':","    case 'journal-stay':")
+  }}}
+  function openPanel(next,remember=true){${
+    section('  if(remember&&next!==panel)',"  if (remember && next === 'village-meal'")
+  } panel=next;panelRenderVersion++;dialogContent.scrollTop=0;document.activeElement=null}
+  function mountBasket(){switch('arrangement'){${section("    case 'arrangement': {","    case 'market':")}}}
+  `
+)
+for (const exit of ['own-close','dialog-escape']) test(`earned Finn unpaid basket ${exit} preserves the way back through his cottage`,async t=>{
+  const farm=picnic(false),before=structuredClone(farm),focus:string[]=[]
+  assert.equal(farm.day,17)
+  assert.equal(getNeighborFoodRecovery(farm,'finn:1')?.state,'ready')
+  class Button {
+    readonly dataset:Record<string,string>
+    constructor(value:Record<string,string>){this.dataset=value}
+    getClientRects(){return [{}]}
+    focus(){focus.push(this.dataset.action);ctx.document.activeElement=this}
+  }
+  const places=new Button({action:'open-panel',value:'village'})
+  const cottage=new Button({action:'open-neighbor',value:'finn'})
+  const basket=new Button({action:'arrange-neighbor',value:'finn:1'})
+  const stateButtons:Record<string,Button>={guide:places,village:cottage,neighbor:basket}
+  const ctx:any={...farmApi,farm,communityReturnRoute,getNeighborFoodRecovery,
+    panel:'guide',panelHistory:[],panelRenderVersion:0,communityResident:'bea',villageSlot:0,
+    document:{activeElement:places},HTMLButtonElement:Button,signatureSlots:[null,null],
+    dialog:{open:true,querySelectorAll:()=>[stateButtons[ctx.panel]]},
+    dialogContent:{innerHTML:'',querySelector:()=>null,querySelectorAll:()=>[],scrollTop:0},
+    recipeBook:{snapshot:()=>({}),load(){}},restoreFerryPanelView(){},drawPanel(){},
+    requestAnimationFrame:(fn:()=>void)=>fn(),closeContextualSale:()=>false,returnToRecipeIndex:()=>false,event:{detail:0},
+    island:{isCrossing:()=>false,crossIsland:()=>assert.fail('unpaid local Cancel cannot sail')},
+    saveFarm:()=>assert.fail('unpaid local Cancel cannot write'),perform:()=>assert.fail('unpaid local Cancel cannot commit'),
+    closeDialog:()=>{ctx.dialog.open=false;ctx.panelHistory.length=0},
+    createArrangement:(_host:unknown,opts:unknown)=>{ctx.options=opts},
+  }
+  for(const name of 'selectedWarehouseRequest selectedExpeditionPort selectedExpeditionOffer selectedWarehouse inventoryGroup boatIsland marketSaleFamily marketSaleQuery marketTab marketCategory marketSellGroup bagTab archiveGroup treeSlot previewSeed specializationBuilding previewSpecialization irrigationMode pastryShape workshopRecipe cookingDish cookingFish signatureBase signatureSlot signatureRepeatId expandedRepeatId cookingMode communityOrderId communityRequest requestedFood kitchenTart kitchenPreserves kitchenGroup kitchenDish honeyKitchenDish signatureFamily seedPickerBed freightPlanOpen journeyDetailsOpen journalDetailsOpen selectedMarketOrder arrangementRequest arrangementGame'.split(' '))ctx[name]??=undefined
+  runInNewContext(installCancel,ctx)
+  ctx.openPanel('village');await ctx.press('village-slot','1')
+  cottage.focus();await ctx.press('open-neighbor','finn')
+  basket.focus();ctx.dialogContent.scrollTop=29
+  await ctx.press('arrange-neighbor','finn:1');ctx.mountBasket()
+  assert.equal(ctx.options.mode,'basket')
+  const event={type:'keydown',defaultPrevented:false,preventDefault(){this.defaultPrevented=true}}
+  if(exit==='own-close')ctx.options.onCancel()
+  else ctx.returnFromPanel(event)
+  if(exit==='dialog-escape')assert.equal(event.defaultPrevented,true)
+  t.diagnostic(JSON.stringify({exit,panel:ctx.panel,remainingBack:ctx.panelHistory.map((x:{panel:string})=>x.panel),focus:focus.at(-1),scroll:ctx.dialogContent.scrollTop}))
+  assert.equal(ctx.panel,'neighbor')
+  assert.deepEqual(Array.from(ctx.panelHistory,(x:{panel:string})=>x.panel),['guide','village'],'unpaid exit must retain both earned previous visits')
+  assert.equal(ctx.document.activeElement,basket)
+  assert.equal(ctx.dialogContent.scrollTop,29)
+  await ctx.press('back')
+  assert.equal(ctx.panel,'village');assert.equal(ctx.villageSlot,1);assert.equal(ctx.document.activeElement,cottage)
+  await ctx.press('back')
+  assert.equal(ctx.panel,'guide');assert.equal(ctx.document.activeElement,places)
+  assert.deepEqual(farm,before)
 })
