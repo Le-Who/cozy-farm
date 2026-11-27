@@ -16,6 +16,8 @@ import { renderShopCommissions } from '../src/shop-commissions-ui.ts'
 import { ShopCommissionView } from '../src/shop-commission-view.ts'
 import type { BayShopCommissionPreview, BayShopOptions } from '../src/bay-shop.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
+import { assortmentPlayer } from './fixtures/assortment-player.ts'
+import * as UI from '../src/shop-commissions-ui.ts'
 
 const read=(name:string)=>readFileSync(new URL(name,import.meta.url),'utf8')
 const opening=JSON.parse(read('./fixtures/home-progress-actions.json')).slice(0,78)
@@ -113,7 +115,7 @@ test('on an earned first shop day the one Orders control previews Finn’s newly
   assert.deepEqual(s.focuses,['[data-commission-view="customer"], [data-commission-customer]'])
   assert.deepEqual(farm,before);assert.equal(s.writes,writes)
   const html=renderShopCommissions(farm,()=>'',undefined,selection)
-  assert.match(html,/value="finn" selected/)
+  assert.match(html,/(?:value="finn" selected|data-value="finn" aria-pressed="true")/)
   assert.match(html,new RegExp('data-action="commission-accept" data-value="'+exact.key+'"'))
   assert.ok(selection.choose(farm,'customer','bea'))
   assert.equal(selection.current(farm).offer?.recipeId,first,'the earlier customer remains a normal choice')
@@ -177,4 +179,99 @@ test('the Buyers tab still opens its manually selected customer with the existin
   assert.equal(s.calls[0].preview,undefined);assert.equal(s.selected?.recipeId,first)
   assert.deepEqual(s.focuses,['[data-commission-view="customer"], [data-commission-customer]'])
   s.ui.destroy()
+})
+
+function quickControls(html:string) {
+  return [...html.matchAll(/<button type="button" data-action="commission-preview-customer" data-value="([^"]+)" aria-pressed="([^"]+)" aria-label="([^"]+)"([^>]*)>([\s\S]*?)<\/button>/g)]
+    .map(([,buyer,pressed,label,attrs,text])=>({buyer,pressed:pressed==='true',label,current:attrs.includes('data-commission-customer'),text:text.trim()}))
+}
+function renderOrders(farm:F.FarmState,view:ShopCommissionView) { return renderShopCommissions(farm,()=>'',undefined,view) }
+function previewHandler(farm:F.FarmState,shopCommissionView:ShopCommissionView) {
+  const s=mainSource.indexOf("    case 'commission-preview-customer':")
+  const e=mainSource.indexOf("    case 'commission-accept':",s)
+  assert.ok(s>=0&&e>s)
+  let draws=0
+  const focus:string[]=[],dialogContent={scrollTop:175,querySelector:(selector:string)=>{
+    assert.equal(selector,'[data-action="commission-preview-customer"][aria-pressed="true"]')
+    return {focus(opts:{preventScroll:boolean}){
+      assert.ok(opts.preventScroll)
+      const pressed=quickControls(renderOrders(farm,shopCommissionView)).filter(c=>c.pressed)
+      assert.equal(pressed.length,1);focus.push(pressed[0].buyer)
+    }}
+  }}
+  const env={farm,shopCommissionView,compactShopCommissionOffers:UI.compactShopCommissionOffers,getShopCommissionOffers:C.getShopCommissionOffers,
+    panel:'shop-commissions',dialog:{open:true},dialogContent,drawPanel:()=>{draws++}}
+  const click=runInNewContext(stripTypeScriptTypes('(value)=>{switch("commission-preview-customer"){'+mainSource.slice(s,e)+'}}'),env)
+  return {click,env,focus,dialogContent,get draws(){return draws}}
+}
+
+test('ordinary D12 Orders exposes both earned choices and a true ready quantity without selecting or accepting it',()=>{
+  const {farm,first,second}=stockedCase(),sale=soldFinn(farm,first,second)
+  sale.s.ui.destroy()
+  const cold=reopen(farm),v=new ShopCommissionView(),mountCold=mount(cold,v)
+  assert.equal(mountCold.label(),'Заказы')
+  const before=structuredClone(cold),writes=mountCold.writes
+  mountCold.click(['data-commissions'])
+  assert.equal(v.current(cold).offer!.recipeId,first,'ordinary entry does not jump to the ready customer')
+  const html=renderOrders(cold,v)
+  assert.doesNotMatch(html,/data-commission-view=/,'drop only the redundant pair of selects')
+  assert.deepEqual(quickControls(html),[
+    {buyer:'bea',pressed:true,label:'Беа, готовых порций 0 из 2',current:true,text:'Беа · 0/2'},
+    {buyer:'finn',pressed:false,label:'Финн, готовых порций 2 из 2',current:false,text:'Финн · 2/2 ✓'},
+  ])
+  assert.match(html,/aria-label="Покупатель"/)
+  assert.match(html,/За всю партию: 44 монеты/)
+  assert.equal(mountCold.writes,writes);assert.deepEqual(cold,before)
+  const h=previewHandler(cold,v)
+  h.click('finn')
+  assert.deepEqual(h.focus,['finn']);assert.equal(h.dialogContent.scrollTop,0);assert.equal(h.draws,1)
+  const exact=v.current(cold).offer!
+  assert.equal(exact.key,sale.exact.key)
+  assert.equal(exact.total,34)
+  const selected=renderOrders(cold,v)
+  assert.match(selected,/За всю партию: 34 монеты/)
+  assert.ok(selected.includes('data-action="commission-accept" data-value="'+exact.key+'"'))
+  h.click('bea');assert.deepEqual(h.focus,['finn','bea']);assert.equal(v.current(cold).offer!.recipeId,first)
+  h.click('not-a-buyer');assert.deepEqual(h.focus,['finn','bea'])
+  h.click('finn')
+  assert.deepEqual(cold,before,'direct choice is preview only, no shelf, coins, order or stock writes')
+  assert.ok(C.acceptShopCommission(cold,exact.key).ok)
+  assert.equal(cold.coins,before.coins);assert.deepEqual(cold.culinary.stock,before.culinary.stock)
+  const serial=String(cold.shopCommissions.serial)
+  for(let p=0;p<2;p++){assert.ok(C.deliverShopCommission(cold,serial).ok);assert.equal(cold.coins,before.coins)}
+  assert.ok(C.finishShopCommission(cold,serial).ok);assert.equal(cold.coins-before.coins,34)
+  assert.equal(C.finishShopCommission(cold,serial).ok,false)
+  mountCold.ui.destroy()
+})
+
+test('same earned offers stay selectable but show no completion after use, and stale preview cannot replace an active order',()=>{
+  const {farm,first,second}=stockedCase(),sale=soldFinn(farm,first,second)
+  sale.s.ui.destroy()
+  assert.ok(F.useSignature(farm,second).ok)
+  const v=new ShopCommissionView(),view=renderOrders(farm,v)
+  assert.deepEqual(quickControls(view).map(c=>c.text),['Беа · 0/2','Финн · 1/2'])
+  const h=previewHandler(farm,v)
+  h.env.dialog.open=false;h.click('finn')
+  h.env.dialog.open=true;h.env.panel='bay-shop';h.click('finn')
+  assert.equal(h.draws,0);assert.deepEqual(h.focus,[])
+  h.env.panel='shop-commissions';h.click('finn')
+  assert.ok(C.acceptShopCommission(farm,v.current(farm).offer!.key).ok)
+  const before=structuredClone(farm)
+  h.click('bea');assert.deepEqual(h.focus,['finn'])
+  assert.deepEqual(farm,before);assert.deepEqual(quickControls(renderOrders(farm,v)),[])
+})
+
+test('earned D25 multi-recipe and assortment renders use both actual selectors, never a large buyer wall',()=>{
+  const {p,jam,tart}=assortmentPlayer(JSON.parse(read('./fixtures/home-progress-actions.json'))), v=new ShopCommissionView()
+  const farm=p.state,before=structuredClone(farm),offers=C.getShopCommissionOffers(farm)
+  assert.deepEqual([farm.day,offers.length,new Set(offers.map(o=>o.customer)).size],[25,7,6])
+  const html=renderOrders(farm,v)
+  assert.deepEqual(quickControls(html),[])
+  assert.match(html,/data-commission-view="customer"/);assert.match(html,/data-commission-view="request"/)
+  assert.ok(v.choose(farm,'customer','bea'));assert.ok(v.choose(farm,'request','set'))
+  const exact=C.getShopAssortment(farm,'bea',jam,tart)!
+  const mixed=renderOrders(farm,v)
+  assert.ok(mixed.includes('data-action="commission-accept" data-value="'+exact.key+'"'))
+  assert.match(mixed,/За всю партию: 114 монет/)
+  assert.deepEqual(farm,before)
 })

@@ -39,6 +39,16 @@ function assortment(farm:FarmState,customer:BayShopVisitorId,choice:ShopAssortme
     ${offer?`${offer.lines.map(recipe=>line(recipe.recipeId,recipe.recipeName)).join('')}${reward(offer.total,12)}<small class="commission-note">Стоимость блюд ${offer.total-12} + премия 12.</small>`:'<p class="commission-note">Выберите оба рецепта. Просмотр ничего не расходует.</p>'}
     ${button('Принять набор 2+2','commission-accept',offer?.key??'',!!offer&&farm.island==='village')}</section>`
 }
+/** Two known shoppers with a single ordinary request each need no recipe selector. */
+export function compactShopCommissionOffers(offers:ReturnType<typeof getShopCommissionOffers>) {
+  return offers.length===2 && offers[0].customer!==offers[1].customer && offers.every(offer=>offer.completed<2) ? offers : undefined
+}
+function buyerChoices(farm:FarmState,offers:ReturnType<typeof getShopCommissionOffers>,customer:BayShopVisitorId) {
+  return `<div class="panel-tabs" role="group" aria-label="Покупатель">${offers.map(offer=>{
+    const {bag,warehouse}=stock(farm,offer.recipeId), count=Math.min(offer.quantity,bag+warehouse), selected=offer.customer===customer
+    return `<button type="button" data-action="commission-preview-customer" data-value="${offer.customer}" aria-pressed="${selected}" aria-label="${offer.customerName}, готовых порций ${count} из ${offer.quantity}"${selected?' data-commission-customer':''}>${offer.customerName} · ${count}/${offer.quantity}${count===offer.quantity?' ✓':''}</button>`
+  }).join('')}</div>`
+}
 export function renderShopCommissions(farm:FarmState,picture:(recipeId:string)=>string,choice=new ShopAssortmentChoice(),selection?:ShopCommissionView):string {
   const state=farm.shopCommissions,active=getShopCommission(farm)
   if(active)return `<section class="shop-commissions" aria-label="Текущий заказ лавки">
@@ -60,8 +70,8 @@ export function renderShopCommissions(farm:FarmState,picture:(recipeId:string)=>
   if(completedToday)preview=`${receiptHtml}<p class="commission-timing" tabindex="-1">Сегодня заказ выполнен. Следующий — после отдыха.</p>${button('К отдыху дома','commission-rest')}`
   else if(offer&&customer){
     const customers=bayShopVisitors.filter(person=>offers.some(o=>o.customer===person.id)),set=view.mode==='set'&&offer.completed>=2,s=stock(farm,offer.recipeId)
-    const onlyOrder=offers.length===1&&offer.completed<2
-    const selectors=onlyOrder?'':`<div class="commission-selectors"><label>Покупатель<select data-commission-view="customer">${customers.map(person=>`<option value="${person.id}"${person.id===customer?' selected':''}>${person.name}</option>`).join('')}</select></label><label>Заказ<select data-commission-view="request">${choices.map(o=>`<option value="${o.recipeId}"${!set&&o.recipeId===offer.recipeId?' selected':''}>${escape(o.recipeName)} · ×${o.quantity}</option>`).join('')}${offer.completed>=2?`<option value="set"${set?' selected':''}>Набор 2+2</option>`:''}</select></label></div>`
+    const onlyOrder=offers.length===1&&offer.completed<2, compact=compactShopCommissionOffers(offers)
+    const selectors=onlyOrder?'':compact?buyerChoices(farm,compact,customer):`<div class="commission-selectors"><label>Покупатель<select data-commission-view="customer">${customers.map(person=>`<option value="${person.id}"${person.id===customer?' selected':''}>${person.name}</option>`).join('')}</select></label><label>Заказ<select data-commission-view="request">${choices.map(o=>`<option value="${o.recipeId}"${!set&&o.recipeId===offer.recipeId?' selected':''}>${escape(o.recipeName)} · ×${o.quantity}</option>`).join('')}${offer.completed>=2?`<option value="set"${set?' selected':''}>Набор 2+2</option>`:''}</select></label></div>`
     preview=`${selectors}
       ${set?assortment(farm,customer,choice,picture):`<article class="commission-selected" aria-label="Выбранный заказ">${onlyOrder?`<header data-commission-customer tabindex="-1">Покупатель: <strong>${offer.customerName}</strong></header>`:''}<div class="commission-recipe">${picture(offer.recipeId)}<div><h3 data-user-text>${escape(offer.recipeName)}</h3><strong>Нужно ${portions(offer.quantity)}</strong><small>${stockText(farm,offer.recipeId)}</small></div></div>${offer.completed<2?`<small class="commission-note">Набор 2+2 после двух заказов · ${offer.completed}/2</small>`:''}<p class="commission-note">${s.bag+s.warehouse>=offer.quantity?'Готовых порций уже хватает.':`Не хватает: ${portions(offer.quantity-s.bag-s.warehouse)}.`}</p><div class="commission-decision">${reward(offer.total,offer.bonus)}${button('Принять заказ','commission-accept',offer.key,farm.island==='village')}<small class="commission-note">При принятии припасы не расходуются.</small></div></article>`}`
   }else preview=`<p class="commission-empty">${farm.culinary.recipes.length?'Предложите свой рецепт в лавке. Нужна покупка, после которой этот вкус понравился.':'Приготовьте свой рецепт и предложите в лавке. Обычные блюда не открывают авторские заказы.'}</p>`

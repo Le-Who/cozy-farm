@@ -40,7 +40,7 @@ import { getHarbourFishRoute, getVillageFishWarehouse, renderHarbourFishChoice }
 import { BerryNurserySelection, renderBerryNursery, getBerryNurserySource } from './berry-nursery'
 import { villageHomeProgress } from './village-home-art'
 import './berry-nursery.css'
-import { renderShopCommissions } from './shop-commissions-ui'
+import { compactShopCommissionOffers, renderShopCommissions } from './shop-commissions-ui'
 import { ShopAssortmentChoice } from './shop-assortment-choice'
 import { ShopCommissionView } from './shop-commission-view'
 import './shop-commissions.css'
@@ -3921,6 +3921,15 @@ app.addEventListener('click', async (event) => {
     case 'transplant-reset':
       if (panel === 'transplant') { transplantSelection.reset(); drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true}) }
       break
+    case 'commission-preview-customer': {
+      if(panel!=='shop-commissions'||!dialog.open)break
+      const offer=compactShopCommissionOffers(getShopCommissionOffers(farm))?.find(offer=>offer.customer===value)
+      if(offer&&shopCommissionView.choose(farm,'customer',offer.customer)){
+        drawPanel();dialogContent.scrollTop=0
+        dialogContent.querySelector<HTMLElement>('[data-action="commission-preview-customer"][aria-pressed="true"]')?.focus({preventScroll:true})
+      }
+      break
+    }
     case 'commission-accept':
       if(panel==='shop-commissions'&&dialog.open&&perform(()=>acceptShopCommission(farm,value),false,true)){dialogContent.scrollTop=0;dialogContent.querySelector<HTMLElement>('.commission-current')?.focus({preventScroll:true})}
       break
