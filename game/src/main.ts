@@ -77,7 +77,7 @@ import './apiary-preview.css'
 import { activeHarvestPicnic } from './harvest-picnic'
 import { renderPicnicStatus } from './picnic-guidance'
 import { renderCoopCapacityWarning } from './coop-preview'
-import { getIncubatorNewHen, getIncubatorWarehouseBasket, getIncubatorWarehouseEgg, hasIncubatorBasketSource, renderCoopPanel } from './coop-panel'
+import { getCoopFeedComparison, getIncubatorNewHen, getIncubatorWarehouseBasket, getIncubatorWarehouseEgg, hasIncubatorBasketSource, renderCoopPanel } from './coop-panel'
 import { groupCoopServices } from './coop-services'
 import './coop-services.css'
 import './coop-panel.css'
@@ -597,6 +597,7 @@ const marketButton = app.querySelector<HTMLButtonElement>('[data-panel="market"]
 const islandLocation = app.querySelector<HTMLElement>('.island-location')!
 const fieldViewButton = app.querySelector<HTMLButtonElement>('.view-toggle')!
 const stackedMarketOrders = window.matchMedia('(max-width: 600px)')
+const desktopCoopFeed = window.matchMedia('(min-width: 900px) and (min-height: 600px)')
 const portraitView = window.matchMedia('(max-width: 680px) and (orientation: portrait)')
 const fieldLayout = window.matchMedia(`${portraitView.media}, (max-width: 900px) and (max-height: 600px) and (orientation: landscape)`)
 const numberFormat = new Intl.NumberFormat('ru-RU')
@@ -2661,7 +2662,7 @@ function drawPanel() {
       void bayAudio.primeEvents(['flock.stroke', 'flock.feed', 'flock.eggs', 'flock.hatch'])
       // Feed and collect refresh the numbers, without closing an actively viewed forecast.
       const forecastOpen = dialog.open && dialogContent.querySelector<HTMLDetailsElement>('.coop-forecast')?.open
-      dialogContent.innerHTML = renderCoopPanel(farm, {icon,row,button,feedRow:flockFeedRow})
+      dialogContent.innerHTML = renderCoopPanel(farm, {icon,row,button,feedRow:flockFeedRow}, desktopCoopFeed.matches)
       disposeCoopServices = groupCoopServices(dialogContent)
       if (forecastOpen) {
         const forecast = dialogContent.querySelector<HTMLDetailsElement>('.coop-forecast')
@@ -3729,7 +3730,7 @@ function useHotbar(tool: Tool, keyboard = false) {
       island.visit({ kind: 'coop' })
       if (canMixBedtimeFeed(farm)) {
         openPanel('coop')
-        highlightControl(dialogContent.querySelector('[data-action="chicken-feed-open"]'))
+        highlightControl(dialogContent.querySelector('[data-action="chicken-feed-open"]') ?? dialogContent.querySelector('[data-coop-feed-compare]'))
         break
       }
       if(perform(() => feedChickens(farm)))playBaySound('flock.feed', 1, 0)
@@ -3749,6 +3750,14 @@ function useHotbar(tool: Tool, keyboard = false) {
     case 'rod': activateTarget({ kind: 'pier' }); break
     case 'boat': activateTarget({ kind: 'boat' }); break
   }
+}
+
+function focusCoopFeedResult() {
+  const row=dialogContent.querySelector('[data-action="feed"]')?.closest('.dialog-row')
+  const stock=row?.querySelector<HTMLElement>('.dialog-row-copy')
+  if (!stock) return
+  stock.tabIndex=-1
+  stock.focus({preventScroll:true})
 }
 
 function highlightControl(element: HTMLElement | null) {
@@ -5183,7 +5192,15 @@ app.addEventListener('click', async (event) => {
     case 'sale-context-close': if(currentSaleControl(control))closeContextualSale(); break
     case 'confirm-sale': if(currentSaleControl(control))confirmExactSale(event.detail===0); break
     case 'sale-again': if(currentSaleControl(control)&&selectedSale)beginExactSale(selectedSale); break
-    case 'buy-feed': if(perform(() => buyFeed(farm)))playBaySound('trade.pay'); break
+    case 'buy-feed': {
+      const compare=panel==='coop' && control.closest('[data-coop-feed-compare]')
+      if (compare && (!dialog.open || !dialogContent.contains(control) || !getCoopFeedComparison(farm))) break
+      if (perform(() => buyFeed(farm))) {
+        playBaySound('trade.pay')
+        if (compare) focusCoopFeedResult()
+      }
+      break
+    }
     case 'upgrade-can': perform(() => upgradeCan(farm), false, true); break
     case 'buy-seeds': {
       const scroll = control.closest('.market-seed-grid')?.scrollTop
@@ -5375,6 +5392,11 @@ app.addEventListener('click', async (event) => {
       }
       break
     case 'mix-chicken-feed': {
+      if (panel === 'coop') {
+        if (dialog.open && dialogContent.contains(control) && control.closest('[data-coop-feed-compare]')
+          && getCoopFeedComparison(farm) && perform(() => mixChickenFeed(farm,value))) focusCoopFeedResult()
+        break
+      }
       const keyboardMix = event.detail === 0 && document.activeElement === control
       if (panel === 'chicken-feed' && dialog.open && perform(() => mixChickenFeed(farm, value), false, true)
         && keyboardMix && document.activeElement === closeButton) {
@@ -5850,6 +5872,9 @@ stackedMarketOrders.addEventListener('change', ({ matches }) => {
   if (dialog.open && panel === 'market' && marketTab === 'orders') placeReadyMarketOrder(dialogContent, matches)
 })
 window.matchMedia('(max-width: 819px), (max-height: 559px)').addEventListener('change',()=>{if(dialog.open&&panel==='recipes')drawPanel()})
+desktopCoopFeed.addEventListener('change', () => {
+  if (panel === 'coop' && dialog.open && getCoopFeedComparison(farm)) drawPanel()
+})
 dialogContent.addEventListener('toggle',event=>{
   const details=event.target
   if(details instanceof HTMLDetailsElement&&details.isConnected&&panel==='recipes'&&details.dataset.repeatGuide){

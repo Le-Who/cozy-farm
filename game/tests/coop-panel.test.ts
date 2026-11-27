@@ -84,7 +84,7 @@ test('packaging stays before the complete original hen grid and does not silentl
 
 test('main delegates only the coop view and keeps child screens and canonical action handlers',()=>{
  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),start=main.indexOf("    case 'coop':",main.indexOf('function drawPanel()')),end=main.indexOf("    case 'rest':",start),branch=main.slice(start,end)
- assert.match(branch,/renderCoopPanel\(farm, \{icon,row,button,feedRow:flockFeedRow\}\)/)
+ assert.match(branch,/renderCoopPanel\(farm, \{icon,row,button,feedRow:flockFeedRow\}, desktopCoopFeed\.matches\)/)
  assert.doesNotMatch(branch,/perform\(|saveFarm\(|incubateEgg\(|collectEggs\(/)
  assert.match(main,/renderHenFriendship\(farm, island.henWalkStatus\(\)/);assert.match(main,/renderChickenFeedMixes\(farm, icon, panelHistory\.at\(-1\)\?\.panel === 'rest'\)/)
  assert.match(main,/case 'incubate-egg': perform\(\(\) => incubateEgg\(farm\)\)/)
@@ -180,7 +180,7 @@ test('an expanded hatchery forecast survives local changes but starts closed on 
  function draw() {
   const before=structuredClone(player.state)
   runInNewContext(branch,{farm:player.state,dialog,dialogContent,renderCoopPanel,icon:(id:string)=>id,row,button,
-   flockFeedRow:()=>'',bayAudio:{primeEvents(){}},groupCoopServices:()=>()=>{},disposeCoopServices:undefined})
+   flockFeedRow:()=>'',desktopCoopFeed:{matches:false},bayAudio:{primeEvents(){}},groupCoopServices:()=>()=>{},disposeCoopServices:undefined})
   assert.deepEqual(player.state,before,'rendering never feeds, collects, incubates or rests')
  }
  draw();dialog.open=true

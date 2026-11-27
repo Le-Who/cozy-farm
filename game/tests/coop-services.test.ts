@@ -82,7 +82,7 @@ test('source keeps CSS placement/actions unchanged and disposes on redraw and di
   assert.match(css,/@media \(min-width: 900px\) and \(min-height: 600px\)/)
   assert.match(css,/> \.coop-primary \{ grid-column: 1; grid-row: 1;/)
   assert.match(css,/> \.coop-care \{ grid-column: 2; grid-row: 1 \/ 3;/)
-  assert.match(main,/renderCoopPanel\(farm, \{icon,row,button,feedRow:flockFeedRow\}\)\s*disposeCoopServices = groupCoopServices\(dialogContent\)/)
+  assert.match(main,/renderCoopPanel\(farm, \{icon,row,button,feedRow:flockFeedRow\}, desktopCoopFeed\.matches\)\s*disposeCoopServices = groupCoopServices\(dialogContent\)/)
   const draw=main.slice(main.indexOf('function drawPanel()'),main.indexOf('function openPanel('))
   assert.ok(draw.indexOf('stopCoopServices()')<draw.indexOf('dialogContent.innerHTML ='))
   assert.match(main,/dialog.addEventListener\('close', \(\) => \{[\s\S]*?if \(!dialog.open\) \{\s*stopCoopServices\(\)/)

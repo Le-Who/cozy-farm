@@ -1,6 +1,6 @@
-import { eggsPerBasket, eggsPerCrate, getCoopMorning, getEggUnpackAction, getRareIncubatorEgg, incubationDays, maxChickenHappiness, maxFlockSize, type FarmState, type StockItem } from './farm.ts'
+import { eggsPerBasket, eggsPerCrate, feedBagPrice, feedBagSize, getCoopMorning, getEggUnpackAction, getRareIncubatorEgg, incubationDays, maxChickenHappiness, maxFlockSize, type FarmState, type StockItem } from './farm.ts'
 import { renderCoopMorning } from './coop-preview.ts'
-import { canMixBedtimeFeed } from './chicken-feed.ts'
+import { canMixBedtimeFeed, getChickenFeedMix } from './chicken-feed.ts'
 import { henFriends } from './hen-friendship.ts'
 import { ruCount } from './ru.ts'
 import { getLocalWarehouseSupply, warehouseConfirmationValue } from './warehouse-guidance.ts'
@@ -45,10 +45,34 @@ export function getIncubatorNewHen(farm:FarmState):number|undefined {
     && farm.hatchDay===null && farm.henFriendship.hens[id]?.points===0) return id
 }
 
+/** Direct comparison only when both ingredient choices can solve today's shortage. */
+export function getCoopFeedComparison(farm:FarmState) {
+  if (farm.feed !== 0 || farm.chickensFed) return
+  const garden=getChickenFeedMix(farm,'garden'), orchard=getChickenFeedMix(farm,'orchard')
+  if (garden.available && orchard.available) return {garden,orchard}
+}
+
+function renderCoopFeedComparison(farm:FarmState, icon:CoopComponents['icon'], mixes:NonNullable<ReturnType<typeof getCoopFeedComparison>>) {
+  const portions=(count:number)=>ruCount(count,'порция','порции','порций')
+  const mixButton=(recipe:'garden'|'orchard')=>{
+    const mix=mixes[recipe], cost=`Пшеница ×1 + ${mix.extraName.toLowerCase()} ×1`
+    return `<button type="button" class="dialog-button secondary" data-action="mix-chicken-feed" data-value="${recipe}" aria-label="Смешать: ${mix.name}, ${portions(mix.portions)}. ${cost}">Смешать · ${portions(mix.portions)}<br><small>${cost}</small></button>`
+  }
+  // Leave the old right-side Feed action lane clear of all acquisition buttons,
+  // even when the dialog recenters after a successful purchase or mix.
+  return `<li class="dialog-row" data-coop-feed-compare tabindex="-1" aria-label="Корм для кур">
+    <span class="dialog-icon">${icon('tool-feed')}</span><span class="dialog-row-copy"><strong>Корм для кур</strong></span><small>В запасе ${farm.feed}</small>
+    <div class="panel-tabs" role="group" aria-label="Пополнить запас корма" style="grid-column:1/-1;margin:0 151px 0 0">
+      <button type="button" class="dialog-button secondary" data-action="buy-feed"${farm.coins>=feedBagPrice?'':' disabled'}>Купить · ${portions(feedBagSize)}<br><small>${ruCount(feedBagPrice,'монета','монеты','монет')}</small></button>
+      ${mixButton('garden')}${mixButton('orchard')}
+    </div></li>`
+}
+
 /** Existing actions, grouped by current daily work before optional services. No saved UI state. */
-export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopComponents):string {
+export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopComponents, desktopFeed=false):string {
   const morning=getCoopMorning(farm)
   const mixNow=canMixBedtimeFeed(farm)
+  const compare=desktopFeed && getCoopFeedComparison(farm)
   const mixChoice=farm.buildingLevels.coop>=2?button('Выбрать смесь', 'chicken-feed-open',true,{secondary:true}):''
   const capacity=morning.blockedIfFed?' · соберите до отдыха':''
   const rare=getRareIncubatorEgg(farm)
@@ -76,7 +100,7 @@ export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopCom
     +(farm.buildingLevels.coop >= 2 || farm.eggBaskets > 0 ? row('ui-egg-basket',`Корзины яиц · ${farm.eggBaskets}`,`Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,
       button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket,{context:'корзина яиц'})+button(`Распаковать · +${eggsPerBasket}`,'unpack-egg-basket',getEggUnpackAction(farm,'basket').available,{secondary:true})):'')
   return `<section class="coop-panel" aria-label="Курятник: дела и забота">
-    <ul class="dialog-list coop-primary" aria-label="Сегодня в курятнике">${feedRow(mixNow?mixChoice:undefined)}${eggJourney}</ul>
+    <ul class="dialog-list coop-primary" aria-label="Сегодня в курятнике">${compare?renderCoopFeedComparison(farm,icon,compare):feedRow(mixNow?mixChoice:undefined)}${eggJourney}</ul>
     <details class="coop-forecast"><summary>Кладка после отдыха</summary>${renderCoopMorning(farm)}</details>
     <section class="coop-care" aria-label="Забота и развитие"><div class="coop-tools"><span title="Счастье курочек">${icon('tool-hen')} Забота · ${farm.chickenHappiness}/${maxChickenHappiness}</span>${button('Улучшения','upgrades',true,{secondary:true})}</div>
       <ul class="dialog-list">${newcomer===undefined?row('tool-hen','Дружба со стаей','Погладить, угостить, погулять',button('Познакомиться','hen-friendship-open',true,{secondary:true})):''}
