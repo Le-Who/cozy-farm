@@ -266,6 +266,7 @@ function homeKitchen(farm: F.FarmState) {
   s.openPanel('kitchen')
   return s
 }
+const kitchenTabs = (html: string) => [...html.matchAll(/data-action="kitchen-group" data-value="([^"]+)"/g)].map(match => match[1])
 const shelf = (html: string) => [...html.matchAll(/data-family="ready" data-value="([^"]+)" aria-pressed="(true|false)"/g)].map(match => [match[1],match[2]])
 test('earned day 4: Home shows jam and cake, selection only previews; cook and Back use that very card', () => {
   const p=dayFourKitchen(); p.act('sellMarketItem','eggs',p.state.eggs); p.act('pickFruit',0)
@@ -273,7 +274,7 @@ test('earned day 4: Home shows jam and cake, selection only previews; cook and B
   assert.equal(p.actions,40); assert.deepEqual([f.day,f.fruit.apple,f.produce.wheat,f.honey,f.eggs],[4,2,2,3,0])
   assert.deepEqual(shelf(s.html),[['appleJam','true'],['honeyCake','false']]); visibleCard(s,'appleJam',true)
   assert.match(s.html,/Можно приготовить/); assert.ok(s.html.indexOf('data-family="ready"') < s.html.indexOf('data-action="cook"')); assert.ok(s.html.indexOf('data-action="cook"') < s.html.indexOf('data-action="kitchen-group"'))
-  assert.equal((s.html.match(/data-action="kitchen-group"/g)??[]).length,3); assert.doesNotMatch(s.html,/<details|<summary/)
+  assert.deepEqual(kitchenTabs(s.html),['ready','tart','preserves','dishes']); assert.doesNotMatch(s.html,/<details|<summary/)
   s.choose('recipe-family','honeyCake','ready')
   assert.equal(s.panel,'kitchen'); assert.deepEqual(shelf(s.html),[['appleJam','false'],['honeyCake','true']]);visibleCard(s,'honeyCake',true)
   assert.deepEqual(f,before);assert.equal(s.saves,0)
@@ -355,7 +356,7 @@ test('earned D193 Home lists six live dishes and separately starts, returns and 
  assert.deepEqual(F.dishIds.filter(dish=>F.getCookAction(f,dish,s.cookingFish).available),expected)
  assert.deepEqual(shelf(s.html),expected.map((id,i)=>[id,String(i===0)]))
  visibleCard(s,'orchardTart',true)
- assert.equal((s.html.match(/data-action="kitchen-group"/g)??[]).length,3)
+ assert.deepEqual(kitchenTabs(s.html),['ready','tart','preserves','dishes'])
  assert.doesNotMatch(s.html,/<details|<summary/)
  s.choose('recipe-family','honeyCake','ready');visibleCard(s,'honeyCake',true)
  s.choose('cook','honeyCake')
@@ -404,4 +405,33 @@ test('earned D9 sole Home jam, manual family, and Harbour ready selection do not
  mature.visit('village')
  const cottage=screen(mature.state);cottage.cookingFish=F.getGrillFish(mature.state)
  assert.deepEqual(Array.from(cottage.kitchenReadyDishes()),['orchardTart','strawberryTart','blueberryTart'])
+})
+
+test('earned D193 can deliberately return to live Home recipes without losing the manually inspected tart',()=>{
+  const p=earned416Mixed(false), farm=p.state, before=structuredClone(farm), s=homeKitchen(farm)
+  assert.deepEqual([p.actions,farm.day,farm.island],[543,193,'home'])
+  const live=['orchardTart','strawberryTart','blueberryTart','raspberryTart','appleJam','honeyCake']
+  const tab=(pressed:boolean)=>new RegExp(`data-action="kitchen-group" data-value="ready" aria-pressed="${pressed}">Можно приготовить</button>`)
+  s.choose('kitchen-group','tart');s.choose('recipe-family','blueberryTart','tart')
+  assert.deepEqual(shelf(s.html),[]);visibleCard(s,'blueberryTart',true)
+  assert.match(s.html,tab(false),'browsing Tarts leaves a native route back to live recipes')
+  s.recipeBook.view={mode:'index'}
+  s.dialog.showModal=()=>{s.dialog.open=true}
+  s.openPanel('recipes');s.goBack(true);visibleCard(s,'blueberryTart',true)
+  s.closeDialog()
+  const closedDraws=s.draws;s.choose('kitchen-group','ready');assert.equal(s.draws,closedDraws)
+  s.openPanel('kitchen');visibleCard(s,'blueberryTart',true);assert.match(s.html,tab(false))
+  s.choose('kitchen-group','ready')
+  assert.match(s.html,tab(true));assert.doesNotMatch(s.html,/<strong class="kitchen-ready-heading"/)
+  assert.deepEqual(shelf(s.html),live.map(id=>[id,String(id==='blueberryTart')]))
+  visibleCard(s,'blueberryTart',true)
+  s.choose('recipe-family','honeyCake','ready');visibleCard(s,'honeyCake',true)
+  s.choose('kitchen-group','ready');visibleCard(s,'honeyCake',true)
+  s.choose('kitchen-group','tart');visibleCard(s,'blueberryTart',true)
+  assert.deepEqual([s.panel,s.saves],['kitchen',0]);assert.deepEqual(farm,before)
+
+  const {farm:early,s:sole}=coldWorkbench(jamDayOne), stocked=structuredClone(early)
+  sole.openPanel('kitchen');assert.doesNotMatch(sole.html,tab(false));assert.doesNotMatch(sole.html,tab(true))
+  const draws=sole.draws;sole.choose('kitchen-group','ready')
+  visibleCard(sole,'appleJam',true);assert.equal(sole.draws,draws);assert.deepEqual(early,stocked)
 })

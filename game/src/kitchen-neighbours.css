@@ -6,6 +6,7 @@
   gap:8px;
 }
 .kitchen-menu-tabs {grid-area:tabs;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.kitchen-menu-tabs-ready {grid-template-columns:minmax(0,1.55fr) repeat(3,minmax(0,1fr))}
 .kitchen-menu-book {grid-area:book;justify-self:end}
 .kitchen-menu-tabs .dialog-button,.kitchen-menu-book .dialog-button {min-height:44px;padding:4px 8px;font-size:14px;line-height:1.12;margin:0}
 .kitchen-menu-tabs [aria-pressed=true],

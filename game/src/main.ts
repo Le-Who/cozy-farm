@@ -1046,7 +1046,9 @@ function kitchenFamilies() {
   const origin = panelHistory.at(-1)
   const cottage = kitchenGroup === undefined && farm.island === 'village' && farm.village.built && origin?.panel === 'village' ? origin : undefined
   const cottageChoice = cottage?.cottageKitchenShelf
-  const ready = landing || cottageChoice ? kitchenReadyDishes() : []
+  const available = farm.island === 'home' || cottageChoice ? kitchenReadyDishes() : []
+  const ready = landing || cottageChoice ? available : []
+  const showReadyTab = farm.island === 'home' && available.length > 1
   // Keep a spent Home recipe only on its cooking return. The existing ready
   // shelf can offer what's left without changing the user's selection.
   const spentHomeChoice = landing?.returned && landing.ready && !getCookAction(farm,landing.ready,cookingFish).available ? landing.ready : undefined
@@ -1058,8 +1060,8 @@ function kitchenFamilies() {
   const tart = picked && isTartDish(picked) ? picked : kitchenTart
   const preserves = picked === 'appleJam' || picked === 'orchardPreserves' ? picked : kitchenPreserves
   const labels = { tart: 'Тарты', preserves: 'Варенье', dishes: 'Блюда', ready: 'Можно приготовить' }
-  const tabs = kitchenGroups.map(id => `<button type="button" class="dialog-button${group === id ? '' : ' secondary'}" data-action="kitchen-group" data-value="${id}" aria-pressed="${group === id}">${labels[id]}</button>`).join('')
-  const familyChoices = (group: KitchenGroup | 'ready', selected: string, choices: readonly { id: string; image: string; name: string; short?:string }[], extra = '') => `<div class="recipe-family-choices kitchen-menu-choices" role="group" aria-label="${labels[group]}">${group === 'ready' ? `<strong class="kitchen-ready-heading" aria-hidden="true">${labels.ready}</strong>` : ''}${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}<span>${choice.short ?? choice.name}</span></button>`).join('')}${extra}</div>`
+  const tabs = (showReadyTab ? ['ready',...kitchenGroups] as const : kitchenGroups).map(id => `<button type="button" class="dialog-button${group === id ? '' : ' secondary'}" data-action="kitchen-group" data-value="${id}" aria-pressed="${group === id}">${labels[id]}</button>`).join('')
+  const familyChoices = (group: KitchenGroup | 'ready', selected: string, choices: readonly { id: string; image: string; name: string; short?:string }[], extra = '') => `<div class="recipe-family-choices kitchen-menu-choices" role="group" aria-label="${labels[group]}">${group === 'ready' && !showReadyTab ? `<strong class="kitchen-ready-heading" aria-hidden="true">${labels.ready}</strong>` : ''}${choices.map(choice => `<button type="button" data-action="recipe-family" data-family="${group}" data-value="${choice.id}" aria-pressed="${selected === choice.id}" aria-label="${choice.name}" title="${choice.name}">${icon(choice.image)}<span>${choice.short ?? choice.name}</span></button>`).join('')}${extra}</div>`
   const otherDishes = dishIds.filter(dish => !isTartDish(dish) && dish !== 'appleJam' && dish !== 'orchardPreserves' && !dishDefinitions[dish].capeLevel && (dish !== 'honeyCake' || canSailTo(farm, 'cape')) && (!dishDefinitions[dish].specialization || hasFarmhouseSpecialization(farm, dishDefinitions[dish].specialization!)))
   const other = otherDishes.find(dish => dish === (picked ?? kitchenDish)) ?? otherDishes[0]
   const choices = readyShelf && picked ? familyChoices('ready', picked, ready.map(id => ({ id, image: dishIcons[id], name: dishDefinitions[id].name }))) : group === 'tart'
@@ -1081,7 +1083,7 @@ function kitchenFamilies() {
     : group === 'preserves'
       ? kitchenPreserves === 'custom' ? `<section class="recipe kitchen-custom"><h2>Фруктовое варенье</h2>${button('Выбрать фрукты', 'family-signature', true, { value: 'preserves' })}</section>` : recipeCards([kitchenPreserves])
       : recipeCards(other ? [other] : [])
-  const browse = `<nav class="kitchen-menu-tabs panel-tabs" aria-label="Разделы кухни">${tabs}</nav>
+  const browse = `<nav class="kitchen-menu-tabs panel-tabs${showReadyTab ? ' kitchen-menu-tabs-ready' : ''}" aria-label="Разделы кухни">${tabs}</nav>
     <div class="kitchen-menu-book">${button('Мои рецепты','open-panel',true,{value:'recipes',secondary:true})}</div>`
   const bench = choices + `<div class="kitchen-menu-recipe">${recipe}</div>`
   return readyShelf ? `<div class="kitchen-workbench kitchen-ready-workbench">${bench}${browse}</div>`
@@ -4439,6 +4441,15 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'kitchen-group': {
+      if (value === 'ready') {
+        if (panel !== 'kitchen' || !dialog.open || farm.island !== 'home' || typeof kitchenGroup === 'object') break
+        const ready = kitchenReadyDishes()
+        if (ready.length < 2) break
+        const previous = kitchenGroup === 'preserves' ? kitchenPreserves : kitchenGroup === 'dishes' ? kitchenDish : kitchenTart
+        kitchenGroup = { ready:ready.find(dish => dish === previous) }
+        drawPanel(); dialogContent.scrollTop = 0
+        break
+      }
       const group = kitchenGroups.find(group => group === value)
       if (group !== undefined) { kitchenGroup = group; drawPanel(); dialogContent.scrollTop = 0 }
       break
