@@ -2146,6 +2146,13 @@ export function getHomeBreadBasket(farm: FarmState) {
   return order.items === breadBasketOrder.items ? order : undefined;
 }
 
+export function getFirstFarmhouseOrderPreview(farm: FarmState, branch: SpecializationId) {
+  if (farm.island !== 'home' || farm.buildingLevels.farmhouse !== 2 || farm.farmhouseSpecialization
+    || !isId(specializationIds, branch)) return;
+  const order = specialtyMenus[branch][0];
+  return { name: order.name, reward: supplyOrderReward(farm, order), items: order.items.map(item => ({ ...item })) };
+}
+
 export function getMarketOrders(farm: FarmState) {
   return orderLanes.flatMap((lane) => {
     const menu = marketOrderMenu(farm, lane);

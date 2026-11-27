@@ -109,7 +109,7 @@ import './exact-sale.css'
 import { getBedHarvestPreview } from './farm'
 import { fieldContextCopyMarkup, harvestPreviewCopy, updateFieldContextCopy } from './harvest-preview'
 import { signatureBookCapacity } from './signature-book'
-import { hasFarmhouseSpecialization, getFarmhouseSpecializationAction } from './farm'
+import { hasFarmhouseSpecialization, getFarmhouseSpecializationAction, getFirstFarmhouseOrderPreview } from './farm'
 import { VersionedSave, browserSaveLock } from './versioned-save'
 import { farmSaveKeys } from './farm-save-keys'
 import { mountSaveRecovery } from './save-recovery'
@@ -939,22 +939,32 @@ function specializationCards() {
   const choice = previewSpecialization ? branchDefinitions[previewSpecialization] : undefined
   const houseChoice = previewSpecialization === 'bakery' || previewSpecialization === 'preserves'
     ? getFarmhouseSpecializationAction(farm, previewSpecialization) : undefined
+  const firstHouseChoice = specializationBuilding === 'farmhouse' && farm.island === 'home'
+    && farm.buildingLevels.farmhouse === 2 && !farm.farmhouseSpecialization
   return `<p class="coin-balance">${icon('coin')} ${numberFormat.format(farm.coins)}<span class="sr-only"> ${ruPlural(farm.coins, ['монета','монеты','монет'])}</span></p>
     <div class="specialization-grid">${branchChoices[specializationBuilding].map((id) => {
       const definition = branchDefinitions[id]
-      const [image, benefit] = id === 'bakery' || id === 'preserves'
+      const houseBranch = id === 'bakery' || id === 'preserves'
+      const [image, benefit] = houseBranch
         ? [dishIcons[specializationDefinitions[id].dish], dishDefinitions[specializationDefinitions[id].dish].name]
         : facilityDetails[id]
+      const order = houseBranch ? getFirstFarmhouseOrderPreview(farm, id) : undefined
       const path = specializationStages[id].mask.path
       return `<button class="specialization-option" type="button" data-action="preview-specialization" data-value="${id}"
         aria-pressed="${id === previewSpecialization}">
         <img class="specialization-preview" src="${import.meta.env.BASE_URL}art/${path}.webp" alt="" draggable="false">
-        <strong>${definition.name}</strong><span>${icon(image)}${benefit}</span>${(id==='bakery'||id==='preserves')&&hasFarmhouseSpecialization(farm,id)?'<span>Уже освоено</span>':''}
+        <strong>${definition.name}</strong>
+        ${order ? `<span>Первый заказ: «${order.name}» · ${quantity(order.reward, 'монета')}</span>
+          <span>${icon(image)}${order.items.map(item => `${stockLabel(item).name} ×${numberFormat.format(item.quantity)}`).join(' · ')}</span>`
+          : `<span>${icon(image)}${benefit}</span>${houseBranch && hasFarmhouseSpecialization(farm, id) ? '<span>Уже освоено</span>' : ''}`}
       </button>`
     }).join('')}</div>
     ${specializationBuilding !== 'farmhouse' ? previewSpecialization && previewSpecialization !== 'bakery' && previewSpecialization !== 'preserves'
       ? renderFacilityChoiceDetails(farm,previewSpecialization) : '<p class="facility-choice-help">Выберите карточку, чтобы прочитать условия. Просмотр вариантов бесплатный.</p>' : ''}
-    <footer class="specialization-footer"><p>${specializationBuilding==='farmhouse'?(houseChoice?.label??'Освойте направление кухни. Позже можно изучить второе, сохранив прежние рецепты и заказы.'):'После постройки направление нельзя сменить или добавить второе.'}</p>
+    <footer class="specialization-footer"><p>${specializationBuilding === 'farmhouse'
+      ? firstHouseChoice && houseChoice?.available !== false ? 'Первое направление задаёт заказы. Второе можно освоить позже.'
+        : houseChoice?.label ?? 'Освойте направление кухни. Позже можно изучить второе, сохранив прежние рецепты и заказы.'
+      : 'После постройки направление нельзя сменить или добавить второе.'}</p>
       ${button(specializationBuilding==='farmhouse'?'Освоить':'Построить', 'build-specialization', houseChoice?houseChoice.available:choice !== undefined && farm.coins >= choice.price,
         choice ? { value: previewSpecialization, context: `${choice.name}, ${quantity(choice.price, 'монета')}`,
           cost: { icon: 'coin', amount: choice.price } } : {})}</footer>`
