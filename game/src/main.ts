@@ -1315,10 +1315,11 @@ function marketBulkSaleControls() {
   const sale = getSale(farm)
   if (!sale.items) return ''
   const surplus = salePresentation.place ? undefined : getMarketOrderSurplusQuote(farm)
+  const reserve = surplus?.includesWarehouse ? 'доступных заказов' : 'готовых заказов'
   return `<span>Всего: ${quantity(sale.items,'предмет')} · ${quantity(sale.coins,'монета')}</span>${button('Продать всё','sell',!salePresentation.place)}${surplus
-    ? `<div class="market-order-surplus"><span>Оставить для готовых заказов: ${quantity(surplus.kept,'предмет')}</span>${button(
+    ? `<div class="market-order-surplus"><span>Оставить для ${reserve}: ${quantity(surplus.kept,'предмет')}</span>${button(
       `Продать остальное · ${quantity(surplus.total,'монета')}`,'sell-order-surplus',true,
-      {value:escapeHtml(surplus.token), secondary:true, context:`останется для готовых заказов: ${quantity(surplus.kept,'предмет')}`})}</div>` : ''}`
+      {value:escapeHtml(surplus.token), secondary:true, context:`останется для ${reserve}: ${quantity(surplus.kept,'предмет')}`})}</div>` : ''}`
 }
 function marketInlineCard(item: ReturnType<typeof goods>[number]) {
   const view=marketInlineSales.view(item.key,item.count,item.price), quote=view.quote, receipt=view.receipt

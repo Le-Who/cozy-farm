@@ -1,10 +1,12 @@
 import { getMarketBasket, getMarketOrders, getMarketStock, marketKey, sellMarketBasket, type ActionResult, type FarmState } from './farm.ts'
 
-/** Preserve the choice of any one ready order. Shared stock is not counted twice. */
+import { getMarketOrderBoard } from './market-orders-view.ts'
+
+/** Preserve each currently actionable Home choice, not simultaneous delivery of shared stock. */
 export function getMarketOrderSurplusQuote(farm: FarmState) {
   if (farm.island !== 'home') return
-  const ready = getMarketOrders(farm).filter(order => order.status === 'ready')
-  if (!ready.length) return
+  const orders = getMarketOrders(farm)
+  const ready = orders.filter(order => order.status === 'ready')
   const retained = new Map<string, number>()
   const choices = ready.map(order => {
     const needed = new Map<string, number>()
@@ -16,6 +18,28 @@ export function getMarketOrderSurplusQuote(farm: FarmState) {
     return [order.lane, farm.orders[order.lane].completed, [...needed]]
   })
   const market = getMarketStock(farm), carried = new Map(market.map(row => [row.key, row.count]))
+  // Orders already proves that every missing unit is available through Home's existing
+  // pickup flow. Protect only the carried part; a market sale never touches that depot.
+  const candidates = farm.boatOwned ? orders.filter(order => order.status === 'waiting' &&
+    order.items.some(item => (carried.get(marketKey(item)) ?? 0) > 0)) : []
+  const local = candidates.length
+    ? new Set(getMarketOrderBoard(farm).choices.filter(order => order.group === 'warehouse').map(order => order.id)) : undefined
+  const warehouseChoices: typeof choices = []
+  let includesWarehouse = false
+  for (const order of candidates) {
+    if (!local?.has(order.lane)) continue
+    const keys = order.items.map(marketKey)
+    if (new Set(keys).size !== keys.length) continue
+    const bag = order.items.flatMap((item, i) => {
+      const key = keys[i], amount = Math.min(item.quantity, carried.get(key) ?? 0)
+      return amount > 0 ? [[key, amount] as [string, number]] : []
+    })
+    for (const [key, amount] of bag) if (amount > (retained.get(key) ?? 0)) {
+      retained.set(key, amount)
+      includesWarehouse = true
+    }
+    if (bag.length) warehouseChoices.push([order.lane, farm.orders[order.lane].completed, bag])
+  }
   for (const [key, amount] of retained) {
     if (!Number.isSafeInteger(amount) || amount < 1 || (carried.get(key) ?? 0) < amount) return
   }
@@ -26,7 +50,10 @@ export function getMarketOrderSurplusQuote(farm: FarmState) {
   const basket = getMarketBasket(farm, requests)
   const kept = [...retained.values()].reduce((sum, quantity) => sum + quantity, 0)
   if (!basket || !kept || !Number.isSafeInteger(kept)) return
-  return { token: JSON.stringify(['order-surplus-v1', choices, basket.token]), kept, items: basket.items,
+  const token = JSON.stringify(includesWarehouse
+    ? ['order-surplus-v2', choices, warehouseChoices, basket.token]
+    : ['order-surplus-v1', choices, basket.token])
+  return { token, kept, includesWarehouse, items: basket.items,
     total: basket.total, requests, basketToken: basket.token }
 }
 
