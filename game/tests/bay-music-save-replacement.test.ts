@@ -1,10 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
+import {createHash} from 'node:crypto'
+import {getNeighborSceneState} from '../src/neighbor-scene.ts'
+import {lavenderVillageAnchors} from '../src/lavender-village.ts'
+import {festivalRewardArt} from '../src/festival-art.ts'
+import {harbourCamera,harbourScreenPoint} from '../src/harbour-view.ts'
 import {stripTypeScriptTypes as strip} from 'node:module'
 import {runInNewContext as vm} from 'node:vm'
 import {cloneBayPattern,normalizeBayMusicState,bayFestivalPattern,createBayMusicState,BAY_INSTRUMENTS,bayActiveVoices,bayPerformanceQuality,type BayMusicState} from '../src/bay-music-model.ts'
-import {restoreCurrentFarm,getShellAt,getBedStage,getBedAction,type FarmState} from '../src/farm.ts'
+import {restoreCurrentFarm,getShellAt,getBedStage,getBedAction,getNeighborPlans,residentIds,type FarmState} from '../src/farm.ts'
 import {installGardenInstrument} from '../src/harbour-economy.ts'
 import {commissionPlayer} from './fixtures/commission-player.ts'
 
@@ -180,7 +185,7 @@ test('library reserves one disclosure row and one existing status line before Sa
 
 
 /** Ordinary production supplies and four completed rounds. Clock, paint, and audio outputs are not invoked. */
-function firstFestivalScore() {
+function firstFestivalScore(beforeAward?: (farm: FarmState) => void) {
  const history=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
  const p=commissionPlayer(history)
  p.act('beginFestival','stage')
@@ -212,6 +217,7 @@ function firstFestivalScore() {
   save(){},options:{},paintConcert(){},requestAnimationFrame:()=>0,frame:0})
  assert.equal(state.performances,1)
  p.reload();p.act('contributeFestival','concert','concert');p.night();p.visit('village')
+ if(beforeAward){while(p.state.day<32){p.night();p.visit('village')}beforeAward(copy(p.state))}
  p.act('finishFestival')
  assert.deepEqual([p.state.musicGarden.festivalLevel,p.state.musicGarden.festivalUnlocked,p.state.musicGarden.saved],[1,true,[null,null,null]])
  return p.state
@@ -264,4 +270,92 @@ test('an earned festival title cannot overwrite a genuinely edited current draft
   assert.equal(direct.s.replaceButton.hidden,true)
   assert.equal(direct.writes,1)
  }
+})
+
+
+test('the earned opaque front of the physical stage opens the original Music Garden without changing the farm',()=>{
+ let pre:FarmState|undefined
+ const awarded=firstFestivalScore(f=>{pre=f})
+ assert.ok(pre)
+ assert.deepEqual([pre.day,awarded.day,pre.festivals.completed.stage,awarded.festivals.completed.stage],[32,32,0,1])
+ const read=(p:string)=>readFileSync(new URL('../'+p,import.meta.url),'utf8')
+ const artBytes=readFileSync(new URL('../public/art/lavender/festivals/stage.webp',import.meta.url))
+ assert.equal(createHash('sha256').update(artBytes).digest('hex'),'71532f25f72a7132104f9109951a67a36e59b05b29c297e8560ee3ad706db83f')
+ const cut=(s:string,a:string,b:string)=>{const i=s.indexOf(a),j=s.indexOf(b,i+a.length);assert.ok(i>=0&&j>i,a);return s.slice(i,j)}
+ const layout=read('src/lavender-layout.ts'),island=read('src/island.ts'),main=read('src/main.ts')
+ const geom=strip(cut(layout,'const origin =','function sceneBox').replaceAll('export ','')
+  +cut(layout,'const mapped =','export const cape =').replaceAll('export ','')
+  +cut(layout,'export const docks = {','  home: {').replace('export ','')+'};({scenePoint,sceneScale,village,docks})')
+ const geometry=vm(geom,{lavenderVillageAnchors})
+ const sites=cut(island,'const harbourPlacesOnMap =','// The graph follows')
+ const scene=cut(island,'  function mooredFerry(', '  function paintProp(')
+ const actors=cut(island,'  function syncVillageResidents(', '  function paintVillage(')
+ const picking=cut(island,'  function location(', '  function describeFocus(')
+ const visualMasks=cut(island,'  function visibleUpgrades(', '  function islandPlate(')
+ const up=cut(island,'    if (Math.hypot(start.x - event.clientX, start.y - event.clientY) > 12) return;', '  }, listeners);')
+ const key=cut(island,"  canvas.addEventListener('keydown', (event) => {","  }, listeners);")
+ const route=cut(main,"    case 'bay-shop': case 'bay-music': case 'bay-freight': openPanel",String.fromCharCode(10))
+ const program=strip(`${sites}
+${scene}
+${actors}
+${picking}
+${visualMasks}
+ function mouseUp(event){let start={x:event.clientX,y:event.clientY};${up}}
+ function activate(target){switch(target.kind){${route}}}
+ ${key} });
+ ({mouseUp,syncVillageResidents,currentSites,focusedSite:()=>focused?.target.kind})`)
+ const viewport={width:1280,height:720,top:0,bottom:0},camera=harbourCamera(viewport,'overview')
+ // Sparse Canvas readback at verified WebP coordinates; all hit math and pointer/keyboard routing are production.
+ const frontDrum=[815,400],frontStage=[805,405],transparent=[805,418],marimba=[793,347],square=[803,470]
+ const rgba=new Uint8ClampedArray(657*486*4)
+ for(const [x,y] of [[372,385],[328,407]]) rgba[(y*657+x)*4+3]=253
+ function mount(f:FarmState,loaded:boolean){
+  const state=restoreCurrentFarm(copy(f))!
+  const raw=JSON.stringify(state), opens:string[]=[], listeners=new Map<string,(event:any)=>void>()
+  let stageReads=0,pixelReads=0
+  const img={naturalWidth:657,naturalHeight:486}
+  const app=vm(program,{...geometry,festivalRewardArt,residentIds,getNeighborPlans,getNeighborSceneState,state,
+   villageActors:new Map(),currentIsland:'village',villageMealSeen:state.village.mealOn,residentServiceSeen:state.village.serviceOn,
+   routeResident(){},motion:{matches:true},world:{available:true},
+   art:{image:(key:string)=>{assert.equal(key,'festival-stage');stageReads++;return loaded?img:undefined}},
+   document:{createElement:(tag:string)=>{assert.equal(tag,'canvas');return {getContext:()=>({
+    drawImage:()=>{},getImageData:()=>{pixelReads++;return {data:rgba,width:657,height:486}}
+   })}}},
+   maskPixels:new WeakMap(),crossing:false,offset:{x:640-camera.center.x*camera.scale,y:360-camera.center.y*camera.scale},
+   scale:camera.scale,canvas:{getBoundingClientRect:()=>({left:0,top:0}),addEventListener:(name:string,fn:(event:any)=>void)=>listeners.set(name,fn)},
+   distance:(a:any,b:any)=>Math.hypot(a.x-b.x,a.y-b.y),harborSite:{},kitchenSite:{},fieldView:false,focused:undefined,showFocus:false,
+   guidance:undefined,hovered:undefined,frameHarbourTarget(){},describeFocus(){},requestPaint(){},
+   bedPointerGuard:{accepts:()=>true},openPanel:(target:string)=>{opens.push(target)}
+  })
+  app.syncVillageResidents(state,100)
+  return {pointer([x,y]:number[],pointerType='mouse'){
+   const p=harbourScreenPoint(viewport,'overview',geometry.scenePoint(x,y));opens.length=0
+   app.mouseUp({pointerType,clientX:p.x,clientY:p.y});assert.equal(JSON.stringify(state),raw);return [...opens]
+  },key(key:string,repeat=false){
+   opens.length=0;listeners.get('keydown')!({key,repeat,preventDefault(){}})
+   assert.equal(JSON.stringify(state),raw);return [...opens]
+  },focus:app.focusedSite,count:()=>app.currentSites().filter((a:any)=>a.target.kind==='bay-music').length,
+  get stageReads(){return stageReads},get pixelReads(){return pixelReads}}
+ }
+ const old=mount(pre,true)
+ assert.deepEqual(old.pointer(frontDrum),[])
+ assert.equal(old.stageReads,0,'visible progress only after the player completes the festival')
+ const pending=mount(awarded,false)
+ assert.deepEqual(pending.pointer(frontStage),[])
+ assert.deepEqual(pending.pointer(marimba),['bay-music'],'old plateau works even before the optional stage asset loads')
+ assert.equal(pending.pixelReads,0)
+ const ready=mount(awarded,true)
+ assert.deepEqual(ready.pointer(frontDrum),['bay-music'],'the clearly opaque front instrument belongs to the already unlocked Music Garden')
+ assert.deepEqual(ready.pointer(frontStage),['bay-music'])
+ assert.deepEqual(ready.pointer(frontDrum,'touch'),['bay-music'])
+ assert.deepEqual(ready.pointer(transparent),[])
+ assert.equal(ready.pixelReads,1,'one loaded asset mask is cached')
+ assert.deepEqual(ready.pointer([700,411]),[])
+ assert.deepEqual(ready.pointer(square),[])
+ assert.equal(ready.focus(),'village','nearby ordinary square keeps its first pick')
+ assert.deepEqual(ready.pointer(marimba),['bay-music'])
+ assert.equal(ready.stageReads <= 5,true,'ordinary hittable sites keep priority')
+ assert.equal(ready.count(),1,'world aliases never add a keyboard or accessibility stop')
+ assert.deepEqual(ready.key('Enter',true),[])
+ assert.deepEqual(ready.key('Enter'),['bay-music'],'existing focused keyboard action still routes to music')
 })

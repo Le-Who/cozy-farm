@@ -566,6 +566,17 @@ export function createIsland(
     return pixels.data[offset] >= 128;
   }
 
+  function festivalStageHit(x: number, y: number): Area | undefined {
+    if (state?.island !== 'village' || state.festivals.completed.stage < 1) return;
+    const stage = art.image('festival-stage');
+    if (!stage) return;
+    const {x: nativeX, y: nativeY, w: nativeW, h: nativeH} = festivalRewardArt.stage;
+    const foot = scenePoint(nativeX, nativeY), w = nativeW * sceneScale, h = nativeH * sceneScale;
+    // Same full-cell, centered, foot-anchored sprite as paintVillage. Do not add a second focus stop.
+    if (maskHit(stage, {x: foot.x - w / 2, y: foot.y - h, w, h}, x, y))
+      return villageSites.find(area => area.target.kind === 'bay-music');
+  }
+
   function upgradeHit(x: number, y: number): Area | undefined {
     for (const { building, mask, maskImage } of visibleUpgrades()) {
       if (maskHit(maskImage, mask, x, y)) {
@@ -1847,7 +1858,7 @@ export function createIsland(
       const minimum = 44 / scale;
       return sites.filter((area) => Math.abs(x - area.center.x) <= Math.max(area.w, minimum) / 2
         && Math.abs(y - area.center.y) <= Math.max(area.h, minimum) / 2)
-        .sort((a, b) => distance(a.center, { x, y }) - distance(b.center, { x, y }))[0];
+        .sort((a, b) => distance(a.center, { x, y }) - distance(b.center, { x, y }))[0] ?? festivalStageHit(x, y);
     }
     if (sites.includes(harborSite)) {
       const { mask } = projectStages.dock;
@@ -1857,6 +1868,7 @@ export function createIsland(
     const target = sites.find((area) => area !== kitchenSite && area !== harborSite && (!(fieldView && state?.island === 'home') || area.target.kind === 'bed')
       && Math.abs(x - area.center.x) <= area.w / 2 && Math.abs(y - area.center.y) <= area.h / 2);
     if (target) return target;
+    if (state?.island === 'village') return festivalStageHit(x, y);
     if (state?.island === 'grove' && event.pointerType === 'touch') {
       const point = { x, y };
       return sites.filter(({ target, center }) =>
