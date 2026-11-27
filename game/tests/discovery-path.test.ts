@@ -255,7 +255,8 @@ test('the first shop uses ready pastries and local warehouse food before proposi
   assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'bay-shop');
   assert.match(getDiscoveryTask(farm, seen)!.detail, /батон/i);
   farm.island = 'home';
-  assert.equal(getDiscoveryTask(farm, seen)?.action.value, 'village');
+  assert.deepEqual(getDiscoveryTask(farm, seen)?.action, {label:'В свою лавку',target:'open-panel',value:'bay-shop'});
+  assert.equal(farm.freight.warehouses.village['handmade:long'],1);
   farm.freight.warehouses.village = {};
   farm.dishes.farmhouseBread = 1;
   farm.island = 'village';
@@ -293,7 +294,7 @@ test('the earned first pie guides stocking, reopening, then a visit until an act
   setBayShopOpen(p.state.bayShop,true); p.reload();
   assert.equal(task().label,'Лавка открыта'); assert.match(task().detail,/дождаться покупателя в лавке или отдохнуть дома/);
   assert.equal(task().action.value,'bay-shop'); assert.equal(p.state.coins,coins);
-  p.visit('home'); assert.equal(task().action.value,'village');
+  p.visit('home'); assert.deepEqual(task().action,{label:'К отдыху дома',target:'open-panel',value:'rest'});
   const overnight=structuredClone(p.state);assert.ok(endDay(overnight).ok);
   assert.equal(overnight.bayShop.sold,1);assert.equal(overnight.coins-coins,food.sellPrice);
   p.visit('village'); p.sale();
@@ -336,7 +337,7 @@ test('the first sale stays on the last undecided guest, not on a seventh arrival
   assert.equal(declined.coins, coins); assert.notEqual(task(declined).id, 'first-shop');
 
   assert.ok(setBayShopPrice(p.state.bayShop, 0, food.sellPrice));
-  p.visit('home'); assert.equal(task(p.state).action.value, 'village');
+  p.visit('home'); assert.deepEqual(task(p.state).action,{label:'К отдыху дома',target:'open-panel',value:'rest'});
   const overnight = structuredClone(p.state); assert.ok(endDay(overnight).ok);
   p.visit('village'); p.sale();
   for (const farm of [p.state, overnight]) {

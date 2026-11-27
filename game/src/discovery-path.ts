@@ -14,7 +14,7 @@ import { bayShopDailyLimit } from './bay-shop-model.ts';
 import {
   boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeHoney, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
-  foodDescriptors, getFestivalStatus, getIntentOffers, getMarketOrders, getNeighborPlans, getProject, getSale, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
+  foodDescriptors, getFestivalStatus, getIntentOffers, getMarketOrders, getNeighborPlans, getProject, getSale, getShopRestForecast, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
   treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, type CropId, type DishId, type FarmState, type StockItem,
 } from './farm.ts';
 import {ruCount} from './ru.ts';
@@ -300,7 +300,10 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
           : ' Последний гость ещё выбирает. Можно дождаться его решения или отдохнуть дома.';
         const detail = stocked ? `На прилавке: «${food.name}».${visitHint}`
           : `Выставьте на прилавок: «${food.name}».${shop.open ? '' : ' Затем откройте лавку.'}`;
-        return arrive(task('first-shop', label, detail, 'bay/pavilion', { label: 'В свою лавку', target: 'open-panel', value: 'bay-shop' }));
+        const action = farm.island === 'home' && shop.open && stocked && getShopRestForecast(farm).sold > 0
+          ? { label: 'К отдыху дома', target: 'open-panel', value: 'rest' }
+          : { label: 'В свою лавку', target: 'open-panel', value: 'bay-shop' };
+        return task('first-shop', label, detail, 'bay/pavilion', action);
       }
     }
     if(farm.culinary.recipes.length===0)return arrive(task('own-recipe','Создайте своё угощение','Выберите фрукты, приготовьте угощение вручную и предложите соседям.','ui-signature-bright',{label:'Мои рецепты',target:'open-panel',value:'recipes'}));

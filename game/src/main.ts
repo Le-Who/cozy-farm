@@ -3854,6 +3854,18 @@ app.addEventListener('click', async (event) => {
     const task = currentTask()
     if (!task || !('action' in task)) { openPanel('journal'); return }
     action = task.action.target; value = task.action.value
+    if ('id' in task && task.id === 'first-shop' && action === 'open-panel' && value === 'bay-shop'
+      && farm.island === 'home' && farm.neighborVisits.active) {
+      if (!dialog.open || panel !== 'journal') openPanel('journal')
+      const crossing = dialogContent.querySelector<HTMLDetailsElement>('details.journal-visit-crossing:has([data-action="journal-shop"])')
+      if (crossing) {
+        crossing.open = true
+        const summary = crossing.querySelector('summary')
+        summary?.scrollIntoView({block:'nearest'})
+        summary?.focus({preventScroll:true})
+      }
+      return
+    }
     if ('id' in task && task.id === 'neighbour-service' && action === 'visit-cottage' && farm.island === 'village' &&
         farm.village.residents[Number(value)] === 'bea' && !getResidentService(farm, 'bea', pastryShape).available) {
       const shape = farm.workshopPatterns.find(shape => getResidentService(farm, 'bea', shape).available)
