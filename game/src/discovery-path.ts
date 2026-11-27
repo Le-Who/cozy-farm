@@ -11,6 +11,7 @@ import { getPackedEggSource } from './packed-egg-guidance.ts';
 import { getFruitSource, nurseryFruitDetail } from './orchard-guidance.ts';
 import { freightStock } from './bay-freight-model.ts';
 import { bayShopDailyLimit } from './bay-shop-model.ts';
+import { bayProductId } from './bay-product-id.ts';
 import {
   boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeHoney, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
@@ -30,6 +31,17 @@ export type DiscoveryTask = {
 export type DiscoverySeen = { collections: boolean; islands: boolean };
 
 export { supply as getSupplyGuidance, coins as getCoinGuidance };
+
+/** A charter roll already paid for can be reviewed; only claiming moves that cargo. */
+export function hasReadyCharterBunCargo(farm: FarmState, project = getVillageProject(farm)): boolean {
+  const voyage = farm.freight.expeditions.active;
+  if (farm.island !== 'home' || !farm.boatOwned || !project.unlocked || farm.village.built
+      || voyage?.phase !== 'ready' || voyage.kind !== 'trade' || voyage.port !== 'mill') return false;
+  const roll = project.items.find(({item}) => item.kind === 'handmade' && item.item === 'round');
+  if (!roll) return false;
+  const missing = roll.item.quantity - roll.delivered - ingredientCount(farm, roll.item);
+  return missing > 0 && voyage.incoming.some(item => item.id === bayProductId(roll.item) && item.quantity >= missing);
+}
 
 function task(id: string, label: string, detail: string, icon: string, action: DiscoveryTask['action'], progress = 0, target = 1): DiscoveryTask {
   return { id, label, detail, icon, progress, target, action };
@@ -364,5 +376,8 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
   const village = getVillageProject(farm);
   if (village.items.some(item => item.available > 0) || village.items.every(({ item, delivered }) => delivered === item.quantity) && farm.coins >= village.coins) return home(farm, task('village', 'Постройте Лавандовую гавань', `Доставьте ручную выпечку, сибаса и мёд, а затем вложите ${village.coins} монет в Живую бухту.`, 'ui-bea', { label: 'Живая бухта', target: 'village-project' }));
   const missing = village.items.find(({ item, delivered }) => delivered < item.quantity);
+  if (missing?.item.kind === 'handmade' && hasReadyCharterBunCargo(farm, village))
+    return task('charter-returned-bun', 'Выпечка для Лавандовой гавани', 'Груз уже у причала.', 'ui-handmade-round',
+      { label: 'К вернувшемуся парому', target: 'open-panel', value: 'bay-freight' });
   return missing ? supply(farm, { ...missing.item, quantity: missing.item.quantity - missing.delivered }, 'Лавандовая гавань') : coins(farm, village.coins, 'Лавандовая гавань');
 }
