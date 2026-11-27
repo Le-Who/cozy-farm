@@ -103,7 +103,7 @@ test('only a live journal choice can sail the current guest away', async () => {
   const start=source.indexOf("    case 'journal-festival':"),end=source.indexOf("    case 'open-panel':",start);
   assert.ok(start>=0 && end>start);
   const click=stripTypeScriptTypes(`(async()=>{switch(action){${source.slice(start,end)}}})()`,{mode:'transform'});
-  for(const [action,destination] of [['journal-music','bay-music'],['journal-festival','festival']] as const) {
+  for(const [action,destination] of [['journal-music','bay-music'],['journal-festival','festival'],['journal-shop','bay-shop']] as const) {
     for(const [guest,quoted,expanded,attached,expected] of [
       [1,'1',false,true,0], [2,'1',true,true,0], [1,undefined,false,true,0],
       [1,'1',true,false,0], [null,'1',true,true,0],
@@ -114,7 +114,7 @@ test('only a live journal choice can sail the current guest away', async () => {
         farm:{island:'home',village:{built:true},neighborVisits:{active:guest?{serial:guest}:null}},
         control:{dataset:{visit:quoted},closest:(selector:string)=>expanded && selector==='details.journal-visit-crossing[open]'},
         visitPanelAt:(dest:string,panel:string)=>calls.push(`${dest}:${panel}`)});
-      assert.deepEqual(calls,expected?[`village:${destination}`]:[]);
+      assert.deepEqual(calls,expected?[`village:${destination}`]:[], `${action}: guest=${guest}, quote=${quoted}, expanded=${expanded}, attached=${attached}`);
     }
   }
 });
@@ -133,7 +133,7 @@ test('staying collapses only the Journal crossing and returns focus to its summa
   assert.equal(closed,0);assert.equal(card.open,false);assert.equal(focused,1);
 });
 
-test('after an earned Bea meeting, the Journal festival card asks before ending her active home visit', () => {
+test('after an earned Bea meeting, shopping and the festival both ask before ending her active Home visit', () => {
   const p=commissionPlayer(JSON.parse(readFileSync(new URL('./fixtures/market-order-selection-commands.json',import.meta.url),'utf8')).slice(0,-1));
   const farm=p.state;
   assert.deepEqual([farm.day,farm.island], [14,'home']);
@@ -144,14 +144,27 @@ test('after an earned Bea meeting, the Journal festival card asks before ending 
   const view = () => runInNewContext(render,{journal:getDiscoveryJournal(farm),icon:()=>''}) as string;
   const ordinary=view();
   assert.match(ordinary, /<button[^>]*data-value="festival">\s*<strong>Праздники гавани<\/strong>/);
+  assert.match(ordinary, /<button[^>]*data-value="bay-shop">\s*<strong>Своя лавка<\/strong><small>Товары, цены и вкусы постоянных гостей\.<\/small><\/button>/);
   assert.ok(inviteNeighborVisit(farm,'beaFlock').ok);
   const before=structuredClone(farm), withGuest=view();
-  const festival = [...withGuest.matchAll(/<details class="journal-visit-crossing">.*?<\/details>/g)]
-    .map(([html])=>html).find(html=>html.includes('<strong>Праздники гавани</strong>'));
+  const crossings = [...withGuest.matchAll(/<details class="journal-visit-crossing">.*?<\/details>/g)].map(([html])=>html);
+  const festival = crossings.find(html=>html.includes('<strong>Праздники гавани</strong>'));
   assert.ok(festival, 'Festival browsing must not dismiss the Home guest with its first tap');
   assert.match(festival, /<summary><strong>Праздники гавани<\/strong>.*Беа вернётся в гавань, если отплыть\.<\/small><\/summary>/);
   assert.match(festival, /data-action="journal-stay">Остаться на ферме/);
   assert.match(festival, new RegExp(`data-action="journal-festival" data-value="festival" data-visit="${farm.neighborVisits.active!.serial}">Плыть в гавань`));
-  assert.match(withGuest,/data-action="open-panel" data-value="bay-shop"/,'no unrelated journal routes change');
+  const shop = crossings.find(html=>html.includes('<strong>Своя лавка</strong>'));
+  assert.ok(shop, 'one Shop card activation must not dismiss the live guest');
+  assert.match(shop, /<summary><strong>Своя лавка<\/strong><small>Беа вернётся в гавань, если отплыть\.<\/small><\/summary>/);
+  assert.match(shop, /data-action="journal-stay">Остаться на ферме/);
+  assert.match(shop, new RegExp(`data-action="journal-shop" data-value="bay-shop" data-visit="${farm.neighborVisits.active!.serial}">Плыть в гавань`));
+  assert.equal(crossings.length,3);
+  assert.match(withGuest,/data-action="open-panel" data-value="bay-freight"/);
+  assert.match(withGuest,/data-action="open-panel" data-value="neighbor-visits"/);
   assert.deepEqual(farm,before);
+  const arrival=restoreFarm(JSON.parse(JSON.stringify(farm)))!;
+  assert.ok(sail(arrival,'village').ok);
+  const local=runInNewContext(render,{journal:getDiscoveryJournal(arrival),icon:()=>''}) as string;
+  assert.match(local, /<button[^>]*data-value="bay-shop">\s*<strong>Своя лавка<\/strong>/);
+  assert.doesNotMatch(local,/journal-visit-crossing/);
 });

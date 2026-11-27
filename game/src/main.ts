@@ -2598,7 +2598,8 @@ function drawPanel() {
         ${groveActivities ? `<ul class="dialog-list">${groveActivities}</ul>` : ''}
         ${journal.activities.length ? `<nav class="discovery-activities" aria-label="Другие занятия">${journal.activities.map(activity => {
           const card = `${icon(activity.icon)}<strong>${activity.label}</strong><small>${activity.detail}</small>`
-          const visitAction = activity.panel === 'bay-music' ? 'journal-music' : activity.panel === 'festival' ? 'journal-festival' : undefined
+          const visitAction = activity.panel === 'bay-music' ? 'journal-music' : activity.panel === 'festival' ? 'journal-festival'
+            : activity.panel === 'bay-shop' ? 'journal-shop' : undefined
           if (visitAction && activity.visit !== undefined) return `<details class="journal-visit-crossing"><summary>${card}</summary><div><button type="button" data-action="journal-stay">Остаться на ферме</button><button type="button" data-action="${visitAction}" data-value="${activity.panel}" data-visit="${activity.visit}">Плыть в гавань</button></div></details>`
           return `<button type="button" data-action="${visitAction ?? 'open-panel'}" data-value="${activity.panel}">${card}</button>`
         }).join('')}</nav>` : ''}`
@@ -4766,8 +4767,9 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'journal-festival':
-    case 'journal-music': {
-      const destination = action === 'journal-festival' ? 'festival' : 'bay-music'
+    case 'journal-music':
+    case 'journal-shop': {
+      const destination = action === 'journal-festival' ? 'festival' : action === 'journal-music' ? 'bay-music' : 'bay-shop'
       if (value !== destination || panel !== 'journal' || !dialog.open || !dialogContent.contains(control) || !farm.village.built) break
       const guest = farm.island === 'home' ? farm.neighborVisits.active : null
       if (control.dataset.visit !== guest?.serial.toString() || guest && !control.closest('details.journal-visit-crossing[open]')) break

@@ -48,9 +48,10 @@ export function getDiscoveryJournal(farm: FarmState): DiscoveryJournal {
   if (farm.boatOwned) activities.push({ label: 'Паром «Ласточка»', detail: 'Торговые рейсы и открытие новых портов.', icon: 'bay/ferry', panel: 'bay-freight' });
   if (harbour) {
     activities.push({ label: 'Гостевая книга', detail: 'Приглашайте знакомых соседей на свою ферму.', icon: 'ui-bea', panel: 'neighbor-visits' });
-    activities.push({ label: 'Своя лавка', detail: 'Товары, цены и вкусы постоянных гостей.', icon: 'bay/pavilion', panel: 'bay-shop' });
     const guest = farm.island === 'home' ? farm.neighborVisits.active : null;
     const leaveGuest = guest ? `${visitName(visitActivities[guest.activity].resident)} вернётся в гавань, если отплыть.` : undefined;
+    activities.push({ label: 'Своя лавка', detail: leaveGuest ?? 'Товары, цены и вкусы постоянных гостей.',
+      icon: 'bay/pavilion', panel: 'bay-shop', ...(guest ? {visit:guest.serial} : {}) });
     activities.push({ label: farm.island === 'village' ? 'Музыкальный сад' : 'Плыть в музыкальный сад',
       detail: leaveGuest ?? 'Своя мелодия и концерт для бухты.',
       icon: 'bay/music-harp', panel: 'bay-music', visit: guest?.serial });
