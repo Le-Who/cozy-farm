@@ -2759,6 +2759,12 @@ function drawPanel() {
         break
       }
       dialogContent.innerHTML = '<div class="workshop-host"></div>'
+      const charter = !bread && farm.island === 'home' && panelHistory.at(-1)?.panel === 'village-project'
+        ? getVillageProject(farm) : undefined
+      // Suggest this project's missing shape only on its own workshop visit.
+      const charterRound = charter?.unlocked && charter.status !== 'completed'
+        && charter.items.some(({item, delivered, available}) => item.kind === 'handmade' && item.item === 'round'
+          && delivered + available < item.quantity)
       let made = false, basketDay: number | undefined
       const cottage = !bread && farm.island === 'village' ? panelHistory.at(-1) : undefined
       const resident = cottage?.panel === 'village' ? farm.village.residents[cottage.villageSlot] : undefined
@@ -2768,7 +2774,7 @@ function drawPanel() {
       const readySupper = () => bakedSupper?.day === farm.day && dialog.open && !island.isCrossing() && sameCottage()
         && getVillageMeal(farm,bakedSupper.shape).available ? bakedSupper : undefined
       workshopGame = createWorkshop(dialogContent.querySelector<HTMLElement>('.workshop-host')!, {
-        initialShape: bread ? 'long' : pastryShape, recipe: bread ? 'bread' : 'pastry',
+        initialShape: bread ? 'long' : charterRound ? 'round' : pastryShape, recipe: bread ? 'bread' : 'pastry',
         onBake(shape) {
           if (made) return true
           if (panel !== 'workshop') return false
