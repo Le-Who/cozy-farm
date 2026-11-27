@@ -1035,7 +1035,8 @@ function recipeCards(recipes: readonly DishId[], returnedDish?: DishId) {
 }
 
 function kitchenReadyDishes() {
-  return dishIds.filter(dish => getCookAction(farm, dish, cookingFish).available).slice(0, 3)
+  const ready = dishIds.filter(dish => getCookAction(farm, dish, cookingFish).available)
+  return farm.island === 'home' ? ready : ready.slice(0, 3)
 }
 
 function kitchenFamilies() {

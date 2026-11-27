@@ -11,6 +11,7 @@ import { transferBayGoods } from '../src/harbour-economy.ts'
 import { getRequirementHint } from '../src/requirement-guidance.ts'
 import { getLocalWarehouseSupply, warehouseConfirmationValue, warehouseConfirmation, withdrawWarehouseSupply } from '../src/warehouse-guidance.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
+import { earned416Mixed } from './fixtures/earned-416-market-orders.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true)
@@ -284,12 +285,13 @@ test('earned day 4: Home shows jam and cake, selection only previews; cook and B
   assert.equal(s.cookingFish,'seaBass');assert.deepEqual(f,before)
 })
 
-test('four earned recipes never make a second row of ready tiles; unlisted cake remains in its ordinary category and an explicit grill opens the chosen fish', async () => {
+test('four earned Home recipes share one ready shelf; the ordinary dish category and explicit grill still work', async () => {
   const p=dayFourKitchen();p.act('pickFruit',0);p.act('catchFish',true);p.visit('grove');p.act('gatherSeaSalt');p.visit('home')
   const f=p.state, before=structuredClone(f), s=homeKitchen(f)
   assert.equal(p.actions,43); assert.deepEqual(F.dishIds.filter(dish=>F.getCookAction(f,dish,'perch').available),['orchardTart','grilledFish','appleJam','honeyCake'])
-  assert.deepEqual(shelf(s.html),[['orchardTart','true'],['grilledFish','false'],['appleJam','false']])
-  const draws=s.draws;s.choose('recipe-family','honeyCake','ready');assert.equal(s.draws,draws,'only the three rendered live choices can act')
+  assert.deepEqual(shelf(s.html),[['orchardTart','true'],['grilledFish','false'],['appleJam','false'],['honeyCake','false']])
+  const draws=s.draws;s.choose('recipe-family','honeyBiscuits','ready');assert.equal(s.draws,draws,'a recipe not cookable here cannot act')
+  s.choose('recipe-family','honeyCake','ready');visibleCard(s,'honeyCake',true)
   s.choose('kitchen-group','dishes');s.choose('recipe-family','honeyCake','dishes');visibleCard(s,'honeyCake',true)
   s.openPanel('inventory');await s.chooseFish('perch');grill(s.html,'perch');assert.deepEqual(shelf(s.html),[]);visibleCard(s,'grilledFish',true)
   assert.deepEqual(f,before)
@@ -344,4 +346,62 @@ test('the home grill’s missing perch keeps its recipe behind the pier; keeping
   const {farm,s,map}=await setup()
   await s.showRequirement({kind:'stock',item:{kind:'fish',item:'seaBass',quantity:1}})
   assert.equal(farm.island,'grove');assert.equal(map(),'pier');assert.equal(s.panelHistory.length,0,'no Home return across water')
+})
+
+test('earned D193 Home lists six live dishes and separately starts, returns and completes the exact honey cake',t=>{
+ const p=earned416Mixed(false),f=p.state,before=structuredClone(f),s=homeKitchen(f)
+ assert.deepEqual([p.actions,f.day,f.island],[543,193,'home'])
+ const expected=['orchardTart','strawberryTart','blueberryTart','raspberryTart','appleJam','honeyCake']
+ assert.deepEqual(F.dishIds.filter(dish=>F.getCookAction(f,dish,s.cookingFish).available),expected)
+ assert.deepEqual(shelf(s.html),expected.map((id,i)=>[id,String(i===0)]))
+ visibleCard(s,'orchardTart',true)
+ assert.equal((s.html.match(/data-action="kitchen-group"/g)??[]).length,3)
+ assert.doesNotMatch(s.html,/<details|<summary/)
+ s.choose('recipe-family','honeyCake','ready');visibleCard(s,'honeyCake',true)
+ s.choose('cook','honeyCake')
+ assert.deepEqual([s.panel,s.cookingDish,s.saves],['cookery','honeyCake',0])
+ assert.deepEqual(f,before)
+ s.goBack(true);visibleCard(s,'honeyCake',true)
+ assert.deepEqual(shelf(s.html).at(-1),['honeyCake','true'])
+ assert.deepEqual(f,before)
+ s.choose('cook','honeyCake')
+ const mount=source.slice(source.indexOf("    case 'cookery': {"),source.indexOf("    case 'village-project':"))
+ Object.assign(s,{signatureBase:'tart',signatureSlots:[null,null],signatureRepeatId:undefined,signatureFamily:undefined,cookeryGame:undefined,
+  iconUrl:(picture:string)=>picture,signatureFruitIds:['apple'],signatureFruitNames:{apple:'Яблоко'},signatureBookCapacity:()=>({canCreate:true}),
+  createCookery(_host:unknown,options:Record<string,any>){s.cookeryOptions=options;return {destroy(){}}},leaveScene:()=>s.goBack(true),
+  bayAudio:{primeEvents:async()=>{}}})
+ runInNewContext(ts.transpileModule("switch('cookery'){"+mount+"}",{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,s)
+ assert.deepEqual([s.cookeryOptions.recipe.id,s.cookeryOptions.recipe.kind,s.cookeryOptions.returnLabel],['honeyCake','honeyCake','На кухню'])
+ const result={family:'honeyCake',fruit:[],steps:['mix','bake','glaze'],baking:{method:'oven',finish:'golden',seconds:4}}
+ assert.equal(s.cookeryOptions.onComplete(result),true)
+ assert.equal(s.cookeryOptions.onComplete(result),true,'the same finish cannot spend twice')
+ assert.deepEqual([f.produce.wheat,f.honey,f.dishes.honeyCake,f.coins,s.saves],
+  [before.produce.wheat-2,before.honey-1,before.dishes.honeyCake+1,before.coins,1])
+ const paid=structuredClone(f)
+ s.cookeryOptions.onCancel()
+ assert.equal(s.panel,'kitchen')
+ assert.match(s.html,/<h2 data-kitchen-return-dish tabindex="-1">Медовый кекс<\/h2>/)
+ assert.deepEqual(shelf(s.html),[['appleJam','false']])
+ const displayed=s.html
+ s.choose('recipe-family','honeyCake','ready')
+ assert.equal(s.html,displayed,'the now unavailable dish cannot re-enter the ready shelf')
+ s.goBack(true);assert.equal(s.panel,'rest')
+ assert.deepEqual(f,paid)
+ t.diagnostic(JSON.stringify({day:f.day,actions:p.actions,choices:expected,ordinaryDefault:expected[0],payment:[2,1],saves:s.saves}))
+})
+
+test('earned D9 sole Home jam, manual family, and Harbour ready selection do not grow or change',()=>{
+ const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+ const p=commissionPlayer(opening.slice(0,80));p.fruit('apple',2);p.visit('home')
+ const f=p.state,before=structuredClone(f),s=homeKitchen(f)
+ assert.deepEqual([p.actions,f.day],[84,9])
+ assert.deepEqual(shelf(s.html),[]);visibleCard(s,'appleJam',true)
+ assert.doesNotMatch(s.html,/aria-label="Можно приготовить"/)
+ assert.deepEqual(f,before)
+ const mature=earned416Mixed(false)
+ const manual=screen(mature.state,'preserves');manual.panel='rest';manual.openPanel('kitchen')
+ visibleCard(manual,'appleJam',true);assert.deepEqual(shelf(manual.html),[])
+ mature.visit('village')
+ const cottage=screen(mature.state);cottage.cookingFish=F.getGrillFish(mature.state)
+ assert.deepEqual(Array.from(cottage.kitchenReadyDishes()),['orchardTart','strawberryTart','blueberryTart'])
 })
