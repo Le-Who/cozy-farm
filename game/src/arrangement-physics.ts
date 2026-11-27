@@ -184,6 +184,26 @@ export async function createArrangementPhysics(mode: ArrangementMode, pieces: re
       return impacts.slice()
     },
     result,
+    /** Replace the contents of the same crate, without creating another world. */
+    resetCrate() {
+      if (disposed || mode !== 'crate') return false
+      this.release()
+      const zero = { x: 0, y: 0, z: 0 }
+      cursor = { x: 0, y: 1.2, z: 0 }; anchor = { ...cursor }
+      handle.setTranslation(cursor, true); handle.setNextKinematicTranslation(cursor)
+      accumulator = 0; settledFor = 0; impacts.length = 0
+      for (const entry of bodies.values()) {
+        const { body, definition } = entry
+        body.setTranslation(definition.position, true)
+        body.setRotation({ ...zero, w: 1 }, true)
+        body.setLinvel(zero, true); body.setAngvel(zero, true)
+        body.setLinearDamping(1.6); body.setAngularDamping(2.5)
+        body.resetForces(false); body.resetTorques(false)
+        entry.previousY = 0
+      }
+      world.propagateModifiedBodyPositionsToColliders()
+      return true
+    },
     settledFor: () => settledFor,
     resting: () => !held && settledFor >= .42 && [...bodies.values()].every(entry => entry.body.isSleeping()),
     dispose() { if (disposed) return; this.release(); disposed = true; world.free() },

@@ -9,7 +9,8 @@ import './arrangement.css'
 
 export type ArrangementOptions = {
   mode: ArrangementMode; title: string; food?: FoodDescriptor;
-  onComplete: (result: NeighborAssembly | PackingResult) => boolean; onCancel: () => void;
+  onComplete: (result: NeighborAssembly | PackingResult) => boolean | 'next-crate'; onCancel: () => void;
+  onNextCrate?: () => boolean;
 }
 type Physics = Awaited<ReturnType<typeof createArrangementPhysics>>
 type Props = Awaited<ReturnType<typeof createArrangementProps>>
@@ -20,10 +21,17 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
   const packing = options.mode === 'eggs' || options.mode === 'crate'
   prepareBaySoundScene(['cook.table-ceramic','cook.table-food','cook.basket-place','cook.egg-place','cook.finish'], signal)
   const root = document.createElement('section'); root.className = 'arrangement-game'; root.dataset.mode = options.mode
-  root.innerHTML = `<div class="arrangement-view" tabindex="0" role="application" aria-label="${options.mode === 'table' ? 'Сервировка стола' : options.mode === 'basket' ? 'Сбор корзинки для пикника' : options.mode === 'crate' ? 'Упаковка ящика яиц' : 'Упаковка корзины яиц'}" aria-describedby="assembly-controls"><img class="arrangement-room" alt="" fetchpriority="high" decoding="async"><h2 class="arrangement-title"></h2><button type="button" class="arrangement-close" aria-label="Вернуться">×</button><ul class="arrangement-checklist" aria-label="Для укладки"></ul><button type="button" class="arrangement-finish"${packing ? ' data-action="finish-egg-packing"' : ''} disabled>Готово</button><div class="arrangement-status" role="status">${options.mode === 'table' ? 'Накрываем стол…' : options.mode === 'crate' ? 'Готовим ящик для яиц…' : packing ? 'Готовим корзинку для яиц…' : 'Готовим корзинку для пикника…'}</div><p class="arrangement-sr" id="assembly-controls">Перенесите ${packing ? 'яйца' : 'предметы'} ${options.mode === 'table' ? 'на салфетку' : options.mode === 'crate' ? 'в ящик' : 'в корзинку'}. Берите за любую часть и отпускайте, когда предмет окажется на месте. Колесо мыши или Q и E поворачивают взятый предмет. Клавиатура: цифры от 1 до 5 выбирают предмет, пробел берёт и отпускает, стрелки перемещают, Enter завершает ${packing ? 'упаковку яиц' : options.mode === 'table' ? 'сервировку' : 'сбор корзинки'}, Escape возвращается.</p><p class="arrangement-sr" aria-live="polite"></p></div>`
+  root.innerHTML = `<div class="arrangement-view" tabindex="0" role="application" aria-label="${options.mode === 'table' ? 'Сервировка стола' : options.mode === 'basket' ? 'Сбор корзинки для пикника' : options.mode === 'crate' ? 'Упаковка ящика яиц' : 'Упаковка корзины яиц'}" aria-describedby="assembly-controls"><img class="arrangement-room" alt="" fetchpriority="high" decoding="async"><h2 class="arrangement-title"></h2><button type="button" class="arrangement-close" aria-label="Вернуться">×</button><ul class="arrangement-checklist" aria-label="Для укладки"></ul><button type="button" class="arrangement-finish"${packing ? ' data-action="finish-egg-packing"' : ''} disabled>Готово</button>${options.onNextCrate ? '<button type="button" class="arrangement-finish" data-action="next-egg-crate" hidden>Следующий ящик</button>' : ''}<div class="arrangement-status" role="status">${options.mode === 'table' ? 'Накрываем стол…' : options.mode === 'crate' ? 'Готовим ящик для яиц…' : packing ? 'Готовим корзинку для яиц…' : 'Готовим корзинку для пикника…'}</div><p class="arrangement-sr" id="assembly-controls">Перенесите ${packing ? 'яйца' : 'предметы'} ${options.mode === 'table' ? 'на салфетку' : options.mode === 'crate' ? 'в ящик' : 'в корзинку'}. Берите за любую часть и отпускайте, когда предмет окажется на месте. Колесо мыши или Q и E поворачивают взятый предмет. Клавиатура: цифры от 1 до 5 выбирают предмет, пробел берёт и отпускает, стрелки перемещают, Enter завершает ${packing ? 'упаковку яиц' : options.mode === 'table' ? 'сервировку' : 'сбор корзинки'}, Escape возвращается.</p><p class="arrangement-sr" aria-live="polite"></p></div>`
   root.querySelector('h2')!.textContent = options.title; host.append(root)
   const view = root.querySelector<HTMLElement>('.arrangement-view')!, status = root.querySelector<HTMLElement>('.arrangement-status')!, finish = root.querySelector<HTMLButtonElement>('.arrangement-finish')!, live = root.querySelector<HTMLElement>('[aria-live]')!
   const room = root.querySelector<HTMLImageElement>('.arrangement-room')!
+  const nextCrate = root.querySelector<HTMLButtonElement>('[data-action="next-egg-crate"]')
+  const offerNextCrate = () => {
+    if (!nextCrate) return
+    nextCrate.hidden = false
+    // The existing Back comes first after the scene, and a held Enter stays on the scene.
+    view.focus({ preventScroll: true })
+  }
   const base = import.meta.env.BASE_URL, reduced = matchMedia('(prefers-reduced-motion: reduce)')
   const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-4, 4, 3, -3, .1, 60)
   camera.position.set(0, 7.8, 8); camera.lookAt(0, 0, 0)
@@ -177,11 +185,35 @@ export function createArrangement(host: HTMLElement, options: ArrangementOptions
     const points = physics.result(); if (!points) return
     const result: NeighborAssembly | PackingResult = packing ? { kind: options.mode === 'crate' ? 'crate' : 'basket', placements: points.map(({ x, y }) => ({ x, y })), settled: true }
       : { kind: options.mode as 'table' | 'basket', placements: points.map(({ slot, x, y }) => ({ slot: slot as 'food' | 'cup' | 'flowers', x, y })), settled: true }
-    if (options.onComplete(result)) { committed = true; playBaySound('cook.finish'); finish.hidden = true; live.textContent = 'Готово' }
-    else { status.textContent = packing ? 'Не удалось упаковать яйца. Вернитесь в курятник и проверьте запасы.' : 'Не хватает угощения. Вернитесь к рецепту.'; status.hidden = false }
+    committed = true
+    const receipt = options.onComplete(result)
+    if (receipt) {
+      playBaySound('cook.finish'); finish.hidden = true; live.textContent = 'Готово'
+      if (receipt === 'next-crate') offerNextCrate()
+    }
+    else { committed = false; status.textContent = packing ? 'Не удалось упаковать яйца. Вернитесь в курятник и проверьте запасы.' : 'Не хватает угощения. Вернитесь к рецепту.'; status.hidden = false }
   }, { signal })
   const checklist = root.querySelector<HTMLUListElement>('.arrangement-checklist')!
   const badges = new Map<string, HTMLLIElement>()
+  nextCrate?.addEventListener('click', () => {
+    if (!committed || nextCrate.hidden || !loaded || lost || !physics) return
+    nextCrate.hidden = true
+    if (!options.onNextCrate?.() || !physics.resetCrate()) {
+      status.textContent = 'Проверьте запасы в курятнике.'
+      status.hidden = false; back.focus({ preventScroll: true })
+      return
+    }
+    for (const id of pointers.keys()) if (view.hasPointerCapture(id)) view.releasePointerCapture(id)
+    pointers.clear(); activePointer = undefined; pinchAngle = undefined
+    focused = 0; hovered = ''; previousTime = 0; selection.visible = false; view.style.cursor = ''
+    for (const badge of badges.values()) {
+      badge.dataset.placed = 'false'
+      badge.setAttribute('aria-label', badge.title + ' — положите на место')
+    }
+    committed = false; finish.hidden = false; finish.disabled = true; status.hidden = true
+    finish.textContent = live.textContent = 'В ящике · 0/' + badges.size
+    view.focus({ preventScroll: true }); wake()
+  }, { signal })
   const facing = new THREE.Quaternion(), parentRotation = new THREE.Quaternion()
   const eggAxis = new THREE.Vector3(), viewRotation = new THREE.Quaternion()
   function faceCamera(node: THREE.Object3D) {

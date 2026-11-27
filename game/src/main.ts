@@ -101,7 +101,7 @@ import './bed-transplant.css'
 import { cancelCovePlan } from './farm'
 import { renderFishingPracticeEntry } from './fishing-practice-ui'
 import { canPracticeFishing, createFishingPractice } from './fishing-practice'
-import { getEggUnpackAction, unpackEggBasket, unpackEggCrate, getHarborWithdrawal, withdrawHarborSupplies } from './farm'
+import { getEggUnpackAction, unpackEggBasket, unpackEggCrate, nextContractCrateQuote, getHarborWithdrawal, withdrawHarborSupplies } from './farm'
 import { installActionClickGuard } from './action-click-guard'
 import { grovePearlCabinet, setGrovePearlCabinet } from './farm'
 import { exactSaleQuote, saleStock, stepSaleQuantity, type SaleTarget } from './exact-sale'
@@ -2421,25 +2421,39 @@ function drawPanel() {
         dialogContent.innerHTML = `<p class="dialog-status">${getNeighborFoodRecovery(farm, plan.id)?.message ?? 'Угощение недоступно.'}</p>${button('Вернуться к встрече', 'resume-community')}`
         break
       }
-      let completed = false
+      let completed = false, continuing = false, nextCrateQuote: string | undefined
+      const sameBench = () => panel === 'arrangement' && arrangementRequest === request
       dialogContent.innerHTML = '<div class="arrangement-host"></div>'
       arrangementGame = createArrangement(dialogContent.querySelector<HTMLElement>('.arrangement-host')!, {
         mode: request.kind === 'neighbor' ? plan!.arrangement : request.mode,
         title: request.kind === 'neighbor' ? plan!.title : request.mode === 'eggs' ? 'Корзинка яиц' : 'Ящик яиц', food,
+        onNextCrate: request.kind === 'packing' && request.mode === 'crate' ? () => {
+          if (!sameBench() || !completed || continuing || !nextCrateQuote || nextContractCrateQuote(farm) !== nextCrateQuote) return false
+          continuing = true; completed = false
+          return true
+        } : undefined,
         onComplete(result) {
           if (completed) return true
-          if (panel !== 'arrangement' || arrangementRequest !== request) return false
-          completed = perform(() => request.kind === 'neighbor' ? finishNeighborPlan(farm, request.id, result as NeighborAssembly)
-            : request.mode === 'eggs' ? packEggBasket(farm, result as PackingResult) : packEggCrate(farm, result as PackingResult), false, true)
-          if (completed) queueMicrotask(() => {
-            if (panel !== 'arrangement' || arrangementRequest !== request) return
+          if (!sameBench() || continuing && nextContractCrateQuote(farm) !== nextCrateQuote) return false
+          completed = true
+          if (!perform(() => request.kind === 'neighbor' ? finishNeighborPlan(farm, request.id, result as NeighborAssembly)
+            : request.mode === 'eggs' ? packEggBasket(farm, result as PackingResult) : packEggCrate(farm, result as PackingResult), false, true)) {
+            completed = false
+            return false
+          }
+          if (request.kind === 'packing' && request.mode === 'crate' && !continuing) {
+            nextCrateQuote = nextContractCrateQuote(farm)
+            if (nextCrateQuote) return 'next-crate'
+          }
+          queueMicrotask(() => {
+            if (!sameBench()) return
             if (request.kind === 'neighbor') {
               freshFinnRide=plan!.resident==='finn'?finnPicnicRide(farm):undefined
               closeDialog()
             }
             else { panelHistory.length = 0; openPanel('coop', false) }
           })
-          return completed
+          return true
         },
         onCancel() { if (request.kind === 'neighbor') void resumeCommunityRequest(); else leaveScene() },
       })

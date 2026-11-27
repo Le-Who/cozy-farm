@@ -1021,6 +1021,17 @@ export function packEggCrate(farm: FarmState, result?: PackingResult): ActionRes
   return { ok: true, message: 'Ящик яиц упакован.' };
 }
 
+/** The still-live second crate is a draft, never reserved or spent by this quote. */
+export function nextContractCrateQuote(farm: FarmState): string | undefined {
+  if (farm.island !== 'home' || farm.coopSpecialization !== 'packing' || farm.eggCrates !== 1
+    || farm.eggs < eggsPerCrate || !Number.isSafeInteger(farm.workToday + 1)) return;
+  const order = marketOrder(farm, 'flock', facilityMenus.packing);
+  if (order.status !== 'waiting' || order.items.length !== 1
+    || order.items[0].kind !== 'eggCrates' || order.items[0].quantity !== 2) return;
+  const ledger = farm.orders.flock;
+  return [farm.day, ledger.completed, ledger.deliveredOn, farm.eggs].join(':');
+}
+
 /** Unpacking only releases ordinary eggs already held in a container. */
 export function getEggUnpackAction(farm: FarmState, kind: 'basket' | 'crate') {
   const eggs = kind === 'basket' ? eggsPerBasket : eggsPerCrate;
