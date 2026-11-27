@@ -233,6 +233,28 @@ export function advanceExpeditions(state: FerryExpeditions, day: number): void {
     state.lastDay = current;
   }
 }
+const orchardAppleOffer = 'orchard-apples', orchardBasketOffer = 'orchard-mixed';
+
+export function quoteFirstOrchardBasketPair(world: FerryExpeditions, selected: string, day: number, wallet: ExpeditionWallet) {
+  const last = world.last, settled = last?.settled;
+  if (world.active || last?.port !== 'orchard' || last.explored || !settled || !portProjectComplete(world, 'orchard')) return;
+  const pairId = combinedExpeditionId(orchardAppleOffer, orchardBasketOffer)!;
+  if (selected !== orchardAppleOffer && selected !== pairId) return;
+  const { supplied } = world.markets.orchard;
+  // Only the receipt that first finished the Table: no saved flag or expiry timer.
+  if (!portProjects.orchard.needs.some(item =>
+    (supplied[item.id] ?? 0) - (settled.outgoing.find(cargo => cargo.id === item.id)?.quantity ?? 0) < item.quantity)) return;
+  const pair = quoteExpedition(world, pairId, wallet);
+  if (!pair?.available) return;
+  const basket = quoteExpedition(world, orchardBasketOffer, wallet)!;
+  // The ordinary repeat should actually leave a short basket after normal dawn production.
+  // A combined quote reserves its existing incoming goods before that production runs.
+  const repeated = structuredClone(world);
+  if (!dispatchExpedition(repeated, orchardAppleOffer, day, wallet).ok) return;
+  advanceExpeditions(repeated, Math.max(day, world.lastDay) + 1);
+  if (basket.incoming.some(item => expeditionStock(repeated, 'orchard', item.id) < item.quantity)) return { pair, basket };
+}
+
 /** Ownership of imported goods is independent from learning how to produce them. */
 export function restoreFerryExpeditions(value: unknown, day = 1): FerryExpeditions {
   const state = createFerryExpeditions(day), raw = record(value), markets = record(raw.markets);

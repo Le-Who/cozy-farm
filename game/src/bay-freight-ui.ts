@@ -5,7 +5,7 @@ import type { getFerryGroveBunSource } from './ferry-grove-bun-source.ts'
 import { freightPorts, freightPortNames, freightStock,
   setFreightStops, setFreightMode, setFreightPickup, startFreight, pauseFreight,
   type BayFreightState, type FreightPort, type FreightResult } from './bay-freight-model.ts';
-import { expeditionPorts, expeditionPortNames, expeditionPortDescriptions, expeditionTrades, expeditionOfferIds, quoteExpedition, portDemand, portProjectComplete, portProjects, expeditionStock, type ExpeditionPort, type ExpeditionManifest } from './ferry-expeditions.ts';
+import { expeditionPorts, expeditionPortNames, expeditionPortDescriptions, expeditionTrades, expeditionOfferIds, quoteExpedition, quoteFirstOrchardBasketPair, portDemand, portProjectComplete, portProjects, expeditionStock, type ExpeditionPort, type ExpeditionManifest } from './ferry-expeditions.ts';
 import './bay-freight.css';
 import { nextFerryExploration } from './ferry-discovery.ts';
 import { getFerryRestockPlan } from './ferry-restock.ts';
@@ -86,6 +86,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
     ? peachOfferIds.map(offer => offer === id ? quote : quoteExpedition(world, offer, wallet)!) : [];
   const comparePeaches = peachPayments.length === 2 && peachPayments.every(payment => payment.available);
   const coins = (amount: number) => ruCount(amount, 'монета', 'монеты', 'монет');
+  const orchardPair = quoteFirstOrchardBasketPair(world, id, ctx.day, wallet);
   const manifest: ExpeditionManifest = active ?? quote;
   const orderIds = expeditionOfferIds(manifest.id), combined = orderIds.length === 2;
   const port = manifest.port, phase = active?.phase ?? 'planning', exploring = manifest.kind === 'explore';
@@ -117,6 +118,13 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const harvestAction = harvest ? button(`К урожаю: ${esc(product('wheat',ctx).name.toLowerCase())} ×${harvest.ordinary}`,
     'expedition-source', `${id}|wheat|${harvest.key}`, 'class="bay-freight-primary"') : '';
   const cargoChoices = harvestAction ? `<div class="expedition-cargo-choices">${harvestAction}${sourceAction}</div>` : '';
+  const send = button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить',
+    'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`);
+  const departure = orchardPair ? `<div class="expedition-cargo-choices">${button(
+    combined ? `Убрать второй: ${esc(orchardPair.basket.name)}`
+      : `Добавить вторым: ${esc(orchardPair.basket.name)}${orchardPair.pair.payCoins ? ` · −${coins(orchardPair.pair.payCoins)}` : ''}`,
+    'expedition-pair', orchardPair.basket.id, `class="expedition-source expedition-add-order" aria-pressed="${combined}"`
+  )}${send}</div>` : send;
   const production = world.markets[port].production;
   const effect = exploring ? 'Новый торговый порт будет открыт наверняка. Разведка не зависит от удачи.'
     : orderIds.includes('salt-fish') && !manifest.outgoing.length ? 'Местный улов подходит для гавани и общих ужинов. Покупка не считается личным уловом.'
@@ -184,7 +192,7 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
               `Отдать булочку${payment.earnCoins ? ` и получить ${coins(payment.earnCoins)}` : ''}`;
             return button(label, 'expedition-offer', payment.id, `aria-pressed="${id === payment.id}" aria-label="${description}"`);
           }).join('')}</div>` : ''}
-          ${combined ? `<section class="expedition-selection" aria-label="Выбранные заказы"><ol>${manifest.name.split(' + ').map(name => `<li>${esc(name)}</li>`).join('')}</ol>${!active ? button('Оставить только первый заказ','expedition-offer',orderIds[0]) : ''}</section>` : ''}
+          ${combined ? `<section class="expedition-selection" aria-label="Выбранные заказы"><ol>${manifest.name.split(' + ').map(name => `<li>${esc(name)}</li>`).join('')}</ol>${!active && !orchardPair ? button('Оставить только первый заказ','expedition-offer',orderIds[0]) : ''}</section>` : ''}
           <p class="expedition-destination">⌖ ${esc(displayPort)}</p>
           ${!exploring ? `<div class="expedition-market-status"><span data-demand="${demand}">${demandText}</span><span>${picture(stockId, ctx)} ${expeditionStock(world, port, stockId)} в порту${phase === 'sailing' ? ' · ваш груз отложен' : ''}</span></div>` : ''}
           <div class="expedition-cargo-card"><h4>${active ? 'Отправили' : 'Отправим'}</h4>${cargo(manifest.outgoing, true)}${manifest.payCoins ? `<div class="expedition-cargo-item expedition-money">${ctx.icon('coin')}<span><strong>${manifest.payCoins} монет</strong><small>${active ? 'Уже оплачено' : `Останется ${Math.max(0,(ctx.coins ?? 0)-manifest.payCoins)}`}</small></span></div>` : ''}${!manifest.outgoing.length && !manifest.payCoins ? '<p>Пустой трюм</p>' : ''}</div>
@@ -197,11 +205,11 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
           if (comparePeaches && peachOfferIds.includes(trade.id)) return trade.id === id ? '' :
             `<div class="expedition-offer-choice">${button(`Добавить вторым: ${esc(trade.name)}`, 'expedition-pair', trade.id, 'class="expedition-add-order" aria-pressed="false"')}</div>`;
           const offer = quoteExpedition(world, trade.id, { ...wallet, boatOwned: true })!;
-          return `<div class="expedition-offer-choice">${button(`${esc(trade.name)}<small>${offer.incoming.map(item => `${esc(product(item.id, ctx).name)} ×${item.quantity}`).join(' + ')}${offer.earnCoins ? ` + ${offer.earnCoins} монет` : offer.payCoins ? ` · доплата ${offer.payCoins}` : ''}</small><small>Выбрать только этот заказ</small>`, 'expedition-offer', trade.id, `aria-pressed="${orderIds.includes(trade.id)}"`)}${trade.id !== orderIds[0] ? button(orderIds[1] === trade.id ? 'Убрать второй' : combined ? 'Заменить второй' : 'Добавить вторым', 'expedition-pair', trade.id, `class="expedition-add-order" aria-pressed="${orderIds[1] === trade.id}"`) : ''}</div>`;
+          return `<div class="expedition-offer-choice">${button(`${esc(trade.name)}<small>${offer.incoming.map(item => `${esc(product(item.id, ctx).name)} ×${item.quantity}`).join(' + ')}${offer.earnCoins ? ` + ${offer.earnCoins} монет` : offer.payCoins ? ` · доплата ${offer.payCoins}` : ''}</small><small>Выбрать только этот заказ</small>`, 'expedition-offer', trade.id, `aria-pressed="${orderIds.includes(trade.id)}"`)}${trade.id !== orderIds[0] && trade.id !== orchardPair?.basket.id ? button(orderIds[1] === trade.id ? 'Убрать второй' : combined ? 'Заменить второй' : 'Добавить вторым', 'expedition-pair', trade.id, `class="expedition-add-order" aria-pressed="${orderIds[1] === trade.id}"`) : ''}</div>`;
         }).join('')}</div></details>` : ''}
           ${cargoUse ? '' : receipt}
         </div>
-        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь.</small>` : phase === 'ready' ? `${button(claimLabel, 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения.</small>` : `${cargoChoices || `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${warehouseAction} ${sourceAction}</div>`}${button(exploring ? 'Отправить на разведку' : combined ? 'Загрузить 2 заказа и отправить' : 'Загрузить и отправить', 'expedition-send', id, `class="bay-freight-primary" ${quote.available ? '' : 'disabled'}`)}`}`}</footer>
+        <footer class="expedition-departure">${status ? `<p>${esc(status)}</p>` : ''}${phase === 'sailing' ? `${button(ctx.playerPort === 'home' ? 'В дом · посмотреть утро' : 'Домой · посмотреть утро', 'expedition-rest', String(active!.serial), 'class="bay-freight-primary"')}<small>Переход не начинает ночь.</small>` : phase === 'ready' ? `${button(claimLabel, 'expedition-claim', '', 'class="bay-freight-primary"')}<small>Без срока получения.</small>` : `${cargoChoices || `${quote.available ? '' : `<div class="expedition-reason" role="status">${esc(quote.reason)} ${warehouseAction} ${sourceAction}</div>`}${departure}`}`}</footer>
       </div>
     </div>
   </section>`;
