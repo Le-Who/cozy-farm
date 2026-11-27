@@ -1888,6 +1888,12 @@ export function getSignatureAction(farm:FarmState,draft:SignatureDraft){
   const label=!normalized?'Выберите две порции фруктов или ягод.':!kitchen?'Готовьте на кухне Родного острова или Лавандовой гавани.':farm.buildingLevels.farmhouse<level?'Улучшите дом, чтобы готовить заготовки.':!available?'Соберите выбранные ингредиенты.':'Приготовить свой рецепт';
   return {available,label,items};
 }
+/** Preview the committed repeat output; a picnic never changes its ingredient count. */
+export function getSignatureCookOutput(farm:FarmState,quantity:1|3,recipe?:Pick<SignatureRecipe,'id'|'batches'>){
+  const portions=quantity+Number(farm.culinary.picnic?.day===farm.day&&farm.culinary.picnic.processing==='silky');
+  const fits=!recipe||((farm.culinary.stock[recipe.id]??0)+portions<=1_000_000&&recipe.batches+quantity<=1_000_000);
+  return {portions,fits};
+}
 function craftSignature(farm:FarmState,draft:SignatureDraft,result:CookeryResult,quantity:number):ActionResult&{recipeId?:string}{
   const normalized=normalizeSignatureDraft(draft);
   if(!normalized||!isCookeryResult(result)||result.family!==(normalized.base==='tart'?'decorate':'preserves')||result.fruit.some(p=>!normalized.ingredients.some(part=>part.id===p.ingredientId&&((p.trait===undefined&&result.fruitTraitsVersion!==1)||part.trait===p.trait)))||quantity!==1&&quantity!==3)return failure('Выберите готовый рецепт.');
@@ -1897,15 +1903,15 @@ function craftSignature(farm:FarmState,draft:SignatureDraft,result:CookeryResult
   const identity=signatureIdentity(normalized,result),existing=farm.culinary.recipes.find(recipe=>signatureIdentity(recipe,recipe.result)===identity);
   if(quantity===3&&!existing)return failure('Сначала приготовьте этот вариант один раз, затем сможете готовить тройную партию.');
   if(!existing&&(farm.culinary.recipes.length>=signatureRecipeLimit||farm.culinary.serial>=999999))return failure('Книга рецептов заполнена. Используйте запас блюда и уберите рецепт в архив.');
-  const bonus=farm.culinary.picnic?.day===farm.day&&farm.culinary.picnic.processing==='silky',made=quantity+Number(bonus);
-  if(existing&&((farm.culinary.stock[existing.id]??0)+made>1_000_000||existing.batches+quantity>1_000_000))return failure('Для этого блюда больше нет места в кладовой.');
+  const {portions:made,fits}=getSignatureCookOutput(farm,quantity,existing);
+  if(!fits)return failure('Для этого блюда больше нет места в кладовой.');
   const processing=result.processing??(normalized.base==='tart'?'chunky':'bright');
   const recipe:SignatureRecipe=existing??{id:`s${farm.culinary.serial+1}`,name:`${normalized.base==='tart'?'Тарт':'Конфитюр'}: ${normalized.ingredients.map(part=>signatureFruitNames[part.id].toLowerCase()).join(' + ')}`,favorite:false,base:normalized.base,ingredients:normalized.ingredients.map(part=>({...part})),processing,result:copyCookeryResult(result),createdOn:farm.day,batches:0,sellPrice:signatureSellPrice(normalized,action.items.reduce((sum,item)=>sum+unitPrice(item,farm)*item.quantity,0))};
   for(const item of items)removeStock(farm,item);
   if(!existing){farm.culinary.serial++;farm.culinary.recipes.push(recipe)}
   noteFestivalActivity(farm.festivals,'bake');
   recipe.batches+=quantity;recipe.result=copyCookeryResult(result);farm.culinary.stock[recipe.id]=(farm.culinary.stock[recipe.id]??0)+made;
-  if(bonus)farm.culinary.picnic=null;
+  if(made>quantity)farm.culinary.picnic=null;
   farm.workToday++;
   completeRecipeDraft(farm, normalized);
   return {ok:true,message:`Готово: «${recipe.name}» — ${ruCount(made, 'порция', 'порции', 'порций')}. Рецепт сохранён.`,recipeId:recipe.id};

@@ -4,13 +4,14 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import { commissionPlayer } from './fixtures/commission-player.ts'
-import { canSailTo, getSignatureAction, ingredientCount, repeatSignature, restoreCurrentFarm, sail, variantLabel, type FarmState, type StockItem } from '../src/farm.ts'
+import { canSailTo, getSignatureAction, getSignatureCookOutput, ingredientCount, repeatSignature, restoreCurrentFarm, sail, variantLabel, type FarmState, type StockItem } from '../src/farm.ts'
 import { signatureFruitNames, signatureProcessingDefinitions } from '../src/culinary.ts'
 import { getRecipeRepeatGuide, recipeIngredientsDisclosureLabel } from '../src/recipe-repeat-guidance.ts'
 import { lastPortionShopStock, signatureTastingGuide } from '../src/signature-tasting-guidance.ts'
 import { signatureBookCapacity } from '../src/signature-book.ts'
 import { getStoredSignature, storedSignatureValue } from '../src/stored-signature.ts'
 import { RecipeBookNavigation } from '../src/recipe-book-view.ts'
+import { ruCount } from '../src/ru.ts'
 
 const read=(path:string)=>readFileSync(new URL(path,import.meta.url),'utf8')
 const source=read('../src/culinary-ui.ts'),main=read('../src/main.ts')
@@ -21,7 +22,7 @@ function between(text:string,first:string,last:string){
 const sheet=stripTypeScriptTypes(between(source,'export const escapeRecipeText','export const ingredientArt').replace('export ','')+
  between(source,'const control=','export function finishedIcon')+
  between(source,'const capacityDescription','export function recipeBookSearchStatus')+'\n;bookRecipe')
-const makeSheet=runInNewContext(sheet,{signatureTastingGuide,lastPortionShopStock,signatureBookCapacity,getSignatureAction,ingredientCount,
+const makeSheet=runInNewContext(sheet,{signatureTastingGuide,lastPortionShopStock,signatureBookCapacity,getSignatureAction,getSignatureCookOutput,ingredientCount,ruCount,
  getStoredSignature,storedSignatureValue,getRecipeRepeatGuide,recipeIngredientsDisclosureLabel,canSailTo,variantLabel,signatureFruitNames,signatureProcessingDefinitions,
  ingredientName:(i:{id:string})=>i.id,ingredientArt:(i:string)=>i,finishedIcon:(x:string)=>x,signatureResultPicture:()=>'',
  renderPicnicOffer:()=>'',harvestPicnicOffer:()=>'',renderHarvestPicnicRoute:()=>''})

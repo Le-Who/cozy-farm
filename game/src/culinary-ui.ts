@@ -4,13 +4,13 @@ import { getRecipeRepeatGuide, recipeIngredientsDisclosureLabel } from './recipe
 import { sortedBookRecipes, visibleBookRecipes, selectedBookId, type RecipeBookView } from './recipe-book-view'
 import './recipe-book.css'
 import './recipe-repeat-guidance.css'
-import {canSailTo,fishDefinitions,getCoveActions,getSignatureAction,getVillageMeal,ingredientCount,variantLabel,type FarmState,type StockItem} from './farm'
+import {canSailTo,fishDefinitions,getCoveActions,getSignatureAction,getSignatureCookOutput,getVillageMeal,ingredientCount,variantLabel,type FarmState,type StockItem} from './farm'
 import {signatureFruitNames,signatureProcessingDefinitions,resolvedCookeryFruit,cookeryFinishTraits,type CookeryResult,type SignatureDraft,type SignatureIngredient,type SignatureRecipe} from './culinary'
 import {traitIds,type Trait} from './climate'
 import {type CoveChoices,type CoveFishingHabitat} from './shoreline'
 import {hasLanternfishDepth} from './fishing-model'
 import './culinary-ui.css'
-import {traitLabel} from './ru'
+import {ruCount,traitLabel} from './ru'
 import {signatureBookCapacity} from './signature-book'
 import {harvestPicnicOffer,renderHarvestPicnicRoute} from './harvest-picnic'
 import {renderPicnicOffer,renderPicnicStatus} from './picnic-guidance'
@@ -72,6 +72,11 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
   const beaTasting=signatureTastingGuide(farm,recipe.id,'bea'), shopChoice=lastPortionShopStock(farm,recipe.id)
   const count=farm.culinary.stock[recipe.id]??0, capacity=signatureBookCapacity(farm.culinary)
   const action=getSignatureAction(farm,recipe), batch=action.available&&action.items.every(item=>ingredientCount(farm,item)>=item.quantity*3), stored=getStoredSignature(farm,recipe.id)
+  const repeatLabel=(label:string,repeats:1|3,available:boolean)=>{
+    if(!available||!Number.isSafeInteger(farm.workToday+1)) return label
+    const {portions,fits}=getSignatureCookOutput(farm,repeats,recipe)
+    return fits&&portions>repeats?`${label} · ${ruCount(portions,'порция','порции','порций')}`:label
+  }
   const guide=getRecipeRepeatGuide(farm,recipe.id)!
   // When distance is the only blocker, travel before scanning already-owned ingredients.
   const homeRouteReady=guide.away&&canSailTo(farm,'home')&&getSignatureAction({...farm,island:'home'},recipe).available
@@ -89,7 +94,7 @@ function bookRecipe(farm:FarmState,recipe:SignatureRecipe,art:Icons,view:RecipeB
     <div class="recipe-book-stock"><dl><div><dt>С собой</dt><dd>${count}</dd></div><div><dt>На местном складе</dt><dd>${stored?.stored??0}</dd></div></dl>${stored?control('Забрать 1 порцию','recipe-warehouse-withdraw',storedSignatureValue(stored),true):''}${count>0&&farm.village.built&&!shopChoice?(farm.island==='village'?control('Своя лавка','open-panel','bay-shop'):control('В лавку в гавань','recipe-harbour-shop',recipe.id)):''}</div></div>
     <section class="recipe-book-cooking" aria-labelledby="recipe-cooking-title"><h2 id="recipe-cooking-title" tabindex="-1" data-recipe-focus="cooking">Приготовить точно</h2>
       ${homeRouteReady?homeRoute:''}
-      <div class="signature-actions recipe-book-repeat">${control('Повторить ×1','make-signature',recipe.id,action.available)}${control('Партия ×3','batch-signature',recipe.id,batch)}</div>
+      <div class="signature-actions recipe-book-repeat">${control(repeatLabel('Повторить ×1',1,action.available),'make-signature',recipe.id,action.available)}${control(repeatLabel('Партия ×3',3,batch),'batch-signature',recipe.id,batch)}</div>
       ${reason?`<p class="recipe-book-blocker" tabindex="-1" data-recipe-focus="blocker" role="status">${escapeRecipeText(reason)}</p>`:!batch?'<p class="recipe-book-blocker">Для партии ×3 нужно втрое больше каждого ингредиента.</p>':''}
       <section class="recipe-repeat-guide" aria-label="Точный повтор рецепта"><details data-repeat-guide="${recipe.id}"${(reason&&!homeRouteReady)||view.expandedRepeatId===recipe.id?' open':''}><summary>${recipeIngredientsDisclosureLabel}</summary><ul class="ingredients">${guide.items.map(art.stock).join('')}</ul><p class="recipe-repeat-note">Тот же состав, особенности и оформление. Для партии ×3 нужно втрое больше каждого ингредиента.</p></details>${homeRouteReady?'':homeRoute}</section>
       ${control('Готовить вручную','manual-signature',recipe.id,capacity.canCreate,capacityDescription(capacity.canCreate))}

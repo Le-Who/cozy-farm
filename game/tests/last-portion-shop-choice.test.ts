@@ -11,7 +11,7 @@ import { bayShopDayGuidance } from '../src/bay-shop-day.ts'
 import { shopRemainderQuote, shopReturnLabel } from '../src/bay-shop-price-copy.ts'
 import { bayShopPurchaseReaction } from '../src/bay-shop-speech.ts'
 import { reserveShopGoods } from '../src/harbour-economy.ts'
-import { getSignatureAction, ingredientCount, restoreCurrentFarm, tasteSignature, type FarmState } from '../src/farm.ts'
+import { getSignatureAction, getSignatureCookOutput, ingredientCount, restoreCurrentFarm, tasteSignature, type FarmState } from '../src/farm.ts'
 import { ruCount } from '../src/ru.ts'
 import { signatureProcessingDefinitions } from '../src/culinary.ts'
 import { shopCommissionUsesRecipe } from '../src/shop-commissions.ts'
@@ -98,7 +98,7 @@ test('only an exact last carried jar with a live tasting replaces its generic sh
   const {farm,recipe,id}=earned(), ui=source('culinary-ui')
   const code=stripTypeScriptTypes(part(ui,'const control=','\n')+';'+part(ui,'const capacityDescription','export function recipeBookSearchStatus')+
     "\nbookRecipe(farm,farm.culinary.recipes.find(r=>r.id===id),{icon:()=>'',stock:()=>''},{})")
-  const render=(f:FarmState)=>runInNewContext(code,{...tasting,farm:f,id:recipe,getSignatureAction,ingredientCount,signatureProcessingDefinitions,
+  const render=(f:FarmState)=>runInNewContext(code,{...tasting,farm:f,id:recipe,getSignatureAction,getSignatureCookOutput,ingredientCount,ruCount,signatureProcessingDefinitions,
     signatureBookCapacity:()=>({canCreate:true}),getStoredSignature:()=>undefined,getRecipeRepeatGuide:()=>({available:true,items:[],missing:[]}),
     signatureResultPicture:()=>'',finishedIcon:()=>'',ingredientName:()=>'',ingredientArt:()=>'',escapeRecipeText:String,
     recipeIngredientsDisclosureLabel:'Ингредиенты',renderPicnicOffer:()=>'',recipeBookSupper:()=>'',shopCommissionUsesRecipe}) as string
