@@ -4476,13 +4476,21 @@ app.addEventListener('click', async (event) => {
       break
     case 'resume-community': await resumeCommunityRequest(control === communityResume ? 'recipe' : 'request'); break
     case 'intent-own-recipe': {
-      const plan = panel === 'neighbor' && communityRequest?.kind === 'neighbor' ? communityRequest.planId : undefined
+      const plan = panel === 'neighbor' && dialog.open && farm.island === 'village'
+        ? getNeighborPlans(farm).find(plan => plan.resident === communityResident && (plan.phase === 'joined' || plan.phase === 'arranging'))
+        : undefined
+      if (panel === 'neighbor') {
+        if (!plan) break
+        // Back can show this neighbor while another request still owns the HUD shortcut.
+        communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }
+        requestedFood = undefined
+      }
       const order = panel === 'intent' && dialog.open && communityRequest?.kind === 'intent'
         && communityRequest.orderId === communityOrderId ? communityOrderId : undefined
       signatureBase = 'tart'; signatureSlots = [null, null]; signatureSlot = 0; signatureRepeatId = undefined; signatureFamily = undefined
       openPanel('signature')
       const origin = panelHistory.at(-1)
-      if (plan && panel === 'signature' && origin?.panel === 'neighbor') origin.neighborComposerPlan = plan
+      if (plan && panel === 'signature' && origin?.panel === 'neighbor') origin.neighborComposerPlan = plan.id
       if (order && panel === 'signature' && origin?.panel === 'intent' && order === origin.communityOrderId)
         origin.dailyIntentComposerOrder = order
       break
