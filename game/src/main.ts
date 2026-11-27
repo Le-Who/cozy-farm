@@ -2470,7 +2470,9 @@ function drawPanel() {
       const upgrade = getCapeUpgrade(farm)
       // A payable Apiary improves this still-available harvest, without replacing it.
       const readyChoice = hiveFlower === undefined && upgrade?.nextLevel === 2 && upgrade.available && preview.now.available
-      const gatherAction = preview.planted && preview.waiting ? button('Домой к отдыху', 'visit-rest')
+      const gatherAction = preview.planted === 0
+        ? button('К свободной клумбе', 'focus-flower', true, { value: farm.capeFlowers.indexOf(null) })
+        : preview.waiting ? button('Домой к отдыху', 'visit-rest')
         : button(preview.harvested ? 'Собрано' : 'Собрать мёд', 'collect-honey', preview.now.available)
       const upgradeAction = upgrade ? button('Улучшить', 'cape-upgrade', true, { secondary: !readyChoice })
         : button('Медовая кухня', 'visit-honey-kitchen', true, { secondary: true })
