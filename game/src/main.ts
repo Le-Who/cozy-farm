@@ -1843,6 +1843,7 @@ type PanelVisit = {
   workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; cookingFish: FishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
   signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;expandedRepeatId:string|undefined;cookingMode:'dish'|'signature';
   communityOrderId:string;communityResident:ResidentId;requestedFood:FoodOfferId|undefined;
+  neighborRecipeOrigin?: {island:typeof farm.island; request:Extract<CommunityRequest,{kind:'neighbor'}>};
   kitchenTart:KitchenTart;kitchenPreserves:KitchenPreserves;kitchenGroup:KitchenSelection|undefined;kitchenDish:DishId;honeyKitchenDish:HoneyKitchenRecipe;signatureFamily:SignatureFamily;
 }
 const panelHistory: PanelVisit[] = []
@@ -1875,7 +1876,9 @@ function rememberPanel(): PanelVisit {
        source:stockSourceItem(focused), warehouse:focused?.dataset.action === 'warehouse-supply'} : undefined
   const sellGrid = panel === 'market' && marketTab === 'sell' ? dialogContent.querySelector<HTMLElement>('#market-sale-results') : null
   const marketSaleGrid = sellGrid ? {key:marketSaleGridKey(sellGrid), scroll:sellGrid.scrollTop} : undefined
-  return {marketOrder,marketSaleGrid,homeServicesOpen,kitchenSourceItem:panel === 'kitchen' || panel === 'recipes' || panel === 'signature' && focused?.dataset.action === 'show-requirement' ? stockSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+  const neighborRecipeOrigin = panel === 'request-food' && requestedFood && communityRequest?.kind === 'neighbor'
+    ? {island:farm.island, request:communityRequest} : undefined
+  return {marketOrder,marketSaleGrid,homeServicesOpen,neighborRecipeOrigin,kitchenSourceItem:panel === 'kitchen' || panel === 'recipes' || panel === 'signature' && focused?.dataset.action === 'show-requirement' ? stockSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,honeyKitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack(keyboard = false) {
@@ -1911,10 +1914,24 @@ function goBack(keyboard = false) {
   seedPickerBed = farm.island === 'home' && seedBed && seedBed.kind !== 'crop' ? previous.seedPickerBed : undefined
   signatureBase=previous.signatureBase;signatureSlots=previous.signatureSlots.map(part=>part?{...part}:null);signatureSlot=previous.signatureSlot;signatureRepeatId=previous.signatureRepeatId;expandedRepeatId=previous.expandedRepeatId;cookingMode=previous.cookingMode
   communityOrderId=previous.communityOrderId;communityResident=previous.communityResident;requestedFood=previous.requestedFood
+  let destinationPanel=previous.panel
+  const recipeOrigin=previous.panel==='request-food' ? previous.neighborRecipeOrigin : undefined
+  if(recipeOrigin){
+    const {request,island:shore}=recipeOrigin
+    const plan=shore===farm.island ? getNeighborPlans(farm).find(plan=>plan.id===request.planId && plan.resident===request.resident
+      && (plan.phase==='joined'||plan.phase==='arranging')) : undefined
+    // Back owns only this live preview, never a newer or different gathering.
+    if(plan && requestedFood && getIntentOffers(farm,plan.intentId).some(offer=>offer.id===requestedFood && offer.eligible))
+      communityRequest=request
+    else {
+      requestedFood=undefined
+      destinationPanel=shore===farm.island && farm.island==='village' ? 'neighbor' : 'guide'
+    }
+  }
   kitchenTart=previous.kitchenTart;kitchenPreserves=previous.kitchenPreserves;kitchenGroup=previous.kitchenGroup;kitchenDish=previous.kitchenDish;honeyKitchenDish=previous.honeyKitchenDish;signatureFamily=previous.signatureFamily
   if (homeKitchenReturn) kitchenGroup = { ready:homeKitchenReturn, returned:true }
   if (previous.marketOrder) selectedMarketOrder = previous.marketOrder.lane
-  openPanel(previous.panel,false,farm.island,'page.fold')
+  openPanel(destinationPanel,false,farm.island,'page.fold')
   if (previous.marketSaleGrid && dialog.open && panel === 'market' && marketTab === 'sell') {
     const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
     // Apply only to this exact result set; the browser clamps to its live geometry.
