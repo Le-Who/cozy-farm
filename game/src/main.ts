@@ -128,6 +128,8 @@ import { getFerryRestockPlan } from './ferry-restock'
 import { firstFerryCargoOffer } from './ferry-smaller-cargo'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopCommissionPreview, type BayShopOptions, type BayShopStockGroup } from './bay-shop'
+import { createBayShopWorkClock } from './bay-shop-model'
+import type { CookeryOptions } from './cookery'
 import { renderFreightPanelInto, presentFerryDeparture, presentFerryArrival, freightControl } from './bay-freight-ui'
 import { FerryArrivalPresentation } from './ferry-arrival-presentation'
 import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } from './ferry-panel-view'
@@ -307,7 +309,8 @@ import {
 import { lazyScene } from './lazy-scene'
 const createFishingGame = lazyScene(() => import('./fishing').then(m => m.createFishingGame))
 const createWorkshop = lazyScene(() => import('./workshop').then(m => m.createWorkshop))
-const createCookery = lazyScene(() => import('./cookery').then(m => m.createCookery))
+const createCookery = lazyScene(() => import('./cookery').then(({ createCookery }) =>
+  (host: HTMLElement, options: CookeryOptions) => mountFarmCookery(host, options, createCookery)))
 const createArrangement = lazyScene(() => import('./arrangement').then(m => m.createArrangement))
 import { createIsland, type IslandTarget } from './island'
 import { harbourViews, isHarbourView } from './harbour-view'
@@ -2131,7 +2134,7 @@ function openShopScene(host:HTMLElement, marketVisit?: PanelVisit) {
   const options:BayShopOptions = {state:farm.bayShop,products,catalog,stockProduct:nextShopStock,recipeProduct,returnToRecipe:!!recipe,
     takeStock:(id,n)=>{ const reserved=reserveShopGoods(farm,id,n); if(reserved)status(); return reserved },
     returnStock:(id,n)=>{returnShopGoods(farm,id,n);status()},
-    onEarn:n=>{farm.coins+=n;textAt('status-coins',numberFormat.format(farm.coins));bayAudio.playEvent('trade.receive')},onChange:saveHarbour,onClose:leaveScene,
+    onEarn:earnHarbourSale,onChange:saveHarbour,onClose:leaveScene,
     onOpenFreight:()=>openPanel('bay-freight'),
     ...(marketVisit ? {onReturnMarket() {
       if (!dialog.open || panel !== 'bay-shop' || farm.island !== 'village' ||
@@ -2166,6 +2169,11 @@ function openShopScene(host:HTMLElement, marketVisit?: PanelVisit) {
   harbourScene=mountBayShop(host,options)
   applyIngredientFinishes(host)
 }
+function earnHarbourSale(coins: number) {
+  farm.coins += coins
+  textAt('status-coins', numberFormat.format(farm.coins))
+  bayAudio.playEvent('trade.receive')
+}
 function openMusicScene(host:HTMLElement) {
   harbourScene=createBayMusic(host,{beaAvailable:canPlayWithBea(farm),state:farm.musicGarden,viewState:musicView,onViewChange:view=>{ musicView=view },getMaterialStock:()=>gardenMaterialStock(farm),getMaterialSources:()=>getMusicMaterialGuidance(farm).sources,
     onSave:state=>{farm.musicGarden=state;saveHarbour()},onClose:leaveScene,
@@ -2181,6 +2189,17 @@ function openMusicScene(host:HTMLElement) {
     onRequestMaterials:()=>{const level=installGardenInstrument(farm);if(level!==undefined){saveHarbour();bayAudio.playEvent('menu.accept')}return level},
     onOpenSupplies:()=>openPanel('music-supplies'),
   })
+}
+function mountFarmCookery(host: HTMLElement, options: CookeryOptions, mount: typeof import('./cookery').createCookery) {
+  if (farm.island !== 'village' || !farm.village.built ||
+      options.recipe.kind !== 'preserves' && options.recipe.kind !== 'decorate') return mount(host, options)
+  const state = farm.bayShop, day = farm.day
+  const localDay = () => farm.bayShop === state && farm.day === day && state.businessDay === day
+  const workClock = createBayShopWorkClock(state, () => localDay() && farm.island === 'village' &&
+    panel === 'cookery' && dialog.open && host.isConnected && dialogContent.contains(host) &&
+    !harbourScene && !island.isCrossing(),
+    () => Number(farm.concertDay === farm.day), earnHarbourSale, () => { if (localDay()) saveHarbour() })
+  return mount(host, options, workClock)
 }
 function exactSaleCard(contextual: boolean) {
       const stock = selectedSale && (saleStock(farm, selectedSale) ?? (saleReceipt ? {count:0,price:saleReceipt.total/saleReceipt.quantity} : undefined))

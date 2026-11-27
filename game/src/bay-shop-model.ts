@@ -165,6 +165,39 @@ export function advanceBayShop(state: BayShopState, elapsedMs: number, performan
   }
   return sales;
 }
+/**
+ * A mounted Village work scene borrows the normal shop clock only while it is
+ * the active local owner. It does not schedule frames or create an empty visit.
+ */
+export function createBayShopWorkClock(
+  state: BayShopState, isLocalOwner: () => boolean, performanceBonus: () => number,
+  onEarn: (coins: number) => void, onChange: () => void,
+): (now?: number) => void {
+  let lastFrame: number | undefined, savedAt = 0, dirty = false;
+  function saveChanges() {
+    if (!dirty) return;
+    onChange(); dirty = false;
+  }
+  return now => {
+    if (now === undefined || !isLocalOwner() || !state.open || !state.visitor && !state.slots.some(slot => slot && slot.quantity > 0)) {
+      lastFrame = undefined;
+      saveChanges();
+      return;
+    }
+    if (lastFrame === undefined) { lastFrame = savedAt = now; return; }
+    const elapsed = now - lastFrame; lastFrame = now;
+    if (!(elapsed > 0 && elapsed < 1500)) return;
+    const before = state.visitor, phase = before?.phase, age = before?.elapsed, wait = state.waitMs;
+    const sales = advanceBayShop(state, elapsed, performanceBonus()), after = state.visitor;
+    const changedPhase = before !== after || phase !== after?.phase;
+    dirty ||= changedPhase || age !== after?.elapsed || wait !== state.waitMs;
+    for (const sale of sales) onEarn(sale.price);
+    if (sales.length || changedPhase || after && now - savedAt > 5000) {
+      saveChanges();
+      savedAt = now;
+    }
+  };
+}
 /** End-of-day settlement shares the visible visitor allowance; repeating a day pays nothing. */
 export function advanceBayShopDay(state: BayShopState, newDay: number, performanceBonus = 0): BayShopSale[] {
   if (!integer(newDay) || newDay <= state.businessDay) return [];

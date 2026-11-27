@@ -41,7 +41,7 @@ const createHoneyCookery = lazyScene(() => import('./honey-cookery').then(m => m
 const createFishCookery = lazyScene(() => import('./fish-cookery').then(m => m.createFishCookery))
 
 /** Inventory stays in the parent. One scene owns one uncommitted recipe. */
-export function createCookery(host: HTMLElement, options: CookeryOptions): { destroy(): void } {
+export function createCookery(host: HTMLElement, options: CookeryOptions, shopWorkFrame?: (now?: number) => void): { destroy(): void } {
   if (options.recipe.kind === 'grilledFish') return createFishCookery(host, options)
   if (options.recipe.kind !== 'preserves' && options.recipe.kind !== 'decorate') return createHoneyCookery(host, options)
   const model = createCookeryModel(options.recipe.kind, options.recipe.processing)
@@ -671,9 +671,10 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     materials.add(sugarMaterial); sugar = new THREE.Points(sugarGeometry, sugarMaterial); sugar.renderOrder = 10; sugar.frustumCulled = false; scene.add(sugar)
     loaded = true; status.hidden = true; resize(); sync(); view.focus({ preventScroll: true })
   }
+  if (shopWorkFrame) document.addEventListener('visibilitychange', () => { if (document.hidden) shopWorkFrame() }, { signal })
   const eventCanvas = renderer.domElement
   eventCanvas.addEventListener('webglcontextlost', event => {
-    event.preventDefault(); contextLost = true; setBaySoundContact('cook.preserves-stir',false); abandon(); cancelAnimationFrame(frame)
+    event.preventDefault(); contextLost = true; shopWorkFrame?.(); setBaySoundContact('cook.preserves-stir',false); abandon(); cancelAnimationFrame(frame)
     status.hidden = false; status.textContent = 'Восстанавливаем кухонный стол…'; finish.disabled = true
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose()); renderer.dispose()
   }, { signal })
@@ -684,6 +685,10 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     contextLost = false; status.hidden = loaded; if (!loaded) status.textContent = 'Открываем кухню…'
     lastTime = performance.now(); updateSugar(); resize(); sync(); frame = requestAnimationFrame(animate)
   }, { signal })
+  function tickCookeryShop(now: number) {
+    shopWorkFrame?.(loaded && !destroyed && !contextLost && !document.hidden &&
+      model.stage !== 'finished' && model.stage !== 'cancelled' ? now : undefined)
+  }
   function animate(now: number) {
     if (destroyed || contextLost) return
     if (renderer.getPixelRatio() !== Math.min(window.devicePixelRatio || 1, 2)) resize()
@@ -726,7 +731,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
     setBaySoundContact('cook.jam-flow',pour>.01,.85)
     if(previousPour>.01&&pour<=.01)playBaySound('cook.jam-end',.7)
     if (drag?.kind === 'shaker' || drag?.kind === 'spoon' && pour > 0) moveHeld(cursor)
-    renderer.render(scene, camera); frame = requestAnimationFrame(animate)
+    renderer.render(scene, camera); tickCookeryShop(now); frame = requestAnimationFrame(animate)
   }
   resize(); sync()
   void loadArt().catch(error => {
@@ -740,7 +745,7 @@ export function createCookery(host: HTMLElement, options: CookeryOptions): { des
   frame = requestAnimationFrame(animate)
   return { destroy() {
     if (destroyed) return
-    destroyed = true; cancelCookery(model); cancelAnimationFrame(frame); abort.abort(); recovery?.abort(); observer.disconnect()
+    destroyed = true; shopWorkFrame?.(); cancelCookery(model); cancelAnimationFrame(frame); abort.abort(); recovery?.abort(); observer.disconnect()
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose())
     renderer.dispose(); renderer.forceContextLoss(); scene.clear(); root.remove(); previousFocus?.focus({ preventScroll: true })
   } }
