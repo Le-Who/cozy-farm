@@ -187,7 +187,7 @@ import {
   beginFishingTrip,
   finishFishingTrip, type LandedFish,
   cancelFishingTrip,
-  getFishingTripConfig, getResumableFishingTrip,
+  getFishingTripConfig, getOtherShoreFishingTrip, getResumableFishingTrip,
   bakeWorkshop,
   getWorkshopAction,
   workshopIngredients,
@@ -2764,8 +2764,15 @@ function drawPanel() {
       break
     }
     case 'fishing': {
-      const action = getFishAction(farm)
-      if (action.available) mountFishing()
+      const action = getFishAction(farm), trip = getOtherShoreFishingTrip(farm)
+      if (trip) {
+        const grove = trip.island === 'grove'
+        const canResume = canSailTo(farm,trip.island) && !!getResumableFishingTrip({...farm,island:trip.island})
+        dialogContent.innerHTML = nav(
+          button(grove?'В рощу · продолжить':'Домой · продолжить','fishing-resume-shore',canResume,{value:trip.token}),
+          button(grove?'Прервать рыбалку в роще':'Прервать рыбалку дома','fishing-abandon-shore',true,{value:trip.token,secondary:true}))
+          + renderFishingPracticeEntry(farm)
+      } else if (action.available) mountFishing()
       else dialogContent.innerHTML = `<p class="dialog-status">${action.label}</p>
         ${renderFishingPracticeEntry(farm)}${groveDockActions()}`
       break
@@ -3094,7 +3101,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     : next === 'bay-freight' ? dialogContent.querySelector<HTMLElement>('.bay-freight [data-action="close"]')
     : next === 'bay-music' ? dialogContent.querySelector<HTMLElement>(musicView?.sheet ? '.bay-music-sheet-close' : '.bay-music-close')
     : next === 'workshop' ? dialogContent.querySelector<HTMLElement>('.workshop-close')
-    : next === 'fishing' ? dialogContent.querySelector<HTMLElement>('.fishing-controls .fishing-action')
+    : next === 'fishing' ? dialogContent.querySelector<HTMLElement>('.fishing-controls .fishing-action, [data-action="fishing-resume-shore"]:not(:disabled)')
     : next === 'cookery' ? dialogContent.querySelector<HTMLElement>('.cookery-view') : next === 'arrangement' ? dialogContent.querySelector<HTMLElement>('.arrangement-view, [data-arrangement-return]') : null
   ;(sceneEntry ?? closeButton).focus({ preventScroll: true })
 }
@@ -5144,6 +5151,18 @@ app.addEventListener('click', async (event) => {
       } else activateTarget({kind:'market'})
       break
     case 'fishing-practice': if (panel === 'fishing' && canPracticeFishing(farm)) mountFishing(true); break
+    case 'fishing-resume-shore':
+    case 'fishing-abandon-shore': {
+      const trip = panel === 'fishing' && dialog.open ? getOtherShoreFishingTrip(farm) : undefined
+      if (!trip || value !== String(trip.token)) break
+      if (action === 'fishing-resume-shore') {
+        if (getResumableFishingTrip({...farm,island:trip.island})) await visitPanelAt(trip.island,'fishing')
+      } else if (perform(() => cancelFishingTrip(farm,trip.token),true,true)) {
+        // Leave the review; a repeat of the abandon click cannot land on a new cast.
+        closeDialog()
+      }
+      break
+    }
     case 'visit-pier': activateTarget({ kind: 'pier' }); break
     case 'visit-hive': activateTarget({ kind: 'hive' }); break
     case 'visit-honey-kitchen': activateTarget({ kind: 'honey-kitchen' }); break

@@ -127,14 +127,17 @@ test('a stale saved-cast preview never falls back to paying for another cast', a
   }
 })
 
-test('another shore borrows neither ticket nor gear; returning without casting preserves both',async()=>{
+test('another shore borrows neither ticket nor gear; a fresh cast requires explicit abandonment',async()=>{
   const f=fishingReturnFixture();F.beginFishingTrip(f)
   const p=await lake(f).page(), original=structuredClone(p.farm.pendingFishingTrip)
   assert.ok(F.sail(p.farm,'grove').ok);const away=p.open()!
   assert.equal(away.fish,'seaBass');assert.equal(away.resilience,2)
   away.onCancel!();assert.deepEqual(p.farm.pendingFishingTrip,original);assert.equal(p.calls,0)
   assert.ok(F.sail(p.farm,'home').ok);const home=p.open()!;assert.equal(home.resilience,5);home.onCancel!()
-  assert.ok(F.sail(p.farm,'grove').ok);assert.ok(p.open()!.onCast!())
+  assert.ok(F.sail(p.farm,'grove').ok);assert.equal(p.open()!.onCast!(),false)
+  assert.deepEqual(p.farm.pendingFishingTrip,original);assert.equal(p.calls,0)
+  assert.ok(F.cancelFishingTrip(p.farm,original!.token).ok)
+  assert.ok(p.open()!.onCast!())
   assert.equal(p.farm.pendingFishingTrip?.island,'grove');assert.equal(p.farm.pendingFishingTrip?.token,2)
 })
 

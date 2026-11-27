@@ -1143,9 +1143,16 @@ export function getResumableFishingTrip(farm: FarmState) {
     && getFishAction(farm).available ? trip : undefined;
 }
 
+export function getOtherShoreFishingTrip(farm: FarmState) {
+  const trip = farm.pendingFishingTrip;
+  return trip && isId(orchardIslandIds, farm.island) && trip.island !== farm.island
+    && trip.day === farm.day && trip.token === farm.fishingTripSerial ? trip : undefined;
+}
+
 export function beginFishingTrip(farm: FarmState): ActionResult & { token?: number; config?: FishingTripConfig } {
   const action = getFishAction(farm);
   if (!action.available || !isId(orchardIslandIds, farm.island)) return failure(action.label);
+  if (getOtherShoreFishingTrip(farm)) return failure('Продолжите или прервите рыбалку на другом берегу.');
   if (farm.fishingTripSerial === Number.MAX_SAFE_INTEGER) return failure('Рыболовный журнал заполнен.');
   const config = getFishingTripConfig(farm);
   const token = ++farm.fishingTripSerial;
