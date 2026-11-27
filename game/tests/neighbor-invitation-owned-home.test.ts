@@ -3,20 +3,31 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { test } from 'node:test'
 import { runInNewContext } from 'node:vm'
-import { canSailTo, endDay, getBedAction, getBedStage, getNeighborPlans, sail, restoreCurrentFarm, type FarmState } from '../src/farm.ts'
+import { advanceNeighborPlan, pickFruit, canSailTo, endDay, getBedAction, getBedStage, getNeighborPlans, sail, restoreCurrentFarm, type FarmState } from '../src/farm.ts'
 import { canInviteNeighbor, inviteNeighborVisit } from '../src/neighbor-visits.ts'
 import { renderNeighborVisits } from '../src/neighbor-visits-ui.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
+import { finnPicnicRide, sailHomeWithFinn } from '../src/finn-picnic-ride.ts'
+import { farmSaveKeys } from '../src/farm-save-keys.ts'
+import { VersionedSave } from '../src/versioned-save.ts'
 
 const read=(p:string)=>readFileSync(new URL(p,import.meta.url),'utf8')
 const main=read('../src/main.ts')
 const scope=(a:string,b:string)=>{const i=main.indexOf(a),j=main.indexOf(b,i+a.length);assert.ok(i>=0&&j>i);return main.slice(i,j)}
 const visit=scope('async function visitPanelAt(', 'function openGuidedMarket(')
 const button=scope('function button(label:', 'function quantity(')
-const neighborView=scope("    case 'neighbor': dialogContent.innerHTML", "    case 'request-food':")
+const neighborView=scope("    case 'neighbor':", "    case 'request-food':")
+const ui=read('../src/community-ui.ts')
+const uiScope=(a:string,b:string)=>{const i=ui.indexOf(a),j=ui.indexOf(b,i+a.length);assert.ok(i>=0&&j>i);return ui.slice(i,j)}
+const neighborDetail=runInNewContext(stripTypeScriptTypes(
+  uiScope('const escape =','export function neighborHelpCard')
+  +uiScope('export function neighborDetail','export function neighborPlanLinks').replace('export ','')
+  +'\nneighborDetail'
+),{getNeighborPlans,neighborHelpCard:()=>''})
 const dispatch=stripTypeScriptTypes(visit+button+
   '\nfunction drawNeighbor(){switch("neighbor"){'+neighborView+
-  '}};async function bookHome(){switch("visit-book-home"){'+scope("    case 'visit-book-home':","    case 'visit-invite':")+'}}')
+  '}};async function bookHome(){switch("visit-book-home"){'+scope("    case 'visit-book-home':","    case 'visit-invite':")+'}}'
+  +';async function rideHome(control,value){switch("finn-picnic-ride"){'+scope("    case 'finn-picnic-ride':","    case 'ack-neighbor':")+'}}')
 function arrivedAfterPicnic(){
   const p=commissionPlayer(JSON.parse(read('./fixtures/market-order-selection-commands.json')))
   p.act('selectSeed','wheat');p.act('workBed',0)
@@ -36,17 +47,29 @@ function arrivedAfterPicnic(){
 type Resident='bea'|'finn'
 function room(farm:FarmState,resident:Resident,mode?:'canceled'|'changed-target'|'next-day'|'late-undertook-visit'){
   const calls:string[]=[], history=[{panel:'guide'}], dlg={open:true}, headings=new Map<string,unknown>()
-  const dialogContent={innerHTML:'',scrollTop:0,querySelector(selector:string){
+  const localControl={}
+  const communityResume={}
+  const dialogContent={innerHTML:'',scrollTop:0,contains(control:unknown){return control===localControl},querySelector(selector:string){
+    if (selector==='.community-neighbor[data-phase="celebrating"] [data-action="ack-neighbor"]'
+      && this.innerHTML.includes('data-phase="celebrating"') && this.innerHTML.includes('data-action="ack-neighbor"')) {
+      const owner=this
+      return {insertAdjacentHTML(where:string,html:string){
+        assert.equal(where,'beforebegin')
+        owner.innerHTML=owner.innerHTML.replace(/<button\b(?=[^>]*data-action="ack-neighbor")[^>]*>/,tag=>html+tag)
+      }}
+    }
     const id=/^\[data-visit-resident="(bea|finn)"\]$/.exec(selector)?.[1]
     return id?headings.get(id)??null:null
   }}
-  const ctx={farm,dialog:dlg,dialogContent,panel:'neighbor',panelHistory:history,communityResident:resident,communityArt:{},value:undefined as string|undefined,
-    canSailTo,sail,canInviteNeighbor,fieldViewButton:{getAttribute:()=> 'false'},
-    icon:()=>'',numberFormat:new Intl.NumberFormat('ru'),nav:(x:string)=>x,neighborDetail:()=>'',
+  const ctx={farm,dialog:dlg,dialogContent,panel:'neighbor',panelHistory:history,communityResident:resident,communityArt:{icon:()=>'',offerIcon:()=>''},
+    communityRequest:undefined,requestedFood:undefined,value:undefined as string|undefined,
+    canSailTo,sail,canInviteNeighbor,finnPicnicRide,sailHomeWithFinn,freshFinnRide:undefined as string|undefined,communityResume,
+    updateCommunityReturn(){},canvas:{focus(){}},fieldViewButton:{getAttribute:()=> 'false'},
+    icon:()=>'',numberFormat:new Intl.NumberFormat('ru'),nav:(...items:string[])=>items.join(''),neighborDetail,
     rememberPanel:()=>({panel:ctx.panel}),
     closeDialog(){calls.push('close');history.length=0;dlg.open=false;ctx.panel=''},
-    island:{isCrossing:()=>false,async crossIsland(done:()=>boolean){
-      calls.push('cross')
+    island:{isCrossing:()=>false,focusTarget(t:{kind:string}){calls.push(t.kind)},async crossIsland(done:()=>boolean,passenger?:'finn'){
+      calls.push(passenger ? 'cross:'+passenger : 'cross')
       if(mode==='canceled')return
       assert.ok(done())
       if(mode==='changed-target')ctx.communityResident=resident==='finn'?'bea':'finn'
@@ -65,7 +88,7 @@ function room(farm:FarmState,resident:Resident,mode?:'canceled'|'changed-target'
     }
   }
   runInNewContext(dispatch,ctx)
-  return {state:ctx,browser:ctx as typeof ctx&{drawNeighbor():void;bookHome():Promise<void>},calls,history}
+  return {state:ctx,browser:ctx as typeof ctx&{drawNeighbor():void;bookHome():Promise<void>;rideHome(control:object,value:string):Promise<void>},calls,history,localControl}
 }
 const attendee=(card:string)=>card.match(/<button\b[^>]*data-action="visit-book-home"[^>]*>/)?.[0]
 const ownedValue=(tag:string)=>tag.match(/data-value="([^"]*)"/)?.[1]
@@ -119,4 +142,77 @@ test('an already local valid resident card lands at the same choice without sail
   await a.browser.bookHome()
   assert.deepEqual(a.calls,['neighbor-visits','scroll:finn','focus:finn'])
   assert.deepEqual(farm,home)
+})
+
+test('same-day cold Finn celebration preserves one explicit shared ride without taking over the ordinary guest book',async()=>{
+  const p=arrivedAfterPicnic(), paid=p.state
+  const entries=new Map([[farmSaveKeys.primary,JSON.stringify(paid)]])
+  const storage={getItem:(key:string)=>entries.get(key)??null,setItem:(key:string,value:string)=>{entries.set(key,value)}}
+  const reopen=()=>new VersionedSave(()=>storage,farmSaveKeys,restoreCurrentFarm,()=>assert.fail('expected earned paid farm'),async run=>run()).load()
+  const farm=(await reopen())!
+  assert.ok(JSON.stringify(farm)===JSON.stringify(paid),'cold open must keep the settled farm')
+  const still=structuredClone(farm),a=room(farm,'finn')
+  const ride=(html:string)=>html.match(/<button\b[^>]*data-action="finn-picnic-ride"[^>]*>/)?.[0]
+  a.browser.drawNeighbor()
+  const button=ride(a.state.dialogContent.innerHTML)
+  assert.ok(button,'still eligible after exact cold reload')
+  const token=ownedValue(button)
+  assert.equal(token,'finn:1:17')
+  assert.match(a.state.dialogContent.innerHTML,/Домой с Финном/)
+  assert.ok(a.state.dialogContent.innerHTML.indexOf('finn-picnic-ride')<a.state.dialogContent.innerHTML.indexOf('ack-neighbor'))
+  assert.ok(attendee(a.state.dialogContent.innerHTML),'solo guest-book choices remain available')
+  assert.equal(a.state.freshFinnRide,undefined)
+  assert.deepEqual(farm,still)
+  assert.deepEqual(a.calls,[])
+
+  // A foreign control cannot use the real token; a real local control can.
+  await a.browser.rideHome({},token!)
+  assert.deepEqual(a.calls,[]);assert.deepEqual(farm,still)
+  await a.browser.rideHome(a.localControl,token!)
+  assert.deepEqual(a.calls,['close','boat','cross:finn'])
+  assert.deepEqual([farm.island,farm.day,farm.coins,farm.fruit.apple,farm.neighborVisits.active?.activity,farm.neighborVisits.memories.length],
+    ['home',17,131,still.fruit.apple,'finnOrchard',0])
+  const arrived=structuredClone(farm)
+  await a.browser.rideHome(a.localControl,token!);assert.deepEqual(farm,arrived)
+  const back=structuredClone(farm)
+  assert.ok(sail(back,'village').ok)
+  assert.equal(back.neighborVisits.active,null)
+  assert.equal(back.trees.home[0]?.fruitReady,2,'verify forfeited fresh ride, not depleted fruit')
+  assert.equal(getNeighborPlans(back).find(plan=>plan.id==='finn:1')?.phase,'remembered')
+  assert.equal(finnPicnicRide(back),undefined,'taking the special boat ride already acknowledged this same celebration')
+  const sameDay=room(back,'finn')
+  sameDay.browser.drawNeighbor()
+  assert.equal(ride(sameDay.state.dialogContent.innerHTML),undefined)
+  await sameDay.browser.rideHome(sameDay.localControl,token!)
+  assert.deepEqual(sameDay.calls,[])
+  assert.equal(pickFruit(farm,0).ok,true)
+  assert.equal(farm.neighborVisits.memories[0]?.activity,'finnOrchard')
+
+  const solo=(await reopen())!,manual=room(solo,'finn')
+  manual.browser.drawNeighbor()
+  manual.state.value='finn'
+  await manual.browser.bookHome()
+  assert.deepEqual(manual.calls,['close','cross','neighbor-visits','scroll:finn','focus:finn'])
+  assert.equal(solo.neighborVisits.active,null)
+  assert.ok(inviteNeighborVisit(solo,'finnOrchard').ok)
+  assert.ok(pickFruit(solo,0).ok)
+  assert.deepEqual([solo.fruit.apple,solo.coins,solo.neighborVisits.memories[0].activity],
+    [farm.fruit.apple,farm.coins,'finnOrchard'])
+
+  for(const situation of ['farewell','next-plan','offshore','other-resident'] as const) {
+    const old=(await reopen())!
+    if(situation==='farewell')assert.ok(advanceNeighborPlan(old,'finn:1').ok)
+    if(situation==='offshore')assert.ok(sail(old,'home').ok)
+    if(situation==='next-plan'){
+      assert.ok(sail(old,'home').ok);assert.ok(endDay(old).ok);assert.ok(sail(old,'village').ok)
+      assert.equal(finnPicnicRide(old),undefined,'expired overnight, even before saying farewell')
+      assert.ok(advanceNeighborPlan(old,'finn:1').ok)
+      assert.ok(getNeighborPlans(old).some(plan=>plan.id==='finn:2'))
+    }
+    const view=room(old,situation==='other-resident'?'bea':'finn')
+    view.browser.drawNeighbor();assert.equal(ride(view.state.dialogContent.innerHTML),undefined)
+    const frozen=structuredClone(old)
+    await view.browser.rideHome(view.localControl,token!)
+    assert.deepEqual(old,frozen);assert.deepEqual(view.calls,[])
+  }
 })

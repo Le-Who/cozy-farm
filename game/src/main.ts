@@ -2448,7 +2448,15 @@ function drawPanel() {
     }
     case 'intents': dialogContent.innerHTML = communityBoard(farm, communityArt); break
     case 'intent': dialogContent.innerHTML = communityIntent(farm, communityOrderId, communityArt); break
-    case 'neighbor': dialogContent.innerHTML = neighborDetail(farm, communityResident, communityArt) + (farm.neighbors[communityResident].completed>0?nav(button('Пригласить к себе на ферму','visit-book-home',true,{value:communityResident,secondary:true})): ''); break
+    case 'neighbor': {
+      dialogContent.innerHTML = neighborDetail(farm, communityResident, communityArt) + (farm.neighbors[communityResident].completed>0?nav(button('Пригласить к себе на ферму','visit-book-home',true,{value:communityResident,secondary:true})): '')
+      // The world shortcut is brief, but the same paid celebration still owns
+      // the offered ride if the player reopens it before saying farewell.
+      const ride = communityResident === 'finn' ? finnPicnicRide(farm) : undefined
+      if (ride) dialogContent.querySelector('.community-neighbor[data-phase="celebrating"] [data-action="ack-neighbor"]')
+        ?.insertAdjacentHTML('beforebegin', nav(button('Домой с Финном','finn-picnic-ride',true,{value:ride})))
+      break
+    }
     case 'request-food': dialogContent.innerHTML = requestedRecipeCard(); break
     case 'arrangement': {
       const request = arrangementRequest
@@ -4481,8 +4489,11 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'finn-picnic-ride': {
-      if(control!==communityResume||dialog.open||island.isCrossing()||!value||value!==freshFinnRide||finnPicnicRide(farm)!==value)break
+      const fromCelebration = dialog.open && panel === 'neighbor' && communityResident === 'finn' && dialogContent.contains(control)
+      const fromWorld = !dialog.open && control === communityResume && value === freshFinnRide
+      if ((!fromCelebration && !fromWorld) || island.isCrossing() || !value || finnPicnicRide(farm) !== value) break
       freshFinnRide=undefined
+      if (fromCelebration) closeDialog()
       if(fieldViewButton.getAttribute('aria-pressed')==='true')toggleFieldView()
       island.focusTarget({kind:'boat'})
       await island.crossIsland(()=>{
