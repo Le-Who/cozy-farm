@@ -4092,10 +4092,12 @@ app.addEventListener('click', async (event) => {
       break
     case 'commission-deliver': {
       const keyboardDelivery = event.detail === 0 && document.activeElement === control
-      if(panel==='shop-commissions'&&dialog.open&&perform(()=>deliverShopCommission(farm,value),false,true)) {
+      const shelfQuote = control.dataset.commissionShelfQuote
+      if(panel==='shop-commissions'&&dialog.open&&(shelfQuote===undefined||dialogContent.contains(control))&&perform(()=>
+        shelfQuote === undefined ? deliverShopCommission(farm,value) : deliverShopCommission(farm,value,shelfQuote),false,true)) {
         playBaySound('harbour.crate',.65)
         const updated = keyboardDelivery ? getShopCommissionLine(farm,value) : undefined
-        if(updated && !updated.canDeliver) {
+        if(updated && !updated.canDeliver && !updated.shelf) {
           const line = Array.from(dialogContent.querySelectorAll<HTMLElement>('[data-commission-line]')).find(item=>item.dataset.commissionLine===value)
           const result = updated.remaining ? line?.querySelector<HTMLElement>('[data-action="commission-recipe"]:not(:disabled)')
             : dialogContent.querySelector<HTMLElement>('.commission-ready') ?? line?.querySelector<HTMLElement>('.commission-line-ready')

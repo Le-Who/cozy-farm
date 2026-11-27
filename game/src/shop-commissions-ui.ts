@@ -5,14 +5,14 @@ import { ShopAssortmentChoice } from './shop-assortment-choice.ts'
 import { ShopCommissionView } from './shop-commission-view.ts'
 import { ruCount } from './ru.ts'
 const escape=(value:string)=>value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!))
-const button=(label:string,action:string,value='',enabled=true)=>`<button type="button" class="dialog-button" data-action="${action}" data-value="${escape(value)}"${enabled?'':' disabled'}>${label}</button>`
+const button=(label:string,action:string,value='',enabled=true,shelfQuote?:string)=>`<button type="button" class="dialog-button" data-action="${action}" data-value="${escape(value)}"${enabled?'':' disabled'}${shelfQuote?` data-commission-shelf-quote="${escape(shelfQuote)}"`:''}>${label}</button>`
 const coins=(amount:number)=>ruCount(amount,'монета','монеты','монет')
 const portions=(amount:number)=>ruCount(amount,'порция','порции','порций')
 const navigation=()=>`<nav class="commission-actions commission-navigation" aria-label="Подготовка заказа">${button('Мои рецепты','open-panel','recipes')}${button('В лавку','open-panel','bay-shop')}</nav>`
 const stock=(farm:FarmState,id:string)=>({bag:farm.culinary.stock[id]??0,warehouse:farm.freight.warehouses.village[`signature:${id}`]??0})
 const stockText=(farm:FarmState,id:string)=>{const s=stock(farm,id);return `Припасы: ${s.bag} · склад гавани: ${s.warehouse}`}
 const reward=(total:number,bonus:number)=>`<div class="commission-reward"><strong>За всю партию: ${coins(total)}</strong><small>Включая премию ${coins(bonus)} · без срока</small></div>`
-const help=()=>`<details class="commission-help"><summary>Как работают заказы</summary><p>Предложение появляется после покупки вашего авторского рецепта, который понравился этому покупателю. Первое: 2 порции + премия 6 монет; второе: 3 + 9; далее: 4 + 12.</p><p>Принятие не тратит припасы. Можно откладывать по одной порции: сначала со склада гавани, затем из припасов. Прилавок не используется. Оплата — только после передачи всей партии. Отмена вернёт отложенное без награды.</p></details>`
+const help=()=>`<details class="commission-help"><summary>Как работают заказы</summary><p>Предложение появляется после покупки вашего авторского рецепта, который понравился этому покупателю. Первое: 2 порции + премия 6 монет; второе: 3 + 9; далее: 4 + 12.</p><p>Принятие не тратит припасы. Можно откладывать по одной порции: сначала со склада гавани, затем из припасов. Оплата — только после передачи всей партии. Отмена вернёт отложенное без награды.</p></details>`
 function assortment(farm:FarmState,customer:BayShopVisitorId,choice:ShopAssortmentChoice,picture:(id:string)=>string){
   const offers=getShopCommissionOffers(farm).filter(offer=>offer.customer===customer)
   const recipes=offers.map(offer=>farm.culinary.recipes.find(recipe=>recipe.id===offer.recipeId)!)
@@ -56,8 +56,8 @@ export function renderShopCommissions(farm:FarmState,picture:(recipeId:string)=>
     ${reward(active.total,active.bonus)}
     ${!active.remaining?`<div class="commission-ready" role="status"><span>Партия готова</span>${button(`Передать · ${coins(active.total)}`,'commission-finish',String(active.serial),active.canClaim)}</div>`:''}
     <div class="commission-lines">${active.lines.map(line=>`<article class="commission-line" data-commission-line="${escape(line.actionValue)}"><div class="commission-recipe">${picture(line.recipeId)}<div><h3 data-user-text>${escape(line.recipeName)}</h3><strong>Отложено ${line.delivered}/${line.quantity}</strong><small>${stockText(farm,line.recipeId)}</small></div></div>
-      ${line.remaining?`<div class="commission-actions">${button('Отложить 1','commission-deliver',line.actionValue,line.canDeliver)}${button('Открыть рецепт','commission-recipe',line.actionValue)}</div>`:'<p class="commission-line-ready">Эта часть готова</p>'}</article>`).join('')}</div>
-    ${active.remaining?'<p class="commission-note">Сначала склад гавани, затем припасы. Прилавок не расходуется. Оплата после всей партии.</p>':''}
+      ${line.remaining?`<div class="commission-actions">${line.shelf?button('С полки · 1','commission-deliver',line.actionValue,true,line.shelf.quote):button('Отложить 1','commission-deliver',line.actionValue,line.canDeliver)}${button('Открыть рецепт','commission-recipe',line.actionValue)}</div>`:'<p class="commission-line-ready">Эта часть готова</p>'}</article>`).join('')}</div>
+    ${active.remaining?`<p class="commission-note">Сначала склад гавани, затем припасы.${active.lines.some(line=>line.shelf)?'':' Прилавок не расходуется.'} Оплата после всей партии.</p>`:''}
     <details class="commission-cancel"><summary>Отменить заказ</summary><p>Отложенные порции (${active.delivered}) вернутся в припасы, каждый рецепт отдельно. Без оплаты и продвижения.</p>${button('Отменить и вернуть','commission-cancel',String(active.serial),farm.island==='village')}</details>
     ${navigation()}</section>`
   const view=selection??new ShopCommissionView()

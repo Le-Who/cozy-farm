@@ -61,9 +61,21 @@ export function getShopCommission(farm: FarmState) {
     const recipe = farm.culinary.recipes.find(recipe => recipe.id === line.recipeId)!
     const warehouse = farm.freight.warehouses.village[`signature:${recipe.id}`] ?? 0
     const inBag = farm.culinary.stock[recipe.id] ?? 0, remaining = line.quantity - line.delivered
-    return { ...line, recipeName: recipe.name, inBag, warehouse, remaining,
-      actionValue: 'lines' in active ? `${active.serial}:${recipe.id}` : String(active.serial),
-      canDeliver: farm.island === 'village' && remaining > 0 && inBag + warehouse > 0 }
+    const actionValue = 'lines' in active ? `${active.serial}:${recipe.id}` : String(active.serial)
+    const local = farm.island === 'village' && remaining > 0
+    const sku = `signature:${recipe.id}`
+    // Retail remains a separate stock owner. Offer it only as an explicit
+    // fallback when there is one unambiguous live listing and no normal supply.
+    const sources = local && inBag + warehouse === 0
+      ? farm.bayShop.slots.flatMap((slot, index) => slot && slot.quantity > 0 && slot.product.id === sku && slot.product.identity === sku
+          ? [{slot,index}] : [])
+      : []
+    const source = sources.length === 1 ? sources[0] : undefined
+    const shelf = source && { index: source.index, quote: JSON.stringify([
+      farm.day, actionValue, line.delivered, source.index, sku, source.slot.quantity, source.slot.price,
+    ]) }
+    return { ...line, recipeName: recipe.name, inBag, warehouse, remaining, actionValue, shelf,
+      canDeliver: local && inBag + warehouse > 0 }
   })
   const quantity = lines.reduce((sum, line) => sum + line.quantity, 0), delivered = lines.reduce((sum, line) => sum + line.delivered, 0)
   return { serial: active.serial, customer: active.customer, startedOn: active.startedOn, bonus: active.bonus, lines,
@@ -89,13 +101,17 @@ export function acceptShopCommission(farm: FarmState, key: string | undefined) {
   updateVersion(state)
   return success('Заказ записан. Собирайте партию в своём темпе. Покупатель заберёт её, когда она будет готова. Срока нет.')
 }
-export function deliverShopCommission(farm: FarmState, value: string | undefined) {
+export function deliverShopCommission(farm: FarmState, value: string | undefined, shelfQuote?: string) {
   const line = getShopCommissionLine(farm, value), state = farm.shopCommissions
-  if (!line?.canDeliver) return failure('Проверьте заказ и готовые порции в припасах или на складе гавани.')
+  const shelf = shelfQuote !== undefined && line?.shelf?.quote === shelfQuote ? line.shelf : undefined
+  if (shelfQuote !== undefined && !shelf) return failure('Заказ или запас на полке изменился.')
+  if (!line || !shelf && !line.canDeliver) return failure('Проверьте заказ и готовые порции в припасах или на складе гавани.')
   if (!Number.isSafeInteger(farm.workToday + 1)) return failure('Журнал работ заполнен.')
-  // One named portion: warehouse first, then the bag. Shop shelves are separate stock.
+  // Normal delivery remains warehouse first, then bag. An exact shelf quote
+  // moves a single retail unit directly to escrow without treating it as a sale.
   const id = `signature:${line.recipeId}`, warehouse = farm.freight.warehouses.village
-  if (line.warehouse > 0) { warehouse[id]--; if (!warehouse[id]) delete warehouse[id] }
+  if (shelf) farm.bayShop.slots[shelf.index]!.quantity--
+  else if (line.warehouse > 0) { warehouse[id]--; if (!warehouse[id]) delete warehouse[id] }
   else farm.culinary.stock[line.recipeId]--
   commissionLines(state.active!).find(part => part.recipeId === line.recipeId)!.delivered++; farm.workToday++
   return success('Одна порция отложена для покупателя. Оплата будет за всю готовую партию.')
