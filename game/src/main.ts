@@ -3053,7 +3053,7 @@ function openGuidedSeeds(crop: CropId) {
     highlightControl(dialogContent.querySelector<HTMLElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)'))
   }
 }
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string; festivalCargo?: { port: ExpeditionPort; offer: string }; honeyRecipe?: HoneyKitchenRecipe }) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string; festivalCargo?: { port: ExpeditionPort; offer: string }; honeyRecipe?: HoneyKitchenRecipe; meetHen?: number }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
@@ -3174,6 +3174,14 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     : next === 'workshop' ? dialogContent.querySelector<HTMLElement>('.workshop-close')
     : next === 'fishing' ? dialogContent.querySelector<HTMLElement>('.fishing-controls .fishing-action, [data-action="fishing-resume-shore"]:not(:disabled)')
     : next === 'cookery' ? dialogContent.querySelector<HTMLElement>('.cookery-view') : next === 'arrangement' ? dialogContent.querySelector<HTMLElement>('.arrangement-view, [data-arrangement-return]') : null
+  // An explicit Meet already chose this hen. Land on her name, not an action.
+  const meetHeading = next === 'hen-friendship' && entry?.meetHen !== undefined && entry.meetHen === selectedFriendHen
+    ? dialogContent.querySelector<HTMLElement>('.hen-friend-card h2') : null
+  if (meetHeading?.getClientRects().length) {
+    meetHeading.tabIndex = -1
+    meetHeading.focus({ preventScroll: true })
+    return
+  }
   ;(sceneEntry ?? closeButton).focus({ preventScroll: true })
 }
 
@@ -5120,8 +5128,8 @@ app.addEventListener('click', async (event) => {
         const newcomer=getIncubatorNewHen(farm)
         if (newcomer===undefined) { drawPanel(); break }
         selectedFriendHen=newcomer
-      }
-      openPanel('hen-friendship')
+        openPanel('hen-friendship',true,farm.island,'page.unfold',undefined,{meetHen:newcomer})
+      } else openPanel('hen-friendship')
       break
     }
     case 'hen-treat': {
