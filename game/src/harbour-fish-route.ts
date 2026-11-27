@@ -7,10 +7,22 @@ import { getLocalWarehouseSupply, warehouseRequestValue } from './warehouse-guid
 /** Only prepares navigation. No purchase, voyage, night or contribution is automatic. */
 export function getHarbourFishRoute(farm: FarmState) {
   const world = farm.freight.expeditions
-  const quote = quoteExpedition(world, 'salt-fish', expeditionWallet(farm))!
+  const wallet = expeditionWallet(farm)
+  const quote = quoteExpedition(world, 'salt-fish', wallet)!
   const active = world.active
   const port: ExpeditionPort = active?.port ?? (world.discovered.includes('salt') || world.markets.mill.visits ? 'salt' : 'mill')
-  const offer = active?.id ?? (world.discovered.includes('salt') ? 'salt-fish' : world.markets.mill.visits ? 'explore-salt' : 'mill-sale')
+  let offer = active?.id ?? (world.discovered.includes('salt') ? 'salt-fish' : world.markets.mill.visits ? 'explore-salt' : 'mill-sale')
+  if (offer === 'mill-sale' && !active && farm.island === 'home' && !farm.village.built && farm.boatOwned) {
+    const charter = getVillageProject(farm)
+    const missing = charter.items.filter(({ item, delivered, available }) => delivered + available < item.quantity)
+    // The first mill trip can also bring a charter bun. Preview it only if
+    // the usual wheat sale cannot sail and the egg trade asks for no coins.
+    if (charter.unlocked && missing.some(({ item }) => item.kind === 'fish') && missing.some(({ item }) => item.kind === 'handmade')
+      && !quoteExpedition(world, 'mill-sale', wallet)?.available) {
+      const bun = quoteExpedition(world, 'mill-eggs', wallet)
+      if (bun?.available && bun.payCoins === 0) offer = bun.id
+    }
+  }
   const step = !farm.boatOwned ? 'Сначала нужна деревянная лодка.'
     : active ? 'Сначала получите текущий рейс. Оплаченный груз дождётся вас.'
     : !world.markets.mill.visits ? 'Сначала завершите любой торговый рейс в Мельничный посад.'
