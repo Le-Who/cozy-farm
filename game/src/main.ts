@@ -67,7 +67,7 @@ import './market-return.css'
 import { fairJamPicnicChoice, renderFairReturn } from './fair-return'
 import './fair-return.css'
 import { getLocalWarehouseSupply, warehouseRequest, warehouseSupplyCopy, warehouseConfirmation, warehouseConfirmationValue, withdrawWarehouseSupply } from './warehouse-guidance'
-import { getReadySignatureSuppers, getSupperFishRecovery, getSupperFishFork, renderSupperFishFork, reviewedSupperFish, tableSupperFish, renderSignatureSuppers, renderSupperResult, supperCottageReady } from './shared-supper'
+import { getReadySignatureSuppers, getSupperFishRecovery, getSupperFishFork, getSupperPreservesChoice, renderSupperFishFork, reviewedSupperFish, tableSupperFish, renderSignatureSuppers, renderSupperResult, supperCottageReady } from './shared-supper'
 import './shared-supper.css'
 import { renderShopRest, closeShopBeforeRest } from './shop-rest'
 import './shop-rest.css'
@@ -204,7 +204,7 @@ import {
   getVillageHomeCount,
   inviteResident,
   getVillageMeal,
-  serveVillageMeal,
+  serveVillageMeal, serveOrchardPreservesSupper,
   residentDefinitions,
   residentIds,
   getResidentService,
@@ -2953,13 +2953,13 @@ function drawPanel() {
       const fork = getSupperFishFork(farm)
       const choice = fork ? {fork,fish:(dialog.open ? tableSupperFish(dialogContent,fork) : undefined) ?? 'seaBass' as const} : undefined
       const meal = getVillageMeal(farm, pastryShape, choice?.fish)
-      const signatures = getReadySignatureSuppers(farm, choice?.fish)
+      const prepared = renderSignatureSuppers(farm,recipe=>signatureResultPicture(recipe,{icon}),choice,()=>icon(dishIcons.orchardPreserves))
       dialogContent.innerHTML = meal.served ? renderSupperResult(farm,icon('upgrade-farmhouse-card'),button('Домой','sail',true,{value:'home',secondary:supperCottageReady(farm)}))
-        : `<p class="shared-supper-intro">Выберите одно угощение: ручную выпечку или готовое авторское блюдо. Ужин расходует 1 порцию выбранного угощения и 1 рыбу.</p>
+        : `<p class="shared-supper-intro">Выберите одно угощение: ручную выпечку или готовое блюдо. Ужин расходует 1 порцию выбранного угощения и 1 рыбу.</p>
           ${choice ? renderSupperFishFork(farm,choice.fork,choice.fish,fish=>icon(fishImage(fish))) : `<ul class="ingredients">${meal.items.filter(item=>item.kind==='fish').map(stockTile).join('')}</ul>
           ${farm.fish.perch + farm.fish.seaBass === 0 ? renderHarbourFishChoice(farm,'supper') : '<p>Подойдёт обычный окунь или морской окунь. Выше показано, какая рыба пойдёт к столу.</p>'}`}
-          ${renderSignatureSuppers(farm,recipe=>signatureResultPicture(recipe,{icon}),choice)}
-          <details class="shared-supper-pastry" ${!signatures.length || meal.available ? 'open' : ''}><summary>Ручная выпечка</summary>${pastryChoices()}<ul class="ingredients">${meal.items.filter(item=>item.kind==='handmade').map(stockTile).join('')}</ul>${nav(button('Подать выпечку · 1 порция','share-meal',meal.available,choice?{value:`supper:${choice.fork.key}:${choice.fish}`,context:fishDefinitions[choice.fish].name}:{}))}</details>`
+          ${prepared}
+          <details class="shared-supper-pastry" ${!prepared || meal.available ? 'open' : ''}><summary>Ручная выпечка</summary>${pastryChoices()}<ul class="ingredients">${meal.items.filter(item=>item.kind==='handmade').map(stockTile).join('')}</ul>${nav(button('Подать выпечку · 1 порция','share-meal',meal.available,choice?{value:`supper:${choice.fork.key}:${choice.fish}`,context:fishDefinitions[choice.fish].name}:{}))}</details>`
       break
     }
     case 'fishing': {
@@ -4879,6 +4879,13 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'supper-signature': if(value?.startsWith('supper:')) { const picked=panel==='village-meal'&&dialog.open&&dialogContent.contains(control)&&reviewedSupperFish(farm,dialogContent,value); if(picked&&picked.id) { const {id,fish}=picked; finishSharedSupper(()=>deliverSignature(farm,id,fish)) } } else if(value)finishSharedSupper(()=>deliverSignature(farm,value!)); break
+    case 'supper-preserves': {
+      if (panel !== 'village-meal' || !dialog.open || !dialogContent.contains(control)) break
+      const fork = getSupperFishFork(farm)
+      const choice = getSupperPreservesChoice(farm,fork ? tableSupperFish(dialogContent,fork) ?? 'seaBass' : undefined)
+      if (choice && choice.value === value) finishSharedSupper(()=>serveOrchardPreservesSupper(farm,choice.fish))
+      break
+    }
     case 'supper-cottage':
       if(panel==='village-meal' && supperCottageReady(farm)) activateTarget({kind:'village-home',index:1})
       break

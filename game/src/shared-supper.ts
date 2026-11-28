@@ -1,5 +1,6 @@
-import { canSailTo, fishDefinitions, getFishAction, getHarborOrder, getSignatureStock, getVillageHomeCount, getVillageMeal, islandIds, orchardIslandIds, sail, workshopShapes, type FarmState, type SupperFish } from './farm.ts'
+import { canSailTo, dishDefinitions, fishDefinitions, getFishAction, getHarborOrder, getOrchardPreservesSupper, getSignatureStock, getVillageHomeCount, getVillageMeal, islandIds, orchardIslandIds, sail, workshopShapes, type FarmState, type SupperFish } from './farm.ts'
 import { freightStock } from './bay-freight-model.ts'
+import { bayProductId } from './bay-product-id.ts'
 import { getFishSource } from './fish-guidance.ts'
 import { getLocalWarehouseSupply } from './warehouse-guidance.ts'
 import { ruCount } from './ru.ts'
@@ -51,8 +52,9 @@ const species = (value?: string): SupperFish | undefined => value === 'perch' ||
 export function tableSupperFish(root: HTMLElement, fork: SupperFishFork): SupperFish | undefined {
   return species(root.querySelector<HTMLButtonElement>(`[data-supper-fish="${fork.key}"] button[aria-pressed="true"]`)?.dataset.value)
 }
+const delayedOrderCopy = (reward: number) => `Отложит заказ на ${ruCount(reward,'монету','монеты','монет')}`
 export function renderSupperFishFork(farm: FarmState, fork: SupperFishFork, selected: SupperFish, picture: (fish: SupperFish) => string) {
-  const delay = `Отложит заказ на ${ruCount(fork.reward,'монету','монеты','монет')}`
+  const delay = delayedOrderCopy(fork.reward)
   return `<div class="recipe-fish-choices shared-supper-fish" role="group" aria-label="Рыба к ужину" data-supper-fish="${fork.key}">${(['seaBass','perch'] as const).map(fish =>
     `<button type="button" data-action="supper-fish" data-value="${fish}" aria-pressed="${selected===fish}">${picture(fish)}<span>${fishDefinitions[fish].name} ×${farm.fish[fish]}</span>${fish==='seaBass'?`<small>${delay}</small>`:''}</button>`).join('')}</div>`
 }
@@ -72,12 +74,43 @@ export function getReadySignatureSuppers(farm: FarmState, fish?: SupperFish) {
   return getSignatureStock(farm).filter(({ count }) => count > 0).map(({ recipe, count }) => ({ recipe, count, fish: meal.fish, available }))
 }
 
-export function renderSignatureSuppers(farm: FarmState, picture: (recipe: SignatureRecipe) => string, selection?: {fork: SupperFishFork;fish: SupperFish}): string {
+const orchardJar = {kind:'dishes',item:'orchardPreserves',quantity:1} as const
+
+/** Report a real foregone ready order, not merely a recipe or a theoretical market value. */
+export function getSupperPreservesChoice(farm: FarmState, fish?: SupperFish) {
+  const meal = getOrchardPreservesSupper(farm,fish)
+  if (!meal) return
+  const order = meal.count === 1 && canSailTo(farm,'grove') ? getHarborOrder(farm) : undefined
+  let reward: number | undefined
+  if (order && order.status !== 'completed'
+    && order.items.some(({item,available}) => item.kind === orchardJar.kind && item.item === orchardJar.item && available === 1)
+    && order.items.every(({item,delivered,available}) => delivered + available === item.quantity)) {
+    const id = bayProductId(orchardJar)
+    const hasSpare = islandIds.some(port => freightStock(farm.freight,port,id) > 0
+      && getLocalWarehouseSupply({...farm,island:port,dishes:{...farm.dishes,orchardPreserves:0}},orchardJar))
+    if (!hasSpare) reward = order.reward
+  }
+  // Bind the visible fish, bag count and exact economic consequence to this day's deliberate click.
+  const value = `${farm.day}:${meal.fish}:${meal.count}:${reward ?? ''}`
+  return {...meal,value,delay:reward === undefined ? '' : delayedOrderCopy(reward)}
+}
+
+function renderSupperPreserves(choice: NonNullable<ReturnType<typeof getSupperPreservesChoice>>, picture: string) {
+  const name = dishDefinitions.orchardPreserves.name, fish = fishDefinitions[choice.fish].name.toLowerCase()
+  return `<button type="button" class="shared-supper-choice" data-action="supper-preserves" data-value="${choice.value}" aria-label="Подать ${name}. Расход: 1 порция и 1 рыба — ${fish}. В запасе: ${ruCount(choice.count,'порция','порции','порций')}.${choice.delay?` ${choice.delay}.`:''}">
+    <span class="shared-supper-picture" aria-hidden="true">${picture}</span><strong>${name}</strong><span>В запасе: ×${choice.count}</span><small>Подать 1 порцию</small>${choice.delay?`<small>${choice.delay}</small>`:''}
+  </button>`
+}
+
+export function renderSignatureSuppers(farm: FarmState, picture: (recipe: SignatureRecipe) => string,
+  selection?: {fork: SupperFishFork;fish: SupperFish}, preservesPicture?: () => string): string {
   if (!farm.village.built || getVillageMeal(farm).served) return ''
   const choices = getReadySignatureSuppers(farm,selection?.fish)
-  if (!choices.length) return ''
+  const preserves = preservesPicture && getSupperPreservesChoice(farm,selection?.fish)
+  const jar = preserves && preservesPicture ? renderSupperPreserves(preserves,preservesPicture()) : ''
+  if (!choices.length && !jar) return ''
   return `<section class="shared-supper-recipes" aria-label="Готовые блюда к ужину"><h2>Готовое блюдо вместо выпечки</h2>
-    <div class="shared-supper-choices">${choices.map(({recipe,count,fish,available}) => `<button type="button" class="shared-supper-choice" data-action="supper-signature" data-value="${escape(selection ? `supper:${selection.fork.key}:${fish}:${recipe.id}` : recipe.id)}" ${available?'':'disabled'} aria-label="Подать ${escape(recipe.name)}. Расход: 1 порция и 1 рыба — ${fishDefinitions[fish].name.toLowerCase()}. В запасе: ${ruCount(count, 'порция', 'порции', 'порций')}.">
+    <div class="shared-supper-choices">${jar}${choices.map(({recipe,count,fish,available}) => `<button type="button" class="shared-supper-choice" data-action="supper-signature" data-value="${escape(selection ? `supper:${selection.fork.key}:${fish}:${recipe.id}` : recipe.id)}" ${available?'':'disabled'} aria-label="Подать ${escape(recipe.name)}. Расход: 1 порция и 1 рыба — ${fishDefinitions[fish].name.toLowerCase()}. В запасе: ${ruCount(count, 'порция', 'порции', 'порций')}.">
       <span class="shared-supper-picture" aria-hidden="true">${picture(recipe)}</span><strong>${escape(recipe.name)}</strong><span>В запасе: ×${count}</span><small>Подать 1 порцию</small>
     </button>`).join('')}</div></section>`
 }

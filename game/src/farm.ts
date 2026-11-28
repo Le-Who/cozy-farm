@@ -1690,6 +1690,27 @@ export function serveVillageMeal(farm: FarmState, shape: WorkshopShape, chosenFi
   return { ok: true, message: `Вы поужинали с соседями.${farm.village.meals === 2 ? ' Второй домик готов!' : ''}` };
 }
 
+/** This prepared common-table dish is not a signature recipe or a cottage unlock. */
+export function getOrchardPreservesSupper(farm: FarmState, chosenFish?: SupperFish) {
+  const meal = getVillageMeal(farm,undefined,chosenFish), count = farm.dishes.orchardPreserves
+  if (farm.island !== 'village' || getVillageHomeCount(farm) !== 2 || meal.served || count < 1
+    || (meal.fish !== 'perch' && meal.fish !== 'seaBass') || farm.fish[meal.fish] < 1
+    || !Number.isSafeInteger(farm.workToday + 1) || !Number.isSafeInteger(farm.village.meals + 1)) return
+  return {count,fish:meal.fish}
+}
+
+export function serveOrchardPreservesSupper(farm: FarmState, chosenFish?: SupperFish): ActionResult {
+  const meal = getOrchardPreservesSupper(farm,chosenFish)
+  if (!meal) return failure('Для общего ужина нужны садовый конфитюр и рыба.')
+  farm.dishes.orchardPreserves--
+  farm.fish[meal.fish]--
+  farm.village.meals++
+  farm.village.mealOn = farm.day
+  farm.village.supperDish = 'orchard-preserves'
+  farm.workToday++
+  return {ok:true,message:'Вы поужинали с соседями.'}
+}
+
 export function getBeaPastryCount(farm: FarmState): number {
   return farm.culinary.tastings.bea.bonus || farm.neighbors.bea.helpReady ? 4 : 3;
 }
