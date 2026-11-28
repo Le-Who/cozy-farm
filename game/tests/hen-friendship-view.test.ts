@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { runInNewContext } from 'node:vm'
-import { pickFruit, createFarm, petChicken, endDay, restoreCurrentFarm, getCoopMorning, incubateEgg } from '../src/farm.ts'
+import { pickFruit, createFarm, petChicken, endDay, restoreCurrentFarm, getCoopMorning, incubateEgg, cookDish, sellMarketItem, type FarmState } from '../src/farm.ts'
+import { getIncubatorNewHen } from '../src/coop-panel.ts'
+import { canWalkWithHen } from '../src/hen-companion.ts'
 import { renderHenFriendship, treatHen, henFriends } from '../src/hen-friendship.ts'
 import { commissionPlayer } from './fixtures/commission-player.ts'
 import { chickenCarePlayer } from './fixtures/chicken-care-player.ts'
@@ -141,7 +143,7 @@ test('only an actionable, still unknown favorite moves the selected hen’s clue
   checkUnknown(2, false)
 })
 
-test('the only usable treat is not preceded by a clue for an unavailable favorite after an earned hatch', () => {
+test('an earned alternative meal clue distinguishes ripe ordinary apples on the farm from actually unavailable fruit', () => {
   const p=chickenCarePlayer('garden','hatchery')
   for(let day=0;day<3;day++){p.day();p.act('endDay')}
   p.act('petChicken',4)
@@ -155,8 +157,17 @@ test('the only usable treat is not preceded by a clue for an unavailable favorit
   const before=structuredClone(p.state),missing=view(),notReady=parts(missing)
   assert.ok(hasDisabled(missing,'pet','4')&&hasDisabled(missing,'hen-walk-start','4'))
   assert.ok(!hasDisabled(missing,'hen-treat','4:carrot')&&hasDisabled(missing,'hen-treat','4:apple'))
-  assert.ok(notReady.notes.includes(clue),'unaffordable favorite stays discoverable in existing notes')
-  assert.ok(!notReady.active.includes(clue)&&!missing.includes('aria-describedby="hen-treat-hint"'),'only available choices have live guidance')
+  const depleted=restoreCurrentFarm(structuredClone(before))!
+  assert.ok(pickFruit(depleted,0).ok)
+  assert.ok(sellMarketItem(depleted,'fruit:apple',depleted.fruit.apple).ok)
+  assert.deepEqual([depleted.fruit.apple,depleted.trees.home[0]?.fruitReady],[0,0])
+  const noLocalApple=parts(renderHenFriendship(depleted,null,true,4))
+  assert.ok(noLocalApple.notes.includes(clue)&&!noLocalApple.active.includes(clue),
+    'a genuinely unavailable favorite stays discoverable in the notes')
+  assert.ok(!noLocalApple.active.includes('aria-describedby="hen-treat-hint"'))
+  assert.ok(notReady.active.includes(clue)&&!notReady.notes.includes(clue),
+    'not yet carried is not the same as unavailable: existing ripe ordinary fruit is a choice today')
+  assert.match(notReady.active,/aria-describedby="hen-treat-hint"/)
   assert.deepEqual(p.state,before)
   const carrot=restoreCurrentFarm(structuredClone(before))!
   assert.ok(treatHen(carrot,4,'carrot').ok);assert.equal(carrot.henFriendship.hens[4].points,2)
@@ -181,4 +192,89 @@ test('the treat heading names the action only; each of the three buttons states 
     assert.match(html,new RegExp(`aria-label="Угостить: ${choice} ×1 · в запасе `))
   }
   assert.deepEqual(f,saved)
+})
+
+const opening=JSON.parse(readFileSync(new URL('./fixtures/market-order-selection-commands.json',import.meta.url),'utf8')).slice(0,-1)
+const hen=4
+const clue='Радуется запаху свежих садовых фруктов.'
+function earnedDay16():FarmState {
+  const p=commissionPlayer(opening)
+  assert.deepEqual([p.actions,p.state.day,p.state.coins],[118,14,99])
+  p.act('specializeFacility','hatchery');p.act('incubateEgg');p.night();p.night()
+  assert.deepEqual([p.actions,p.state.day,p.state.island,p.state.coins,p.state.eggs,p.state.feed,p.state.flockSize,
+    getIncubatorNewHen(p.state),p.state.fruit.apple,p.state.produce.carrot,p.state.produce.leafyGreens],
+    [122,16,'home',69,2,1,5,hen,0,1,0])
+  const apple=p.state.trees.home[0]!
+  assert.deepEqual([apple.tree,apple.fruitReady,apple.trait],['apple',2,undefined])
+  const restored=restoreCurrentFarm(JSON.parse(JSON.stringify(p.state)))!
+  assert.deepEqual(restored,p.state)
+  return restored
+}
+function sections(farm:FarmState,id=hen) {
+  const markup=renderHenFriendship(farm,null,true,id)
+  const [choices,notes]=markup.split('<details class="hen-friend-notes">')
+  assert.ok(notes)
+  const buttons=[...choices.matchAll(/<button\b[^>]+>[\s\S]*?<\/button>/g)].map(([button])=>{
+    const tag=button.slice(0,button.indexOf('>'))
+    return {action:tag.match(/data-action="([^"]+)"/)?.[1],value:tag.match(/data-value="([^"]*)"/)?.[1],
+      enabled:!/\s(?:disabled|hidden)(?:\s|$)/.test(tag),button}
+  })
+  return {markup,choices,notes,buttons}
+}
+
+test('earned first Meet puts the existing orchard clue beside the choice while the apples are still on the local tree',()=>{
+  const farm=earnedDay16(), before=structuredClone(farm)
+  const {markup,choices,notes,buttons}=sections(farm)
+  assert.match(choices,/<h2>Пуговка<\/h2>/)
+  assert.ok(choices.includes(clue),'the ready local apple clue belongs by Treat, not behind Character and rules')
+  assert.ok(!notes.includes(clue))
+  assert.equal(markup.split(clue).length,2,'no duplicate instruction')
+  assert.match(choices,/aria-describedby="hen-treat-hint"/)
+  assert.deepEqual(buttons.map(b=>[b.action,b.value,b.enabled]),[
+    ...[0,1,2,3,4].map(i=>['hen-friend-select',String(i),true]),
+    ['pet','4',true],['hen-walk-start','4',false],['hen-guide','',false],
+    ['hen-treat','4:carrot',true],['hen-treat','4:leafyGreens',false],['hen-treat','4:apple',false],
+  ])
+  assert.match(choices,/Угостить: Морковь ×1 · в запасе 1/)
+  assert.match(choices,/Угостить: Яблоко ×1 · в запасе 0/)
+  assert.deepEqual(farm,before,'looking never chooses a treat or picks fruit')
+
+  const fast=structuredClone(farm)
+  assert.ok(petChicken(fast,hen).ok);assert.ok(treatHen(fast,hen,'carrot').ok)
+  assert.equal(canWalkWithHen(fast,hen),false)
+  assert.ok(pickFruit(fast,0).ok)
+  const afterPick=structuredClone(fast)
+  assert.equal(treatHen(fast,hen,'apple').ok,false,'today\'s carrot is still the only permitted treat')
+  assert.deepEqual(fast,afterPick)
+
+  assert.ok(petChicken(farm,hen).ok);assert.ok(pickFruit(farm,0).ok)
+  assert.match(sections(farm).choices,/Угостить: Яблоко ×1 · в запасе 2/)
+  assert.ok(treatHen(farm,hen,'apple').ok)
+  assert.deepEqual([farm.henFriendship.hens[hen].points,farm.fruit.apple,farm.produce.carrot,farm.coins,
+    farm.eggs,farm.feed,farm.day,canWalkWithHen(farm,hen)],[3,1,1,69,2,1,16,true])
+  const walk=sections(farm).buttons.find(b=>b.action==='hen-walk-start')!
+  assert.equal(walk.enabled,true)
+  assert.match(walk.button,/>Погулять вместе<\/button>/)
+  assert.deepEqual(getCoopMorning(fast),getCoopMorning(farm))
+  assert.deepEqual(restoreCurrentFarm(JSON.parse(JSON.stringify(farm))),farm)
+})
+
+test('depleted local fruit, an already served treat and the other apple-loving hen keep their existing advice',()=>{
+  const farm=earnedDay16()
+  const other=sections(farm,2)
+  const otherClue='Часто засматривается на яблоню.'
+  assert.ok(!other.choices.includes(otherClue)&&other.notes.includes(otherClue),'chosen care card, not global advice')
+
+  const treated=structuredClone(farm)
+  assert.ok(treatHen(treated,hen,'carrot').ok)
+  const spent=sections(treated)
+  assert.ok(!spent.choices.includes(clue)&&spent.notes.includes(clue),'not a second treat offer')
+
+  assert.ok(pickFruit(farm,0).ok)
+  const carried=sections(farm)
+  assert.ok(carried.choices.includes(clue)&&!carried.notes.includes(clue),'carried apple keeps its existing eligible hint')
+  assert.ok(cookDish(farm,'appleJam').ok)
+  assert.deepEqual([farm.fruit.apple,farm.trees.home[0]?.fruitReady],[0,0])
+  const cold=sections(farm)
+  assert.ok(!cold.choices.includes(clue)&&cold.notes.includes(clue),'no advice about a nonexistent current apple harvest')
 })

@@ -129,12 +129,17 @@ export function renderHenFriendship(farm: FarmState, walk: HenCompanionStatus | 
   const introduction = getHenCardIntroduction(farm, id)
   const complete = bond.points === maxHenFriendship && known
   const choices = henTreatIds.map(treat => ({ treat, option: getHenTreat(farm, id, treat) }))
-  const hintAtChoice = !known && choices.some(({ treat, option }) => treat === hen.favorite && option.available)
+  const treatedToday = bond.treatedOn === farm.day
+  const canTreat = choices.some(({ option }) => option.available)
+  // When choosing a treat for the newcomer, ordinary ripe apples at home are an option today.
+  const newcomerAppleReady = canTreat && id === henFriends.length - 1 && farm.coopSpecialization === 'hatchery'
+    && !canWalkWithHen(farm, id) && farm.fruit.apple === 0
+    && farm.trees.home.some(tree => tree?.tree === 'apple' && tree.fruitReady > Number(!!tree.trait))
+  const hintAtChoice = !known && (newcomerAppleReady || choices.some(({ treat, option }) => treat === hen.favorite && option.available))
   const choice = henWalkChoice(farm, id, walk, sceneAvailable)
   const guideReady=guide && canOfferHenGuide(walk,id) && sceneAvailable && known && canWalkWithHen(farm,id)
-  const treatedToday = bond.treatedOn === farm.day
   // Inspection still matters, but a grid with no live action belongs in the existing notes.
-  const inspectTreats = treatedToday || !choices.some(({ option }) => option.available)
+  const inspectTreats = treatedToday || !canTreat
   const treatGrid = complete ? '' : `<div class="hen-treats" role="group" aria-labelledby="hen-treat-heading"${hintAtChoice ? ' aria-describedby="hen-treat-hint"' : ''}>${choices.map(({ treat, option }) => {
           return `<button type="button" class="dialog-button secondary" data-action="hen-treat" data-value="${id}:${treat}" aria-label="Угостить: ${henTreatNames[treat]} ×1 · в запасе ${option.stock}${option.known ? treat === hen.favorite ? ' · любимое' : ' · пробовала' : ''}"${option.available ? '' : ' disabled'}>${icon(treat)}<strong>${henTreatNames[treat]} ×1</strong><small>В запасе ${option.stock}</small>${option.known ? `<small>${treat === hen.favorite ? 'Любимое' : 'Пробовала'}</small>` : ''}</button>`
         }).join('')}</div>`
