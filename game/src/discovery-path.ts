@@ -355,6 +355,16 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
         const portions = invitation ? getIntentOffers(farm, invitation.intentId).filter(offer => offer.available) : [];
         if (invitation && portions.length) return task('shared-suppers', invitation.title, portions.length === 1 ? portions[0].name : 'Угощение готово',
           `ui-${invitation.resident}`, { label: 'К встрече', target: 'open-neighbor', value: invitation.resident }, farm.village.meals, 2);
+        const voyage = farm.freight.expeditions.active;
+        if (farm.island === 'village' && farm.village.meals === 0 && recovery?.kind === 'shore' &&
+            recovery.shore === 'home' && missing.kind === 'fish' &&
+            meal.items.every(item => item.kind === 'fish' || (item.kind === 'handmade' && signature) ||
+              ingredientCount(farm, item) >= item.quantity) &&
+            voyage?.phase === 'ready' && voyage.id === 'salt-fish' && voyage.payCoins > 0 &&
+            voyage.incoming.some(lot => lot.id === 'seaBass' && lot.quantity >= missing.quantity)) {
+          return task('shared-suppers', 'Рыба к ужину уже у причала', 'Заберите оплаченный улов.', 'fish',
+            { label: 'К вернувшемуся парому', target: 'open-panel', value: 'bay-freight' }, farm.village.meals, 2);
+        }
         return next;
       }
       if (signature && !farm.handmade[shape]) return arrive(task('shared-suppers', 'Принесите готовое блюдо к общему столу',
