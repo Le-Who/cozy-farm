@@ -1881,7 +1881,14 @@ function renderNeighboursCard(shape: WorkshopShape, guided = false) {
 }
 
 let selectedWarehouseRequest: StockItem | undefined
+type FestivalWorkshopVisit = { day:number; program:NonNullable<typeof farm.festivals.active>; shape:WorkshopShape; baked?:WorkshopShape }
+function activeFestivalWorkshop(visit:FestivalWorkshopVisit):boolean {
+  const program = farm.festivals.active
+  return farm.island === 'village' && !farm.neighborVisits.active && farm.day === visit.day
+    && program === visit.program && program.stage === 2 && farm.day >= program.readyOn
+}
 type PanelVisit = {
+  festivalWorkshop?: FestivalWorkshopVisit; // One live local pastry route, not the ordinary workshop choice.
   cottageKitchenDish?: DishId; // Sole ready dish for this ordinary cottage visit; not a session preference.
   cottageKitchenShelf?: DishId; // Same visit owns the selected live dish when the default card was blocked.
   harbourRecipe?: {id: string; preview: boolean; refill?: ShopRecipeRefill}; // Only carried by this recipe's explicit shop entry.
@@ -2055,6 +2062,9 @@ function goBack(keyboard = false) {
     const sourceItem = previous.marketOrder?.source ?? previous.kitchenSourceItem
     const target=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')).find(button=>
       (sourceItem ? stockSourceItem(button)===sourceItem : focusKey(button)===previous.focus) && button.getClientRects().length>0)
+    const festivalWorkshop = previous.panel === 'festival' ? previous.festivalWorkshop : undefined
+    const festivalPastryReady = festivalWorkshop?.baked && activeFestivalWorkshop(festivalWorkshop)
+      && farm.handmade[festivalWorkshop.baked] > 0 ? festivalWorkshop.baked : undefined
     if (previous.panel === 'recipes') {
       recipeBook.restore(dialogContent,true,suppliedRecipe)
       const offer = previous.tastingBakery && signatureTastingGuide(farm,previous.tastingBakery,'bea')
@@ -2069,6 +2079,15 @@ function goBack(keyboard = false) {
       const reserve = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('[data-action="commission-deliver"]:not(:disabled)')).find(button=>button.dataset.value===reserveOnReturn)
       ;(reserve ?? target)?.focus({preventScroll:true})
       reserve?.scrollIntoView({block:'nearest'})
+    }
+    else if (festivalPastryReady) {
+      const prepared = Array.from(dialogContent.querySelectorAll<HTMLButtonElement>('[data-action="festival-contribute"]:not(:disabled)'))
+        .find(button=>button.dataset.value===`treat|${festivalPastryReady}`)
+      const alternatives = prepared?.closest<HTMLDetailsElement>('details.festival-alternatives')
+      if (alternatives) alternatives.open = true
+      // Show the exact prepared row, never arm a contribution under a held key.
+      const row = prepared?.closest<HTMLElement>('.festival-requirement')
+      if (row) { row.tabIndex = -1; row.focus({preventScroll:true}); row.scrollIntoView({block:'nearest'}) }
     }
     else if (target && previous.panel !== 'bay-freight') target.focus({preventScroll:true})
     else if (homeKitchenReturn) {
@@ -2817,6 +2836,10 @@ function drawPanel() {
           && delivered + available < item.quantity)
       let made = false, basketDay: number | undefined
       const cottage = !bread && farm.island === 'village' ? panelHistory.at(-1) : undefined
+      const festival = cottage?.panel === 'festival' ? cottage.festivalWorkshop : undefined
+      const sameFestival = () => festival && dialog.open && panel === 'workshop' && panelHistory.at(-1) === cottage
+        && !island.isCrossing() && activeFestivalWorkshop(festival)
+      const readyFestival = () => sameFestival() && festival?.baked && farm.handmade[festival.baked] > 0 ? festival.baked : undefined
       const resident = cottage?.panel === 'village' ? farm.village.residents[cottage.villageSlot] : undefined
       const sameCottage = () => cottage?.panel === 'village' && !!resident && panel === 'workshop' && farm.island === 'village'
         && panelHistory.at(-1) === cottage && villageSlot === cottage.villageSlot && farm.village.residents[cottage.villageSlot] === resident
@@ -2824,7 +2847,7 @@ function drawPanel() {
       const readySupper = () => bakedSupper?.day === farm.day && dialog.open && !island.isCrossing() && sameCottage()
         && getVillageMeal(farm,bakedSupper.shape).available ? bakedSupper : undefined
       workshopGame = createWorkshop(dialogContent.querySelector<HTMLElement>('.workshop-host')!, {
-        initialShape: bread ? 'long' : charterRound ? 'round' : pastryShape, recipe: bread ? 'bread' : 'pastry',
+        initialShape: bread ? 'long' : charterRound ? 'round' : ((sameFestival() && festival?.shape) || pastryShape), recipe: bread ? 'bread' : 'pastry',
         onBake(shape) {
           if (made) return true
           if (panel !== 'workshop') return false
@@ -2833,6 +2856,7 @@ function drawPanel() {
             && !workshopShapes.some(choice => getVillageMeal(farm,choice).available)
             && !getReadySignatureSuppers(farm).some(choice => choice.available)
           made = perform(() => bread ? cookDish(farm, 'farmhouseBread') : bakeWorkshop(farm, shape), false, true)
+          if (made && festival && sameFestival()) festival.baked = shape
           if (made && waiting && getHomeBreadBasket(farm)?.status === 'ready') basketDay = farm.day
           if (made && tableMissingPastry && getVillageMeal(farm,shape).available) bakedSupper = {day:farm.day,shape}
           return made
@@ -2850,6 +2874,10 @@ function drawPanel() {
             detail?.focus({preventScroll:true}); detail?.scrollIntoView({block:'nearest'})
           } }
         } : () => {
+          const prepared = readyFestival()
+          if (prepared) return { name: 'Праздник урожая', label: 'К празднику', open() {
+            if (readyFestival() === prepared) goBack()
+          } }
           const supper = readySupper()
           if (!supper) return
           return { name: 'Общий ужин', label: 'К ужину', open() {
@@ -3219,7 +3247,7 @@ function openGuidedSeeds(crop: CropId) {
     highlightControl(dialogContent.querySelector<HTMLElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)'))
   }
 }
-function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string; festivalCargo?: { port: ExpeditionPort; offer: string }; honeyRecipe?: HoneyKitchenRecipe; meetHen?: number }) {
+function openPanel(next: Panel, remember = true, destinationIsland = farm.island, cue = 'page.unfold', recipeTarget?: string, entry?: { hiveFlower?: number; seedPreview?: CropId; grillFish?: FishId; readyOrder?: boolean; firstFerryOffer?: string; festivalCargo?: { port: ExpeditionPort; offer: string }; honeyRecipe?: HoneyKitchenRecipe; meetHen?: number; festivalWorkshop?:FestivalWorkshopVisit }) {
   if(next!==panel&&salePresentation.place)salePresentation.reset()
   if (island.isCrossing()) return
   if ((next === 'berry-nursery' || next === 'berry-renewal') && farm.island !== 'home') { void visitPanelAt('home',next); return }
@@ -3283,6 +3311,10 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
     // Both cottage landings survive Back even after the selected dish's ingredients are spent.
     if (!(cottage?.cottageKitchenDish || cottage?.cottageKitchenShelf) || entry || recipeTarget || (remember && !plainCottageEntry && next !== panel))
       kitchenGroup = ordinaryHomeEntry ? {} : 'tart'
+  }
+  if (next === 'workshop' && entry?.festivalWorkshop) {
+    const visit = panelHistory.at(-1)
+    if (visit?.panel === 'festival') { visit.festivalWorkshop = entry.festivalWorkshop; workshopRecipe = 'pastry' }
   }
   if (next === 'recipes') {
     if (recipeTarget) recipeBook.select(farm,recipeTarget)
@@ -4292,6 +4324,16 @@ app.addEventListener('click', async (event) => {
           || row.delivered >= row.quantity || source.available > 0) break
         if (getCookAction(farm, 'appleJam').available) {
           openPanel('kitchen', true, farm.island, 'page.unfold', 'appleJam')
+          break
+        }
+      }
+      if (active?.tradition === 'harvest' && active.edition === 2 && active.stage === 2
+        && row?.id === 'treat' && source?.item?.kind === 'handmade') {
+        if (farm.island !== 'village' || !dialog.open || panel !== 'festival' || !dialogContent.contains(control) || active.waitingNight
+          || row.delivered >= row.quantity || source.available > 0) break
+        const program = farm.festivals.active
+        if (program && !farm.neighborVisits.active && getWorkshopAction(farm).available && !getLocalWarehouseSupply(farm,source.item)) {
+          openPanel('workshop',true,farm.island,'page.unfold',undefined,{festivalWorkshop:{day:farm.day,program,shape:source.item.item}})
           break
         }
       }
