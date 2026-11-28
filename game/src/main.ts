@@ -131,6 +131,7 @@ import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopCommissionPreview, type BayShopOptions, type BayShopStockGroup } from './bay-shop'
 import { createBayShopWorkClock } from './bay-shop-model'
 import type { CookeryOptions } from './cookery'
+import type { WorkshopOptions } from './workshop'
 import { renderFreightPanelInto as renderFerryPanelInto, presentFerryDeparture, presentFerryArrival, freightControl } from './bay-freight-ui'
 import { FerryArrivalPresentation } from './ferry-arrival-presentation'
 import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } from './ferry-panel-view'
@@ -311,7 +312,8 @@ import {
 } from './farm'
 import { lazyScene } from './lazy-scene'
 const createFishingGame = lazyScene(() => import('./fishing').then(m => m.createFishingGame))
-const createWorkshop = lazyScene(() => import('./workshop').then(m => m.createWorkshop))
+const createWorkshop = lazyScene(() => import('./workshop').then(({ createWorkshop }) =>
+  (host: HTMLElement, options: WorkshopOptions) => mountFarmWorkshop(host, options, createWorkshop)))
 const createCookery = lazyScene(() => import('./cookery').then(({ createCookery }) =>
   (host: HTMLElement, options: CookeryOptions) => mountFarmCookery(host, options, createCookery)))
 const createArrangement = lazyScene(() => import('./arrangement').then(m => m.createArrangement))
@@ -2320,15 +2322,21 @@ function openMusicScene(host:HTMLElement) {
   })
 }
 function mountFarmCookery(host: HTMLElement, options: CookeryOptions, mount: typeof import('./cookery').createCookery) {
-  if (farm.island !== 'village' || !farm.village.built ||
-      options.recipe.kind !== 'preserves' && options.recipe.kind !== 'decorate') return mount(host, options)
+  const localFoodWork = options.recipe.kind === 'preserves' || options.recipe.kind === 'decorate'
+  return mount(host, options, localFoodWork ? villageShopWorkClock(host,'cookery') : undefined)
+}
+function mountFarmWorkshop(host: HTMLElement, options: WorkshopOptions, mount: typeof import('./workshop').createWorkshop) {
+  const shopWorkFrame = options.recipe === 'pastry' ? villageShopWorkClock(host,'workshop') : undefined
+  return mount(host, shopWorkFrame ? {...options,shopWorkFrame} : options)
+}
+function villageShopWorkClock(host:HTMLElement, workPanel:'cookery'|'workshop') {
+  if (farm.island !== 'village' || !farm.village.built) return
   const state = farm.bayShop, day = farm.day
   const localDay = () => farm.bayShop === state && farm.day === day && state.businessDay === day
-  const workClock = createBayShopWorkClock(state, () => localDay() && farm.island === 'village' &&
-    panel === 'cookery' && dialog.open && host.isConnected && dialogContent.contains(host) &&
+  return createBayShopWorkClock(state, () => localDay() && farm.island === 'village' &&
+    panel === workPanel && dialog.open && host.isConnected && dialogContent.contains(host) &&
     !harbourScene && !island.isCrossing(),
     () => Number(farm.concertDay === farm.day), earnHarbourSale, () => { if (localDay()) saveHarbour() })
-  return mount(host, options, workClock)
 }
 function harvestSaleCard(review: NonNullable<PanelVisit['harvestSale']>) {
   const {quote,sold,stale,goalRewardText} = review

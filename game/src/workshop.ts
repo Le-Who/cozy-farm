@@ -14,7 +14,7 @@ import { workshopTools, workshopToolGuide, workshopToolPalette, workshopModeRail
 import './workshop.css'
 
 export type WorkshopShape = 'round' | 'folded' | 'long'
-export interface WorkshopOptions { initialShape?: WorkshopShape; recipe?: 'pastry' | 'bread'; onBake: (shape: WorkshopShape) => boolean | void; readyOrder?: () => {name:string; label?:string; open:()=>void} | undefined; onCancel?: () => void }
+export interface WorkshopOptions { initialShape?: WorkshopShape; recipe?: 'pastry' | 'bread'; onBake: (shape: WorkshopShape) => boolean | void; readyOrder?: () => {name:string; label?:string; open:()=>void} | undefined; onCancel?: () => void; shopWorkFrame?: (now?: number) => void }
 type Stage = WorkshopStage
 type Tool = WorkshopTool
 type DoughPiece = {
@@ -132,6 +132,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   let transfer=0
   const transferOrigin=new THREE.Vector3()
   let destroyed = false, committed = false, contextLost = false, assetsReady = false, propsReady=false, backgroundReady=false, layoutChanging=false
+  if (options.shopWorkFrame) document.addEventListener('visibilitychange', () => { if (document.hidden) options.shopWorkFrame?.() }, {signal})
   let cutPending=false,cutSerial=0,cutResolve:((result:DoughCutResult)=>void)|null=null,cutReject:((error:Error)=>void)|null=null
   let cutWorker:Worker|null=null
   try { if(typeof Worker!=='undefined')cutWorker=new Worker(new URL('./workshop-cut-worker.ts',import.meta.url),{type:'module'}) } catch {cutWorker=null}
@@ -221,7 +222,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
   }
   const canvas=renderer.domElement
   canvas.addEventListener('webglcontextlost', event => {
-    event.preventDefault();contextLost=true;cancelPendingCut();release(undefined,true)
+    event.preventDefault();contextLost=true;options.shopWorkFrame?.();cancelPendingCut();release(undefined,true)
     // Retire this GL generation before restoration; Three's automatic reset leaves
     // old resource-disposal listeners and VSM targets attached to the CPU objects.
     sun.shadow.dispose();sun.shadow.map=null;sun.shadow.mapPass=null
@@ -936,7 +937,7 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     if (stage === 'finished') { close(); return }
     if (stage !== 'working' || committed) return
     bakeKeyboardFocus = event.detail === 0 && document.activeElement === bakeButton
-    stage = 'baking'; bakeButton.disabled = true; updateState()
+    stage = 'baking'; options.shopWorkFrame?.(); bakeButton.disabled = true; updateState()
     let accepted: boolean | void
     try { accepted = options.onBake(chosenShape) } catch { accepted = false }
     if (accepted === false) {
@@ -975,6 +976,10 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
     sprite.rotation=working?-.12:Math.sin(stirring)*.12
     placeSprite(sprite)
     applyBox(hotspots.find(button=>button.dataset.prop==='spoon')!,sprite.rect)
+  }
+  function tickWorkshopShop(now:number) {
+    options.shopWorkFrame?.(assetsReady && !destroyed && !contextLost && !layoutChanging && !cutPending && !document.hidden &&
+      (stage === 'mixing' || stage === 'working') ? now : undefined)
   }
   function tick(now:number){
     if(destroyed)return
@@ -1099,13 +1104,14 @@ export function createWorkshop(host: HTMLElement, options: WorkshopOptions): { d
       const pixelRatio=Math.min(window.devicePixelRatio,2)
       if(renderer.getPixelRatio()!==pixelRatio)renderer.setPixelRatio(pixelRatio)
       renderer.render(scene,camera)
-    }
+      tickWorkshopShop(now)
+    } else options.shopWorkFrame?.()
     frame = requestAnimationFrame(tick)
   }
   updateState(); frame = requestAnimationFrame(tick); view.focus({ preventScroll: true })
   return { destroy() {
     if (destroyed) return
-    destroyed = true;cancelPendingCut();cutWorker?.terminate();cutWorker=null; release(undefined, true); abort.abort(); cancelAnimationFrame(frame); resize.disconnect(); sun.shadow.dispose()
+    destroyed = true;options.shopWorkFrame?.();cancelPendingCut();cutWorker?.terminate();cutWorker=null; release(undefined, true); abort.abort(); cancelAnimationFrame(frame); resize.disconnect(); sun.shadow.dispose()
     if(warmIdle!==undefined)window.cancelIdleCallback(warmIdle);if(warmTimer!==undefined)window.clearTimeout(warmTimer);warmQueue.length=0
     resources.forEach(resource => resource.dispose()); surface.dispose(); renderer?.dispose(); renderer?.forceContextLoss(); renderer = null; root.remove()
     if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true })
