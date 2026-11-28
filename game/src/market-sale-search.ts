@@ -1,5 +1,5 @@
 import { traitIds } from './climate.ts'
-import { marketFamilyId } from './market-sale-family.ts'
+import { marketFamilyId, marketFamilyMatches } from './market-sale-family.ts'
 import { traitLabel } from './ru.ts'
 export type MarketSaleGroup = 'all' | 'harvest' | 'kitchen' | 'shore'
 export type SaleListing = { key: string; name: string; count: number; group: string }
@@ -21,7 +21,7 @@ function pluralSaleTerms(key: string) {
 /** A view only: keep original keys, rarity, price, order and live stock. Never select by row index. */
 export function searchMarketSales<T extends SaleListing>(stock: readonly T[], group: MarketSaleGroup, query: string, family?: string) {
   const words = searchable(query).split(/\s+/).filter(Boolean)
-  const available = stock.filter(item => item.count > 0 && (group === 'all' || item.group === group) && (group!=='harvest' || !family || marketFamilyId(item.key)===family))
+  const available = stock.filter(item => item.count > 0 && (group === 'all' || item.group === group) && (group!=='harvest' || !family || marketFamilyMatches(item.key,family)))
   const items = !words.length ? available : available.filter(item => {
     const name = searchable(item.name)
     if (words.every(word => name.includes(word))) return true

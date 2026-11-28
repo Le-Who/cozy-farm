@@ -1,4 +1,10 @@
-import { cropDefinitions, treeDefinitions } from './farm.ts'
+import { berryCropIds, cropDefinitions, treeDefinitions } from './farm.ts'
+
+const harvestTypeLabels = { 'type:fruit':'Фрукты', 'type:berries':'Ягоды' } as const
+function harvestType(family: string): keyof typeof harvestTypeLabels | undefined {
+  if (family.startsWith('fruit:')) return 'type:fruit'
+  if (berryCropIds.some(crop => family === `produce:${crop}`)) return 'type:berries'
+}
 
 /** Semantic inventory identity, never a localized name or visible row index. */
 export function marketFamilyId(key: string): string | undefined {
@@ -11,6 +17,11 @@ export function marketFamilyId(key: string): string | undefined {
     if (resource==='egg') return 'eggs'
   }
   if (['eggs','honey','windHoney','beeswax'].includes(key)) return key
+}
+/** A named product still includes its ordinary stock and exact rare rows. */
+export function marketFamilyMatches(key: string, scope: string): boolean {
+  const family = marketFamilyId(key)
+  return !!family && (family === scope || harvestType(family) === scope)
 }
 export function marketFamilyLabel(id: string): string | undefined {
   const [kind,resource] = id.split(':')
@@ -31,5 +42,12 @@ export function marketSaleFamilies(stock: readonly {key:string;count:number;grou
   // An exhausted family remains an explicit empty selection, never falls onto its neighbour.
   const label=selected && marketFamilyLabel(selected)
   if (selected && label && !families.has(selected)) families.set(selected,{id:selected,label,rows:0})
-  return [...families.values()]
+  // A useful type spans at least two live product families. Keep an explicitly
+  // selected type, even if the stock changes before the player clears it.
+  const types = Object.entries(harvestTypeLabels).flatMap(([id,label]) => {
+    const members = [...families.values()].filter(family => family.rows > 0 && harvestType(family.id) === id)
+    return members.length >= 2 || selected === id
+      ? [{id,label,rows:members.reduce((total,family)=>total+family.rows,0)}] : []
+  })
+  return [...types,...families.values()]
 }
