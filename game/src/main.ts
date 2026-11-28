@@ -6192,7 +6192,16 @@ app.addEventListener('input', event => {
   }
 })
 app.addEventListener('keydown', event => {
-  if(!event.defaultPrevented&&event.key==='Enter'&&event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')){event.preventDefault();if(!event.repeat)confirmInlineSale(event.target,document.activeElement===event.target)}
+  if(!event.defaultPrevented&&!event.isComposing&&event.key==='Enter'&&event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')){
+    event.preventDefault()
+    if(event.repeat || document.activeElement!==event.target)return
+    const context=inlineSaleContext(event.target)
+    if(!context)return
+    // Finish editing on the exact live quote. A fresh activation of Sell is the transaction.
+    updateInlineSaleCard(context.card)
+    context.card.querySelector<HTMLButtonElement>('.market-inline-sell[data-action="inline-sale-confirm"]:not(:disabled)')?.focus({preventScroll:true})
+    return
+  }
   if (!event.defaultPrevented && event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
     event.preventDefault()
     if (!event.repeat && currentSaleControl(event.target)) dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')?.click()
