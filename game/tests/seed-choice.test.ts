@@ -9,6 +9,7 @@ import {seedChoice,chooseSeedForBed} from '../src/seed-choice.ts'
 import {seedSavingQuote,saveCropSeeds} from '../src/seed-saving.ts'
 import {ActivationKeyGuard,isGuardedAction} from '../src/action-click-guard.ts'
 import {renderSeedPicker} from '../src/seed-picker-ui.ts'
+import {earned416Mixed} from './fixtures/earned-416-market-orders.ts'
 
 function planned(){
   const farm=createFarm(),crops=Array(16).fill(null);crops[13]='wheat'
@@ -132,28 +133,37 @@ test('keyboard preview of the tenth stocked packet reaches its sticky selector i
     ['inventory','seeds',1,true,true,'tile'],
     ['seeds','seeds',0,false,true,'close'],
     ['inventory','seeds',0,false,true,'close'],
-    ['seeds','seeds',0,true,false,'tile'],
-    ['inventory','seeds',0,true,false,'tile'],
+    ['seeds','seeds',0,true,false,'heading'],
+    ['inventory','seeds',0,true,false,'heading'],
     ['inventory','harvest',0,true,true,'original'],
     ['kitchen','seeds',0,true,true,'original'],
   ] as const
   for(const [panel,bagTab,detail,owned,stock,expected] of paths){
     const farm=structuredClone(stock?earned:createFarm()),before=structuredClone(farm),original={},tile={},close={}
     const document={activeElement:owned?original:close}
-    const art={icon:()=>'',button:(label:string,action:string,_enabled:boolean,options:{value?:string})=>`<button data-action="${action}" data-value="${options.value??''}">${label}</button>`}
+    const art={icon:()=>'',button:(label:string,action:string,enabled:boolean,options:{value?:string})=>`<button data-action="${action}" data-value="${options.value??''}"${enabled?'':' disabled'}>${label}</button>`}
     const html=renderSeedPicker(farm,'raspberry',undefined,art)
     const selects=html.match(/class="seed-picker-primary"><button data-action="choose-seed" data-value="([^"]+)"/)
     if(stock)assert.equal(selects?.[1],seedChoice(farm,'raspberry').token)
     assert.deepEqual([...html.matchAll(/data-action="preview-seed" data-value="([^"]+)"/g)].map(match=>match[1]),cropIds)
     const selector={focus(options:{preventScroll:boolean}){assert.equal(options.preventScroll,true);document.activeElement=selector}}
+    const heading={tabIndex:0,getClientRects:()=>[1],focus(options:{preventScroll:boolean}){assert.equal(options.preventScroll,true);document.activeElement=heading}}
     const context={farm,cropIds,value:'raspberry',previewSeed:'carrot',panel,bagTab,dialog:{open:true},event:{detail},control:original,document,
       drawPanel(){if(owned)document.activeElement=tile},
-      dialogContent:{querySelector(css:string){assert.equal(css,'.seed-picker-primary [data-action="choose-seed"]:not(:disabled)');return selects?selector:null}},
+      dialogContent:{querySelector(css:string){
+        if (css==='.seed-picker-primary [data-action="choose-seed"]:not(:disabled)') return selects?selector:null
+        if (css==='.seed-picker-primary :is([data-action="buy-seeds"],[data-action="save-crop-seeds"]):not(:disabled)') {
+          const primary=html.match(/class="seed-picker-primary">([\s\S]*?)<\/div>/)?.[1]??''
+          return /data-action="(?:buy-seeds|save-crop-seeds)"[^>]*(?<! disabled)>/.test(primary)?{}:null
+        }
+        assert.equal(css,'.seed-picker-current h2');return heading
+      }},
     }
     runInNewContext(branch,context)
     assert.equal(context.previewSeed,expected==='original'?'carrot':'raspberry')
     assert.deepEqual(farm,before,'preview never purchases, changes sow mode or plants')
-    assert.equal(document.activeElement,{selector,tile,close,original}[expected],[panel,bagTab,detail,owned,stock].join('/'))
+    assert.equal(document.activeElement,{selector,tile,close,original,heading}[expected],[panel,bagTab,detail,owned,stock].join('/'))
+    if(expected==='heading')assert.equal(heading.tabIndex,-1)
     if(expected==='selector') for(const key of ['Enter',' ']){
       const guard=new ActivationKeyGuard()
       assert.equal(guard.blocks({key,repeat:false},isGuardedAction('preview-seed')),false)
@@ -202,4 +212,63 @@ test('Back from transplant cannot restore a stale planned seed shortcut to the n
     assert.equal(markup.includes('К грядке по плану'),!occupied)
     assert.deepEqual(farm,before,'a stale or planned return never selects or sows')
   }
+})
+
+
+test('earned empty last crop leads one Tab from the neutral preview to a real refill, with no spend or changed rare seed contract',()=>{
+  const main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+  const branch=stripTypeScriptTypes("switch('preview-seed'){"+main.slice(main.indexOf("    case 'preview-seed':"),main.indexOf("    case 'choose-seed':"))+'}')
+  function focus(farm:ReturnType<typeof createFarm>,crop:typeof cropIds[number],panel='seeds',detail=0){
+    const before=structuredClone(farm),focusCalls:string[]=[]
+    const original={},tile={},document={activeElement:original}
+    const art={icon:()=>'',button:(label:string,action:string,enabled:boolean,options:{value?:string})=>
+      `<button data-action="${action}" data-value="${options.value??''}"${enabled?'':' disabled'}>${label}</button>`}
+    const html=renderSeedPicker(farm,crop,undefined,art)
+    const primary=html.match(/class="seed-picker-primary">([\s\S]*?)<\/div>/)?.[1]??''
+    const enabled=[...primary.matchAll(/<button[^>]*data-action="([^"]+)"[^>]*>/g)].filter(([tag])=>!tag.includes(' disabled'))
+    const lastFocus=enabled[0]?.[1]
+    const action={focus(opts:{preventScroll:boolean}){assert.ok(opts.preventScroll);focusCalls.push(lastFocus);document.activeElement=action}}
+    const heading={tabIndex:0,getClientRects:()=>[1],focus(opts:{preventScroll:boolean}){assert.ok(opts.preventScroll);focusCalls.push('heading');document.activeElement=heading}}
+    const context={farm,cropIds,value:crop,previewSeed:'carrot',panel,bagTab:'seeds',dialog:{open:true},event:{detail},control:original,document,
+      drawPanel(){document.activeElement=tile},
+      dialogContent:{querySelector(css:string){
+        if (css==='.seed-picker-primary [data-action="choose-seed"]:not(:disabled)')return lastFocus==='choose-seed'?action:null
+        if (css==='.seed-picker-primary :is([data-action="buy-seeds"],[data-action="save-crop-seeds"]):not(:disabled)')
+          return lastFocus==='buy-seeds'||lastFocus==='save-crop-seeds'?action:null
+        assert.equal(css,'.seed-picker-current h2');return heading
+      }}
+    }
+    runInNewContext(branch,context)
+    assert.equal(context.previewSeed,crop)
+    assert.deepEqual(farm,before)
+    if(document.activeElement===heading){
+      assert.equal(heading.tabIndex,-1)
+      // The static heading is before the unchanged primary button in authored
+      // DOM order. Browser Tab behavior is qualified separately, not by this VM.
+      assert.ok(html.indexOf('<h2>')<html.indexOf('class="seed-picker-primary"'))
+    }
+    return {focusCalls,lastFocus,html}
+  }
+  const p=earned416Mixed(true)
+  assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.seeds.raspberry,p.state.variants.raspberry?.frost],[552,196,60,2,1])
+  assert.deepEqual(focus(p.state,'raspberry').focusCalls,['choose-seed'])
+  p.act('workBed',0,0);p.act('workBed',1,0)
+  assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.seeds.raspberry],[554,196,60,0])
+  for(const panel of ['seeds','inventory']){
+    const result=focus(p.state,'raspberry',panel)
+    assert.deepEqual(result.focusCalls,['heading'])
+    assert.equal(result.lastFocus,'buy-seeds')
+    assert.doesNotMatch(result.html,/data-action="save-crop-seeds"/)
+    assert.deepEqual(focus(p.state,'raspberry',panel,1).focusCalls,[])
+  }
+  const poor=createFarm();assert.ok(buySeeds(poor,'pumpkin').ok);assert.ok(buySeeds(poor,'cabbage').ok)
+  assert.equal(poor.coins,4)
+  assert.deepEqual(focus(poor,'raspberry').focusCalls,[])
+  assert.equal(focus(poor,'raspberry').lastFocus,undefined)
+  const dual=earned416Mixed(false).state,comparison=focus(dual,'leafyGreens')
+  assert.deepEqual(comparison.focusCalls,['heading'])
+  assert.match(comparison.html,/data-action="save-crop-seeds"/)
+  const exchange=structuredClone(dual), quote=seedSavingQuote(exchange,'leafyGreens')!
+  assert.ok(saveCropSeeds(exchange,quote.token).ok)
+  assert.deepEqual([exchange.coins,exchange.produce.leafyGreens,exchange.seeds.leafyGreens,exchange.variants.leafyGreens?.rainbow],[56,3,3,2])
 })

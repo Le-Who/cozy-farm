@@ -5142,8 +5142,19 @@ app.addEventListener('click', async (event) => {
       if (dialog.open&&(panel==='seeds'||panel==='inventory'&&bagTab==='seeds')&&value&&cropIds.includes(value as CropId)) {
         const keyboardChoice = event.detail === 0 && document.activeElement === control
         previewSeed=value as CropId;drawPanel()
-        // The confirm button precedes all ten tiles. Never move focus to a purchase.
-        if (keyboardChoice) dialogContent.querySelector<HTMLButtonElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)')?.focus({preventScroll:true})
+        if (keyboardChoice) {
+          const choose = dialogContent.querySelector<HTMLButtonElement>('.seed-picker-primary [data-action="choose-seed"]:not(:disabled)')
+          if (choose) choose.focus({preventScroll:true})
+          else if (dialogContent.querySelector('.seed-picker-primary :is([data-action="buy-seeds"],[data-action="save-crop-seeds"]):not(:disabled)')) {
+            // A neutral preview heading is one Tab before the available refill.
+            // Do not arm either form of spending on the preview keystroke.
+            const heading = dialogContent.querySelector<HTMLHeadingElement>('.seed-picker-current h2')
+            if (heading?.getClientRects().length) {
+              heading.tabIndex = -1
+              heading.focus({preventScroll:true})
+            }
+          }
+        }
       }
       break
     case 'choose-seed':
