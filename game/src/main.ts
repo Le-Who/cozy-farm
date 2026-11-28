@@ -460,6 +460,8 @@ let communityResident: ResidentId = 'bea'
 let freshFinnRide:string|undefined
 let selectedFriendHen = 0
 let requestedFood: FoodOfferId | undefined
+// The choice belongs to this preview, never to the saved request or another visit.
+let requestedGrillChoice: { owner: CommunityRequest; day: number; fish: FishId } | undefined
 let arrangementRequest: { kind: 'neighbor'; id: string } | { kind: 'packing'; mode: 'eggs' | 'crate' } | undefined
 const communitySelectionKey = 'cozy-farm-community-selection-v1'
 try {
@@ -1038,6 +1040,11 @@ function recipeDestination(dish: DishId) {
   return farm.island === 'village' && farm.village.built ? 'village' as const : 'home' as const
 }
 
+function renderGrillFishChoices(selected: FishId, ready?: readonly FishId[]) {
+  const choices = ready ? fishIds.filter(id => id === selected || ready.includes(id)) : fishIds
+  return `<div class="recipe-fish-choices" role="group" aria-label="Рыба для гриля">${choices.map(id=>`<button type="button" data-action="${ready ? 'request-grill-fish' : 'grill-fish'}" data-value="${id}" aria-pressed="${selected===id}" aria-label="${fishDefinitions[id].name}, в наличии ${farm.fish[id]}" title="${fishDefinitions[id].name}"${ready && !ready.includes(id) ? ' disabled' : ''}>${icon(fishImage(id))}<span>${ready ? fishDefinitions[id].name+' · ' : ''}×${farm.fish[id]}</span></button>`).join('')}</div>`
+}
+
 function recipeCards(recipes: readonly DishId[], returnedDish?: DishId) {
   return `<div class="recipe-list">${recipes.map((dish) => {
     const recipe = dishDefinitions[dish]
@@ -1045,7 +1052,7 @@ function recipeCards(recipes: readonly DishId[], returnedDish?: DishId) {
     const action = getCookAction(farm, dish, cookingFish)
     const ingredients = getCookIngredients(farm, dish, cookingFish)
     const rawValue = ingredients.reduce((sum,item)=>sum+item.quantity*unitPrice(item,farm),0)
-    const fishChoices = dish === 'grilledFish' ? `<div class="recipe-fish-choices" role="group" aria-label="Рыба для гриля">${fishIds.map(id=>`<button type="button" data-action="grill-fish" data-value="${id}" aria-pressed="${cookingFish===id}" aria-label="${fishDefinitions[id].name}, в наличии ${farm.fish[id]}" title="${fishDefinitions[id].name}">${icon(fishImage(id))}<span>×${farm.fish[id]}</span></button>`).join('')}</div>` : ''
+    const fishChoices = dish === 'grilledFish' ? renderGrillFishChoices(cookingFish) : ''
     const locked = recipe.capeLevel ? farm.capeLevel < recipe.capeLevel : farm.buildingLevels.farmhouse < recipe.requiredLevel || !!recipe.specialization && !hasFarmhouseSpecialization(farm, recipe.specialization)
     const missing = !locked && dish === 'grilledFish' && farm.island === 'home' ? ingredients.filter(item => ingredientCount(farm,item) < item.quantity) : []
     const salt = missing.length === 1 && missing[0].kind === 'seaSalt' ? missing[0] : undefined
@@ -1648,6 +1655,15 @@ function requestedRecipe() {
   if (!offer) return undefined
   if (offer.source === 'dish') {
     const dish = offer.identity as DishId
+    const plan = dish === 'grilledFish' && offer.eligible && !offer.available && farm.island === 'village'
+      && communityRequest?.kind === 'neighbor' && communityRequest.resident === 'finn' ? currentCommunityRequest() : undefined
+    if (plan && 'phase' in plan && (plan.phase === 'joined' || plan.phase === 'arranging')) {
+      const grillChoices = fishIds.filter(id => getCookAction(farm,dish,id).available)
+      const picked = requestedGrillChoice?.owner === communityRequest && requestedGrillChoice?.day === farm.day ? requestedGrillChoice.fish : undefined
+      const fish = picked ?? getGrillFish(farm)
+      const showGrillChoices = grillChoices.length > 1 || !!picked && grillChoices.length > 0 && !grillChoices.includes(picked)
+      return { offer, fish, grillChoices, showGrillChoices, ingredients: getCookIngredients(farm,dish,fish), action: getCookAction(farm,dish,fish), destination: recipeDestination(dish) }
+    }
     return { offer, ingredients: getCookIngredients(farm, dish), action: getCookAction(farm, dish), destination: recipeDestination(dish) }
   }
   if (offer.source === 'handmade') return { offer, ingredients: [{ kind: 'produce', item: 'wheat', quantity: 2 }, { kind: 'eggs', quantity: 1 }] as StockItem[], action: getWorkshopAction(farm), destination: farm.island === 'village' ? 'village' as const : 'home' as const }
@@ -1667,8 +1683,8 @@ function requestedRecipeCard() {
   if (offer.available) return `${deadline}<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2 tabindex="-1" data-request-ready>${escapeHtml(offer.name)}</h2><p class="dialog-intro">Угощение готово. В запасе: ${offer.count}.</p>${button(communityRequest?.kind === 'neighbor' ? 'К встрече' : 'К просьбе', 'resume-community')}</section>`
   const batch = communityRequest?.kind === 'neighbor' ? getRequestedBeaBatch(farm,communityRequest.planId,offer.id) : undefined
   const sourceLabel = farm.island !== source.destination ? 'К месту готовки' : ingredients.some(item => ingredientCount(farm, item) < item.quantity) ? 'Найти ингредиенты' : 'Что нужно для рецепта'
-  return `${deadline}<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2>${escapeHtml(offer.name)}</h2><ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>
-    ${action.available ? button(offer.source === 'signature' ? 'Повторить точно ×1' : batch ? 'Испечь вручную ×1' : 'Готовить', offer.source === 'signature' ? 'request-repeat-exact' : 'request-start-cook') : `${button(sourceLabel, 'request-food-source')}<p class="recipe-reason">${action.label}</p>`}${batch ? `<div class="request-bea-batch">${icon('ui-bea')}<div><strong>Помощь Беа</strong><small>4 пшеницы · 2 яйца · раз в день</small></div>${button('Испечь ×'+batch.count,'request-bea-batch',true,{value:batch.key,secondary:true,context:'помощь Беа на сегодня, 4 пшеницы и 2 яйца'})}</div>` : ''}${nav(button('Другое угощение', 'resume-community', true, { secondary: true }))}</section>`
+  return `${deadline}<section class="community-source community-root"><div class="community-source-picture">${communityArt.offerIcon(offer)}</div><h2>${escapeHtml(offer.name)}</h2>${source.showGrillChoices && source.fish ? renderGrillFishChoices(source.fish,source.grillChoices) : ''}<ul class="ingredients">${ingredients.map(stockTile).join('')}</ul>
+    ${action.available ? button(offer.source === 'signature' ? 'Повторить точно ×1' : batch ? 'Испечь вручную ×1' : 'Готовить', offer.source === 'signature' ? 'request-repeat-exact' : 'request-start-cook', true, source.fish ? {value:source.fish} : {}) : `${button(sourceLabel, 'request-food-source')}<p class="recipe-reason">${action.label}</p>`}${batch ? `<div class="request-bea-batch">${icon('ui-bea')}<div><strong>Помощь Беа</strong><small>4 пшеницы · 2 яйца · раз в день</small></div>${button('Испечь ×'+batch.count,'request-bea-batch',true,{value:batch.key,secondary:true,context:'помощь Беа на сегодня, 4 пшеницы и 2 яйца'})}</div>` : ''}${nav(button('Другое угощение', 'resume-community', true, { secondary: true }))}</section>`
 }
 async function guideRequestedFood() {
   const source = requestedRecipe()
@@ -1700,7 +1716,7 @@ function startRequestedFood() {
   }
   if (source.offer.source === 'dish') {
     cookingDish = source.offer.identity as DishId; cookingMode = 'dish'
-    if(cookingDish==='grilledFish')cookingFish=getGrillFish(farm)
+    if(cookingDish==='grilledFish')cookingFish=source.fish ?? getGrillFish(farm)
     if (cookingDish === 'farmhouseBread') { workshopRecipe = 'bread'; openPanel('workshop') } else openPanel('cookery')
     return
   }
@@ -4629,7 +4645,24 @@ app.addEventListener('click', async (event) => {
       openPanel('warehouse-supply')
       break
     }
-    case 'request-start-cook': startRequestedFood(); break
+    case 'request-grill-fish': {
+      if (panel !== 'request-food' || !dialog.open || !dialogContent.contains(control) || !communityRequest) break
+      const source = requestedRecipe(), fish = fishIds.find(id=>id===value)
+      if (!fish || !source?.showGrillChoices || !source.grillChoices?.includes(fish)) break
+      requestedGrillChoice = {owner:communityRequest,day:farm.day,fish}
+      drawPanel()
+      break
+    }
+    case 'request-start-cook': {
+      if (value) {
+        if (panel !== 'request-food' || !dialog.open || !dialogContent.contains(control)) break
+        const source = requestedRecipe()
+        // A removed ingredient or newly carried dish invalidates this exact preview.
+        if (!source || source.fish !== value || !source.action.available) { drawPanel(); break }
+      }
+      startRequestedFood()
+      break
+    }
     case 'request-bea-batch': {
       const request = communityRequest
       if (panel !== 'request-food' || !dialog.open || request?.kind !== 'neighbor') break

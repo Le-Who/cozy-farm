@@ -12,7 +12,7 @@ import { commissionPlayer } from './fixtures/commission-player.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true)
-const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','recipeCards','kitchenReadyDishes','kitchenFamilies','openPanel','goBack','leaveScene','focusKey','neighboursCard','renderNeighboursCard','pastryChoices','pastryChoicesFor']
+const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','renderGrillFishChoices','recipeCards','kitchenReadyDishes','kitchenFamilies','openPanel','goBack','leaveScene','focusKey','neighboursCard','renderNeighboursCard','pastryChoices','pastryChoicesFor']
 const definitions = names.map(name => {
   const node = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)
   assert.ok(node, name); return node.getText(ast)

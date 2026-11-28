@@ -17,7 +17,7 @@ import { earned416Mixed } from './fixtures/earned-416-market-orders.ts'
 
 const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true)
-const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','recipeCards','kitchenReadyDishes','kitchenFamilies','openPanel','goBack','focusKey']
+const names = ['button','nav','stockLabel','stockTile','stockTileWithSource','requirementLink','recipeDestination','renderGrillFishChoices','recipeCards','kitchenReadyDishes','kitchenFamilies','openPanel','goBack','focusKey']
 const definitions = names.map(name => {
   const node = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === name)
   assert.ok(node, name); return node.getText(ast)
