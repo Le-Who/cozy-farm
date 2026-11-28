@@ -3241,7 +3241,7 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   if (next === 'kitchen' && remember && next !== panel && !recipeTarget && typeof kitchenGroup === 'object' && 'guidedFrom' in kitchenGroup)
     kitchenGroup = kitchenGroup.guidedFrom
   if (next === 'kitchen' && (
-    recipeTarget === 'orchardTart' && farm.island === 'home' ||
+    (recipeTarget === 'orchardTart' || recipeTarget === 'appleJam') && farm.island === 'home' ||
     recipeTarget === 'appleJam' && farm.island === 'village' && panel === 'festival'
   ) && getCookAction(farm,recipeTarget).available) {
     const guidedFrom = typeof kitchenGroup === 'object' && 'guidedFrom' in kitchenGroup ? kitchenGroup.guidedFrom : kitchenGroup
@@ -4025,7 +4025,8 @@ app.addEventListener('click', async (event) => {
         return
       }
     }
-    if (action === 'kitchen' && value === 'orchardTart' && farm.island === 'home') {
+    if (action === 'kitchen' && farm.island === 'home' && (value === 'orchardTart' ||
+        value === 'appleJam' && 'bookmarkScope' in task && task.bookmarkScope === 'dock-supplies')) {
       island.visit({ kind: farm.buildingLevels.farmhouse >= 2 ? 'kitchen' : 'farmhouse' })
       openPanel('kitchen',true,farm.island,'page.unfold',value)
       return

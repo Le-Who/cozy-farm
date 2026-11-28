@@ -17,9 +17,10 @@ import {
   boatPrice, buildingDefinitions, buildingIds, cropDefinitions, cropIds, dishDefinitions, eggsPerBasket, feedBagPrice,
   getBedAction, getBedStage, getCapeHoney, getCookAction, getFairGuest, getFishAction, getGoal, getHarborOrder,
   foodDescriptors, getFestivalStatus, getIntentOffers, getMarketOrders, getNeighborPlans, getProject, getSale, getShopRestForecast, getVillageMeal, getVillageProject, getResidentService, ingredientCount, isProjectComplete,
-  treeDefinitions, villageGuestTarget, workshopDefinitions, workshopShapes, getSignatureAction, getSignatureCookOutput, getTreeAction, type CropId, type DishId, type FarmState, type StockItem,
+  treeDefinitions, treeFruitAtDawn, villageGuestTarget, workshopDefinitions, workshopShapes, getSignatureAction, getSignatureCookOutput, getTreeAction, type CropId, type DishId, type FarmState, type StockItem,
 } from './farm.ts';
 import {ruCount} from './ru.ts';
+import { getClimate } from './climate.ts';
 
 export type DiscoveryTask = {
   id: string; label: string; detail: string; icon: string; progress: number; target: number;
@@ -283,6 +284,29 @@ function homeCommissionPreparation(farm: FarmState, order: NonNullable<ReturnTyp
   return { label: 'К плодовому дереву', target: 'visit-tree', value: String(source.slot) };
 }
 
+/** Only delay the optional partial crossing when the actual remaining jam is a local, imminent task. */
+function homeDockJamPreparation(farm: FarmState, dock: ReturnType<typeof getProject>): DiscoveryTask | undefined {
+  if (farm.island !== 'home' || !dock.items.some(row => row.available > 0)) return;
+  const jam = dock.items.find(({ item }) => item.kind === 'dishes' && item.item === 'appleJam');
+  if (!jam || jam.delivered + jam.available >= jam.item.quantity ||
+      dock.items.some(row => row !== jam && row.delivered + row.available < row.item.quantity)) return;
+  const product = bayProductId(jam.item);
+  if (Object.values(farm.freight.warehouses).some(stock => stock[product] > 0) ||
+      farm.freight.ship.cargo.some(lot => lot.id === product) ||
+      farm.freight.expeditions.active?.incoming.some(lot => lot.id === product)) return;
+  const next = recipe(farm, 'appleJam', 'причал рощи');
+  const scoped = { ...next, id: 'dock', bookmarkScope: 'dock-supplies' } as const;
+  if (getCookAction(farm, 'appleJam').available) return { ...scoped, action: { ...next.action, value: 'appleJam' } };
+  const source = getFruitSource(farm, 'apple');
+  const tree = source.island === 'home' ? farm.trees.home[source.slot] : null;
+  if (!tree || tree.tree !== 'apple') return;
+  const ordinary = source.kind === 'pick' ? tree.fruitReady - Number(!!tree.trait)
+    : source.kind === 'grow' && source.nights === 1
+      ? treeFruitAtDawn(tree) - Number(!!tree.trait || getClimate(farm.day + 1).weather !== 'sun') : 0;
+  const need = dishDefinitions.appleJam.ingredients[0].quantity - farm.fruit.apple;
+  if (need > 0 && ordinary >= need) return scoped;
+}
+
 /** One optional next discovery, derived only from real progress and reachable supplies. */
 export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): DiscoveryTask | undefined {
   if (farm.village.built) {
@@ -388,6 +412,8 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
     : home(farm, task('farmhouse-upgrade', 'Улучшите дом', 'Большая кухня открывает новые блюда и выбор специализации.', 'upgrade-farmhouse-card', { label: 'Улучшения', target: 'upgrades' }));
   const dock = getProject(farm, 'dock');
   if (!isProjectComplete(farm, 'dock')) {
+    const prep = homeDockJamPreparation(farm, dock);
+    if (prep) return prep;
     if (dock.items.some(item => item.available > 0)) {
       const next = farm.island !== 'grove'
         ? task('grove', 'Посетите Солёную рощу', 'Привезите припасы к причалу рощи.', 'boat', { label: 'В рощу', target: 'sail', value: 'grove' })
