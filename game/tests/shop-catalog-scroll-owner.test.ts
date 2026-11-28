@@ -78,7 +78,12 @@ class Element {
   closest(s:string){return s==='button'?this:null}
   focus(){this.onFocus?.(this)}
 }
-class Input extends Element {}
+class Input extends Element {
+  nativeInvalid=false
+  reports=0
+  matches(s:string){return s===':invalid'?this.nativeInvalid:super.matches(s)}
+  reportValidity(){this.reports++;return !this.nativeInvalid}
+}
 function scene(farm:F.FarmState, recipeProduct?:string){
   const events=new Map<string,(event:any)=>void>(), document:{activeElement:Element|null;hidden:boolean}={activeElement:null,hidden:false}
   const focus=(item:Element)=>{document.activeElement=item}
@@ -479,4 +484,48 @@ test('no stale positive preview is transferred after stock moves, price/listing 
     }
     ui.destroy()
   }
+})
+
+test('earned D193 stock quantity is not a submitter; native validation and the separate action still guard one transfer',()=>{
+  const {ui,farm}=pickedLiveShelf(),before=structuredClone(farm)
+  ui.click(livePin)
+  const amount=ui.get('[data-stock-quantity]') as Input
+  const confirm=ui.get('[data-stock-confirm]')
+  assert.equal(ui.focused,amount)
+  const authored=ui.host.innerHTML.match(/<div class="bay-shop-quantity">[\s\S]*?<\/form>/)?.[0]
+  assert.ok(authored)
+  const form=authored.indexOf('<form data-stock-form>')
+  assert.ok(authored.indexOf('data-stock-quantity')<form && authored.indexOf('data-stock-preview')<form,
+    'focused amount and quote are not associated with the native confirmation form')
+  assert.match(authored.slice(form),/<button type="submit" data-stock-confirm[^>]*>Выставить<\/button>/)
+  assert.equal(amount.hasAttribute('form'),false)
+  assert.deepEqual(['min','max','step'].map(k=>amount.getAttribute(k)),['1','7','1'])
+  for(const invalid of ['','0','1.5','8']){
+    ui.amount(invalid)
+    assert.equal(confirm.disabled,true,invalid)
+    assert.equal(ui.focused,amount)
+    assert.deepEqual(farm,before)
+  }
+  ui.amount('2')
+  assert.equal(confirm.disabled,false)
+  assert.equal(ui.focused,amount)
+  assert.equal(ui.writes,0)
+
+  // The host does not supply a browser. Exercise the real submit handler with the
+  // numeric validity veto, including when model quantity alone would allow 2.
+  amount.nativeInvalid=true
+  ui.click('[data-stock-confirm]')
+  ui.submit()
+  assert.equal(amount.reports,1)
+  assert.equal(ui.transfers,0);assert.equal(ui.writes,0);assert.deepEqual(farm,before)
+  amount.nativeInvalid=false
+  ui.click('[data-stock-confirm]')
+  ui.submit()
+  const expected=structuredClone(before)
+  expected.variants.apple!.rainbow!-=2;expected.bayShop.slots[2]!.quantity+=2
+  assert.deepEqual(farm,expected)
+  assert.equal(ui.transfers,1);assert.equal(ui.writes,1)
+  assert.equal(ui.focused,ui.get('[data-slot="2"]'))
+  assert.equal(ui.get(livePin).getAttribute('data-stock'),rainbowApple)
+  ui.destroy()
 })

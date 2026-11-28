@@ -155,8 +155,8 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       const preview = shopQuantityPreview(quote, selected, product, Number(pending.quantity));
       const replaces = pending.replacing ? ` · вместо «${escape(pending.replacing.product.name)}»` : '';
       return `<div class="bay-shop-quantity"><h3 data-user-text>${escape(product.name)}</h3><p>Место ${selected + 1}${replaces} · в припасах и на складе гавани: ${product.quantity}</p>
-        <form data-stock-form><label>Количество на полку<input data-stock-quantity type="number" inputmode="numeric" min="1" max="${preview.maximum}" step="1" value="${escape(pending.quantity)}" aria-label="Количество на полку"></label>
-        <p data-stock-preview role="status"></p><div class="bay-shop-quantity-actions"><button type="submit" data-stock-confirm data-action="shop-stock-confirm">Выставить</button><button type="button" data-stock-cancel>Отмена</button></div></form></div>`;
+        <label>Количество на полку<input data-stock-quantity type="number" inputmode="numeric" min="1" max="${preview.maximum}" step="1" value="${escape(pending.quantity)}" aria-label="Количество на полку"></label>
+        <p data-stock-preview role="status"></p><form data-stock-form><div class="bay-shop-quantity-actions"><button type="submit" data-stock-confirm data-action="shop-stock-confirm">Выставить</button><button type="button" data-stock-cancel>Отмена</button></div></form></div>`;
     }
     const refill = selectedShelfStock(products);
     if (refill && slot && slot.quantity > 0)
@@ -378,6 +378,9 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!(event.target instanceof Element) || !event.target.matches('[data-stock-form]')) return;
     event.preventDefault();
     if (!pending) return;
+    // The amount is outside the form so typing Enter cannot activate the default submit button.
+    const amount = host.querySelector<HTMLInputElement>('[data-stock-quantity]');
+    if (amount?.matches(':invalid')) { amount.reportValidity(); return; }
     const product = stockForPending(options.products()), quantity = Number(pending.quantity), quote = quotedShelf(selected, pending.replacing);
     if (!product || !quote || !placeShopQuantity(quote, selected, product, quantity, options.takeStock)) {
       const staleShelf = (!product || !quote) && (pending.soldShelf !== undefined || pending.liveRefill || pending.replacing)
