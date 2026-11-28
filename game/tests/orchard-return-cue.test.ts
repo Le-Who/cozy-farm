@@ -4,12 +4,14 @@ import {ruCount} from '../src/ru.ts'
 import {readFileSync} from 'node:fs'
 import {stripTypeScriptTypes} from 'node:module'
 import {runInNewContext} from 'node:vm'
-import {createFarm,getTreeAction,treeDefinitions,treeIds,pickFruit,buyAndPlantTree,endDay,storeTree,restoreCurrentFarm} from '../src/farm.ts'
+import {createFarm,getTreeAction,treeDefinitions,treeIds,pickFruit,buyAndPlantTree,endDay,storeTree,restoreCurrentFarm,treeNightsToFruit,getFruitTreeSeed} from '../src/farm.ts'
+
+import {commissionPlayer} from './fixtures/commission-player.ts'
 
 const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
 const fn=source.slice(source.indexOf('function treeRow('),source.indexOf('\nconst treeStorageChoice'))
 function render(farm:ReturnType<typeof createFarm>,index:number){
- return runInNewContext(stripTypeScriptTypes(fn+'\ntreeRow(index)'),{farm,index,treeDefinitions,getTreeAction,
+ return runInNewContext(stripTypeScriptTypes(fn+'\ntreeRow(index)'),{farm,index,treeDefinitions,getTreeAction,treeNightsToFruit,
   quantity:(n:number)=>ruCount(n,'ночь','ночи','ночей'),
   button:(label:string,action:string,enabled:boolean,o:{value:number})=>`<button data-action="${action}" data-value="${o.value}"${enabled?'':' disabled'}>${label}</button>`,
   row:(_icon:string,name:string,detail:string,action:string)=>`<li><strong>${name}</strong><small>${detail}</small>${action}</li>`}) as string
@@ -60,4 +62,48 @@ test('the forecast is used only for mature empty planted trees on either orchard
   f.trees[island][0]!.fruitReady=2;assert.match(render(f,0),/Плодов к сбору: 2/);assert.doesNotMatch(render(f,0),/Новые плоды завтра/)
  }
  const away=createFarm();away.island='cape';assert.equal(render(away,0),'')
+})
+
+
+test('the earned D15 sown pear shows four dawns on the Orchard row; grafted, ripe and parcel controls remain',()=>{
+ const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+ const p=commissionPlayer(opening)
+ assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.island],[107,14,68,'village'])
+ const recipe=p.cook()
+ p.night()
+ p.act('pickFruit',0);p.visit('grove');p.act('pickFruit',0);p.visit('home')
+ p.act('repeatSignature',recipe);p.act('sellSignature',recipe,2)
+ assert.deepEqual([p.state.day,p.state.coins,p.state.fruit.apple,p.state.fruit.pear],[15,106,1,1])
+ const seed=getFruitTreeSeed(p.state,1,'pear')
+ assert.ok(seed)
+ p.act('plantFruitTreeSeed',1,seed.token);p.act('plantTree',2,'apple')
+ p.visit('grove');p.act('storeTree',0)
+ p.act('buyAndPlantTree',0,'peach');p.act('buyAndPlantTree',1,'apple');p.act('buyAndPlantTree',2,'peach')
+ p.visit('home')
+ assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.island,p.state.fruit.pear],[129,15,71,'home',0])
+ assert.deepEqual(p.state.trees.home[1],{tree:'pear',age:0,fruitReady:0,sprouting:true})
+ assert.deepEqual(p.state.trees.home[2],{tree:'apple',age:0,fruitReady:0})
+ const nightsLeft=[4,3,2,1]
+ for(const [elapsed,remaining] of nightsLeft.entries()){
+   assert.equal(p.state.day,15+elapsed)
+   const before=structuredClone(p.state)
+   const html=render(p.state,1)
+   assert.match(html,new RegExp(`<small>${ruCount(remaining,'ночь','ночи','ночей')} до зрелости</small>`))
+   assert.match(html,/data-action="visit-tree" data-value="1">Осмотреть дерево/)
+   assert.equal(getTreeAction(p.state,1).kind,'wait')
+   assert.equal(pickFruit(p.state,1).ok,false)
+   assert.deepEqual(p.state,before)
+   if(elapsed<2)assert.match(render(p.state,2),new RegExp(`${ruCount(2-elapsed,'ночь','ночи','ночей')} до зрелости`))
+   else assert.match(render(p.state,2),/Плодов к сбору: 2/)
+   if(elapsed===0)assert.match(render(p.state,0),/Новые плоды завтра/)
+   p.night()
+ }
+ assert.equal(p.state.day,19)
+ assert.match(render(p.state,1),/Плодов к сбору: 2/)
+ assert.match(render(p.state,1),/data-action="visit-tree" data-value="1">Осмотреть дерево/)
+ assert.equal(p.state.fruit.pear,0,'showing ripe fruit did not collect it')
+ p.act('pickFruit',1)
+ assert.ok(p.state.fruit.pear>0)
+ assert.match(render(p.state,1),/Новые плоды завтра/)
+ assert.equal(p.state.coins,71)
 })

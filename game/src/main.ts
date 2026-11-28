@@ -1526,7 +1526,7 @@ function treeRow(index: number) {
   const detail = slot && definition
     ? slot.age >= definition.days
       ? slot.fruitReady > 0 ? `Плодов к сбору: ${slot.fruitReady}` : 'Новые плоды завтра'
-      : `${quantity(definition.days - slot.age, 'ночь')} до зрелости`
+      : `${quantity(treeNightsToFruit(slot), 'ночь')} до зрелости`
     : 'Место для саженца'
   return row(slot?.tree === 'apple' ? 'apple' : 'orchard', definition?.treeName ?? `Свободное место ${index + 1}`, detail,
     button(slot ? 'Осмотреть дерево' : 'Посадить дерево', 'visit-tree', true, { value: index,
