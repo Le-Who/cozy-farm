@@ -102,9 +102,10 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
       const offer = getIntentOffers(farm, plan.intentId).find(offer => offer.id === plan.food?.id);
       const recovery = getNeighborFoodRecovery(farm, plan.id)!;
       const ready = recovery.state === 'ready';
-      const remote = recovery.remoteSignature;
-      const stored = remote && offer
-        ? control(`К складу: ${freightPortNames[remote.port]}`, 'neighbor-stored-food', plan.id, `data-food="${escape(offer.id)}" data-storage="${escape(storedSignatureValue(remote))}"`) : '';
+      const remote = recovery.remoteSignature ?? recovery.remoteStock;
+      const storage = recovery.remoteSignature ? storedSignatureValue(recovery.remoteSignature) : recovery.remoteStock?.token;
+      const stored = remote && storage && offer
+        ? control(`К складу: ${freightPortNames[remote.port]}`, 'neighbor-stored-food', plan.id, `data-food="${escape(offer.id)}" data-storage="${escape(storage)}"`) : '';
       const repair = recovery.warehouse && offer ? control('К готовой порции на складе', 'neighbor-stored-food', plan.id, `data-food="${escape(offer.id)}"`)
         : recovery.shelved && offer ? control('В лавку за угощением', 'neighbor-shelf-food', plan.id, `data-food="${escape(offer.id)}"`)
         : recovery.state === 'spent' && offer ? offer.source === 'signature' && offer.canCook

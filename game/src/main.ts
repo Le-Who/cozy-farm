@@ -4470,14 +4470,20 @@ app.addEventListener('click', async (event) => {
       if(!recovery||recovery.plan.resident!==communityResident)break
       if(!recovery.offer||recovery.offer.id!==control.dataset.food){drawPanel();break}
       if(control.dataset.storage){
-        const source = recovery.remoteSignature
-        if(!source || control.dataset.storage!==storedSignatureValue(source) || !dialogContent.contains(control) || island.isCrossing()) { drawPanel();break }
+        const source = recovery.remoteSignature, stock = recovery.remoteStock
+        const storage = source ? storedSignatureValue(source) : stock?.token
+        if(!storage || control.dataset.storage!==storage || !dialogContent.contains(control) || island.isCrossing()) { drawPanel();break }
         const request = {kind:'neighbor' as const,resident:recovery.plan.resident,planId:recovery.plan.id}
         communityRequest=request
         requestedFood=undefined
-        await visitPanelAt(source.port,'recipes',undefined,source.recipeId)
-        // Standard close/continue returns to this meeting; no stock is moved on the crossing.
-        if(dialog.open && farm.island===source.port && communityRequest===request && getStoredSignature(farm,source.recipeId)) focusRecipeAction(true)
+        // Standard close/continue returns to the same meeting; travel never takes the serving.
+        if(source) {
+          await visitPanelAt(source.port,'recipes',undefined,source.recipeId)
+          if(dialog.open && farm.island===source.port && communityRequest===request && getStoredSignature(farm,source.recipeId)) focusRecipeAction(true)
+        } else if(stock) {
+          selectedWarehouseRequest=stock.request
+          await visitPanelAt(stock.port,'warehouse-supply')
+        }
         break
       }
       if(!recovery.warehouse){drawPanel();break}
