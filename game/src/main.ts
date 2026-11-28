@@ -96,7 +96,7 @@ import './rest-preview.css'
 import { chooseDiscoveryIdea, setDiscoveryPace, resumeDiscoveryIdea, forgetDiscoveryIdea } from './discovery-preferences'
 import { getGuidanceTask } from './discovery-guidance'
 import { renderDiscoveryGuidance } from './discovery-preferences-ui'
-import { getNeighborFoodRecovery, repeatNeighborFood, repeatRequestedSignature } from './neighbor-food-recovery'
+import { getJoinedNeighborDishSupply, getNeighborFoodRecovery, repeatNeighborFood, repeatRequestedSignature } from './neighbor-food-recovery'
 import { BedTransplantSelection, renderBedTransplant } from './bed-transplant'
 import './bed-transplant.css'
 import { cancelCovePlan } from './farm'
@@ -1910,6 +1910,10 @@ function marketTreeContinuation() {
 }
 let panelRenderVersion = 0
 function focusKey(button: HTMLButtonElement) {
+  // After a separate warehouse pickup, the same dish becomes a carried choice.
+  const {action,plan,value} = button.dataset
+  if (plan && value && (action === 'neighbor-joined-warehouse' || action === 'choose-neighbor-food'))
+    return JSON.stringify(['neighbor-food',plan,value])
   const controls = Object.entries(button.dataset).filter(([key])=> !['selected','active','ready'].includes(key))
   return JSON.stringify(controls.length ? controls : [button.className,button.getAttribute('aria-label') ?? button.textContent?.trim()])
 }
@@ -4591,6 +4595,14 @@ app.addEventListener('click', async (event) => {
       else if (plan) communityRequest = { kind: 'neighbor', resident: plan.resident, planId: plan.id }
       const offer = communityOffers().find(offer => offer.id === value)
       if (offer) { requestedFood = offer.id; openPanel('request-food') }
+      break
+    }
+    case 'neighbor-joined-warehouse': {
+      if (panel !== 'neighbor' || !dialog.open || !dialogContent.contains(control) || island.isCrossing() || !value || !control.dataset.plan) break
+      const supply = getJoinedNeighborDishSupply(farm,control.dataset.plan,value)
+      if (!supply || supply.resident !== communityResident || supply.token !== control.dataset.storage) { drawPanel(); break }
+      selectedWarehouseRequest = supply.request
+      openPanel('warehouse-supply')
       break
     }
     case 'request-start-cook': startRequestedFood(); break

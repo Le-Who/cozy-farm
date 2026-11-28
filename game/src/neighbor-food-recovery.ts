@@ -14,6 +14,17 @@ function getRemotePreparedFood<T>(farm: FarmState, foodId: FoodOfferId, quote: (
   }
 }
 
+/** A joined gathering has not chosen a dish yet; only a verified same-venue portion gets this route. */
+export function getJoinedNeighborDishSupply(farm: FarmState, planId: string, food: string) {
+  if (farm.island !== 'village' || !food.startsWith('dish:') || !freightStock(farm.freight,'village',food)) return
+  const plan = getNeighborPlans(farm).find(plan=>plan.id===planId && plan.phase==='joined')
+  if (!plan) return
+  const offer = getIntentOffers(farm,plan.intentId).find(offer=>offer.id===food && offer.eligible && !offer.available && !offer.canCook)
+  const request = offer && warehouseRequest(`${offer.id}|1`)
+  const supply = request && getLocalWarehouseSupply(farm,request)
+  if (supply) return {resident:plan.resident,request,stored:supply.stored,token:warehouseConfirmationValue(supply)}
+}
+
 /** Derive recovery from current stock, never rewrite the saved meeting. */
 export function getNeighborFoodRecovery(farm: FarmState, planId: string) {
   const plan = getNeighborPlans(farm).find(plan => plan.id === planId)

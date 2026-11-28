@@ -1,7 +1,7 @@
 import { freightPortNames } from './bay-freight-model';
 import { storedSignatureValue } from './stored-signature';
 import { renderIntentDeadline } from './intent-deadline';
-import { getNeighborFoodRecovery } from './neighbor-food-recovery';
+import { getJoinedNeighborDishSupply, getNeighborFoodRecovery } from './neighbor-food-recovery';
 import { neighborHelpStatus } from './neighbor-help';
 import { canSailTo, getCommunityOrders, getIntentOffers, getNeighborPlans, type FarmState, type ResidentId } from './farm';
 import { qualityNames, type IntentId } from './intent-orders';
@@ -32,10 +32,13 @@ export function neighborHelpCard(farm: FarmState, resident: ResidentId, link = f
   return `<aside class="community-help" aria-label="${help.title}"><strong>${help.title}</strong><p>${help.detail}</p><p>${help.next}</p>${link ? control(`К помощи ${resident === 'bea' ? 'Беа' : 'Финна'}`, 'neighbor-help-house', resident, '', true) : ''}</aside>`;
 }
 
-function offerChoices(offers: Offer[], art: CommunityArt, context: { kind: 'intent'; id: string } | { kind: 'neighbor'; id: string }, fundedCape?: ReadonlySet<Offer['id']>): string {
+function offerChoices(offers: Offer[], art: CommunityArt, context: { kind: 'intent'; id: string } | { kind: 'neighbor'; id: string },
+  fundedCape?: ReadonlySet<Offer['id']>, storedDish?: (id: Offer['id']) => ReturnType<typeof getJoinedNeighborDishSupply>): string {
+  const local = storedDish && new Map(offers.filter(offer=>offer.eligible && !offer.available).map(offer=>[offer.id,storedDish(offer.id)]))
   const choices = offers.filter(offer => offer.eligible).sort((left, right) =>
     Number(right.available) - Number(left.available)
     || Number(right.available && right.source === 'signature') - Number(left.available && left.source === 'signature')
+    || Number(!!local?.get(right.id)) - Number(!!local?.get(left.id))
     || Number(right.canCook) - Number(left.canCook)
     || Number(!!fundedCape?.has(right.id)) - Number(!!fundedCape?.has(left.id)));
   const otherRecipes = offers.filter(o => o.source === 'signature' && o.count > 0 && !o.eligible)
@@ -44,11 +47,13 @@ function offerChoices(offers: Offer[], art: CommunityArt, context: { kind: 'inte
     return `<p><strong>${escape(o.name)}</strong> · Нужно: ${escape(missing)}</p>`
   }).join('')}</details>` : ''
   return `<div class="community-foods" aria-label="Подходящие угощения">${choices.map(offer => {
-    const action = offer.available ? context.kind === 'intent' ? 'deliver-intent' : 'choose-neighbor-food' : 'cook-intent-offer';
-    const label = offer.available ? context.kind === 'intent' ? `Передать · ${offer.reward}` : 'Взять на встречу' : offer.canCook ? 'Приготовить' : 'К рецепту';
-    const attributes = context.kind === 'intent' ? `data-order="${escape(context.id)}"` : `data-plan="${escape(context.id)}"`;
-    return `<button type="button" class="community-food" data-action="${action}" data-value="${escape(offer.id)}" ${attributes} data-stock="${offer.count > 0}" data-ready="${offer.available}" aria-label="${escape(offer.name)}. В запасе: ${offer.count}. ${label}${offer.available && context.kind === 'intent' ? ' монет' : ''}">
-      <span class="community-food-picture" aria-hidden="true">${art.offerIcon(offer)}</span><span class="community-food-count" aria-label="В запасе">×${offer.count}</span>
+    const storage = local?.get(offer.id)
+    const action = storage ? 'neighbor-joined-warehouse' : offer.available ? context.kind === 'intent' ? 'deliver-intent' : 'choose-neighbor-food' : 'cook-intent-offer';
+    const label = storage ? 'К складу' : offer.available ? context.kind === 'intent' ? `Передать · ${offer.reward}` : 'Взять на встречу' : offer.canCook ? 'Приготовить' : 'К рецепту';
+    const attributes = context.kind === 'intent' ? `data-order="${escape(context.id)}"` : `data-plan="${escape(context.id)}"${storage?` data-storage="${escape(storage.token)}"`:''}`;
+    const count = storage?.stored ?? offer.count, source = storage ? 'На складе' : 'В запасе'
+    return `<button type="button" class="community-food" data-action="${action}" data-value="${escape(offer.id)}" ${attributes} data-stock="${count > 0}" data-ready="${offer.available || !!storage}" aria-label="${escape(offer.name)}. ${source}: ${count}. ${label}${offer.available && context.kind === 'intent' ? ' монет' : ''}">
+      <span class="community-food-picture" aria-hidden="true">${art.offerIcon(offer)}</span><span class="community-food-count" aria-label="${source}">×${count}</span>
       <strong>${escape(offer.name)}</strong><span class="community-food-action">${label}${offer.available && context.kind === 'intent' ? '<span class="community-coin" aria-label="монет">●</span>' : ''}</span>
     </button>`;
   }).join('')}</div>${other}${offers.some(offer=>offer.requiredQualities.includes('savoury')) ? '' : control(`${art.icon('ui-signature-bright')}Свой рецепт`, 'intent-own-recipe', '', '', true)}`;
@@ -88,7 +93,10 @@ export function neighborDetail(farm: FarmState, resident: ResidentId, art: Commu
       ? new Set(getIntentOffers({ ...farm, island: 'cape' }, plan.intentId)
         .filter(offer => offer.source === 'dish' && offer.eligible && !offer.available && offer.canCook).map(offer => offer.id))
       : undefined;
-    return offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id }, fundedCape);
+    const storedDish = plan.phase === 'joined' && farm.island === 'village'
+      ? (id: Offer['id']) => farm.freight.warehouses.village[id] > 0 ? getJoinedNeighborDishSupply(farm,plan.id,id) : undefined
+      : undefined
+    return offerChoices(getIntentOffers(farm, plan.intentId), art, { kind: 'neighbor', id: plan.id }, fundedCape, storedDish);
   };
   let content: string;
   switch (plan.phase) {
