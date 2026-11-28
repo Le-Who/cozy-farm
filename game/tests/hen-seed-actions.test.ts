@@ -3,11 +3,11 @@ import {test} from 'node:test';
 import {createFarm, endDay, maxFlockSize, moveHen, needsSeedChoice, restoreFarm, selectSeed, upgradeBuilding, packEggBasket, packEggCrate, specializeFacility, feedChickens, buyFeed} from '../src/farm.ts';
 import {isHenGround} from '../src/hen-roaming.ts';
 
-test('empty soil offers seeds only after the selected packet runs out', () => {
+test('bare soil stays tillable; a tilled bed offers seeds only after the selected packet runs out', () => {
   const farm = createFarm();
   assert.equal(needsSeedChoice(farm, 0), false);
   farm.seeds.carrot = 0;
-  assert.equal(needsSeedChoice(farm, 0), true);
+  assert.equal(needsSeedChoice(farm, 0), false);
   farm.beds[0] = {kind:'tilled'};
   assert.equal(needsSeedChoice(farm, 0), true);
   assert.equal(needsSeedChoice(farm, 4), false);

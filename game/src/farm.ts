@@ -794,7 +794,7 @@ export function getWaterCapacity(farm: Pick<FarmState, 'canUpgraded'> & Partial<
 
 export function needsSeedChoice(farm: FarmState, index: number): boolean {
   const bed = farm.beds[index];
-  return farm.island === 'home' && !!bed && bed.kind !== 'crop' && farm.seeds[seedForBed(farm, index)] === 0;
+  return farm.island === 'home' && bed?.kind === 'tilled' && farm.seeds[seedForBed(farm, index)] === 0;
 }
 
 export function getBedAction(farm: FarmState, index: number): BedAction {

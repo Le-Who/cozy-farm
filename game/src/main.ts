@@ -3426,7 +3426,7 @@ function updateFieldContext(index: number | undefined) {
   const harvest = getBedHarvestPreview(farm, index)
   const preview = harvest && harvestPreviewCopy(harvest)
   const title = refill ? 'Лейка пуста' : !action.available ? action.label : label
-  const cta = refill ? 'К колодцу' : needsSeedChoice(farm, index) ? 'Выбрать семена'
+  const cta = refill ? 'К колодцу' : chooseSeeds ? 'Выбрать семена'
     : preview ? preview.action : action.label
   const source = iconUrl(bed.kind === 'crop' ? bed.crop : bed.kind === 'tilled' ? 'tool-seeds' : 'tool-hoe')
   const planned = plannedCropAt(farm, index)
@@ -3533,8 +3533,7 @@ const island = createIsland(canvas, {
     const action = getBedAction(farm, target.index)
     if (bed.kind !== 'crop') {
       const soil = bed.kind === 'empty' ? 'Целина' : 'Вспаханная земля'
-      const next = bed.kind === 'empty' && needsSeedChoice(farm, target.index) ? 'Выбрать семена' : action.label
-      return `${soil} · ${next}${plannedCropAt(farm, target.index) ? ' · По плану' : ''}`
+      return `${soil} · ${action.label}${plannedCropAt(farm, target.index) ? ' · По плану' : ''}`
     }
     const name = cropDefinitions[bed.crop].name
     const stage = getBedStage(bed)
@@ -3715,8 +3714,7 @@ function useHotbar(tool: Tool, keyboard = false) {
   switch (tool) {
     case 'hoe':
       canvas.focus({ preventScroll: true })
-      notify(!farm.beds.some(bed => bed.kind === 'empty') ? 'Все грядки уже вскопаны.'
-        : farm.beds.some((bed, index) => bed.kind === 'empty' && !needsSeedChoice(farm, index)) ? 'Выберите пустую грядку, чтобы вскопать её.' : 'Выберите семена.')
+      notify(farm.beds.some(bed => bed.kind === 'empty') ? 'Выберите пустую грядку, чтобы вскопать её.' : 'Все грядки уже вскопаны.')
       break
     case 'water':
       if (farm.buildingLevels.well >= 2) {

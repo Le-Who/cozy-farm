@@ -81,7 +81,7 @@ test('the hoe only directs the player to untilled soil while a till action exist
   const tillable=()=>farm.beds.map((_,i)=>i).filter(i=>getBedAction(farm,i).kind==='till')
   assert.deepEqual(tillable(),[0,8]);assert.equal(chooseHoe(),expected)
   assert.ok(selectSeed(farm,'beetroot').ok);assert.ok(workBed(farm,13).ok)
-  assert.equal(farm.seeds.beetroot,0);assert.equal(chooseHoe(),'Выберите семена.')
+  assert.equal(farm.seeds.beetroot,0);assert.equal(chooseHoe(),expected)
   assert.ok(selectSeed(farm,'carrot').ok);assert.equal(chooseHoe(),expected)
   assert.ok(workBed(farm,0).ok);assert.deepEqual(tillable(),[8]);assert.equal(chooseHoe(),expected)
   assert.ok(workBed(farm,8).ok);assert.deepEqual(tillable(),[])
@@ -89,7 +89,7 @@ test('the hoe only directs the player to untilled soil while a till action exist
   assert.equal(farm.day,1);assert.equal(chooseHoe(),'Все грядки уже вскопаны.')
 })
 
-test('the field card and the canvas announce the existing seed picker before it intercepts untilled ground',()=>{
+test('field card and canvas show tilling first, then the existing seed picker for depleted planned soil',()=>{
   const farm=createFarm(), main=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
   const part=(from:string,to:string)=>main.slice(main.indexOf(from),main.indexOf(to,main.indexOf(from)))
   const code=stripTypeScriptTypes(part('function updateFieldContext(','function readFieldHintBands()')+
@@ -101,12 +101,14 @@ test('the field card and the canvas announce the existing seed picker before it 
     assert.deepEqual(farm,before);return [hint,contextButton.textContent,contextButton.dataset.action,contextButton.hidden]
   }
   assert.ok(selectSeed(farm,'beetroot').ok);assert.ok(workBed(farm,13).ok);assert.equal(farm.seeds.beetroot,0)
-  assert.deepEqual(hints(0),['Целина · Выбрать семена','Выбрать семена','work-context',false])
+  assert.deepEqual(hints(0),['Целина · Вскопать землю','Вскопать землю','work-context',false])
   assert.ok(selectSeed(farm,'carrot').ok)
   assert.deepEqual(hints(0),['Целина · Вскопать землю','Вскопать землю','work-context',false])
   const beds=farm.beds.map((_,i)=>i===0?'beetroot' as const:null)
   assert.ok(saveGardenPlan(farm,0,{name:'Свёкла',crops:beds},farm.gardenPlans.revision).ok);assert.ok(followGardenPlan(farm,0,farm.gardenPlans.revision).ok)
-  assert.deepEqual(hints(0),['Целина · Выбрать семена · По плану','Выбрать семена','work-context',false])
+  assert.deepEqual(hints(0),['Целина · Вскопать землю · По плану','Вскопать землю','work-context',false])
+  assert.ok(workBed(farm,0).ok)
+  assert.deepEqual(hints(0),['Вспаханная земля · Семена закончились: свёкла. Выберите другие. · По плану','Выбрать семена','context-seeds',false])
 })
 
 test('the watering can suggests a plant only while a bed actually needs water',()=>{
