@@ -2593,6 +2593,7 @@ function drawPanel() {
       const preview = getApiaryCopy(farm)
       const wind = getWindHoneySource(farm)
       const bunch = hiveFlower === undefined ? undefined : getCapeBouquetPreview(farm,hiveFlower)
+      const wax = hiveFlower === undefined ? preview.firstParcelWax : undefined
       const harvest = preview.harvest
       const upgrade = getCapeUpgrade(farm)
       // A payable Apiary improves this still-available harvest, without replacing it.
@@ -2616,7 +2617,8 @@ function drawPanel() {
         ${preview.note ? `<p class="dialog-intro">${preview.note}</p>` : ''}
         <section aria-label="Мёд ветров"><h2 class="dialog-status">Мёд ветров</h2><p class="dialog-intro">${wind.detail}</p></section>
         ${wind.kind === 'wait' && !preview.waiting ? nav(button('Домой к отдыху', 'visit-rest', true, {secondary:true})) : ''}
-        ${readyChoice ? '' : nav(gatherAction, upgradeAction)}</div>`
+        ${readyChoice ? '' : nav(gatherAction, upgradeAction, wax
+          ? button(`К складу · воск ×${wax.quantity}`, 'warehouse-supply', true, { value: wax.value, secondary: true }) : '')}</div>`
       break
     }
     case 'cape-upgrade': {
