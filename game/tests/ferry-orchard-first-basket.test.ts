@@ -225,3 +225,65 @@ test('elapsed dawn is not a timer; a matching receipt still compares while the r
   assert.ok(quote(f,apples).available&&quote(f,pair).available)
   assert.match(footer(p.html), /Добавить вторым: Фруктовая корзина · −18 монет/)
 })
+
+const peaches = 'orchard-peaches'
+const basketAndPeaches = worldApi.combinedExpeditionId(mixed,peaches)!
+const selectedOrders = (html:string) => slice(html,'<section class="expedition-selection"','</section>')
+
+async function paidBasketAndPeaches() {
+  const f = await settled(), p = mount(f)
+  await p.click('expedition-offer',mixed,picker)
+  await p.click('expedition-pair',peaches,picker)
+  assert.deepEqual([p.selected,p.writes,quote(f,basketAndPeaches).payCoins],[basketAndPeaches,0,37])
+  await p.click('expedition-send',basketAndPeaches,footer)
+  assert.equal(button(selectedOrders(p.html),'expedition-offer',peaches).length,0)
+  ok(farmApi.endDay(f)); p.draw()
+  assert.equal(button(selectedOrders(p.html),'expedition-offer',peaches).length,0)
+  await p.click('expedition-claim','',footer)
+  // Cold reopen derives the attempted repeat from the real paid shipment, not injected selection.
+  const cold = farmApi.restoreCurrentFarm(JSON.parse(JSON.stringify(f)))
+  assert.ok(cold)
+  return cold
+}
+
+test('a real short-port repeat keeps the named ready second parcel from the selected summary, with a separate quoted send and claim', async () => {
+  const f = await paidBasketAndPeaches(), before = JSON.stringify(f), p = mount(f)
+  assert.deepEqual([f.day,f.island,f.coins,...imported(f),p.selected], [18,'home',62,7,1,7,3,basketAndPeaches])
+  assert.deepEqual([quote(f,basketAndPeaches).available,quote(f,mixed).available,quote(f,peaches).available],
+    [false,false,true])
+  assert.match(p.html,/Посмотреть поставку/,'keep the full-basket restocking option')
+  assert.match(button(footer(p.html),'expedition-send',basketAndPeaches)[0][3], /\bdisabled\b/)
+  const keep = button(selectedOrders(p.html),'expedition-offer',peaches)
+  assert.equal(keep.length,1,'the ready order is directly reachable without reopening the general picker')
+  assert.match(keep[0][4],/^Оставить: Персики для рецепта$/)
+  assert.equal(button(selectedOrders(p.html),'expedition-offer',mixed).length,0)
+  assert.equal(button(picker(p.html),'expedition-offer',mixed).length,1,'the full picker still allows individual plans')
+  await p.click('expedition-offer',peaches,selectedOrders)
+  assert.deepEqual([p.selected,p.writes,JSON.stringify(f)],[peaches,0,before])
+  assert.equal(quote(f,peaches).payCoins,16)
+  await p.click('expedition-send',peaches,footer)
+  assert.deepEqual([p.writes,f.day,f.island,f.coins,...imported(f)],[1,18,'home',46,7,1,7,3])
+  ok(farmApi.endDay(f)); p.draw()
+  assert.equal(f.fruit.peach,7,'arrival alone does not give the cargo')
+  await p.click('expedition-claim','',footer)
+  assert.deepEqual([p.writes,f.day,f.island,f.coins,...imported(f)],[2,19,'home',46,7,1,9,3])
+})
+
+test('the selected-order shortcut does not replace a ready first, both ready, or both blocked', async () => {
+  const f = await paidBasketAndPeaches()
+  const reverse = worldApi.combinedExpeditionId(peaches,mixed)!
+  assert.deepEqual([quote(f,reverse).available,quote(f,peaches).available,quote(f,mixed).available],[false,true,false])
+  assert.equal(button(selectedOrders(mount(f,reverse).html),'expedition-offer',peaches)[0][4],
+    'Оставить только первый заказ')
+  const both = await settled()
+  assert.ok(quote(both,basketAndPeaches).available)
+  assert.equal(button(selectedOrders(mount(both,basketAndPeaches).html),'expedition-offer',mixed)[0][4],
+    'Оставить только первый заказ')
+  const pears = 'orchard-pears', neither = await settled(), basketAndPears = worldApi.combinedExpeditionId(mixed,pears)!
+  ok(economy.sendFerryExpedition(neither,basketAndPears))
+  ok(farmApi.endDay(neither)); ok(economy.receiveFerryExpedition(neither))
+  assert.deepEqual([quote(neither,basketAndPears).available,quote(neither,mixed).available,quote(neither,pears).available],
+    [false,false,false])
+  assert.equal(button(selectedOrders(mount(neither).html),'expedition-offer',mixed)[0][4],
+    'Оставить только первый заказ')
+})

@@ -91,6 +91,10 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const orchardPair = quoteFirstOrchardBasketPair(world, id, ctx.day, wallet);
   const manifest: ExpeditionManifest = active ?? quote;
   const orderIds = expeditionOfferIds(manifest.id), combined = orderIds.length === 2;
+  // If a now-blocked pair has exactly one launchable order, keep that named order in the existing split slot.
+  const keepSecond = combined && !active && !quote.available && !orchardPair
+    && quoteExpedition(world, orderIds[0], wallet)?.available === false
+    ? quoteExpedition(world, orderIds[1], wallet) : undefined;
   const port = manifest.port, phase = active?.phase ?? 'planning', exploring = manifest.kind === 'explore';
   const claimLabel = exploring ? 'Открыть новый порт' : manifest.earnCoins > 0
     ? manifest.incoming.length ? 'Получить груз и выручку' : 'Получить выручку' : 'Получить груз';
@@ -196,7 +200,9 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
               `Отдать булочку${payment.earnCoins ? ` и получить ${coins(payment.earnCoins)}` : ''}`;
             return button(label, 'expedition-offer', payment.id, `aria-pressed="${id === payment.id}" aria-label="${description}"`);
           }).join('')}</div>` : ''}
-          ${combined ? `<section class="expedition-selection" aria-label="Выбранные заказы"><ol>${manifest.name.split(' + ').map(name => `<li>${esc(name)}</li>`).join('')}</ol>${!active && !orchardPair ? button('Оставить только первый заказ','expedition-offer',orderIds[0]) : ''}</section>` : ''}
+          ${combined ? `<section class="expedition-selection" aria-label="Выбранные заказы"><ol>${manifest.name.split(' + ').map(name => `<li>${esc(name)}</li>`).join('')}</ol>${!active && !orchardPair ? (keepSecond?.available
+            ? button(`Оставить: ${esc(keepSecond.name)}`,'expedition-offer',keepSecond.id)
+            : button('Оставить только первый заказ','expedition-offer',orderIds[0])) : ''}</section>` : ''}
           <p class="expedition-destination">⌖ ${esc(displayPort)}</p>
           ${!exploring ? `<div class="expedition-market-status"><span data-demand="${demand}">${demandText}</span><span>${picture(stockId, ctx)} ${expeditionStock(world, port, stockId)} в порту${phase === 'sailing' ? ' · ваш груз отложен' : ''}</span></div>` : ''}
           <div class="expedition-cargo-card"><h4>${active ? 'Отправили' : 'Отправим'}</h4>${cargo(manifest.outgoing, true)}${manifest.payCoins ? `<div class="expedition-cargo-item expedition-money">${ctx.icon('coin')}<span><strong>${manifest.payCoins} монет</strong><small>${active ? 'Уже оплачено' : `Останется ${Math.max(0,(ctx.coins ?? 0)-manifest.payCoins)}`}</small></span></div>` : ''}${!manifest.outgoing.length && !manifest.payCoins ? '<p>Пустой трюм</p>' : ''}</div>
