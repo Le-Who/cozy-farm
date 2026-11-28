@@ -9,6 +9,7 @@ import { ruCount } from './ru.ts';
 import './bay-festival.css';
 
 export type FestivalViewOptions = {
+  dressingGrove?: string;
   itemIcon?: (name: string, trait: FestivalFruit['trait']) => string;
   celebrated?: FestivalTradition;
   celebrationEffect?: string;
@@ -110,6 +111,9 @@ export function renderFestivalPanel(farm: FarmState, options: FestivalViewOption
       }
       if (alternative.exhibit) return button(`${options.itemIcon?.(festivalFruitArt[alternative.exhibit.item].icon,alternative.exhibit.trait) ?? ''}<span>Выставить: ${escape(alternative.label.toLowerCase())} <b>×1</b></span>`,
         'festival-contribute', `${requirement.id}|${alternative.id}`, !active.waitingNight && active.canContribute, 'festival-contribution');
+      if (options.dressingGrove && requirement.id==='honey' && alternative.id==='apple' && alternative.available===0)
+        return button(`${ingredientPicture(alternative.id,options.icon)}<span>${escape(alternative.label)} <b>×${alternative.quantity}</b><small>В рощу</small></span>`,
+          'festival-source',options.dressingGrove,!active.waitingNight,'festival-contribution');
       return button(`${ingredientPicture(alternative.id, options.icon)}<span>${escape(alternative.label)} <b>×${alternative.quantity}</b>${alternative.available === 0 ? '<small>Где найти</small>' : ''}</span>`,
         alternative.available > 0 ? 'festival-contribute' : 'festival-source', `${requirement.id}|${alternative.id}`,
         !active.waitingNight && (alternative.available === 0 || active.canContribute), 'festival-contribution');

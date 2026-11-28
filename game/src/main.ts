@@ -116,7 +116,7 @@ import { farmSaveKeys } from './farm-save-keys'
 import { mountSaveRecovery } from './save-recovery'
 import { renderFestivalPanel, renderHomeFestivalPreparation } from './bay-festival-ui'
 import { getFestivalConcertState } from './festival-concert-guidance'
-import { getFestivalHarvestRoute } from './festival-harvest-route'
+import { getFestivalDressingGrove, getFestivalHarvestRoute } from './festival-harvest-route'
 import { getFinnFishingRoute } from './finn-fishing-route'
 import { getFestivalFishingRoute } from './festival-fishing-route'
 import { festivalTraditions, type FestivalTradition } from './bay-festival'
@@ -2421,7 +2421,7 @@ function drawPanel() {
       break
     }
     case 'festival':
-      dialogContent.innerHTML=renderFestivalPanel(farm,{celebrated:celebratedFestival,celebrationEffect:celebrationReceipt?.effect,celebrationCoins:celebrationReceipt?.coins,icon,itemIcon})
+      dialogContent.innerHTML=renderFestivalPanel(farm,{celebrated:celebratedFestival,celebrationEffect:celebrationReceipt?.effect,celebrationCoins:celebrationReceipt?.coins,icon,itemIcon,dressingGrove:getFestivalDressingGrove(farm)?.token})
       break
     case 'bay-shop':
     case 'bay-music': {
@@ -4271,7 +4271,18 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'festival-source': {
-      const [requirement,id]=(value??'').split('|')
+      const [requirement,id,destination]=(value??'').split('|')
+      if (destination) {
+        if (panel!=='festival' || !dialog.open || !dialogContent.contains(control) || island.isCrossing()) break
+        const route=getFestivalDressingGrove(farm), program=farm.festivals.active
+        if (!route || route.token!==value) { drawPanel(); break }
+        closeDialog()
+        await island.crossIsland(()=>perform(()=>sail(farm,'grove'),false,true))
+        if ((farm.island as typeof islandIds[number])==='grove' && farm.festivals.active===program
+          && getFestivalDressingGrove({...farm,island:'village'})?.token===value)
+          island.focusTarget({kind:'tree',index:route.slot})
+        break
+      }
       const active=getFestivalStatus(farm).active
       const row=active?.requirements.find(row=>row.id===requirement)
       const source=row?.alternatives.find(alt=>alt.id===id)
