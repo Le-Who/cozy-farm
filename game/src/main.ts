@@ -6225,9 +6225,16 @@ app.addEventListener('keydown', event => {
     context.card.querySelector<HTMLButtonElement>('.market-inline-sell[data-action="inline-sale-confirm"]:not(:disabled)')?.focus({preventScroll:true})
     return
   }
-  if (!event.defaultPrevented && event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
+  if (!event.defaultPrevented && !event.isComposing && event.keyCode !== 229 && event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.matches('[data-sale-quantity]')) {
     event.preventDefault()
-    if (!event.repeat && currentSaleControl(event.target)) dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]')?.click()
+    if (event.repeat || document.activeElement !== event.target || !dialogContent.contains(event.target) || !currentSaleControl(event.target)) return
+    // Match inline Sell: editing may focus the exact quote, but only a separate activation sells.
+    updateSaleQuote()
+    const confirm = dialogContent.querySelector<HTMLButtonElement>('[data-action="confirm-sale"]:not(:disabled)')
+    if (confirm && currentSaleControl(confirm)) {
+      confirm.focus({preventScroll:true})
+      confirm.scrollIntoView({block:'nearest',inline:'nearest'})
+    }
   }
 })
 app.addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.target instanceof HTMLInputElement||event.target instanceof HTMLTextAreaElement)&&event.target.dataset.recipeName){event.preventDefault();event.target.blur()}})
