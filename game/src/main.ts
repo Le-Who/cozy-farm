@@ -4092,11 +4092,15 @@ app.addEventListener('click', async (event) => {
       const ripe = getBerryNurserySource(farm, requirement.item)
       if (ripe === undefined) break
       // On an entirely planted farm, preserving this exact variety does not require making room.
-      if (farm.island === 'home' && farm.beds.every(bed => bed.kind === 'crop')) {
+      if (farm.beds.every(bed => bed.kind === 'crop')) {
         if (!dialog.open || !dialogContent.contains(control) || ingredientCount(farm, requirement.item) >= requirement.item.quantity) break
+        const day = farm.day
         control.focus({preventScroll:true})
-        openPanel('berry-renewal')
-        if (panel === 'berry-renewal' && dialog.open && berryRenewalSelection.choose(farm, ripe)) {
+        if (farm.island === 'home') openPanel('berry-renewal')
+        else await visitPanelAt('home', 'berry-renewal')
+        if (panel === 'berry-renewal' && dialog.open && farm.island === 'home' && farm.day === day
+          && farm.beds.every(bed => bed.kind === 'crop') && getBerryNurserySource(farm, requirement.item) === ripe
+          && ingredientCount(farm, requirement.item) < requirement.item.quantity && berryRenewalSelection.choose(farm, ripe)) {
           drawPanel(); dialogContent.scrollTop = 0; dialogContent.querySelector<HTMLElement>('.transplant-step')?.focus({preventScroll:true})
         }
         break
