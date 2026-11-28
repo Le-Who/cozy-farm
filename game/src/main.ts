@@ -1457,7 +1457,8 @@ function marketCards() {
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
   const stall = farm.village.built ? button(farm.island === 'village' ? 'Своя лавка' : 'В лавку в гавань', 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
   const controls = `<div class="market-controls"><div class="market-header">${balance}${stall}</div>${tabs}</div>`
-  if (marketTab === 'orders') return `<section data-market-orders-browser><div class="market-controls">${tabs}</div>${stall ? `<div class="market-orders-shop">${stall}</div>` : ''}${marketOrders()}${isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : ''}</section>`
+  const orderTabs = `<div class="market-controls">${tabs}</div>`
+  if (marketTab === 'orders') return `<section data-market-orders-browser>${stall ? `<div class="market-orders-navigation">${orderTabs}<div class="market-orders-shop">${stall}</div></div>` : orderTabs}${marketOrders()}${isProjectComplete(farm, 'fair') ? nav(button('Просьбы соседей', 'open-panel', true, { value: 'intents' })) : ''}</section>`
   if (marketTab === 'projects') {
     const dockBuilt=isProjectComplete(farm,'dock')
     return controls + projectCard('fair') + `<ul class="dialog-list building-destinations">
