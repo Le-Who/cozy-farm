@@ -61,7 +61,7 @@ function mount(farm:F.FarmState) {
     }}
   const ctx={...F,...S,farm,panel:'village-meal',pastryShape:'round',dialogContent:root,
     dialog:{open:true},control:undefined as Button|undefined,action:'',value:undefined as string|undefined,
-    icon:()=>'',fishImage:(id:string)=>id,stockTile:(item:F.StockItem)=>`<li data-stock-id="${F.marketKey(item)}"></li>`,
+    icon:()=>'',dishIcons:{orchardPreserves:'ui-orchard-preserves'},fishImage:(id:string)=>id,stockTile:(item:F.StockItem)=>`<li data-stock-id="${F.marketKey(item)}"></li>`,
     renderHarbourFishChoice:()=>'<p>ordinary fishing</p>',pastryChoices:()=>'',signatureResultPicture:()=>'',nav:(x:string)=>x,
     button:(label:string,action:string,ready=true,o?:{value?:string})=>`<button data-action="${action}" data-value="${o?.value??''}"${ready?'':' disabled'}>${label}</button>`,
     perform(fn:()=>F.ActionResult){result=fn();if(result.ok)ctx.drawPanel();return result.ok},
@@ -72,7 +72,7 @@ function mount(farm:F.FarmState) {
       const options=choices.map(([,value,state])=>new Button('supper-fish',value,state==='true'))
       group=key?{key,options,querySelectorAll:()=>options}:undefined
       for(const entry of options)entry.parentElement=group
-      dishes=[...root.innerHTML.matchAll(/data-action="(share-meal|supper-signature)" data-value="([^"]*)"/g)].map(([,action,value])=>new Button(action,value))
+      dishes=[...root.innerHTML.matchAll(/data-action="(share-meal|supper-signature|supper-preserves)" data-value="([^"]*)"/g)].map(([,action,value])=>new Button(action,value))
     }}
   ctx.drawPanel()
   function activate(control:Button){
@@ -160,4 +160,61 @@ test('when the order is paid, no reserve tradeoff remains; the ordinary table an
     assert.equal(guard.blocks({key,repeat:false},isGuardedAction('supper-fish')),false)
     assert.equal(guard.blocks({key,repeat:true},false),true)
   }
+})
+
+
+function earnedCarriedPreserves(separateParcelJar: boolean) {
+  const p=commissionPlayer(JSON.parse(read('./fixtures/home-progress-actions.json')))
+  p.visit('home');p.act('specializeFarmhouse','preserves');p.night();p.night()
+  p.fruit('apple',3);p.fruit('pear',3);p.visit('home')
+  assert.deepEqual([p.state.day,p.state.coins,p.state.village.meals],[18,10,2])
+  p.act('cookDish','orchardPreserves');p.act('catchFish',true);p.visit('village');p.act('serveOrchardPreservesSupper','perch')
+  p.act('cookDish','orchardPreserves');p.night()
+  if(separateParcelJar)p.act('cookDish','orchardPreserves')
+  p.act('catchFish',true);p.visit('grove')
+  if(separateParcelJar)p.act('deliverHarborOrder')
+  p.act('catchFish',true);p.visit('village')
+  const f=p.state
+  assert.deepEqual([p.actions,f.day,f.coins,f.dishes.orchardPreserves,f.handmade.round,f.culinary.recipes.length,f.fish.perch,f.fish.seaBass],
+    [separateParcelJar?134:132,19,10,1,0,0,1,1])
+  const order=F.getHarborOrder(f)!
+  assert.equal(order.reward,42)
+  assert.ok(order.items.every(row=>row.delivered+row.available===row.item.quantity))
+  assert.equal(order.items.find(row=>row.item.kind==='dishes')?.delivered,separateParcelJar?1:0)
+  return f
+}
+
+test('the exact carried Orchard Preserves still offers the normal fork if its separate jar is already at the dock',()=>{
+  const before=earnedCarriedPreserves(true)
+  const f=structuredClone(before),ui=mount(f)
+  assert.deepEqual(S.getSupperFishFork(f),{key:'19:0',reward:42})
+  assert.equal((ui.markup.match(/data-supper-fish="/g)??[]).length,1)
+  assert.match(ui.markup,/Морской окунь ×1<\/span><small>Отложит заказ на 42 монеты/)
+  assert.deepEqual(f,before)
+  const old=ui.dish('supper-preserves')
+  ui.activate(ui.fish('perch'))
+  assert.equal(ui.focused,'perch')
+  assert.deepEqual(f,before)
+  assert.equal(ui.activate(old),undefined,'old default fish review is detached after selection')
+  const carried=ui.dish('supper-preserves')
+  assert.match(carried.dataset.value,/^19:perch:1:$/)
+  assert.ok(ui.activate(carried)?.ok)
+  assert.deepEqual([f.dishes.orchardPreserves,f.fish.perch,f.fish.seaBass,f.village.meals,f.village.supperDish,f.coins],
+    [0,0,1,4,'orchard-preserves',10])
+  assert.equal(ui.activate(carried),undefined)
+  assert.ok(F.sail(f,'grove').ok)
+  assert.ok(F.deliverHarborOrder(f).ok)
+  assert.deepEqual([f.day,f.coins,f.orders.harbor.completed],[19,52,1])
+  assert.deepEqual(F.restoreCurrentFarm(f),f)
+  const defaulted=structuredClone(before), unchanged=mount(defaulted)
+  assert.ok(unchanged.activate(unchanged.dish('supper-preserves'))?.ok)
+  assert.deepEqual([defaulted.fish.perch,defaulted.fish.seaBass,defaulted.coins],[1,0,10])
+})
+
+test('one sole carried jar already required for the dock still has its existing meal warning only',()=>{
+  const f=earnedCarriedPreserves(false),before=structuredClone(f),ui=mount(f)
+  assert.equal(S.getSupperFishFork(f),undefined)
+  assert.doesNotMatch(ui.markup,/data-supper-fish=/)
+  assert.match(ui.markup,/Отложит заказ на 42 монеты/)
+  assert.deepEqual(f,before)
 })

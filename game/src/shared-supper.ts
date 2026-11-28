@@ -39,12 +39,17 @@ export function getSupperFishRecovery(farm: FarmState) {
 export function getSupperFishFork(farm: FarmState) {
   const meal = getVillageMeal(farm)
   if (farm.island !== 'village' || !farm.village.built || meal.served || meal.fish !== 'seaBass'
-    || farm.fish.seaBass !== 1 || !farm.fish.perch
-    || !workshopShapes.some(shape => farm.handmade[shape] > 0) && !getSignatureStock(farm).some(({count}) => count > 0)) return
+    || farm.fish.seaBass !== 1 || !farm.fish.perch) return
   const order = getHarborOrder(farm)
   if (!order || order.status === 'completed'
     || !order.items.some(({item,available}) => item.kind === 'fish' && item.item === 'seaBass' && available > 0)
     || !order.items.every(({item,delivered,available}) => delivered + available === item.quantity)) return
+  const otherMeal = workshopShapes.some(shape => farm.handmade[shape] > 0) || getSignatureStock(farm).some(({count}) => count > 0)
+  const preserves = getOrchardPreservesSupper(farm, 'perch')
+  // Choosing perch only protects this order if serving preserves leaves its jar covered.
+  const keepsParcelJar = preserves && order.items.every(({item,delivered}) =>
+    item.kind !== 'dishes' || item.item !== 'orchardPreserves' || delivered + preserves.count > item.quantity)
+  if (!otherMeal && !keepsParcelJar) return
   return { key: `${farm.day}:${farm.orders.harbor.completed}`, reward: order.reward }
 }
 type SupperFishFork = NonNullable<ReturnType<typeof getSupperFishFork>>
