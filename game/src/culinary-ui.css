@@ -28,3 +28,44 @@
 .recipe-planning-help{font-size:14px;line-height:1.45;margin:12px 0;color:var(--ink)}
 .recipe-draft-card h3{font-size:14px;margin:10px 0 6px}
 .recipe-draft-supplies{margin:8px 0}
+
+/* Signature editor only: the result and its requirements no longer follow a long catalog. */
+@media (min-width:1000px) and (min-height:700px) {
+ .farm-dialog[data-panel="signature"] { width:min(940px,calc(100% - 24px)) }
+ .recipe-studio {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,3fr);
+  grid-template-rows:repeat(5,auto) minmax(0,1fr);
+  grid-template-areas:"status status palette" "bases bases palette" "slots slots palette" "cost cost palette" "book cook palette" "planning planning palette";
+  column-gap:8px;align-items:start;
+ }
+ .recipe-studio-status { grid-area:status;min-width:0 }
+ .recipe-studio-status :is(.signature-capacity,.signature-request-fit) { margin:0 0 6px }
+ .recipe-studio > .recipe-base-tabs { grid-area:bases;margin:0 }
+ .recipe-studio > .recipe-base-tabs .dialog-button { margin:0;min-height:44px;padding:5px 9px }
+ .recipe-studio > .recipe-base-tabs .icon { width:28px;height:28px }
+ .recipe-studio > .recipe-portions { grid-area:slots;margin:8px 0 }
+ .recipe-studio .recipe-portion { min-height:86px;padding:5px }
+ .recipe-studio .recipe-portion .icon { width:50px;height:50px }
+ .recipe-studio > .recipe-studio-planning { grid-area:planning;margin:8px 0 0 }
+ .recipe-studio > .recipe-fruit-palette {
+  grid-area:palette;grid-template-columns:repeat(4,minmax(0,1fr));
+  max-block-size:min(450px,calc(100dvh - 240px));align-content:start;
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:4px;
+ }
+ .recipe-studio > .recipe-fruit-palette button { min-width:0;overflow-wrap:anywhere;scroll-margin-block:4px }
+ .recipe-studio > .recipe-studio-requirements { grid-area:cost;min-width:0 }
+ .recipe-studio .recipe-cost { grid-template-columns:repeat(2,minmax(0,1fr));gap:5px }
+ .recipe-studio .recipe-cost .ingredient {
+  grid-template-columns:26px minmax(0,1fr) auto;align-items:center;justify-items:start;gap:4px;
+  min-height:44px;padding:4px 11px 4px 4px;text-align:left;overflow-wrap:anywhere;
+ }
+ .recipe-studio .recipe-cost .icon { width:26px;height:26px }
+ .recipe-studio-requirements .recipe-planning-help { margin:6px 0 }
+ /* The current draft link appears after selection; don't add another row ahead of Cook. */
+ .recipe-studio > .recipe-studio-book { grid-area:book;margin-top:12px;min-width:0 }
+ .recipe-studio > .recipe-studio-book .dialog-button { width:100%;margin:0;min-height:44px;padding:4px 7px;white-space:normal }
+ .recipe-studio > footer { grid-area:cook;position:static;margin:6px 0 0;padding:5px 0 0;box-shadow:none }
+ .recipe-studio:not(:has(> .recipe-studio-book)) > footer { grid-column:1 / 3 }
+ .recipe-studio > footer .dialog-button { margin:0;min-height:44px }
+}

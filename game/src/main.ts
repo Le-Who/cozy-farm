@@ -1893,6 +1893,7 @@ type PanelVisit = {
   treeSlot: number; previewSeed: CropId; specializationBuilding: BuildingId; previewSpecialization: BuildingBranch | undefined;
   irrigationMode: 'row'|'pair'; villageSlot: number; pastryShape: WorkshopShape;
   workshopRecipe: 'pastry'|'bread'; cookingDish: DishId; cookingFish: FishId; seedPickerBed: number | undefined; scroll: number; focus: string | undefined;
+  signaturePaletteScroll?: number;
   signatureBase:SignatureDraft['base'];signatureSlots:(SignatureIngredient|null)[];signatureSlot:number;signatureRepeatId:string|undefined;expandedRepeatId:string|undefined;cookingMode:'dish'|'signature';
   communityOrderId:string;communityResident:ResidentId;requestedFood:FoodOfferId|undefined;
   neighborRecipeOrigin?: {island:typeof farm.island; request:Extract<CommunityRequest,{kind:'neighbor'}>};
@@ -1943,6 +1944,7 @@ function rememberPanel(): PanelVisit {
   const neighborRecipeOrigin = panel === 'request-food' && requestedFood && communityRequest?.kind === 'neighbor'
     ? {island:farm.island, request:communityRequest} : undefined
   return {marketOrder,marketSaleGrid,homeServicesOpen,neighborRecipeOrigin,kitchenSourceItem:panel === 'kitchen' || panel === 'recipes' || panel === 'signature' && focused?.dataset.action === 'show-requirement' ? stockSourceItem(focused) : undefined, gardenSupplies:supplies?{slot:gardenEditor.slot,revision:farm.gardenPlans.revision,open:supplies.open}:undefined,guideGardenOpen:dialogContent.querySelector<HTMLDetailsElement>('[data-guide-garden]')?.open ?? false,recipeBook:recipeBook.snapshot(dialogContent),ferryView:panel==='bay-freight'?captureFerryPanelView(dialogContent):undefined,marketNextOpen:[...dialogContent.querySelectorAll<HTMLDetailsElement>('[data-market-next][open]')].map(item=>item.dataset.marketNext!),warehouseRequest:selectedWarehouseRequest,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,panel:panel!,journalDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.discovery-roadmap')?.open ?? false,journeyDetailsOpen:dialogContent.querySelector<HTMLDetailsElement>('.journey-details')?.open ?? false,warehouse:selectedWarehouse,freightPlanOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? false,inventoryGroup,boatIsland,marketSaleFamily,marketSaleQuery,marketTab,marketCategory,marketSellGroup,bagTab,archiveGroup,treeSlot,previewSeed,specializationBuilding,previewSpecialization,
+    signaturePaletteScroll:panel === 'signature' ? dialogContent.querySelector<HTMLElement>('.recipe-fruit-palette')?.scrollTop : undefined,
     irrigationMode,villageSlot,pastryShape,workshopRecipe,cookingDish,cookingFish,seedPickerBed,signatureBase,signatureSlots:signatureSlots.map(part=>part?{...part}:null),signatureSlot,signatureRepeatId,expandedRepeatId,cookingMode,communityOrderId,communityResident,requestedFood,kitchenTart,kitchenPreserves,kitchenGroup,kitchenDish,honeyKitchenDish,signatureFamily,scroll:dialogContent.scrollTop,focus:focused?focusKey(focused):undefined}
 }
 function goBack(keyboard = false) {
@@ -2025,6 +2027,10 @@ function goBack(keyboard = false) {
     // A newer selection or dismissal must not receive an old page’s scroll or focus.
     if (!dialog.open || panel !== previous.panel || panelRenderVersion !== restoredVersion) return
     dialogContent.scrollTop=previous.scroll
+    if (previous.signaturePaletteScroll !== undefined && panel === 'signature') {
+      const palette = dialogContent.querySelector<HTMLElement>('.recipe-fruit-palette')
+      if (palette) palette.scrollTop = previous.signaturePaletteScroll
+    }
     if (previous.marketOrder) {
       const picker = dialogContent.querySelector<HTMLElement>('.market-order-picker')
       if (picker) picker.scrollTop = previous.marketOrder.pickerScroll
@@ -2366,6 +2372,9 @@ function drawPanel() {
   if (panel !== 'market' || marketTab !== 'buy' || marketCategory !== 'care' || farm.island !== 'home') marketSaleBrowse.feedBags.reset()
   dialog.dataset.panel = panel
   dialog.dataset.marketTab = marketTab
+  // A choice redraw replaces this small list, not the user's place inside it.
+  const signaturePaletteScroll = panel === 'signature' && dialog.open
+    ? dialogContent.querySelector<HTMLElement>('.recipe-fruit-palette')?.scrollTop : undefined
   dialogEmblem.src = iconUrl(panel === 'specialize' ? `upgrade-${specializationBuilding}-card` : panelEmblems[panel])
   const activeInput = document.activeElement
   const focusedSaleSearch = panel === 'market' && marketTab === 'sell' && activeInput instanceof HTMLInputElement
@@ -2634,7 +2643,12 @@ function drawPanel() {
       dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile},recipeBook.view,pair)
       break
     }
-    case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile},currentCommunityRequest()?.intentId);break
+    case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile},currentCommunityRequest()?.intentId);
+      if (signaturePaletteScroll) {
+        const palette = dialogContent.querySelector<HTMLElement>('.recipe-fruit-palette')
+        if (palette) palette.scrollTop = signaturePaletteScroll
+      }
+      break
     case 'cove': {
       const action=getCoveActions(farm)
       dialogContent.innerHTML=action.available?coveControls(farm,island.isCoveObserving()):`<div class="cove-locked">${icon('ui-shell')}<p>Найдите ракушку, чтобы обустроить берег.</p>${button('Найти ракушки','cove-shells')}</div>`
