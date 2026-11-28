@@ -26,6 +26,7 @@ export type FreightPanelContext = {
   villageBuilt?: boolean;
   commissionUse?: FerryCommissionUse;
   peachPlanting?: FerryPeachChoice;
+  suppliedOrder?: Pick<ExpeditionManifest, 'id' | 'name'>;
   readyHarvest?: (offerId: string) => ReturnType<typeof getFerryReadyHarvest>;
   groveBun?: (offerId: string) => ReturnType<typeof getFerryGroveBunSource>;
   groveFish?: (offerId: string) => ReturnType<typeof getFerryGroveFishSource>;
@@ -163,7 +164,9 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const status = active ? `${phase === 'ready' ? 'Вернулся' : 'Вернётся'} утром дня ${active.returnsOn}` : `${discovery || restock ? `Выбран рейс «${manifest.name}». ` : ''}${quote.available ? 'После отправки вернётся следующим игровым утром' : ''}`;
   const receipt = world.last && !active ? `<h4 class="expedition-receipt" tabindex="-1">${world.last.explored ? 'Новый порт на карте' : 'Прошлый груз получен'} · ${esc(expeditionPortNames[world.last.port])} · день ${world.last.day}${receiptExchange}</h4>` : '';
   const cargoUse = receipt && ctx.commissionUse ? `<div class="expedition-commission-use"><strong>Для заказа · ${esc(ctx.commissionUse.customer)}</strong><p>Теперь хватает на ${ruCount(ctx.commissionUse.ready,'порцию','порции','порций')} по рецепту «${esc(ctx.commissionUse.recipeName)}».</p>${button('Открыть этот рецепт','expedition-order-recipe',ctx.commissionUse.key)}</div>` : receipt && ctx.peachPlanting
-    ? `<div class="expedition-commission-use">${button('Посмотреть посадку','visit-tree',ctx.peachPlanting.key)}</div>` : '';
+    ? `<div class="expedition-commission-use">${button('Посмотреть посадку','visit-tree',ctx.peachPlanting.key)}</div>`
+    : receipt && ctx.suppliedOrder
+    ? `<div class="expedition-commission-use">${button(`Вернуться к заказу: ${esc(ctx.suppliedOrder.name)}`,'expedition-offer',ctx.suppliedOrder.id,'data-ferry-supply-order')}</div>` : '';
   return `<section class="bay-freight" data-expedition-phase="${phase}"${!active && settled ? ` data-receipt-voyage="${world.serial}"` : ''} data-combined="${combined}" aria-label="Торговые экспедиции">
     <header class="bay-freight-heading">${button('‹', 'back', '', 'class="bay-freight-back" aria-label="Назад"')}<h2>Паром «Ласточка»</h2><span class="expedition-balance">${ctx.icon('coin')} ${ctx.coins ?? 0}</span>${button('×', 'close', '', 'class="bay-freight-close" aria-label="Закрыть паром"')}</header>
     <div class="bay-freight-workspace">

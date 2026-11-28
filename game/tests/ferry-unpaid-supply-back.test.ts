@@ -13,6 +13,7 @@ import * as reopening from '../src/ferry-panel-view.ts'
 import * as restock from '../src/ferry-restock.ts'
 import * as progress from '../src/ferry-project-progress.ts'
 import {FerryPeachPlanting} from '../src/ferry-peach-planting.ts'
+import {ferryCommissionUse} from '../src/ferry-commission-use.ts'
 import {ruCount} from '../src/ru.ts'
 import {commissionPlayer} from './fixtures/commission-player.ts'
 
@@ -28,12 +29,12 @@ const render=vm(strip(extract(panel,'const labels:','/** DOM entry used').replac
   {...freight,...expeditions,...smaller,...discovery,...restock,...progress,ruCount})
 const declaration=main.includes('const ferrySupplyOrigins =') ? extract(main,'const ferrySupplyOrigins =','function stopHarbour(') : ''
 const actions=strip(declaration+extract(main,'function returnFromPanel(', "dialog.addEventListener('cancel'")
-  +" ;({act:async()=>{switch(action){"+extract(main,"    case 'expedition-restock':","    case 'expedition-source':")
+  +" ;({paint:typeof renderFreightPanelInto==='function'?renderFreightPanelInto:undefined,act:async()=>{const nativePerform=globalThis.perform; const perform=typeof ferrySupplyPerform==='function'?ferrySupplyPerform(action,value,control):nativePerform; if (!perform) return;switch(action){"+extract(main,"    case 'expedition-restock':","    case 'expedition-source':")
   +extract(main,"    case 'expedition-port':","    case 'expedition-order-recipe':")
   +extract(main,"    case 'expedition-claim':","    case 'music-warehouse-visit':")
   +extract(main,"    case 'back':","    case 'journal-stay':")+"}},escape:()=>returnFromPanel(event)})")
 const milestones=JSON.parse(read('./fixtures/home-progress-actions.json'))
-function earned(wheat=false){
+function earned(wheat=false, secondPlot=false){
   const p=commissionPlayer(milestones)
   assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.village.built,p.state.produce.wheat,p.state.eggs],[107,14,68,true,0,3])
   p.visit('home')
@@ -44,7 +45,22 @@ function earned(wheat=false){
   }
   assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.handmade.round,p.state.freight.expeditions.markets.mill.stock['handmade:round']],
     [117,17,23,3,0])
-  if(wheat){
+  if(secondPlot){
+    if(p.state.seeds.wheat<2)p.act('buySeeds','wheat')
+    if(p.state.selectedSeed!=='wheat')p.act('selectSeed','wheat')
+    const beds=[0,2]
+    for(const i of beds)p.act('workBed',i)
+    for(let n=0;n<3;n++){
+      for(const i of beds){
+        const a=farmApi.getBedAction(p.state,i)
+        if(a.kind==='water'){if(!a.available)p.act('refillWater');p.act('workBed',i)}
+        else if(a.kind==='harvest')p.act('workBed',i)
+      }
+      if(beds.every(i=>p.state.beds[i].kind==='tilled'))break
+      p.night()
+    }
+    assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.produce.wheat,p.state.eggs],[129,19,19,6,3])
+  } else if(wheat){
     p.act('selectSeed','wheat');p.act('workBed',0);p.act('workBed',0);p.night()
     if(farmApi.getBedAction(p.state,0).kind==='water')p.act('workBed',0)
     p.night();p.act('workBed',0)
@@ -52,14 +68,16 @@ function earned(wheat=false){
   }
   return p.state
 }
-function mounted(farm:farmApi.FarmState) {
+function mounted(farm:farmApi.FarmState, cold=false) {
   const quote=expeditions.initialExpeditionPreview(farm.freight.expeditions)
-  assert.deepEqual(quote,{port:'mill',offer:'mill-buy'})
+  if(!cold)assert.deepEqual(quote,{port:'mill',offer:'mill-buy'})
   let html='', focused:FakeButton|undefined, state:ReturnType<typeof root>
   let back=0, rest=0
   class FakeButton {
-    readonly dataset:{action:string;value:string}
-    constructor(action:string,value:string){this.dataset={action,value}}
+    readonly dataset:{action:string;value:string;ferrySupplyOrder?:string}
+    constructor(action:string,value:string,attributes:string){
+      this.dataset={action,value,...(attributes.includes('data-ferry-supply-order')?{ferrySupplyOrder:''}:{})}
+    }
     matches(s:string) {return s==='button[data-action]'}
     closest(){return null}
     getBoundingClientRect(){return {top:30,bottom:50}}
@@ -69,7 +87,7 @@ function mounted(farm:farmApi.FarmState) {
   }
   function root(){
     const scrollers=new Map(['.bay-freight-workspace','.expedition-card-scroll','.expedition-overview'].map(q=>[q,{scrollTop:0,getBoundingClientRect:()=>({top:0,bottom:100})}]))
-    const buttons=[...html.matchAll(/<button[^>]+data-action="([^"]+)" data-value="([^"]*)"/g)].map(([,a,v])=>new FakeButton(a,v))
+    const buttons=[...html.matchAll(/<button[^>]+data-action="([^"]+)" data-value="([^"]*)"([^>]*)>/g)].map(([,a,v,attr])=>new FakeButton(a,v,attr))
     const details={open:false,querySelector:()=>null}
     return {scrollers,buttons,details,contains:(button:FakeButton)=>buttons.includes(button),
       querySelector:(s:string)=>scrollers.get(s)??(s==='.expedition-offers'?details:
@@ -77,37 +95,44 @@ function mounted(farm:farmApi.FarmState) {
       querySelectorAll:()=>buttons}
   }
   const dialogContent={ownerDocument:{get activeElement(){return focused}},
+    contains:(c:FakeButton)=>state.contains(c),
     querySelector:(s:string)=>s==='.bay-freight'?state:s==='.bay-freight-close'?state.querySelector(s):null}
+  let controller:{act:()=>Promise<void>;escape:()=>unknown;paint?:(host:unknown,state:freight.BayFreightState,context:unknown)=>void}|undefined
   const ctx={...farmApi,...economy,...expeditions,...restock,...reopening,
     farm,panel:'bay-freight',dialog:{open:true},dialogContent,document:dialogContent.ownerDocument,panelHistory:[] as unknown[],
     selectedExpeditionPort:quote.port,selectedExpeditionOffer:quote.offer,action:'',value:undefined as string|undefined,
+
     event:{type:'click',detail:0,defaultPrevented:false,preventDefault(){this.defaultPrevented=true}},control:{} as unknown,
-    communityRequest:undefined,
+    communityRequest:undefined,ferryCommissionUse,
     closeContextualSale:()=>false,returnToRecipeIndex:()=>false,
     // Model boundary for a preceding ordinary screen; the real no-history goBack returns immediately.
     goBack(){back++},rememberClosedMarketSell(){},
     bayAudio:{playEvent(){}},presentFerryDeparture(){},ferryPeachPlanting:new FerryPeachPlanting(),
     visitPanelAt(){rest++},
     perform(fn:()=>{ok:boolean}){const r=fn();if(r.ok)ctx.drawPanel();return r.ok},
+    renderFerryPanelInto(_host:unknown,freight:freight.BayFreightState,view:Parameters<typeof render>[1]){
+      html=render(freight,view)
+      state=root()
+    },
     drawPanel(){
       const view=reopening.captureFerryPanelView(dialogContent as unknown as HTMLElement)
-      html=render(farm.freight,{day:farm.day,coins:farm.coins,boatOwned:true,playerPort:farm.island,
+      const paint=controller?.paint ?? ctx.renderFerryPanelInto
+      paint(dialogContent,farm.freight,{day:farm.day,coins:farm.coins,boatOwned:true,playerPort:farm.island,
         expeditionPort:ctx.selectedExpeditionPort,expeditionOffer:ctx.selectedExpeditionOffer,openedPorts:['home','grove','village'],
         carried:economy.expeditionWallet(farm).bag,products:[],icon:()=>''})
-      state=root()
       reopening.restoreFerryPanelView(dialogContent as unknown as HTMLElement,view)
     }}
   ctx.drawPanel()
-  const controller=vm(actions,ctx)
-  const act=(action:string,value?:string)=>{
-    ctx.action=action;ctx.value=value;ctx.control=state.buttons.find(b=>b.dataset.action===action&&b.dataset.value===(value??''))
+  controller=vm(actions,ctx)
+  const act=(action:string,value?:string,supplyLink=false)=>{
+    ctx.action=action;ctx.value=value;ctx.control=state.buttons.find(b=>b.dataset.action===action&&b.dataset.value===(value??'')&&(b.dataset.ferrySupplyOrder!==undefined)===supplyLink)
     assert.ok(ctx.control,action+': '+value)
     ;(ctx.control as FakeButton).focus()
-    return controller.act() as Promise<void>
+    return controller!.act()
   }
   return {ctx,act,get html(){return html},get focused(){return focused?.dataset},get dockBack(){return back},
     get view(){return state},get rests(){return rest},
-    escape(){ctx.event.type='keydown';ctx.event.defaultPrevented=false;controller.escape();return ctx.event.defaultPrevented}}
+    escape(){ctx.event.type='keydown';ctx.event.defaultPrevented=false;controller!.escape();return ctx.event.defaultPrevented}}
 }
 
 test('unpaid port supply preview returns to the exact paid choice once, keeping price, order details, focus and every resource',async()=>{
@@ -168,5 +193,85 @@ test('a new view, independent trade or day change does not inherit the old suppl
     assert.equal(ui.dockBack,1,boundary)
     assert.equal(ui.ctx.selectedExpeditionOffer,selection,boundary)
     assert.deepEqual(farm,before)
+  }
+})
+
+test('the actual supply claim offers one read-only path back to the funded intent without replacing its receipt or ordinary repeat',async()=>{
+  const farm=earned(true),ui=mounted(farm)
+  await ui.act('expedition-restock','mill-buy')
+  assert.doesNotMatch(ui.html,/data-ferry-supply-order/)
+  await ui.act('expedition-send','mill-sale')
+  assert.doesNotMatch(ui.html,/data-ferry-supply-order/)
+  assert.ok(farmApi.endDay(farm).ok);ui.ctx.drawPanel()
+  assert.doesNotMatch(ui.html,/data-ferry-supply-order/,'ready arrival is not an explicit claim')
+  await ui.act('expedition-claim')
+  assert.deepEqual([farm.day,farm.coins,farm.produce.wheat,farm.handmade.round,ui.ctx.selectedExpeditionOffer],[20,33,1,3,'mill-sale'])
+  assert.match(ui.html,/Прошлый груз получен · Мельничный посад · день 20/)
+  assert.match(ui.html,/data-action="expedition-send" data-value="mill-sale"/)
+  assert.match(ui.html,/data-action="expedition-offer" data-value="mill-buy" data-ferry-supply-order>Вернуться к заказу: Купить булочку/)
+  const settled=structuredClone(farm)
+  await ui.act('expedition-offer','mill-buy',true)
+  assert.equal(ui.ctx.selectedExpeditionOffer,'mill-buy')
+  assert.doesNotMatch(ui.html,/data-ferry-supply-order/)
+  assert.deepEqual(farm,settled,'the next existing purchase stays explicitly separate')
+  await ui.act('expedition-send','mill-buy')
+  assert.deepEqual([farm.coins,farm.handmade.round,farm.freight.expeditions.active?.id],[18,3,'mill-buy'])
+})
+
+test('the ordinary grain plan survives only its own real paid provisioning claim and rechecks the latest wheat',async()=>{
+  for(const variation of ['warm','short now','reopened'] as const){
+    const farm=earned(true,true),ui=mounted(farm)
+    await ui.act('expedition-offer','mill-grain')
+    await ui.act('expedition-restock','mill-grain')
+    await ui.act('expedition-send','mill-sale')
+    assert.ok(farmApi.endDay(farm).ok);ui.ctx.drawPanel()
+    await ui.act('expedition-claim')
+    assert.deepEqual([farm.day,farm.coins,farm.produce.wheat,farm.handmade.round,ui.ctx.selectedExpeditionOffer],[20,29,4,3,'mill-sale'])
+    assert.match(ui.html,/data-action="expedition-offer" data-value="mill-grain" data-ferry-supply-order>Вернуться к заказу: Зерно для пекаря/)
+    assert.match(ui.html,/data-action="expedition-send" data-value="mill-sale"(?![^>]*disabled)/)
+    if(variation==='reopened'){
+      const before=structuredClone(farm)
+      ui.ctx.dialog.open=false;ui.ctx.drawPanel()
+      ui.ctx.dialog.open=true;ui.ctx.drawPanel()
+      assert.doesNotMatch(ui.html,/data-ferry-supply-order/)
+      assert.deepEqual(farm,before)
+      continue
+    }
+    const stale=variation==='short now'
+    if(stale)assert.ok(farmApi.sellMarketItem(farm,'produce:wheat',2).ok)
+    const before=structuredClone(farm)
+    await ui.act('expedition-offer','mill-grain',true)
+    assert.deepEqual(farm,before)
+    assert.equal(ui.ctx.selectedExpeditionOffer,stale?'mill-sale':'mill-grain')
+    assert.doesNotMatch(ui.html,/data-ferry-supply-order/)
+    if(stale)continue
+    await ui.act('expedition-send','mill-grain')
+    assert.equal(farm.handmade.round,3)
+    assert.ok(farmApi.endDay(farm).ok);ui.ctx.drawPanel()
+    await ui.act('expedition-claim')
+    assert.deepEqual([farm.day,farm.coins,farm.produce.wheat,farm.eggs,farm.handmade.round],[21,34,0,3,4])
+    assert.doesNotMatch(ui.html,/data-ferry-supply-order/)
+  }
+})
+
+test('a cold paid voyage, an independent sale, or a replaced unpaid owner never infer a target',async()=>{
+  for(const why of ['cold','generic','replaced owner'] as const){
+    let farm=earned(true,true),ui=mounted(farm)
+    if(why==='generic')await ui.act('expedition-offer','mill-sale')
+    else {
+      await ui.act('expedition-offer','mill-grain')
+      await ui.act('expedition-restock','mill-grain')
+      if(why==='replaced owner')ui.ctx.drawPanel()
+    }
+    await ui.act('expedition-send','mill-sale')
+    assert.ok(farmApi.endDay(farm).ok)
+    if(why==='cold'){
+      const restored=farmApi.restoreCurrentFarm(JSON.parse(JSON.stringify(farm)))
+      assert.ok(restored);farm=restored;ui=mounted(farm,true)
+    }else ui.ctx.drawPanel()
+    await ui.act('expedition-claim')
+    assert.deepEqual([farm.day,farm.coins,farm.produce.wheat,ui.ctx.selectedExpeditionOffer],[20,29,4,'mill-sale'],why)
+    assert.match(ui.html,/data-action="expedition-offer" data-value="mill-grain"/,why)
+    assert.doesNotMatch(ui.html,/data-ferry-supply-order/,why)
   }
 })

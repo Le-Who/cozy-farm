@@ -124,14 +124,14 @@ import { beginFestival, cancelFestival, contributeFestival, finishFestival, getF
 import { playBaySound } from './game-sound'
 import { bedWorkSound, orchardPickSound } from './farm-sounds'
 import { reconcileFreightPorts } from './bay-freight-model'
-import { combinedExpeditionId, expeditionOfferAfterClaim, initialExpeditionPreview, expeditionOfferIds, expeditionPorts, expeditionTrades, type ExpeditionPort } from './ferry-expeditions'
+import { combinedExpeditionId, expeditionOfferAfterClaim, initialExpeditionPreview, expeditionOfferIds, expeditionPorts, expeditionTrades, quoteExpedition, type ExpeditionPort } from './ferry-expeditions'
 import { getFerryRestockPlan } from './ferry-restock'
 import { firstFerryCargoOffer } from './ferry-smaller-cargo'
 import { bayAudio } from './bay-audio'
 import { mountBayShop, type BayShopCommissionPreview, type BayShopOptions, type BayShopStockGroup } from './bay-shop'
 import { createBayShopWorkClock } from './bay-shop-model'
 import type { CookeryOptions } from './cookery'
-import { renderFreightPanelInto, presentFerryDeparture, presentFerryArrival, freightControl } from './bay-freight-ui'
+import { renderFreightPanelInto as renderFerryPanelInto, presentFerryDeparture, presentFerryArrival, freightControl } from './bay-freight-ui'
 import { FerryArrivalPresentation } from './ferry-arrival-presentation'
 import { captureFerryPanelView, restoreFerryPanelView, type FerryPanelView } from './ferry-panel-view'
 import { getMusicMaterialGuidance, getMusicSaltRequirement, musicMaterialItems, musicMaterialNames } from './music-material-guidance'
@@ -2152,6 +2152,67 @@ function returnToFerrySupplyOrigin() {
   restoreFerryPanelView(dialogContent,origin.view)
   return true
 }
+type FerrySupplyIntent = {port:ExpeditionPort; original:string; supply:string; serial:number}
+let ferrySupplyFlight: FerrySupplyIntent | undefined
+let ferrySupplyReceipt: (FerrySupplyIntent & { day:number; island:typeof farm.island; owner:Element }) | undefined
+function readyFerrySupplyOrder() {
+  const origin = ferrySupplyReceipt, world = farm.freight.expeditions, last = world.last
+  if (!origin || !dialog.open || panel !== 'bay-freight' || origin.owner !== dialogContent.querySelector('.bay-freight')
+    || origin.day !== farm.day || origin.island !== farm.island || origin.serial !== world.serial || world.active
+    || last?.day !== origin.day || last.port !== origin.port || last.settled?.id !== origin.supply
+    || selectedExpeditionPort !== origin.port || selectedExpeditionOffer !== origin.supply
+    || ferryCommissionUse(farm) || ferryPeachPlanting.current(farm)) return
+  const quote = quoteExpedition(world,origin.original,expeditionWallet(farm))
+  if (quote?.available && quote.port === origin.port) return quote
+}
+function renderFreightPanelInto(host:HTMLElement, freight:typeof farm.freight, context:Parameters<typeof renderFerryPanelInto>[2]) {
+  const suppliedOrder=readyFerrySupplyOrder()
+  if (!suppliedOrder) ferrySupplyReceipt=undefined
+  renderFerryPanelInto(host,freight,{...context,suppliedOrder})
+  const owner = suppliedOrder && host.querySelector('.bay-freight')
+  if (ferrySupplyReceipt && owner) ferrySupplyReceipt.owner=owner
+}
+// Only the normal click dispatcher can bind one actual supply dispatch and its exact claim.
+function ferrySupplyPerform(action:string|undefined, value:string|undefined, control:HTMLElement): typeof perform | undefined {
+  const owner = panel === 'bay-freight' && dialog.open && dialogContent.contains(control)
+    ? dialogContent.querySelector('.bay-freight') : null
+  if (control.dataset.ferrySupplyOrder !== undefined && (!owner || action !== 'expedition-offer' || !value || readyFerrySupplyOrder()?.id !== value)) {
+    if (owner) drawPanel()
+    return
+  }
+  if (!owner) return perform
+  if (action === 'expedition-offer' || action === 'expedition-pair' || action === 'expedition-port' || action === 'expedition-restock') {
+    ferrySupplyReceipt=undefined
+    return perform
+  }
+  if (action !== 'expedition-send' && action !== 'expedition-claim') return perform
+  const world = farm.freight.expeditions, voyage = world.active
+  const source = action === 'expedition-send' && !voyage ? ferrySupplyOrigins.get(owner) : undefined
+  const plan = source && source.day === farm.day && source.island === farm.island && source.serial === world.serial
+    && source.port === selectedExpeditionPort && source.supply === selectedExpeditionOffer && source.supply === value
+    && source.offer !== source.supply && expeditionOfferIds(source.offer).length === 1
+    ? getFerryRestockPlan(world,source.offer,farm.day,expeditionWallet(farm)) : undefined
+  const intended = source && plan?.kind === 'supply' && plan.complete && plan.port === source.port
+    && plan.offer.id === source.supply && plan.offer.available ? source : undefined
+  return (commit,dismiss,resultVisible) => perform(() => {
+    const result = commit()
+    if (!result.ok) return result
+    if (action === 'expedition-send') {
+      const active = world.active
+      ferrySupplyReceipt=undefined
+      ferrySupplyFlight = intended && active?.kind === 'trade' && active.phase === 'sailing'
+        && active.serial === intended.serial+1 && active.id === intended.supply && active.port === intended.port
+        ? {port:intended.port,original:intended.offer,supply:active.id,serial:active.serial} : undefined
+    } else {
+      const intent = ferrySupplyFlight
+      ferrySupplyFlight=undefined
+      ferrySupplyReceipt = intent && voyage?.phase === 'ready' && voyage.serial === intent.serial
+        && voyage.id === intent.supply && voyage.port === intent.port && !world.active && world.last?.settled?.id === intent.supply
+        ? {...intent,day:farm.day,island:farm.island,owner} : undefined
+    }
+    return result
+  },dismiss,resultVisible)
+}
 function stopHarbour() {
   if (!harbourScene) return
   harbourScene.destroy()
@@ -4044,6 +4105,8 @@ app.addEventListener('click', async (event) => {
   const crop = cropIds.find((id) => id === control.dataset.crop)
   let value = control.dataset.value
   let action = control.dataset.action
+  const perform = ferrySupplyPerform(action,value,control)
+  if (!perform) return
   if (action === 'follow-task') {
     const task = currentTask()
     if (!task || !('action' in task)) { openPanel('journal'); return }
