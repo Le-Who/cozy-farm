@@ -63,7 +63,7 @@ test('D14 chosen local tea can open the existing gathering without an unnecessar
   assert.deepEqual(f,paid)
 })
 
-test('ready dinner, different shore, unselected food, and spent serving keep the old route', () => {
+test('funded and spent choices use the matching local or ordinary supper path', () => {
   const {p,recipe}=readyTea(), fixed=cold(p.state), fish=cold(fixed)
   assert.ok(F.sail(fish,'home').ok)
   assert.equal(discover(fish)?.action.target,'visit-pier','no implicit trip or remote tea from Home')
@@ -77,13 +77,25 @@ test('ready dinner, different shore, unselected food, and spent serving keep the
   assert.equal(discover(fish)?.id,'second-neighbour','a completed milestone does not redirect to tea')
 
   const notChosen=readyTea(false).p.state, snapshot=structuredClone(notChosen)
-  assert.equal(discover(notChosen)?.action.target,'sail','a joined visit with no chosen serving is not ready')
+  assert.equal(F.getNeighborPlans(notChosen)[0].food,null)
+  assert.ok(F.getIntentOffers(notChosen,'delicate').some(offer=>offer.available),'the prior unselected fixture genuinely has food')
+  assert.deepEqual(discover(notChosen)?.action,{label:'К встрече',target:'open-neighbor',value:'bea'},'review a funded invitation without choosing a dish')
   assert.deepEqual(notChosen,snapshot)
   const spent=cold(fixed)
   assert.ok(F.tasteSignature(spent,recipe,'bea').ok)
   assert.equal(spent.culinary.stock[recipe],0)
   assert.equal(F.getNeighborPlans(cold(spent))[0].phase,'arranging','the old choice still exists')
   assert.deepEqual(discover(spent)?.action,{label:'Домой',target:'sail',value:'home'},'one gone serving does not intercept sourcing; retrieval and manual cooking still work')
+})
+
+test('D14 joined tea with no actual eligible portion keeps the ordinary fish route', () => {
+  const {p,recipe}=readyTea(false)
+  p.act('tasteSignature',recipe,'bea') // Ordinary tasting spends the only fitting portion.
+  const f=cold(p.state), before=structuredClone(f)
+  assert.deepEqual([F.getNeighborPlans(f)[0].phase,F.getNeighborPlans(f)[0].food],['joined',null])
+  assert.equal(F.getIntentOffers(f,'delicate').some(offer=>offer.available),false)
+  assert.deepEqual(discover(f)?.action,{label:'Домой',target:'sail',value:'home'})
+  assert.deepEqual(f,before)
 })
 
 test('a prepared on-site tea after the first regular dinner on that same day does not count again', () => {

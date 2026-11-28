@@ -181,9 +181,8 @@ function supply(farm: FarmState, item: StockItem, purpose: string): DiscoveryTas
 }
 
 /** The table accepts either ordinary fish; its preferred garnish is not a required species. */
-function supperFish(farm: FarmState): DiscoveryTask {
+function supperFish(farm: FarmState, recovery: ReturnType<typeof getSupperFishRecovery>): DiscoveryTask {
   const purpose = 'общий ужин';
-  const recovery = getSupperFishRecovery(farm);
   if (recovery.kind === 'warehouse') {
     if (recovery.port === farm.island) return supply(farm,recovery.item,purpose);
     const label = {home:'Домой',grove:'В рощу',cape:'На Цветочный мыс',village:'В Лавандовую гавань'}[recovery.port];
@@ -321,15 +320,18 @@ export function getDiscoveryTask(farm: FarmState, seen: DiscoverySeen): Discover
           .some(offer => offer.id === plan.food?.id && offer.available));
         if (meeting?.food) return task('shared-suppers', meeting.title, meeting.food.name,
           `ui-${meeting.resident}`, { label: 'К встрече', target: 'open-neighbor', value: meeting.resident }, farm.village.meals, 2);
-        if (missing.kind !== 'fish') return supply(farm, missing, 'общий ужин');
-        const fish = supperFish(farm);
-        // The first local Finn lunch can use a carried serving before the player chooses it.
-        const lunch = fish.action.target === 'sail' ? local.find(plan => plan.episode === 'finnShore' && plan.memoryCount === 0
-          && (plan.phase === 'preparing' || plan.phase === 'joined')) : undefined;
-        const portions = lunch ? getIntentOffers(farm, lunch.intentId).filter(offer => offer.available) : [];
-        if (lunch && portions.length) return task('shared-suppers', lunch.title, portions.length === 1 ? portions[0].name : 'Угощение готово',
-          'ui-finn', { label: 'К встрече', target: 'open-neighbor', value: lunch.resident }, farm.village.meals, 2);
-        return fish;
+        const recovery = missing.kind === 'fish' ? getSupperFishRecovery(farm) : undefined;
+        const next = recovery ? supperFish(farm, recovery) : supply(farm, missing, 'общий ужин');
+        if (next.action.target !== 'sail') return next;
+        // An eligible carried serving reveals a local invitation, not a chosen dish.
+        // Keep Bea's existing warehouse and next-morning routes for the ordinary supper.
+        const invitation = local.find(plan => (plan.phase === 'preparing' || plan.phase === 'joined') &&
+          (plan.episode === 'finnShore' && plan.memoryCount === 0 && recovery ||
+            plan.resident === 'bea' && (!recovery || recovery.kind === 'shore')));
+        const portions = invitation ? getIntentOffers(farm, invitation.intentId).filter(offer => offer.available) : [];
+        if (invitation && portions.length) return task('shared-suppers', invitation.title, portions.length === 1 ? portions[0].name : 'Угощение готово',
+          `ui-${invitation.resident}`, { label: 'К встрече', target: 'open-neighbor', value: invitation.resident }, farm.village.meals, 2);
+        return next;
       }
       if (signature && !farm.handmade[shape]) return arrive(task('shared-suppers', 'Принесите готовое блюдо к общему столу',
         `Авторское блюдо уже есть. Выберите у стола 1 порцию и подайте с 1 рыбой. Два ужина в разные дни откроют второй домик.`,
