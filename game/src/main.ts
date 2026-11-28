@@ -168,7 +168,7 @@ import { getFerryGroveFishSource } from './ferry-grove-fish-source'
 import { lastPortionShopStock, signatureTastingGuide } from './signature-tasting-guidance'
 import { shopRecipeRefill, type ShopRecipeRefill } from './bay-shop-quantity'
 import { RecipeBookNavigation, recipeBookNarrow, selectedBookId, sortedBookRecipes, type RecipeBookView } from './recipe-book-view'
-import {recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
+import {recipeActiveOrder,recipeBookResults,recipeBookSearchStatus,signatureBook,signatureStudio,coveControls,signatureResultPicture,cookeryResultPicture,escapeRecipeText as escapeHtml} from './culinary-ui'
 import {signatureFruitIds,signatureFruitNames,type SignatureDraft,type SignatureIngredient} from './culinary'
 import { communityBoard, communityIntent, neighborDetail, neighborHelpCard, type CommunityArt } from './community-ui'
 import { bakeRequestedBeaBatch, getRequestedBeaBatch } from './request-bea-batch'
@@ -2643,7 +2643,7 @@ function drawPanel() {
       recipeBook.view.expandedRepeatId=expandedRepeatId
       const origin=panelHistory.at(-1),pair=origin?.panel==='shop-commissions' && origin.commissionRecipe && recipeBook.view.mode==='detail'
         ? getCommissionRecipePair(farm,origin.commissionRecipe.line,recipeBook.view.selectedId) : undefined
-      dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile},recipeBook.view,pair)
+      dialogContent.innerHTML=signatureBook(farm,{icon,stock:stockTile},recipeBook.view,pair,origin?.panel==='shop-commissions')
       break
     }
     case 'signature': dialogContent.innerHTML=signatureStudio(farm,signatureBase,signatureSlots,signatureSlot,{icon,stock:stockTile},currentCommunityRequest()?.intentId);
@@ -5047,6 +5047,18 @@ app.addEventListener('click', async (event) => {
       const guest = farm.island === 'home' ? farm.neighborVisits.active : null
       if (control.dataset.visit !== guest?.serial.toString() || guest && !control.closest('details.journal-visit-crossing[open]')) break
       await visitPanelAt('village',destination)
+      break
+    }
+    case 'recipe-active-order': {
+      if (panel !== 'recipes' || !dialog.open || !value || selectedBookId(farm,recipeBook.view) !== value
+          || !dialogContent.contains(control) || island.isCrossing() || panelHistory.at(-1)?.panel === 'shop-commissions'
+          || control.closest<HTMLElement>('.signature-page')?.dataset.recipe !== value) break
+      const route = recipeActiveOrder(farm,value)
+      if (!route || route.quote !== control.dataset.orderQuote) { drawPanel(); break }
+      // This is a local read-only visit; the existing order owns reserve and payment.
+      control.focus({preventScroll:true})
+      openPanel('shop-commissions')
+      dialogContent.querySelector<HTMLElement>('.commission-current')?.focus({preventScroll:true})
       break
     }
     case 'recipe-harbour-shop': {

@@ -44,7 +44,7 @@ function earned() {
 // in the existing inert DOM harness. No fabricated earned stock or native app is required.
 function entry(farm:F.FarmState,id:string){
  const count=farm.culinary.stock[id]??0,refill=Q.shopRecipeRefill?.(farm,id)
- const expr=cut(book,"count>0&&farm.village.built&&!shopChoice?",'}</div></div>')
+ const expr=cut(book,'  const shop=','\n').slice('  const shop='.length)
  const shopEntry=book.includes('  const shopEntry = ') ? cut(book,'  const shopEntry = ','  const action=') : ''
  const escapeRecipeText=runInNewContext(stripTypeScriptTypes(cut(book,'export const escapeRecipeText','export const ingredientArt').replace('export const','const'))+'\nescapeRecipeText',{})
  return runInNewContext(shopEntry+expr,{farm,count,shopChoice:undefined,refill,recipe:{id},escapeRecipeText,control:(name:string,action:string,value:string,enabled=true,attrs='')=>({name,action,value,enabled,attrs})})
