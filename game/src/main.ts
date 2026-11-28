@@ -4946,6 +4946,10 @@ app.addEventListener('click', async (event) => {
       if(panel!=='inventory'||!dialog.open)break
       const id=fishIds.find(id=>id===value)
       if(!id || farm.fish[id]<1)break
+      if(farm.island==='village' && getCookAction(farm,'grilledFish',id).available) {
+        openPanel('kitchen',true,farm.island,'page.unfold',undefined,{grillFish:id})
+        break
+      }
       if(farm.island!=='home') {closeDialog();await island.crossIsland(()=>perform(()=>sail(farm,'home'),false,true))}
       if(farm.island==='home')openPanel('kitchen',true,farm.island,'page.unfold',undefined,{grillFish:id})
       break

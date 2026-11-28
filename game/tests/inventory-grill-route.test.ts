@@ -4,6 +4,8 @@ import { runInNewContext } from 'node:vm'
 import { test } from 'node:test'
 import ts from 'typescript'
 import * as F from '../src/farm.ts'
+import * as Fishing from '../src/fishing-model.ts'
+import * as Grill from '../src/fish-cookery-model.ts'
 import { bayProductId } from '../src/bay-product-id.ts'
 import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
 import { getBerryNurserySource } from '../src/berry-nursery.ts'
@@ -434,4 +436,120 @@ test('earned D193 can deliberately return to live Home recipes without losing th
   sole.openPanel('kitchen');assert.doesNotMatch(sole.html,tab(false));assert.doesNotMatch(sole.html,tab(true))
   const draws=sole.draws;sole.choose('kitchen-group','ready')
   visibleCard(sole,'appleJam',true);assert.equal(sole.draws,draws);assert.deepEqual(early,stocked)
+})
+
+function earnedHarbourGrill() {
+  const opening: {name:string;args:unknown[]}[] = JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json', import.meta.url), 'utf8'))
+  const p=commissionPlayer([])
+  // Replay the tracked route, substituting live cast/landing/keep for its early legacy catch shortcuts.
+  assert.ok(source.includes("farm.day*1009+layoutToken*9176+(farm.island==='grove'?71:17)"))
+  const steering=[-1,-.5,1,-1,-2,-.5], seeds=[17319,26495,37635,50847,60023,69253]
+  let cast=0
+  function keepOne() {
+    const shore=p.state.island
+    assert.ok(shore==='home'||shore==='grove')
+    const fish=shore==='grove'?'seaBass':'perch', count=p.state.fish[fish]
+    const {token,config}=p.act('beginFishingTrip')
+    const seed=p.state.day*1009+token*9176+(shore==='grove'?71:17)
+    assert.equal(seed,seeds[cast])
+    const model=Fishing.createFishingModel(Math.min(config.capacity,F.getFishLimit(p.state)-p.state.fishCaughtToday[shore]),config.resilience,seed,fish,config.habitat)
+    Fishing.castFishing(model)
+    for(let tick=0;tick<900&&model.phase!=='done';tick++){
+      model.targetX=steering[cast];Fishing.stepFishing(model,.025)
+    }
+    assert.equal(model.phase,'done')
+    const loot=model.caught.map(id=>Fishing.fishingCatchLoot(model.fish.find(entry=>entry.id===id)!))
+    assert.deepEqual(loot,[{kind:'fish',species:fish,variant:'regular'}])
+    const landed=F.finishFishingTrip(p.state,token,loot,true)
+    assert.ok(landed.ok&&landed.landed)
+    assert.equal(p.state.fish[fish],count,'the fish at the result is still on the hook')
+    landed.landed.keep();p.reload()
+    assert.equal(p.state.fish[fish],count+1)
+    cast++
+  }
+  for(const {name,args} of opening) if(name==='catchFish')keepOne();else p.act(name,...args)
+  p.visit('home');keepOne()
+  p.visit('grove');p.act('gatherSeaSalt');keepOne()
+  p.visit('village')
+  assert.equal(cast,steering.length)
+  assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.island,p.state.fish.perch,p.state.fish.seaBass,p.state.seaSalt,p.state.produce.carrot],
+    [113,14,68,'village',1,1,2,1])
+  return p
+}
+
+function finishRealGrill(farm:F.FarmState, fish:F.FishId) {
+  const m=Grill.createFishModel()
+  for(let n=0;n<7;n++)for(let y=0;y<2;y++)for(let x=0;x<6;x++)Grill.seasonFish(m,{x:(x-2.5)*.28,y:(y-.5)*.52},.05,.12)
+  assert.ok(Grill.finishFishSeason(m));assert.ok(Grill.placeFishInPan(m))
+  for(let n=0;n<150;n++)Grill.heatFish(m,.05,1,{x:0,y:0})
+  assert.ok(Grill.turnFish(m))
+  for(let n=0;n<150;n++)Grill.heatFish(m,.05,1,{x:0,y:0})
+  assert.ok(Grill.plateFish(m))
+  for(let i=0;i<3;i++)assert.ok(Grill.placeFishGarnish(m,i,{x:(i-1)*.4,y:.35},0))
+  for(let n=0;n<5;n++)Grill.settleFish(m,.1,true)
+  const finish=()=>F.cookDish(farm,'grilledFish',{family:'grilledFish',fishSpecies:fish,fruit:[],
+    garnish:m.garnish.map(({x,y,angle})=>({ingredientId:'carrot',x,y,angle})),steps:m.steps,
+    baking:{method:'grill',finish:'golden',seconds:m.seconds}}).ok
+  assert.ok(Grill.completeFish(m,finish));assert.equal(Grill.completeFish(m,finish),false)
+}
+
+function watchCrossings(s: ReturnType<typeof screen>) {
+  const crossings: string[]=[]
+  s.island.crossIsland=async (commit:()=>boolean)=>{
+    crossings.push(s.farm.island)
+    assert.ok(commit())
+  }
+  return crossings
+}
+
+test('an exact funded catch in the Lavender Harbour bag opens its local grill without crossing or spending', async ()=>{
+  const p=earnedHarbourGrill(), f=p.state, s=screen(f), before=structuredClone(f)
+  assert.ok(f.village.built)
+  assert.equal(F.getCookAction(f,'grilledFish','perch').available,true)
+  assert.equal(F.getCookAction(f,'grilledFish','seaBass').available,true)
+  const crossings=watchCrossings(s)
+  await s.chooseFish('perch')
+  assert.deepEqual([f.island,s.panel,s.saves,crossings],['village','kitchen',0,[]])
+  assert.deepEqual(f,before,'preview is not a cook, crossing, or spend')
+  grill(s.html,'perch')
+  assert.match(s.html,/data-action="cook"[\s\S]*?data-value="grilledFish"[^>]*>Готовить/)
+  assert.deepEqual(s.panelHistory.map((v:{panel:string})=>v.panel),['inventory'])
+  s.goBack(true)
+  assert.deepEqual([s.panel,s.inventoryGroup,s.kitchenGroup,s.cookingFish],['inventory','shore','preserves','seaBass'])
+  assert.deepEqual(f,before)
+  await s.chooseFish('seaBass')
+  grill(s.html,'seaBass')
+  s.choose('cook','grilledFish')
+  assert.deepEqual([f.island,s.panel,s.saves,s.cookingFish,crossings],['village','cookery',0,'seaBass',[]])
+  assert.deepEqual(f,before,'starting the authored cookery still spends no ingredient')
+  finishRealGrill(f,s.cookingFish)
+  assert.deepEqual([f.island,f.day,f.coins,f.fish.perch,f.fish.seaBass,f.seaSalt,f.produce.carrot,f.dishes.grilledFish],
+    ['village',14,68,1,0,1,0,before.dishes.grilledFish+1])
+  const longer=structuredClone(before)
+  assert.ok(F.sail(longer,'home').ok);finishRealGrill(longer,'seaBass');assert.ok(F.sail(longer,'village').ok)
+  assert.deepEqual(f,longer,'the two extra crossings produce the exact same finished farm')
+
+})
+
+test('the unchanged Home, remote Grove, and unavailable Lavender paths preserve their exact species and restrictions',async()=>{
+  const p=earnedHarbourGrill()
+  p.act('transferBayGoods','deposit','village','seaSalt',2)
+  assert.equal(F.getCookAction(p.state,'grilledFish','perch').available,false)
+  const harbour=structuredClone(p.state), village=screen(harbour), villageCrossings=watchCrossings(village)
+  await village.chooseFish('perch')
+  assert.deepEqual([harbour.island,village.saves,villageCrossings],['home',1,['village']])
+  grill(village.html,'perch');assert.match(village.html,/data-value="grilledFish"[^>]*disabled/)
+  const home=screen(harbour), homeBefore=structuredClone(harbour)
+  await home.chooseFish('seaBass')
+  grill(home.html,'seaBass');assert.equal(home.saves,0);assert.deepEqual(harbour,homeBefore)
+
+  p.visit('grove')
+  const grove=screen(p.state), groveCrossings=watchCrossings(grove)
+  await grove.chooseFish('seaBass')
+  assert.deepEqual([p.state.island,grove.saves,groveCrossings],['home',1,['grove']])
+  grill(grove.html,'seaBass')
+  const after=structuredClone(p.state), invalid=screen(p.state), invalidCrossings=watchCrossings(invalid)
+  await invalid.chooseFish('lanternfish')
+  assert.deepEqual([invalid.panel,invalid.saves,invalidCrossings],['inventory',0,[]])
+  assert.deepEqual(p.state,after)
 })
