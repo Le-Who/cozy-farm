@@ -5494,8 +5494,10 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'unpack-egg-basket': {
-      const fromIncubator = panel === 'coop' && dialog.open && hasIncubatorBasketSource(farm)
-        && !!control.closest('.coop-packing .dialog-row.guidance-target')
+      const direct = !!control.closest('.coop-primary')
+      const liveBasket = panel === 'coop' && dialog.open && hasIncubatorBasketSource(farm)
+      if (direct && (!liveBasket || !dialogContent.contains(control))) break
+      const fromIncubator = liveBasket && (direct || !!control.closest('.coop-packing .dialog-row.guidance-target'))
       if (perform(() => unpackEggBasket(farm), false, true) && fromIncubator) {
         // Return to the now-usable incubator row without arming egg insertion.
         highlightControl(dialogContent.querySelector('.coop-primary [data-action="incubate-egg"]:not(:disabled)')?.closest<HTMLElement>('.dialog-row') ?? null)
@@ -5511,7 +5513,9 @@ app.addEventListener('click', async (event) => {
       if (!storedBasket || value !== storedBasket.token) break
       if (perform(() => withdrawWarehouseSupply(farm,storedBasket.request,storedBasket.supply),false,true)) {
         playBaySound('harbour.crate')
-        highlightControl(dialogContent.querySelector('.coop-packing [data-action="unpack-egg-basket"]:not(:disabled)')?.closest<HTMLElement>('.dialog-row') ?? null)
+        const unpack = dialogContent.querySelector('.coop-primary [data-action="unpack-egg-basket"]:not(:disabled)')
+          ?? dialogContent.querySelector('.coop-packing [data-action="unpack-egg-basket"]:not(:disabled)')
+        highlightControl(unpack?.closest<HTMLElement>('.dialog-row') ?? null)
       }
       break
     }
@@ -5985,7 +5989,12 @@ stackedMarketOrders.addEventListener('change', ({ matches }) => {
 })
 window.matchMedia('(max-width: 819px), (max-height: 559px)').addEventListener('change',()=>{if(dialog.open&&panel==='recipes')drawPanel()})
 desktopCoopFeed.addEventListener('change', () => {
-  if (panel === 'coop' && dialog.open && getCoopFeedComparison(farm)) drawPanel()
+  if (panel !== 'coop' || !dialog.open) return
+  const basket = hasIncubatorBasketSource(farm)
+  if (!basket && !getCoopFeedComparison(farm)) return
+  const focusedBasket = basket && document.activeElement?.matches('[data-action="incubator-basket"], [data-action="unpack-egg-basket"]')
+  drawPanel()
+  if (focusedBasket) highlightControl(dialogContent.querySelector('.coop-primary [data-action="incubator-basket"], .coop-primary [data-action="unpack-egg-basket"]')?.closest<HTMLElement>('.dialog-row') ?? null)
 })
 dialogContent.addEventListener('toggle',event=>{
   const details=event.target

@@ -11,7 +11,7 @@ import {chickenCarePlayer} from './fixtures/chicken-care-player.ts'
 const {renderCoopPanel}=Coop
 const button=(label:string,action:string,enabled=true,options:{value?:string|number}={})=>`<button data-action="${action}"${options.value!==undefined?` data-value="${options.value}"`:''}${!enabled?' disabled':''}>${label}</button>`
 const row=(image:string,name:string,detail:string,actions='')=>`<li data-row="${name}"><i>${image}</i><strong>${name}</strong><small>${detail}</small>${actions}</li>`
-const render=(f:F.FarmState)=>renderCoopPanel(f,{icon:id=>`<i>${id}</i>`,row,button,feedRow:()=>row('tool-feed','Корм для кур',f.chickensFed?'Сегодня накормлены':'Корм к утренней кладке',f.chickensFed?'':f.feed>0?button('Покормить','feed'):button('Купить корм','buy-feed',f.coins>=F.feedBagPrice))})
+const render=(f:F.FarmState,desktop=false)=>renderCoopPanel(f,{icon:id=>`<i>${id}</i>`,row,button,feedRow:()=>row('tool-feed','Корм для кур',f.chickensFed?'Сегодня накормлены':'Корм к утренней кладке',f.chickensFed?'':f.feed>0?button('Покормить','feed'):button('Купить корм','buy-feed',f.coins>=F.feedBagPrice))},desktop)
 const actions=(html:string)=>[...html.matchAll(/<button([^>]*data-action="([^"]+)"[^>]*)>/g)].map(m=>({action:m[2],value:m[1].match(/data-value="([^"]*)"/)?.[1]??'',disabled:m[1].includes('disabled')}))
 const p=chickenCarePlayer('orchard','hatchery');p.act('feedChickens');p.act('endDay');p.act('collectEggs');if(!p.state.feed)p.act('buyFeed');p.act('feedChickens');p.act('endDay');const earned=structuredClone(p.state)
 
@@ -318,4 +318,89 @@ test('collecting the first loose egg by keyboard reveals the incubator without s
    assert.equal(farm.eggs,expected.eggs-1);assert.equal(farm.hatchDay,before.day+F.incubationDays)
   }
  }
+})
+
+test('an earned first carried basket has one explicit Unpack in the desktop Incubator, not a scroll-first shortcut',()=>{
+ const p=firstHatcheryWithBasket(),f=p.state,saved=structuredClone(f)
+ const mobile=render(f,false),wide=render(f,true)
+ assert.match(mobile,/<li data-row="Инкубатор"[^\n]+data-action="incubator-basket"/)
+ assert.match(wide,/<li data-row="Инкубатор"[^\n]+data-action="unpack-egg-basket"[^>]*>Распаковать · \+3 яйца/)
+ assert.equal(actions(wide).filter(btn=>btn.action==='unpack-egg-basket').length,1)
+ assert.doesNotMatch(wide,/data-action="incubator-basket"|data-action="incubate-egg"/)
+ const keys=(html:string)=>actions(html).map(x=>[x.action,x.value,x.disabled]).sort()
+ assert.deepEqual(keys(wide),keys(mobile).filter(x=>x[0]!=='incubator-basket'),'all other original actions, stock and enabled states remain')
+ assert.match(wide,/<section class="coop-packing"/)
+ assert.deepEqual(f,saved,'opening, repeat and compact/desktop render are read-only')
+ assert.equal(render(F.restoreCurrentFarm(structuredClone(f))!,true),wide)
+ p.act('unpackEggBasket')
+ assert.deepEqual([p.state.eggs,p.state.eggBaskets,p.state.hatchDay,p.state.day,p.state.coins],[3,0,null,2,saved.coins])
+ assert.match(render(p.state,true),/data-action="incubate-egg"[^>]*>Положить яйцо/)
+ p.act('incubateEgg')
+ assert.deepEqual([p.state.eggs,p.state.eggBaskets,p.state.hatchDay,p.state.day,p.state.coins],[2,0,4,2,saved.coins])
+})
+
+test('earned local ordinary basket and real warehouse pickup converge on the Incubator without spending or substituting the rare egg',async()=>{
+ const {commissionPlayer}=await import('./fixtures/commission-player.ts')
+ const {withdrawWarehouseSupply}=await import('../src/warehouse-guidance.ts')
+ const commands=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+ const p=commissionPlayer(commands);p.visit('home');p.act('specializeFacility','hatchery')
+ const bed=p.state.beds.findIndex(b=>b.kind==='tilled');assert.ok(bed>=0)
+ p.act('selectSeed','wheat');p.act('workBed',bed,0)
+ const water=()=>{if(F.getBedAction(p.state,bed).kind==='water'){if(!p.state.water)p.act('refillWater');p.act('workBed',bed,0)}}
+ water();p.act('feedChickens');p.night();p.act('collectEggs');water();p.night();p.act('workBed',bed,0)
+ assert.deepEqual([p.actions,p.state.day,p.state.eggs,p.state.variants.egg?.rainbow],[117,16,7,1])
+ p.act('packEggBasket',{kind:'basket',placements:[{x:-.4,y:0},{x:0,y:0},{x:.4,y:0}],settled:true})
+ const ordinary=structuredClone(p.state)
+ p.act('sellMarketItem','eggs',p.state.eggs)
+ assert.deepEqual([p.actions,p.state.eggs,p.state.eggsReady,p.state.eggBaskets],[119,0,0,1])
+ const carried=structuredClone(p.state);p.act('transferBayGoods','deposit','home','eggBaskets',1)
+ assert.equal(p.actions,120)
+ const placed=structuredClone(p.state),f=structuredClone(p.state)
+ const offer=Coop.getIncubatorWarehouseBasket(f)!
+ assert.equal(offer.supply.quantity,1);assert.equal(F.getRareIncubatorEgg(f),undefined)
+ assert.match(render(f,true),/data-action="incubator-warehouse-basket"/)
+ const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
+ const part=(a:string,b:string)=>{const i=source.indexOf(a),j=source.indexOf(b,i+a.length);assert.ok(i>=0&&j>i,a);return source.slice(i,j)}
+ const code=stripTypeScriptTypes("switch(action){"
+ +part("    case 'incubator-warehouse-basket':","    case 'incubator-warehouse-egg':")
+ +part("    case 'unpack-egg-basket':","    case 'unpack-egg-crate':")
+ +part("    case 'incubate-egg':","    case 'incubate-rare-egg':")+"}")
+ const primaryUnpack='.coop-primary [data-action="unpack-egg-basket"]:not(:disabled)'
+ const packingUnpack='.coop-packing [data-action="unpack-egg-basket"]:not(:disabled)'
+ const incubate='.coop-primary [data-action="incubate-egg"]:not(:disabled)'
+ const primary=()=>render(f,true).split('<details class="coop-forecast"')[0]
+ const incRow={id:'Incubator'},packRow={id:'Packing'}
+ const control={closest:(selector:string)=>selector==='.coop-primary'?incRow:null}
+ const btn=(x:object)=>({closest:(selector:string)=>selector==='.dialog-row'?x:null})
+ let saves=0
+ const trace:object[]=[]
+ const apply=(action:string,value?:string,detached=false)=>runInNewContext(code,{
+  ...F,...Coop,withdrawWarehouseSupply,farm:f,action,value,control,panel:'coop',dialog:{open:true},
+  dialogContent:{contains:(node:object)=>node===control&&!detached,querySelector:(selector:string)=>{
+    const has=(fragment:string)=>fragment.includes('data-action="unpack-egg-basket"')
+    if(selector===primaryUnpack&&has(primary()))return btn(incRow)
+    if(selector===packingUnpack&&has(render(f,true).split('coop-packing')[1]??''))return btn(packRow)
+    if(selector===incubate&&primary().includes('data-action="incubate-egg"'))return btn(incRow)
+    return null
+  }},
+  highlightControl:(row:object)=>trace.push(row),playBaySound(){},
+  perform(job:()=>F.ActionResult){const result=job();if(result.ok)saves++;return result.ok},
+ })
+ apply('unpack-egg-basket',undefined,true)
+ apply('incubator-warehouse-basket',offer.token+'stale')
+ assert.deepEqual(f,placed);assert.equal(saves,0)
+ apply('incubator-warehouse-basket',offer.token)
+ assert.deepEqual(f,carried);assert.equal(saves,1);assert.deepEqual(trace,[incRow])
+ apply('unpack-egg-basket',undefined,true);assert.deepEqual(f,carried);assert.equal(saves,1)
+ apply('unpack-egg-basket')
+ const unpacked=structuredClone(carried);unpacked.eggs=3;unpacked.eggBaskets=0
+ assert.deepEqual(f,unpacked);assert.equal(saves,2);assert.deepEqual(trace,[incRow,incRow])
+ apply('unpack-egg-basket');assert.deepEqual(f,unpacked);assert.equal(saves,2)
+ apply('incubate-egg')
+ assert.deepEqual([f.eggs,f.hatchDay,f.day,f.coins,f.variants.egg?.rainbow,saves],[2,18,16,carried.coins,1,3])
+ assert.match(render(f,true),/data-action="visit-rest"[^>]*>К отдыху дома/)
+ const html=render(ordinary,true)
+ assert.doesNotMatch(html.split('<details class="coop-forecast"')[0],/data-action="unpack-egg-basket"/)
+ assert.match(html,/data-action="incubate-egg"/)
+ assert.match(html.split('coop-packing')[1],/data-action="unpack-egg-basket"/)
 })

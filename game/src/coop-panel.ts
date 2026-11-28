@@ -82,12 +82,15 @@ export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopCom
   const canIncubate=hatchery && farm.flockSize<maxFlockSize
   const fromNest=canIncubate && farm.hatchDay===null && farm.eggs===0 && farm.eggsReady>Number(farm.eggTrait!==null)
   const newcomer=getIncubatorNewHen(farm)
+  const basketSource=hasIncubatorBasketSource(farm), directBasket=desktopFeed && basketSource
+  const unpackBasket=getEggUnpackAction(farm,'basket')
   const nights=ruCount(incubationDays,'ночь','ночи','ночей')
   const collect=row('egg','Яйца',`В гнёздах: ${farm.eggsReady}/${morning.capacity}${capacity}`,button('Собрать','collect',farm.eggsReady>0,{context:'яйца'}))
   const incubation=canIncubate
     ?row('egg','Инкубатор',farm.hatchDay===null? `${storedEgg?'Обычное яйцо на складе':fromNest||storedBasket?'1 обычное яйцо':rare?'Из припасов':`1 обычное яйцо · в запасе ${farm.eggs}`} · ${nights}`:`До вылупления: ${ruCount(farm.hatchDay-farm.day,'ночь','ночи','ночей')}`,
       farm.hatchDay!==null?button('К отдыху дома','visit-rest',true,{secondary:true})
-        :hasIncubatorBasketSource(farm)?button('К корзине яиц','incubator-basket',true,{secondary:true})
+        :basketSource?directBasket?button(unpackBasket.label,'unpack-egg-basket',true,{secondary:true,context:'корзина яиц'})
+          :button('К корзине яиц','incubator-basket',true,{secondary:true})
         :storedEgg?button('Забрать яйцо со склада','incubator-warehouse-egg',true,{value:storedEgg.token})
         :storedBasket?button('Забрать корзину со склада','incubator-warehouse-basket',true,{value:storedBasket.token})
         :rare?button(`Положить ${rare.name.toLowerCase()}`,'incubate-rare-egg',true,{value:rare.token})
@@ -98,7 +101,7 @@ export function renderCoopPanel(farm:FarmState,{icon,row,button,feedRow}:CoopCom
   const packing=(farm.coopSpecialization==='packing'?row('ui-egg-crate',`Ящики яиц · ${farm.eggCrates}`,`Нужно ${eggsPerCrate} · в запасе ${farm.eggs}`,
     button('Упаковать','pack-egg-crate',farm.eggs>=eggsPerCrate,{context:'ящик яиц'})+button(`Распаковать · +${eggsPerCrate}`,'unpack-egg-crate',getEggUnpackAction(farm,'crate').available,{secondary:true})):'')
     +(farm.buildingLevels.coop >= 2 || farm.eggBaskets > 0 ? row('ui-egg-basket',`Корзины яиц · ${farm.eggBaskets}`,`Нужно ${eggsPerBasket} · в запасе ${farm.eggs}`,
-      button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket,{context:'корзина яиц'})+button(`Распаковать · +${eggsPerBasket}`,'unpack-egg-basket',getEggUnpackAction(farm,'basket').available,{secondary:true})):'')
+      button('Упаковать', 'pack-egg-basket', farm.buildingLevels.coop >= 2 && farm.eggs >= eggsPerBasket,{context:'корзина яиц'})+(directBasket?'':button(`Распаковать · +${eggsPerBasket}`,'unpack-egg-basket',unpackBasket.available,{secondary:true}))):'')
   return `<section class="coop-panel" aria-label="Курятник: дела и забота">
     <ul class="dialog-list coop-primary" aria-label="Сегодня в курятнике">${compare?renderCoopFeedComparison(farm,icon,compare):feedRow(mixNow?mixChoice:undefined)}${eggJourney}</ul>
     <details class="coop-forecast"><summary>Кладка после отдыха</summary>${renderCoopMorning(farm)}</details>
