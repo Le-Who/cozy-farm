@@ -10,7 +10,7 @@ import { MarketSaleBrowseMemory } from '../src/market-sale-browse.ts'
 import { searchMarketSaleView } from '../src/market-sale-search.ts'
 import { recipeRepeatReturnFixture } from './fixtures/recipe-repeat-return.ts'
 const s=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')
-const src=stripTypeScriptTypes(s.slice(s.indexOf('function marketCards()'),s.indexOf('function treeSelector()'))+';marketCards()')
+const src=stripTypeScriptTypes(s.slice(s.indexOf('function marketCards('),s.indexOf('function treeSelector()'))+';marketCards()')
 function sellView(farm:ReturnType<typeof createFarm>, group='all', query='', recipe=false) {
   return runInNewContext(src,{farm:{...farm,culinary:{...farm.culinary,recipes:recipe?[{}]:[]}},getSale,marketTab:'sell',marketSellGroup:group,marketSaleQuery:query,marketSaleFamily:undefined,
     icon:()=>'',quantity:String,numberFormat:new Intl.NumberFormat('ru'),panelTabs:(action:string)=>'<div data-test="'+action+'"></div>',button:(title:string,action:string,on:boolean,o?:{value?:string})=>'<button data-action="'+action+'" data-value="'+(o?.value??'')+'"'+(on?'':' disabled')+'>'+title+'</button>',
@@ -41,7 +41,7 @@ test('the unlocked shop and sale groups precede a long real stock grid',()=>{
   const render=stripTypeScriptTypes(part('function panelTabs(','function goods(')+
     part('function marketSaleSearchView()','function marketSaleSearchStatus()')+
     part('function marketInlineCard(','function inlineSaleContext(')+
-    part('function marketCards()','function treeSelector()')+';marketCards()')
+    part('function marketCards(','function treeSelector()')+';marketCards()')
   const {farm}=recipeRepeatReturnFixture('ready')
   for(const crop of cropIds) {
     farm.produce[crop]=2

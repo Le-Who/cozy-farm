@@ -71,3 +71,35 @@ test('earned mature wheat purchase and ordinary harvest exchange remain separate
  assert.ok(option?.available);assert.ok(saveCropSeeds(seed,option.token).ok)
  assert.deepEqual(seed,{...original,seeds:{...original.seeds,wheat:3},produce:{...original.produce,wheat:1},workToday:original.workToday+1})
 })
+
+test('the unlocked Shop can share desktop category height without changing its label, action, order or hit area',()=>{
+ const b=media('@media(min-width:1100px) and (min-height:700px){')
+ assert.match(b,/\[data-market-seed-browser\]:has\(>\.market-seed-tools\)\s*\{[^}]*grid-template-columns:minmax\(0,1fr\) auto;grid-template-rows:auto auto minmax\(0,1fr\)/)
+ assert.match(b,/grid-template-areas:"market market" "categories shop" "seeds seeds"/)
+ assert.match(b,/\.market-seed-tools\s*\{[^}]*grid-area:shop;align-self:center;padding:0 0 0 12px;border-top:0;border-left:1px/)
+ assert.match(b,/\.market-seed-tools \.dialog-button\s*\{white-space:nowrap\}/)
+ for(const k of ['.market-controls',' .market-category-icons',' .market-seed-grid']) assert.ok(b.includes(k))
+ assert.doesNotMatch(b,/display:none|visibility:hidden|overflow:hidden|pointer-events:none|\border\s*:/)
+ assert.match(css,/\.market-seed-tools \.dialog-button\s*\{min-height:44px/)
+ assert.match(css,/\.market-seed-copy \.market-seed-select\s*\{[^}]*min-height:44px/)
+ assert.match(css,/\.market-seed-packs :is\(\.market-seed-step,input\)\s*\{[^}]*min-height:44px/)
+
+ const p=earned416Mixed(false)
+ p.night()
+ const f=p.state,before=structuredClone(f)
+ assert.deepEqual([p.actions,f.day,f.island,f.coins, f.village.built],[544,194,'home',56,true])
+ const html=(state:F.FarmState)=>runInNewContext(render,{
+  ...F,farm:state,marketCategory:'seeds',marketTab:'buy',ruPlural,
+  numberFormat:new Intl.NumberFormat('ru-RU'),icon:(id:string)=>`<img alt="" data-icon="${id}">`,
+ }) as string
+ const page=html(f)
+ const buttons=[...page.matchAll(/data-action="(market-tab|market-category|open-panel)"\s+data-value="([^"]+)"/g)]
+ assert.deepEqual(buttons.map(m=>m[2]),['buy','sell','orders','projects','seeds','trees','care','buildings','bay-shop'])
+ const tabs=page.indexOf('class="market-controls"'),categories=page.indexOf('class="market-category-icons"')
+ const tools=page.indexOf('class="market-seed-tools"'),grid=page.indexOf('class="market-seed-grid"')
+ assert.ok(tabs>=0 && tabs<categories && categories<tools && tools<grid)
+ assert.match(page,/data-action="open-panel"\s+data-value="bay-shop"[^>]*>В лавку в гавань/)
+ assert.equal((page.match(/data-action="buy-seeds"/g)??[]).length,10)
+ assert.doesNotMatch(html(F.createFarm()),/market-seed-tools|data-value="bay-shop"/)
+ assert.deepEqual(f,before)
+})

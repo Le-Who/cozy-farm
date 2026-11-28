@@ -1,3 +1,4 @@
+import { MarketSeedPacks } from './market-seed-packs.ts'
 import type { MarketSaleGroup } from './market-sale-search.ts'
 
 type GridPosition = { key: string; scroll: number }
@@ -11,6 +12,7 @@ export class MarketSaleBrowseMemory {
   private closed?: SellView & { scroll: number }
   private pausedTab?: GridPosition
   private pausedBuySeeds?: GridPosition
+  readonly seedPacks = new MarketSeedPacks()
   private search?: { original?: GridPosition; refined: boolean }
 
   rememberClosed(view: SellView, scroll: number) {
@@ -42,11 +44,11 @@ export class MarketSaleBrowseMemory {
 
   takeBuySeeds(key: string | undefined): number | undefined {
     const previous = this.pausedBuySeeds
-    this.resetBuySeeds()
+    this.pausedBuySeeds = undefined
     return previous && previous.key === key ? previous.scroll : undefined
   }
 
-  resetBuySeeds() { this.pausedBuySeeds = undefined }
+  resetBuySeeds() { this.pausedBuySeeds = undefined; this.seedPacks.reset() }
 
   beginSearch(original?: GridPosition) { this.search ??= { original, refined: false } }
   refineSearch() { if (this.search) this.search.refined = true }

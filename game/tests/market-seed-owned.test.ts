@@ -12,7 +12,7 @@ const helpers = source.slice(source.indexOf('function button('), source.indexOf(
 
 function render(farm: ReturnType<typeof F.createFarm>) {
   // Execute the shipped card and button/quantity helpers, as the existing Buy tests do.
-  const context = { farm, marketCategory: 'seeds', tabs: '', categories: '', stall: '',
+  const context = { farm, marketCategory: 'seeds', tabs: '', categories: '', stall: '', seedPacks: undefined,
     cropIds: F.cropIds, cropDefinitions: F.cropDefinitions, seedPackSize: F.seedPackSize,
     ruPlural, numberFormat: new Intl.NumberFormat('ru-RU'), icon: (id: string) => `<img alt="" src="${id}">` }
   const html = runInNewContext(stripTypeScriptTypes(`${helpers}\nfunction render(){${branch}}\nrender()`), context) as string

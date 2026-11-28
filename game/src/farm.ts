@@ -1097,13 +1097,24 @@ function scheduleIncubation(farm: FarmState): ActionResult {
   return { ok: true, message: `Яйцо в инкубаторе. Новая курочка появится в день ${farm.hatchDay}.` };
 }
 
-export function buySeeds(farm: FarmState, crop: CropId): ActionResult {
-  if (!isCropId(crop)) return failure('Выберите пакет семян.');
-  const definition = cropDefinitions[crop];
-  if (farm.coins < definition.seedPrice) return failure('Не хватает монет на семена.');
-  farm.coins -= definition.seedPrice;
-  farm.seeds[crop] += seedPackSize;
-  return { ok: true, message: `Куплены семена: ${definition.name.toLowerCase()} × ${seedPackSize}.` };
+export function seedPackQuote(farm: Pick<FarmState, 'coins' | 'seeds'>, crop: unknown, packs = 1) {
+  if (!isCropId(crop) || !isQuantity(farm.coins) || !isQuantity(farm.seeds[crop])) return;
+  const { seedPrice: unitPrice } = cropDefinitions[crop], owned = farm.seeds[crop];
+  const maximum = Math.min(Math.floor(farm.coins / unitPrice), Math.floor((Number.MAX_SAFE_INTEGER - owned) / seedPackSize));
+  const available = isQuantity(packs) && packs > 0 && packs <= maximum;
+  return { crop, packs, unitPrice, owned, maximum, available, total: available ? packs * unitPrice : 0,
+    seeds: available ? packs * seedPackSize : 0 };
+}
+
+export function buySeeds(farm: FarmState, crop: CropId, packs = 1): ActionResult {
+  if (!isCropId(crop) || !isQuantity(packs) || packs < 1) return failure('Выберите пакет семян.');
+  const quote = seedPackQuote(farm, crop, packs);
+  if (!quote?.available)
+    return failure(quote && packs > Math.floor(farm.coins / quote.unitPrice)
+      ? 'Не хватает монет на семена.' : 'Для новых семян пока нет места в запасах.');
+  farm.coins -= quote.total;
+  farm.seeds[crop] += quote.seeds;
+  return { ok: true, message: `Куплены семена: ${cropDefinitions[crop].name.toLowerCase()} × ${quote.seeds}.` };
 }
 
 export function buyFeed(farm: FarmState): ActionResult {

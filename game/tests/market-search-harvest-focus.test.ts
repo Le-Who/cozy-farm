@@ -22,7 +22,7 @@ const script=stripTypeScriptTypes([
   part(island,'    setViewMode(', '    guideHomeVisitorToBed(').trim().replace(/^setViewMode/,'function setViewMode').replace(/,$/,''),
   part(main,"app.addEventListener('input', event => {", "app.addEventListener('keydown', event => {"),
   'function drawPanel(){'+part(main,'  dialogEmblem.src = iconUrl(panel', '  switch (panel) {').split('\n').slice(1).join('\n')+
-    "switch(panel){"+part(main,"    case 'market':\n      dialogContent.innerHTML = marketCards()", "    case 'berry-renewal':")+"}"+
+    "switch(panel){"+part(main,"    case 'market':\n      dialogContent.innerHTML", "    case 'berry-renewal':")+"}"+
     part(main,'  applyIngredientFinishes(dialogContent)', '\n}\n\n// A map shortcut')+'}',
 ].join('\n'))
 

@@ -29,7 +29,7 @@ test('ordinary-shortage warning does not silently include rare stock',()=>{
 test('clarity is confined to Orders and keeps the original single delivery action',()=>{
  const orders=main.slice(main.indexOf('function marketOrders()'),main.indexOf('\nfunction deliveryItems'))
  assert.equal((orders.match(/'deliver-order'/g)||[]).length,1);assert.match(orders,/order.status === 'ready'/);assert.match(orders,/<small>Награда<\/small>/)
- const cards=main.slice(main.indexOf('function marketCards()'),main.indexOf('function marketCards()')+2400)
+ const cards=main.slice(main.indexOf('function marketCards('),main.indexOf('function marketCards(')+2400)
  assert.match(cards,/if \(marketTab === 'orders'\) return `<section data-market-orders-browser>/)
  assert.doesNotMatch(orders+helper,/saveFarm\(|perform\(|deliverMarketOrder\(|localStorage/)
 })

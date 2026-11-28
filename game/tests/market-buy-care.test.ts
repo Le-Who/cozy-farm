@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs'
 import {stripTypeScriptTypes} from 'node:module'
 import {runInNewContext} from 'node:vm'
 import * as F from '../src/farm.ts'
-const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),start=source.indexOf('function marketCareProducts('),branch=source.slice(start,source.indexOf('function marketCards()',start))
+const source=readFileSync(new URL('../src/main.ts',import.meta.url),'utf8'),start=source.indexOf('function marketCareProducts('),branch=source.slice(start,source.indexOf('function marketCards(',start))
 function earned(){const f=F.createFarm();for(const [name,args]of [['workBed',[2]],['workBed',[3]],['pickFruit',[0]],['sellProduce',[]],['upgradeBuilding',['well']]] as const)assert.ok((F[name] as Function)(f,...args).ok);return f}
 function render(farm:ReturnType<typeof F.createFarm>){
  const actions:{label:string;action:string;enabled:boolean;options:any}[]=[]

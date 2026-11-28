@@ -320,6 +320,7 @@ import { specializationStages } from './lavender-layout'
 import { isLunarTide, shellDefinitions } from './tide'
 import { shoalDefinitions, shoalFindIds, getShoalFindAt, hasShoal } from './shoal'
 import './market-sale-grid.css'
+import type { MarketSeedPacks } from './market-seed-packs'
 import './market-buy-seeds.css'
 import './market-buy-trees.css'
 import './market-buy-care.css'
@@ -1452,7 +1453,7 @@ function marketCareProducts(tabs: string, categories: string, stall: string) {
   </div></section>`
 }
 
-function marketCards() {
+function marketCards(seedPacks?: MarketSeedPacks) {
   const balance = `<p class="coin-balance" aria-label="${quantity(farm.coins, 'монета')}">${icon('coin')} ${numberFormat.format(farm.coins)}</p>`
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
   const stall = farm.village.built ? button(farm.island === 'village' ? 'Своя лавка' : 'В лавку в гавань', 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
@@ -1486,9 +1487,11 @@ function marketCards() {
   const categories=`<nav class="market-category-icons${marketCategory==='buildings'?' market-building-categories':''}" aria-label="Что купить">${([{id:'seeds',image:'ui-seed-carrot',name:'Семена'},{id:'trees',image:'ui-tree-apple',name:'Деревья'},{id:'care',image:'tool-feed',name:'Уход'},{id:'buildings',image:'upgrade-farmhouse-card',name:'Постройки'}] as const).map(category=>`<button type="button" data-action="market-category" data-value="${category.id}" aria-pressed="${marketCategory===category.id}" aria-label="${category.name}" title="${category.name}">${icon(category.image)}<span>${category.name}</span></button>`).join('')}</nav>`
   if(marketCategory==='seeds')return `<section data-market-seed-browser><div class="market-controls">${tabs}</div>${categories}${stall?`<div class="market-seed-tools">${stall}</div>`:''}<div class="market-seed-grid">${cropIds.map(crop=>{
     const definition=cropDefinitions[crop]
-    const stock=`В запасе: ${numberFormat.format(farm.seeds[crop])} ${ruPlural(farm.seeds[crop],['семя','семени','семян'])}`, affordable=farm.coins>=definition.seedPrice
+    const stock=`В запасе: ${numberFormat.format(farm.seeds[crop])} ${ruPlural(farm.seeds[crop],['семя','семени','семян'])}`, affordable=seedPacks?.canBuyOne(farm,crop) ?? farm.coins>=definition.seedPrice
     const buy=button('Купить пакет','buy-seeds',affordable,{crop,context:`${definition.name}, ${seedPackSize} семени за ${quantity(definition.seedPrice,'монета')}`})
-    return `<section data-seed-pack="${crop}"><div class="market-seed-art">${icon('ui-seed-'+crop)}</div><div class="market-seed-copy"><h2>${definition.name}</h2><p>В пакете: ${seedPackSize} ${ruPlural(seedPackSize,['семя','семени','семян'])}</p><p class="market-seed-stock">${stock}</p><p class="market-seed-price" aria-label="${quantity(definition.seedPrice,'монета')} за пакет">${definition.seedPrice} ${icon('coin')} за пакет</p></div>${affordable?buy:`<div class="market-seed-limit" role="group" tabindex="-1" aria-label="${definition.name}. ${stock}">${buy}</div>`}</section>`
+    const heading=seedPacks?.renderHeading(farm,crop) ?? `<h2>${definition.name}</h2>`
+    const editor=seedPacks?.renderEditor(farm,crop,icon)
+    return `<section data-seed-pack="${crop}"><div class="market-seed-art">${icon('ui-seed-'+crop)}</div><div class="market-seed-copy">${heading}<p>В пакете: ${seedPackSize} ${ruPlural(seedPackSize,['семя','семени','семян'])}</p><p class="market-seed-stock"${seedPacks?' tabindex="-1"':''}>${stock}</p><p class="market-seed-price" aria-label="${quantity(definition.seedPrice,'монета')} за пакет">${definition.seedPrice} ${icon('coin')} за пакет</p></div>${editor||(affordable?buy:`<div class="market-seed-limit" role="group" tabindex="-1" aria-label="${definition.name}. ${stock}">${buy}</div>`)}</section>`
   }).join('')}</div></section>`
   if(marketCategory==='trees')return `<section data-market-tree-browser><div class="market-controls">${tabs}</div>${categories}${stall?`<div class="market-tree-tools">${stall}</div>`:''}${!farm.trees.home.includes(null)?`<div class="market-tree-space"><p class="dialog-intro">Родной сад заполнен. Бесплатно уберите дерево на хранение, чтобы освободить место для другого.</p>${nav(button('Освободить место','market-orchard-space',true,{secondary:true}))}</div>`:''}<div class="market-tree-grid">${treeIds.map(tree=>{
     const definition=treeDefinitions[tree]
@@ -2532,7 +2535,8 @@ function drawPanel() {
       break
     }
     case 'market':
-      dialogContent.innerHTML = marketCards()
+      dialogContent.innerHTML = marketTab === 'buy' && marketCategory === 'seeds' && farm.island === 'home'
+        ? marketCards(marketSaleBrowse.seedPacks) : marketCards()
       if (marketTab === 'orders') placeReadyMarketOrder(dialogContent, stackedMarketOrders.matches)
       break
     case 'berry-renewal':
@@ -5197,6 +5201,43 @@ app.addEventListener('click', async (event) => {
     case 'sale-context-close': if(currentSaleControl(control))closeContextualSale(); break
     case 'confirm-sale': if(currentSaleControl(control))confirmExactSale(event.detail===0); break
     case 'sale-again': if(currentSaleControl(control)&&selectedSale)beginExactSale(selectedSale); break
+    case 'market-seed-select': {
+      const grid = currentMarketSeedGrid(control)
+      if (!grid || !value || !marketSaleBrowse.seedPacks.choose(farm,value)) break
+      const scroll = grid.scrollTop
+      drawPanel()
+      focusMarketSeedChoice(value,scroll,marketSaleBrowse.seedPacks.crop===value?'[data-market-seed-count]':'.market-seed-select')
+      break
+    }
+    case 'market-seed-step': {
+      const editor = currentMarketSeedEditor(control)
+      if (!editor || value !== 'less' && value !== 'more') break
+      const packs = marketSaleBrowse.seedPacks
+      packs.step(farm,value==='less'?-1:1)
+      const input = editor.querySelector<HTMLInputElement>('[data-market-seed-count]')!
+      input.value = packs.view(farm)?.text ?? ''
+      packs.paint(farm,editor)
+      if(control.disabled)input.focus({preventScroll:true})
+      break
+    }
+    case 'market-buy-seed-packs': {
+      const editor = currentMarketSeedEditor(control)
+      if (!editor) break
+      const packs = marketSaleBrowse.seedPacks
+      const quote = packs.confirm(farm,crop,control.dataset.quote)
+      if (!quote) { packs.paint(farm,editor); break }
+      const scroll = currentMarketSeedGrid(control)!.scrollTop
+      if (perform(() => {
+        const result = buySeeds(farm,quote.crop,quote.packs)
+        // Leave the same editor mounted but unarmed, so repeat input cannot buy again.
+        if (result.ok) packs.edit('')
+        return result
+      })) {
+        focusMarketSeedChoice(quote.crop,scroll,'.market-seed-stock')
+        playBaySound('trade.pay')
+      }
+      break
+    }
     case 'buy-feed': {
       const compare=panel==='coop' && control.closest('[data-coop-feed-compare]')
       if (compare && (!dialog.open || !dialogContent.contains(control) || !getCoopFeedComparison(farm))) break
@@ -5833,6 +5874,41 @@ function closeCurrentPanel() {
   else closeDialog()
 }
 closeButton.addEventListener('click', closeCurrentPanel)
+function currentMarketSeedGrid(control?: HTMLElement) {
+  if (panel !== 'market' || marketTab !== 'buy' || marketCategory !== 'seeds' || farm.island !== 'home' || !dialog.open || island.isCrossing()) return
+  const grid=dialogContent.querySelector<HTMLElement>('.market-seed-grid')
+  if (grid && (!control || grid.contains(control))) return grid
+}
+function currentMarketSeedEditor(control: HTMLElement) {
+  const grid=currentMarketSeedGrid(control), editor=control.closest<HTMLElement>('.market-seed-packs')
+  if (grid && editor?.closest<HTMLElement>('[data-seed-pack]')?.dataset.seedPack === marketSaleBrowse.seedPacks.crop) return editor
+}
+function focusMarketSeedChoice(crop: string, scroll: number, selector: string) {
+  const grid=currentMarketSeedGrid()
+  if (!grid) return
+  grid.scrollTop=scroll
+  const target=grid.querySelector<HTMLElement>(`[data-seed-pack="${CSS.escape(crop)}"] ${selector}`)
+    ?? grid.querySelector<HTMLElement>(`[data-seed-pack="${CSS.escape(crop)}"] .market-seed-stock`)
+  if (!target) return
+  const context=target.closest('.market-seed-packs') ?? target
+  const bounds=context.getBoundingClientRect(), clip=grid.getBoundingClientRect()
+  if (bounds.bottom>clip.bottom)grid.scrollTop+=bounds.bottom-clip.bottom
+  else if(bounds.top<clip.top)grid.scrollTop+=bounds.top-clip.top
+  target.focus({preventScroll:true})
+  if (target instanceof HTMLInputElement) target.select()
+}
+dialog.addEventListener('keydown', event => {
+  if (event.key!=='Escape' || event.defaultPrevented) return
+  const grid=currentMarketSeedGrid(), crop=marketSaleBrowse.seedPacks.crop
+  if (!grid || !crop) return
+  event.preventDefault()
+  if (event.repeat) return
+  const scroll=grid.scrollTop
+  marketSaleBrowse.seedPacks.reset()
+  drawPanel()
+  focusMarketSeedChoice(crop,scroll,'.market-seed-select')
+})
+
 function returnFromPanel(event: Event) {
   if (event.defaultPrevented) return
   if(closeContextualSale()){event.preventDefault();return}
@@ -5982,6 +6058,10 @@ app.addEventListener('compositionend', event => {
     setMarketSaleQuery(event.target.value)
 })
 app.addEventListener('input', event => {
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-seed-count]')) {
+    const editor=currentMarketSeedEditor(event.target)
+    if (editor) { marketSaleBrowse.seedPacks.edit(event.target.value); marketSaleBrowse.seedPacks.paint(farm,editor) }
+  }
   if(event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')){const context=inlineSaleContext(event.target);if(context&&marketInlineSales.edit(context.item.key,context.token,event.target.value,context.item.count,context.item.price))updateInlineSaleCard(context.card)}
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-recipe-query]')) updateRecipeBookSearch(event.target.value)
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]') && panel==='market' && marketTab==='sell'

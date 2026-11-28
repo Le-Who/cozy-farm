@@ -142,7 +142,7 @@ test('an explicit sale on a cross-shelf hit uses the exact rare product once; se
 })
 
 test('the earned Sell search keeps a native search field and one named game clear button, without a second cancel adornment',()=>{
- const render=stripTypeScriptTypes(section('function marketCards()','function treeSelector()')+'\nmarketCards()')
+ const render=stripTypeScriptTypes(section('function marketCards(','function treeSelector()')+'\nmarketCards()')
  const css=readFileSync(new URL('../src/market-sale-grid.css',import.meta.url),'utf8')
  for(const marketSaleQuery of ['','радужное яйцо']){
   const html:string=runInNewContext(render,{farm:earned,marketTab:'sell',marketSellGroup:'harvest',marketSaleFamily:'fruit:pear',
