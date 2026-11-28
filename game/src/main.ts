@@ -10,7 +10,7 @@ import { MarketSaleBrowseMemory } from './market-sale-browse'
 import type { MarketFeedBags } from './market-feed-bags'
 import { marketSaleFamilies } from './market-sale-family'
 import { SalePresentation } from './sale-presentation'
-import { searchMarketSales, searchMarketSaleView } from './market-sale-search'
+import { namedMarketSaleQuantity, searchMarketSales, searchMarketSaleView } from './market-sale-search'
 import './market-sale-search.css'
 import { recipePlanningIngredient } from './recipe-planning'
 import {seedSavingQuote,saveCropSeeds} from './seed-saving'
@@ -399,6 +399,7 @@ let marketTab: 'buy' | 'sell' | 'orders' | 'projects' = 'buy'
 let marketCategory:'seeds'|'trees'|'care'|'buildings'='seeds'
 let marketSellGroup:'all'|'harvest'|'kitchen'|'shore'='all'
 let marketSaleQuery = ''
+let marketSaleSearchEnter: HTMLInputElement | undefined
 let marketSaleFamily: string | undefined
 const marketSaleBrowse = new MarketSaleBrowseMemory()
 let selectedSale: (SaleTarget & { name: string; image?: string; trait?: Trait }) | undefined
@@ -6176,6 +6177,9 @@ app.addEventListener('focusin',event=>{
   if(panel==='market'&&marketTab==='sell'&&event.target instanceof HTMLInputElement&&event.target.matches('[data-inline-quantity]')&&matchMedia('(max-height:400px) and (orientation:landscape)').matches)
     event.target.closest<HTMLElement>('.market-inline-card')?.scrollIntoView({block:'nearest',inline:'nearest'})
 })
+app.addEventListener('compositionstart', event => {
+  if (event.target === marketSaleSearchEnter) marketSaleSearchEnter = undefined
+})
 app.addEventListener('compositionend', event => {
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]') && panel==='market' && marketTab==='sell')
     setMarketSaleQuery(event.target.value)
@@ -6215,6 +6219,38 @@ app.addEventListener('keydown', event => {
   }
 })
 app.addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.target instanceof HTMLInputElement||event.target instanceof HTMLTextAreaElement)&&event.target.dataset.recipeName){event.preventDefault();event.target.blur()}})
+
+// A released Search Enter may move focus, but never arms the subsequent Sell key.
+app.addEventListener('keyup', event => {
+  if (event.key !== 'Enter') return
+  const search = marketSaleSearchEnter
+  marketSaleSearchEnter = undefined
+  if (!search || event.target !== search || document.activeElement !== search || event.defaultPrevented ||
+    event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
+    panel !== 'market' || marketTab !== 'sell' || !dialog.open || island.isCrossing() ||
+    !dialogContent.contains(search) || search.value !== marketSaleQuery) return
+  const item = namedMarketSaleQuantity(marketSaleSearchView().items, search.value)
+  if (!item) return
+  const grid = dialogContent.querySelector<HTMLElement>('#market-sale-results')
+  const card = grid?.querySelector<HTMLElement>(`[data-inline-key="${CSS.escape(item.key)}"]`)
+  const amount = card?.querySelector<HTMLInputElement>('[data-inline-quantity]:not(:disabled)')
+  if (!grid || !amount || !inlineSaleContext(amount)) return
+  event.preventDefault()
+  amount.focus({preventScroll:true})
+  // A card can be taller than the results pane. Reveal the active controls, not its art.
+  const footer = amount.closest<HTMLElement>('.market-inline-footer') ?? amount
+  const viewport = grid.getBoundingClientRect(), row = footer.getBoundingClientRect()
+  if (row.bottom > viewport.bottom - 4) grid.scrollTop += Math.ceil(row.bottom - viewport.bottom + 4)
+  else if (row.top < viewport.top + 4) grid.scrollTop -= Math.ceil(viewport.top - row.top + 4)
+})
+app.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.matches('[data-market-sale-query]')) {
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229 ||
+      event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) marketSaleSearchEnter = undefined
+    else if (!event.repeat) marketSaleSearchEnter = event.target
+    return
+  }
+})
 
 window.addEventListener('keydown', (event) => {
   if (island.isCrossing()) { event.preventDefault(); return }

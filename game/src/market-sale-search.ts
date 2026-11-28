@@ -41,3 +41,11 @@ export function searchMarketSaleView<T extends SaleListing>(stock: readonly T[],
   }
   return { ...current, wholeSearch: false }
 }
+
+/** Name the exact visible SKU only; fuzzy/plural matches never choose an editor. */
+export function namedMarketSaleQuantity<T extends SaleListing>(visible: readonly T[], query: string): T | undefined {
+  const name = searchable(query)
+  if (!name) return
+  const exact = visible.filter(item => item.count > 0 && searchable(item.name) === name)
+  return exact.length === 1 && exact[0].count > 1 ? exact[0] : undefined
+}
