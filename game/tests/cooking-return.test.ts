@@ -350,3 +350,84 @@ for(const shore of ['home','village'] as const) for(const exit of ['back','cance
     }
     console.log(JSON.stringify({day:15,earned:p.actions,from:shore==='home'?'home kitchen custom preserves':'Bea cottage ordinary kitchen custom preserves',finn:'finn:1 basket fetching',exit,returnedTo:'same composer, kitchen and, where applicable, original cottage',recipeSaves,travel:false}))
 })
+
+for (const shore of ['home','village'] as const) test(`earned ${shore==='home'?'Home':'Bea cottage'} Kitchen manual repeat: unpaid X/Escape preserve the exact Book return, unlike a paid receipt`, async () => {
+  const {commissionPlayer}=await import('./fixtures/commission-player.ts')
+  const {RecipeBookNavigation}=await import('../src/recipe-book-view.ts')
+  const opening=JSON.parse(readFileSync(new URL('./fixtures/home-progress-actions.json',import.meta.url),'utf8'))
+  const p=commissionPlayer(opening)
+  p.fruit('apple',2)
+  const recipe=p.act('completeSignature',{base:'preserves',ingredients:[{id:'apple',quantity:2}]},{family:'preserves',processing:'silky',fruit:[],steps:['mix','pour']}).recipeId
+  p.fruit('apple',2);p.visit('village');p.visit(shore)
+  assert.deepEqual([p.actions,p.state.day,p.state.coins,p.state.fruit.apple,recipe],[shore==='home'?116:115,16,68,3,'s1'])
+  const plan=farmApi.getNeighborPlans(p.state).find(plan=>plan.resident==='finn')!
+  assert.deepEqual([plan.id,plan.phase,plan.arrangement],['finn:1','preparing','basket'])
+  const cut=(source:string,a:string,b:string)=>{
+    const i=source.indexOf(a),j=source.indexOf(b,i+a.length);assert.ok(i>=0&&j>i,a);return source.slice(i,j)
+  }
+  const open= cut(main,"  if(remember&&next!==panel)","  if (remember && next === 'village-meal'")
+  const book= cut(main,"  if (next === 'recipes') {","  if (next !== panel) { transplantSelection.reset()")
+  const action=js(cut(main,'function focusKey(','let harbourScene:')
+    +cut(main,'function openRecipeBook(','function updateRecipeBookSearch(')
+    +`function openPanel(next,remember=true,destinationIsland=farm.island,cue,recipeTarget){ ${open}${book}panel=next;panelRenderVersion++;dialogContent.scrollTop=0 }
+    function activate(action,value){switch(action){`
+    +cut(main,"    case 'open-panel':","    case 'harbour-view':").split('\n')[0]+'\n'
+    +cut(main,"    case 'select-recipe':","    case 'recipe-book-return':")
+    +cut(main,"    case 'manual-signature':","    case 'batch-signature':")+"}}")
+  const cookery=readFileSync(new URL('../src/cookery.ts',import.meta.url),'utf8')
+  const exitX=cut(cookery,'  const cancel =','  function makeRenderer(')
+  const escape=cut(cookery,"  view.addEventListener('keydown'","  function updateSugar()")
+  for (const exit of ['back','cancel','escape','paid'] as const) {
+    const {state:x}=setup(shore,true),farm=structuredClone(p.state)
+    const fields='selectedWarehouseRequest selectedExpeditionPort selectedExpeditionOffer selectedWarehouse inventoryGroup boatIsland marketSaleFamily marketSaleQuery marketTab marketCategory marketSellGroup bagTab archiveGroup treeSlot previewSeed specializationBuilding previewSpecialization irrigationMode workshopRecipe villageSlot seedPickerBed expandedRepeatId communityOrderId requestedFood kitchenTart kitchenPreserves kitchenGroup kitchenDish honeyKitchenDish freightPlanOpen journeyDetailsOpen journalDetailsOpen selectedMarketOrder'
+    Object.assign(x,Object.fromEntries(fields.split(' ').map(key=>[key,undefined])))
+    const recipeBook=new RecipeBookNavigation()
+    const restores:string[]=[]
+    recipeBook.capture=()=>{}
+    recipeBook.restore=()=>{restores.push(recipeBook.view.focus??'')}
+    const kitchen={panel:'kitchen'},cottage={panel:'village'}
+    let writes=0
+    Object.assign(x,{...farmApi,farm,recipeBook,panel:'kitchen',villageSlot:0,signatureSlot:0,panelHistory:[],panelRenderVersion:0,
+      communityRequest:{kind:'neighbor',resident:'finn',planId:plan.id},communityResident:'finn',
+      panelTitles:{recipes:'Мои рецепты'},drawPanel(){},document:{activeElement:null},HTMLButtonElement:class {},
+      dialog:{open:true,querySelectorAll:()=>[]},dialogContent:{querySelector:()=>null,querySelectorAll:()=>[],scrollTop:0},
+      requestAnimationFrame:(cb:()=>void)=>cb(),restoreFerryPanelView(){},
+      perform(work:()=>{ok:boolean}){const result=work();if(result.ok)writes++;return result.ok},
+      island:{isCrossing:()=>false,crossIsland:()=>assert.fail('local recipe cannot sail')},
+    })
+    runInNewContext(action,x)
+    if(shore==='village'){x.panel='village';x.panelHistory.push(x.rememberPanel());x.panel='kitchen'}
+    x.activate('open-panel','recipes');x.activate('select-recipe',recipe)
+    Object.assign(recipeBook.view,{query:'Яблочное',detailScroll:44,focus:'manual-s1'})
+    x.dialogContent.scrollTop=71
+    const page=structuredClone(recipeBook.view),before=structuredClone(farm)
+    x.activate('manual-signature',recipe);mount(x)
+    assert.deepEqual(x.panelHistory.map((visit:{panel:string})=>visit.panel),[...(shore==='village'?[cottage.panel]:[]),kitchen.panel,'recipes'])
+    assert.equal(x.options.recipe.id,recipe);assert.equal(x.options.returnLabel,'Мои рецепты')
+    const expected=JSON.stringify(farm)
+    if(exit==='paid'){
+      assert.ok(x.options.onComplete(structuredClone(farm.culinary.recipes[0].result)))
+      assert.ok(x.options.onComplete(structuredClone(farm.culinary.recipes[0].result)))
+      const finished=JSON.stringify(farm);x.options.onCancel()
+      assert.equal(JSON.stringify(farm),finished);assert.equal(writes,1)
+      assert.deepEqual([x.panel,recipeBook.view.selectedId,x.panelHistory.length,farm.coins,farm.fruit.apple,farm.culinary.stock.s1],['recipes',recipe,0,68,1,2])
+      continue
+    }
+    if(exit==='back')x.goBack(true)
+    else {
+      const event={key:'Escape',repeat:false,defaultPrevented:false,preventDefault(){this.defaultPrevented=true}}
+      const options=x.options,cancelled=()=>{}
+      Object.assign(x,{event,options,model:{},cancelCookery:cancelled,destroyed:false,signal:new AbortController().signal,
+        close:{addEventListener:(_:string,handler:()=>void)=>{if(exit==='cancel')handler()}},
+        view:{addEventListener:(_:string,handler:Function)=>{if(exit==='escape')handler(event)}}})
+      runInNewContext(js(exitX+escape),x);if(exit==='escape')assert.ok(event.defaultPrevented)
+    }
+    assert.equal(x.panel,'recipes')
+    assert.deepEqual(recipeBook.view,page)
+    assert.equal(restores.at(-1),'manual-s1');assert.equal(x.dialogContent.scrollTop,71)
+    assert.equal(JSON.stringify(farm),expected);assert.deepEqual(farm,before);assert.equal(writes,0)
+    assert.deepEqual(x.communityRequest,{kind:'neighbor',resident:'finn',planId:plan.id})
+    x.goBack();assert.equal(x.panel,'kitchen')
+    if(shore==='village'){x.goBack();assert.deepEqual([x.panel,x.villageSlot,farm.island],['village',0,'village'])}
+  }
+})

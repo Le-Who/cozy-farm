@@ -2881,6 +2881,10 @@ function drawPanel() {
         && (farm.island === 'home' || farm.island === 'village' && farm.village.built)
         && composer?.panel === 'signature' && source?.panel === 'kitchen'
         && panelHistory.at(-1) === composer && panelHistory.at(-2) === source)
+      // Abandoning a manual repeat does not replace this kitchen's book visit with a receipt.
+      const returningToKitchenBook = () => signature && !made && !!repeatId && panel === 'cookery' && dialog.open
+        && composer?.panel === 'recipes' && source?.panel === 'kitchen'
+        && panelHistory.at(-1) === composer && panelHistory.at(-2) === source
       dialogContent.innerHTML = '<div class="cookery-host"></div>'
       cookeryGame = createCookery(dialogContent.querySelector<HTMLElement>('.cookery-host')!, {
         recipe: { id: signature?repeatId??'signature':preparedDish, name:signature?savedRecipe?.name??familyName??'Мой рецепт':preparedDish==='grilledFish'?`${fishDefinitions[preparedFish].name} на гриле`:recipe.name, kind, signature,processing:savedRecipe?.processing,fishSpecies:preparedDish==='grilledFish'?preparedFish:undefined,
@@ -2929,7 +2933,7 @@ function drawPanel() {
           }
           return made
         },
-        onCancel(){if(signature && !fromRequestedFood && !editingDraft() && !(resultRecipeId === repeatId && commissionLineForReturn())) {
+        onCancel(){if(signature && !fromRequestedFood && !editingDraft() && !returningToKitchenBook() && !(resultRecipeId === repeatId && commissionLineForReturn())) {
             panelHistory.length = 0; openRecipeBook(resultRecipeId,false,false)
           } else leaveScene()
         },
