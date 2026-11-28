@@ -78,3 +78,13 @@
 }
 
 .market-care-capacity{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.market-care-capacity .icon{width:22px;height:22px}
+
+/* Keep the quantity beside the sole trade action, in the feed card only. */
+[data-market-care-browser] .market-feed-editor {grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center;min-width:0}
+[data-market-care-browser] .market-feed-step {min-width:44px;min-height:44px;border:1px solid #bea28d;border-radius:12px;background:#fffaf0;color:var(--plum);font:700 21px Georgia,serif}
+[data-market-care-browser] .market-feed-step:disabled {opacity:.55}
+[data-market-care-browser] .market-feed-editor input {width:66px;min-height:44px;box-sizing:border-box;border:1px solid #bea28d;border-radius:10px;padding:6px;background:#fffaf0;color:var(--plum);text-align:center;font:700 17px Georgia,serif}
+[data-market-care-browser] .market-feed-editor :is(input,.market-feed-step):focus-visible {outline:3px solid #805789;outline-offset:2px}
+[data-market-care-browser] .market-care-grid .market-feed-editor .dialog-button {display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:0;max-width:100%;padding-inline:10px;font-size:16px}
+[data-market-care-browser] .market-feed-editor .icon {width:20px;height:20px}
+[data-market-care-browser] .market-feed-output {flex-basis:100%;text-align:right;color:var(--plum);font:700 14px Georgia,serif}

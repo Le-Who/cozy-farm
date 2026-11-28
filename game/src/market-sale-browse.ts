@@ -1,3 +1,4 @@
+import { MarketFeedBags } from './market-feed-bags.ts'
 import { MarketSeedPacks } from './market-seed-packs.ts'
 import type { MarketSaleGroup } from './market-sale-search.ts'
 
@@ -13,6 +14,7 @@ export class MarketSaleBrowseMemory {
   private pausedTab?: GridPosition
   private pausedBuySeeds?: GridPosition
   readonly seedPacks = new MarketSeedPacks()
+  readonly feedBags = new MarketFeedBags()
   private search?: { original?: GridPosition; refined: boolean }
 
   rememberClosed(view: SellView, scroll: number) {
@@ -67,5 +69,5 @@ export class MarketSaleBrowseMemory {
   }
 
   resetPositions() { this.views.clear(); this.closed = undefined; this.pausedTab = undefined }
-  reset() { this.resetPositions(); this.resetBuySeeds(); this.search = undefined }
+  reset() { this.resetPositions(); this.resetBuySeeds(); this.feedBags.reset(); this.search = undefined }
 }

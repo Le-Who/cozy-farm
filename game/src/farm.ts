@@ -1117,11 +1117,15 @@ export function buySeeds(farm: FarmState, crop: CropId, packs = 1): ActionResult
   return { ok: true, message: `Куплены семена: ${cropDefinitions[crop].name.toLowerCase()} × ${quote.seeds}.` };
 }
 
-export function buyFeed(farm: FarmState): ActionResult {
-  if (farm.coins < feedBagPrice) return failure('Не хватает монет на корм.');
-  farm.coins -= feedBagPrice;
-  farm.feed += feedBagSize;
-  return { ok: true, message: `Куплено: ${ruCount(feedBagSize, 'порция', 'порции', 'порций')} корма.` };
+export function buyFeed(farm: FarmState, bags = 1): ActionResult {
+  if (!isQuantity(bags) || bags < 1) return failure('Выберите количество мешков корма.');
+  const total = feedBagPrice * bags;
+  const portions = feedBagSize * bags;
+  if (!isQuantity(total) || farm.coins < total) return failure('Не хватает монет на корм.');
+  if (!isQuantity(farm.feed + portions)) return failure('В запасе пока нет места для корма.');
+  farm.coins -= total;
+  farm.feed += portions;
+  return { ok: true, message: `Куплено: ${ruCount(portions, 'порция', 'порции', 'порций')} корма.` };
 }
 
 export function getFishLimit(farm: Pick<FarmState, 'island' | 'projects'>, island = farm.island): number {

@@ -7,6 +7,7 @@ import './market-project-readiness.css'
 import { MarketInlineSales, inlineReceiptText } from './market-inline-sale'
 import { getMarketHarvestSurplusQuote, getMarketOrderSurplusQuote, sellMarketHarvestSurplus, sellMarketOrderSurplus } from './market-order-surplus'
 import { MarketSaleBrowseMemory } from './market-sale-browse'
+import type { MarketFeedBags } from './market-feed-bags'
 import { marketSaleFamilies } from './market-sale-family'
 import { SalePresentation } from './sale-presentation'
 import { searchMarketSales, searchMarketSaleView } from './market-sale-search'
@@ -1446,15 +1447,15 @@ function updateMarketSaleSearch() {
   if(salePresentation.place)updateSaleQuote()
 }
 
-function marketCareProducts(tabs: string, categories: string, stall: string) {
+function marketCareProducts(tabs: string, categories: string, stall: string, bags?: MarketFeedBags) {
   const capacity=getWaterCapacity(farm),upgradedCapacity=getWaterCapacity({...farm,canUpgraded:true})
   return `<section data-market-care-browser><div class="market-controls">${tabs}</div>${categories}${stall?`<div class="market-care-tools">${stall}</div>`:''}<div class="market-care-grid">
-    <section data-care-product="feed"><div class="market-care-art">${icon('tool-feed')}</div><div class="market-care-copy"><h2>Корм для кур</h2><p>В мешке: ${quantity(feedBagSize,'порция')}</p><p>В запасе: ${quantity(farm.feed,'порция')}</p><p class="market-care-price" aria-label="${quantity(feedBagPrice,'монета')} за мешок">${feedBagPrice} ${icon('coin')} за мешок</p></div>${button('Купить','buy-feed',farm.coins>=feedBagPrice,{context:'Корм для кур'})}</section>
+    <section data-care-product="feed"><div class="market-care-art">${icon('tool-feed')}</div><div class="market-care-copy"><h2>Корм для кур</h2><p>В мешке: ${quantity(feedBagSize,'порция')}</p><p${bags?' data-market-feed-stock tabindex="-1"':''}>В запасе: ${quantity(farm.feed,'порция')}</p><p class="market-care-price" aria-label="${quantity(feedBagPrice,'монета')} за мешок">${feedBagPrice} ${icon('coin')} за мешок</p></div>${bags?.render(farm,icon)||button('Купить','buy-feed',bags?bags.view(farm).max>0:farm.coins>=feedBagPrice,{context:'Корм для кур'})}</section>
     <section data-care-product="can"><div class="market-care-art">${icon('tool-can')}</div><div class="market-care-copy"><h2>Большая лейка</h2><p class="market-care-capacity" aria-label="Объём лейки: ${farm.canUpgraded?quantity(capacity,'порция'):`${quantity(capacity,'порция')} → ${quantity(upgradedCapacity,'порция')}`} воды">Объём: ${farm.canUpgraded?capacity:`${capacity} → ${upgradedCapacity}`} ${icon('drop')}</p>${farm.canUpgraded?'':`<p class="market-care-price" aria-label="${quantity(canUpgradePrice,'монета')} за улучшение">${canUpgradePrice} ${icon('coin')} за улучшение</p>`}</div>${button(farm.canUpgraded?'Куплено':'Улучшить','upgrade-can',!farm.canUpgraded&&farm.coins>=canUpgradePrice,{context:'Большая лейка'})}</section>
   </div></section>`
 }
 
-function marketCards(seedPacks?: MarketSeedPacks) {
+function marketCards(seedPacks?: MarketSeedPacks, feedBags?: MarketFeedBags) {
   const balance = `<p class="coin-balance" aria-label="${quantity(farm.coins, 'монета')}">${icon('coin')} ${numberFormat.format(farm.coins)}</p>`
   const tabs = panelTabs('market-tab', marketTab, [['buy', 'Купить'], ['sell', 'Продать'], ['orders', 'Заказы'], ['projects', 'Строить']])
   const stall = farm.village.built ? button(farm.island === 'village' ? 'Своя лавка' : 'В лавку в гавань', 'open-panel', true, { value: 'bay-shop', secondary: true }) : ''
@@ -1498,7 +1499,7 @@ function marketCards(seedPacks?: MarketSeedPacks) {
     const definition=treeDefinitions[tree]
     return `<section data-tree-product="${tree}"><div class="market-tree-art">${icon('ui-tree-'+tree)}</div><div class="market-tree-copy"><h2>${definition.saplingName}</h2><p>${quantity(definition.days,'ночь')} до зрелости</p><p>В запасе: ${farm.saplings[tree]}</p><p class="market-tree-price" aria-label="${quantity(definition.saplingPrice,'монета')} за саженец">${definition.saplingPrice} ${icon('coin')} за саженец</p></div>${button('Купить','buy-sapling',farm.coins>=definition.saplingPrice,{value:tree,context:definition.saplingName})}</section>`
   }).join('')}</div></section>`
-  if(marketCategory==='care')return marketCareProducts(tabs,categories,stall)
+  if(marketCategory==='care')return marketCareProducts(tabs,categories,stall,feedBags)
   return controls+categories+`<ul class="dialog-list market-shop">${buildingIds.map(building=>row('upgrade-'+building+'-card',buildingDefinitions[building].name,buildingDefinitions[building].benefit,button(farm.buildingLevels[building]>=2?'Посмотреть':'Улучшить',farm.buildingLevels[building]>=2?'upgrades':'upgrade-building',farm.buildingLevels[building]>=2||farm.coins>=buildingDefinitions[building].upgradePrice,{value:building,...(farm.buildingLevels[building]<2?{cost:{icon:'coin' as const,amount:buildingDefinitions[building].upgradePrice}}:{})}))).join('')}</ul>`+nav(button('Причал','visit-boat',true,{secondary:true}))
 }
 
@@ -2355,6 +2356,7 @@ function drawPanel() {
   dialogTitle.setAttribute('aria-label', title)
   // A different rendered panel ends the Buy shelf's same-Market tab visit.
   if (panel === 'market' && dialog.dataset.panel !== 'market') marketSaleBrowse.resetBuySeeds()
+  if (panel !== 'market' || marketTab !== 'buy' || marketCategory !== 'care' || farm.island !== 'home') marketSaleBrowse.feedBags.reset()
   dialog.dataset.panel = panel
   dialog.dataset.marketTab = marketTab
   dialogEmblem.src = iconUrl(panel === 'specialize' ? `upgrade-${specializationBuilding}-card` : panelEmblems[panel])
@@ -2537,7 +2539,9 @@ function drawPanel() {
     }
     case 'market':
       dialogContent.innerHTML = marketTab === 'buy' && marketCategory === 'seeds' && farm.island === 'home'
-        ? marketCards(marketSaleBrowse.seedPacks) : marketCards()
+        ? marketCards(marketSaleBrowse.seedPacks)
+        : marketTab === 'buy' && marketCategory === 'care' && farm.island === 'home'
+          ? marketCards(undefined,marketSaleBrowse.feedBags) : marketCards()
       if (marketTab === 'orders') placeReadyMarketOrder(dialogContent, stackedMarketOrders.matches)
       break
     case 'berry-renewal':
@@ -5269,6 +5273,33 @@ app.addEventListener('click', async (event) => {
       }
       break
     }
+    case 'market-feed-step': {
+      const editor=currentMarketFeedEditor(control)
+      if (!editor || value!=='less' && value!=='more') break
+      const bags=marketSaleBrowse.feedBags
+      bags.step(farm,value==='less'?-1:1)
+      const input=editor.querySelector<HTMLInputElement>('[data-market-feed-count]')!
+      input.value=bags.view(farm).text
+      bags.paint(farm,editor)
+      if (control.disabled) input.focus({preventScroll:true})
+      break
+    }
+    case 'market-feed-buy-bags': {
+      const editor=currentMarketFeedEditor(control)
+      if (!editor || editor.querySelector('[data-action="market-feed-buy-bags"]')!==control) break
+      const bags=marketSaleBrowse.feedBags
+      const quote=bags.confirm(farm,control.dataset.quote)
+      if (!quote) { bags.paint(farm,editor); break }
+      if (perform(() => {
+        const result=buyFeed(farm,quote.bags)
+        if (result.ok) bags.reset()
+        return result
+      })) {
+        dialogContent.querySelector<HTMLElement>('[data-market-feed-stock]')?.focus({preventScroll:true})
+        playBaySound('trade.pay')
+      }
+      break
+    }
     case 'buy-feed': {
       const compare=panel==='coop' && control.closest('[data-coop-feed-compare]')
       if (compare && (!dialog.open || !dialogContent.contains(control) || !getCoopFeedComparison(farm))) break
@@ -5918,6 +5949,11 @@ function currentMarketSeedEditor(control: HTMLElement) {
   const grid=currentMarketSeedGrid(control), editor=control.closest<HTMLElement>('.market-seed-packs')
   if (grid && editor?.closest<HTMLElement>('[data-seed-pack]')?.dataset.seedPack === marketSaleBrowse.seedPacks.crop) return editor
 }
+function currentMarketFeedEditor(control: HTMLElement) {
+  if (panel!=='market' || marketTab!=='buy' || marketCategory!=='care' || farm.island!=='home' || !dialog.open || island.isCrossing()) return
+  const editor=dialogContent.querySelector<HTMLElement>('[data-market-care-browser] [data-care-product="feed"] [data-market-feed-editor]')
+  if (editor?.contains(control)) return editor
+}
 function focusMarketSeedChoice(crop: string, scroll: number, selector: string) {
   const grid=currentMarketSeedGrid()
   if (!grid) return
@@ -6086,7 +6122,7 @@ dialogContent.addEventListener('focusin', event => {
 // Native focus scrolling may reveal only a text caret in a nested short viewport.
 // Reveal the whole compact row once on focus so its exact quantity and action stay together.
 app.addEventListener('focusin',event=>{
-  if(panel==='market'&&marketTab==='buy'&&marketCategory==='care'&&event.target instanceof HTMLButtonElement&&event.target.matches('[data-action=buy-feed]:focus-visible,[data-action=upgrade-can]:focus-visible')&&matchMedia('(max-height:400px) and (orientation:landscape)').matches)
+  if(panel==='market'&&marketTab==='buy'&&marketCategory==='care'&&event.target instanceof HTMLElement&&event.target.matches('[data-action=buy-feed]:focus-visible,[data-action=upgrade-can]:focus-visible,[data-market-feed-editor] :focus-visible')&&matchMedia('(max-height:400px) and (orientation:landscape)').matches)
     event.target.closest<HTMLElement>('[data-care-product]')?.scrollIntoView({block:'nearest',inline:'nearest'})
   if(panel==='market'&&marketTab==='buy'&&marketCategory==='trees'&&event.target instanceof HTMLButtonElement&&event.target.matches('[data-action=buy-sapling]:focus-visible')&&matchMedia('(max-height:400px) and (orientation:landscape)').matches)
     event.target.closest<HTMLElement>('[data-tree-product]')?.scrollIntoView({block:'nearest',inline:'nearest'})
@@ -6098,6 +6134,10 @@ app.addEventListener('compositionend', event => {
     setMarketSaleQuery(event.target.value)
 })
 app.addEventListener('input', event => {
+  if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-feed-count]')) {
+    const editor=currentMarketFeedEditor(event.target)
+    if (editor) { marketSaleBrowse.feedBags.edit(event.target.value); marketSaleBrowse.feedBags.paint(farm,editor) }
+  }
   if (event.target instanceof HTMLInputElement && event.target.matches('[data-market-seed-count]')) {
     const editor=currentMarketSeedEditor(event.target)
     if (editor) { marketSaleBrowse.seedPacks.edit(event.target.value); marketSaleBrowse.seedPacks.paint(farm,editor) }
