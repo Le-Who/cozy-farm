@@ -2,6 +2,7 @@ import type { FerryCommissionUse } from './ferry-commission-use.ts'
 import type { FerryPeachChoice } from './ferry-peach-planting.ts'
 import type { getFerryReadyHarvest } from './harbour-economy.ts'
 import type { getFerryGroveBunSource } from './ferry-grove-bun-source.ts'
+import type { getFerryGroveFishSource } from './ferry-grove-fish-source.ts'
 import { freightPorts, freightPortNames, freightStock,
   setFreightStops, setFreightMode, setFreightPickup, startFreight, pauseFreight,
   type BayFreightState, type FreightPort, type FreightResult } from './bay-freight-model.ts';
@@ -27,6 +28,7 @@ export type FreightPanelContext = {
   peachPlanting?: FerryPeachChoice;
   readyHarvest?: (offerId: string) => ReturnType<typeof getFerryReadyHarvest>;
   groveBun?: (offerId: string) => ReturnType<typeof getFerryGroveBunSource>;
+  groveFish?: (offerId: string) => ReturnType<typeof getFerryGroveFishSource>;
   playerPort: FreightPort;
   selectedPort?: FreightPort;
   routeEditorOpen?: boolean;
@@ -109,7 +111,9 @@ export function renderFreightPanel(state: BayFreightState, ctx: FreightPanelCont
   const smaller = !restock ? smallerFerryCargo(world, id, { bag: ctx.carried, harvestTier: ctx.harvestTier, coins: ctx.coins ?? 0, boatOwned: ctx.boatOwned ?? true }) : undefined;
   const cargoLabel = (items: ExpeditionManifest['outgoing']) => items.map(item => `${product(item.id, ctx).name} ×${item.quantity}`);
   const smallerLabel = smaller ? `Посмотреть: ${cargoLabel(smaller.outgoing).join(' + ')} → ${[...cargoLabel(smaller.incoming), ...(smaller.earnCoins ? [ruCount(smaller.earnCoins, 'монета', 'монеты', 'монет')] : [])].join(' + ')}` : '';
+  const groveFish = !restock && !smaller && missing && missing.id === 'seaBass' ? ctx.groveFish?.(id) : undefined;
   const sourceAction = smaller ? button(esc(smallerLabel), 'expedition-offer', smaller.id, 'class="expedition-source"')
+    : groveFish ? button(`К складу: ${esc(freightPortNames[groveFish.port])}`, 'expedition-source', `${id}|seaBass|${groveFish.key}`, 'class="expedition-source"')
     : !restock && hint && missing ? button(hint.label, hint.panel === 'mill' ? 'expedition-port' : 'expedition-source', hint.panel === 'mill' ? 'mill' : `${id}|${missing.id}`, 'class="expedition-source"') : '';
   const groveBun = !restock && !smaller && !localBun && missing && missing.id === 'handmade:round' ? ctx.groveBun?.(id) : undefined;
   const warehouseAction = groveBun ? button(`К складу: ${esc(freightPortNames[groveBun.port])}`,

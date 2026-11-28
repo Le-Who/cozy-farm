@@ -163,6 +163,7 @@ import { getClimate, weatherNames, type Trait } from './climate'
 import { ferryCommissionUse, openFerryCommissionRecipe } from './ferry-commission-use'
 import { FerryPeachPlanting } from './ferry-peach-planting'
 import { getFerryGroveBunSource } from './ferry-grove-bun-source'
+import { getFerryGroveFishSource } from './ferry-grove-fish-source'
 import { lastPortionShopStock, signatureTastingGuide } from './signature-tasting-guidance'
 import { shopRecipeRefill, type ShopRecipeRefill } from './bay-shop-quantity'
 import { RecipeBookNavigation, recipeBookNarrow, selectedBookId, sortedBookRecipes, type RecipeBookView } from './recipe-book-view'
@@ -2467,7 +2468,7 @@ function drawPanel() {
       reconcileFreightPorts(farm.freight,openedFreightPorts(farm))
       const goods=harbourGoods()
       renderFreightPanelInto(dialogContent,farm.freight,{day:farm.day,harvestTier:farm.festivals.completed.harvest,coins:farm.coins,boatOwned:farm.boatOwned,villageBuilt:farm.village.built,expeditionPort:selectedExpeditionPort,expeditionOffer:selectedExpeditionOffer,playerPort:farm.island,selectedPort:selectedWarehouse,waxAvailable:farm.capeLevel>=2,routeEditorOpen:dialogContent.querySelector<HTMLDetailsElement>('.bay-freight-plan')?.open ?? freightPlanOpen,
-        openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),commissionUse:ferryCommissionUse(farm),peachPlanting:ferryPeachPlanting.current(farm),readyHarvest:offer=>getFerryReadyHarvest(farm,offer),groveBun:offer=>getFerryGroveBunSource(farm,offer),icon})
+        openedPorts:openedFreightPorts(farm),products:goods,carried:Object.fromEntries(goods.map(g=>[g.id,g.quantity])),commissionUse:ferryCommissionUse(farm),peachPlanting:ferryPeachPlanting.current(farm),readyHarvest:offer=>getFerryReadyHarvest(farm,offer),groveBun:offer=>getFerryGroveBunSource(farm,offer),groveFish:offer=>getFerryGroveFishSource(farm,offer),icon})
       break
     }
     case 'intents': dialogContent.innerHTML = communityBoard(farm, communityArt); break
@@ -4334,11 +4335,20 @@ app.addEventListener('click', async (event) => {
     }
     case 'expedition-source': {
       if (panel !== 'bay-freight') break
-      const [offerId,itemId,harvestKey] = (value ?? '').split('|')
-      if (harvestKey !== undefined) {
+      const [offerId,itemId,sourceKey] = (value ?? '').split('|')
+      if (sourceKey?.startsWith('grove-fish:')) {
+        if (!dialog.open || !dialogContent.contains(control) || island.isCrossing() ||
+          selectedExpeditionPort !== 'salt' || offerId !== selectedExpeditionOffer || itemId !== 'seaBass') break
+        const source = getFerryGroveFishSource(farm,offerId)
+        if (!source || value !== `${offerId}|${itemId}|${source.key}`) break
+        selectedWarehouseRequest = source.item
+        await visitPanelAt(source.port,'warehouse-supply')
+        break
+      }
+      if (sourceKey !== undefined) {
         if (!dialog.open || offerId !== selectedExpeditionOffer || selectedExpeditionPort !== 'mill' || itemId !== 'wheat') break
         const harvest = getFerryReadyHarvest(farm,offerId)
-        if (!harvest || harvest.key !== harvestKey) break
+        if (!harvest || harvest.key !== sourceKey) break
         // This is a location preview. Harvest and shipment are still separate gestures.
         closeDialog()
         island.focusTarget({kind:'bed',index:harvest.index})
