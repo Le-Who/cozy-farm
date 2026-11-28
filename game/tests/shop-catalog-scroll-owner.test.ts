@@ -74,7 +74,7 @@ class Element {
   }
   hasAttribute(k:string){return Object.hasOwn(this.attrs,k)}
   getAttribute(k:string){return this.attrs[k]??null}
-  get dataset(){return Object.fromEntries(Object.entries(this.attrs).filter(([k])=>k.startsWith('data-')).map(([k,v])=>[k.slice(5),v]))}
+  get dataset(){return Object.fromEntries(Object.entries(this.attrs).filter(([k])=>k.startsWith('data-')).map(([k,v])=>[k.slice(5).replace(/-([a-z])/g,(_,letter:string)=>letter.toUpperCase()),v]))}
   closest(s:string){return s==='button'?this:null}
   focus(){this.onFocus?.(this)}
 }
@@ -123,6 +123,8 @@ function scene(farm:F.FarmState, recipeProduct?:string){
   })
   return {host, get, get writes(){return writes}, get focused(){return document.activeElement}, get transfers(){return transfers},
     click(selector:string,detail=0){const e=get(selector);focus(e);events.get('click')!({target:e,detail})},
+    amount(value:string){const input=get('[data-stock-quantity]');input.value=value;events.get('input')!({target:input})},
+    clickDetached(item:Element){events.get('click')!({target:item,detail:1})},
     submit(){events.get('submit')!({target:get('[data-stock-form]'),preventDefault(){}})},
     advance(){last+=1000;assert.ok(nextFrame);nextFrame(last)},destroy:mounted.destroy}
 }
@@ -372,4 +374,109 @@ test('earned D194 exact recipe previews a truly sold-out shelf without erasing i
   const generic=scene(cold(base))
   assert.doesNotMatch(generic.host.innerHTML,/data-stock-quantity/,'an ordinary shop visit does not seed a replacement')
   generic.destroy()
+})
+
+// Actual same D193 farm demonstrates a selected SKU too deep even within the existing Harvest group.
+const rainbowApple='variants:apple:rainbow'
+function earnedLiveShelf(){
+  const p=earned416Mixed(false)
+  assert.deepEqual([p.actions,p.state.day,F.getSale(p.state).items,p.state.coins],[543,193,416,56])
+  p.visit('village')
+  assert.deepEqual([p.actions,p.state.island],[544,'village'])
+  const f=p.state, product=available(f).find(row=>row.id===rainbowApple)!
+  assert.deepEqual([product.quantity,product.basePrice],[11,8])
+  assert.ok(quantities.placeShopQuantity(f.bayShop,2,product,4,(id,count)=>reserveShopGoods(f,id,count)))
+  assert.ok(model.setBayShopPrice(f.bayShop,2,7))
+  p.reload()
+  const opened=scene(p.state)
+  opened.click('[data-open]')
+  for(let tick=0;tick<30&&!p.state.bayShop.sold;tick++)opened.advance()
+  assert.deepEqual([p.state.bayShop.sold,p.state.bayShop.slots[2]?.quantity,p.state.coins,p.state.bayShop.visitor?.id],[1,3,63,'bea'])
+  assert.equal(p.state.bayShop.visitor?.outcome?.kind,'bought')
+  opened.destroy()
+  p.reload()
+  return p.state
+}
+const livePin='[data-stock-live-shelf="2"]'
+function pickedLiveShelf(farm=earnedLiveShelf()){
+  const ui=scene(farm)
+  ui.click('[data-stock-group="kitchen"]')
+  assert.ok(!listing(ui.host.innerHTML).includes(rainbowApple))
+  ui.click('[data-slot="2"]')
+  return {ui,farm}
+}
+
+test('earned D193 after one paid buyer: selected positive shelf surfaces its one exact card, keeps quote and active category',()=>{
+  const {ui,farm}=pickedLiveShelf(),before=structuredClone(farm)
+  assert.equal(ui.get(livePin).getAttribute('data-stock'),rainbowApple)
+  assert.equal(listing(ui.host.innerHTML).filter(id=>id===rainbowApple).length,1)
+  assert.match(ui.host.innerHTML,/На полке ×3/)
+  assert.equal(ui.get('[data-price]').value,'7')
+  assert.equal(ui.writes,0)
+  ui.get('.bay-shop-products').scrollTop=103
+  ui.click(livePin)
+  assert.equal(ui.get('[data-stock-quantity]').value,'1')
+  ui.amount('2')
+  assert.match(ui.get('[data-stock-preview]').textContent,/На полке будет: 5 · в запасе останется: 5\. За 1: 7 монет/)
+  assert.equal(ui.transfers,0);assert.equal(ui.writes,0);assert.deepEqual(farm,before)
+  ui.click('[data-stock-cancel]')
+  assert.equal(ui.focused,ui.get(livePin));assert.equal(ui.get('.bay-shop-products').scrollTop,103)
+  assert.ok(groups(ui.host.innerHTML).some(([group,on])=>group==='kitchen'&&on==='true'))
+  assert.equal(ui.transfers,0);assert.equal(ui.writes,0);assert.deepEqual(farm,before)
+  ui.click(livePin);ui.amount('2');ui.submit()
+  const expect=structuredClone(before)
+  expect.variants.apple!.rainbow!-=2;expect.bayShop.slots[2]!.quantity+=2
+  assert.deepEqual(farm,expect);assert.equal(ui.transfers,1);assert.equal(ui.writes,1)
+  assert.equal(ui.focused,ui.get('[data-slot="2"]'))
+  assert.equal(ui.get(livePin).getAttribute('data-stock'),rainbowApple)
+  assert.equal(ui.get('[data-price]').value,'7')
+  ui.click('[data-price-factor="1"]')
+  assert.equal(farm.bayShop.slots[2]!.price,8,'price changes only by the deliberate existing edit')
+  assert.equal(farm.coins,63);assert.equal(farm.bayShop.sold,1);assert.equal(ui.transfers,1)
+  ui.destroy()
+})
+
+test('an ordinary buyer can finish a live listing during preview; Confirm uses the same latest shelf count',()=>{
+  const {ui,farm}=pickedLiveShelf()
+  ui.click(livePin);ui.amount('2')
+  for(let tick=0;tick<87&&farm.bayShop.slots[2]!.quantity>0;tick++)ui.advance()
+  assert.deepEqual([farm.bayShop.slots[2]!.quantity,farm.bayShop.slots[2]!.price,farm.bayShop.sold,farm.coins],[0,7,4,84])
+  assert.match(ui.get('[data-stock-preview]').textContent,/На полке будет: 2 · в запасе останется: 5\. За 1: 7 монет/)
+  const before=structuredClone(farm);ui.submit();before.variants.apple!.rainbow!-=2;before.bayShop.slots[2]!.quantity+=2
+  assert.deepEqual(farm,before);assert.equal(ui.transfers,1)
+  assert.ok(ui.get(livePin));ui.destroy()
+})
+
+test('no stale positive preview is transferred after stock moves, price/listing changes or another shelf is selected',()=>{
+  for(const mode of ['remaining-stock','changed-price','replacement','recreated-same-sku','reselected','price-before-click'] as const) {
+    const {ui,farm}=pickedLiveShelf(), stale=ui.get(livePin)
+    if(mode!=='price-before-click'){ui.click(livePin);ui.amount('2')}
+    if(mode==='remaining-stock'){
+      const product=available(farm).find(x=>x.id===rainbowApple)!
+      assert.equal(product.quantity,7)
+      assert.ok(quantities.placeShopQuantity(farm.bayShop,1,product,7,(id,n)=>reserveShopGoods(farm,id,n)))
+    } else if(mode==='changed-price'||mode==='price-before-click')assert.ok(model.setBayShopPrice(farm.bayShop,2,11))
+    else if(mode==='replacement'||mode==='recreated-same-sku'){
+      const old=model.removeBayShopStock(farm.bayShop,2)!
+      returnShopGoods(farm,old.id,old.quantity)
+      const other=available(farm).find(x=>x.id===(mode==='replacement'?'dish:orchardTart':rainbowApple))!
+      assert.ok(quantities.placeShopQuantity(farm.bayShop,2,other,1,(id,n)=>reserveShopGoods(farm,id,n)))
+      if(mode==='recreated-same-sku')assert.ok(model.setBayShopPrice(farm.bayShop,2,7))
+    } else {
+      ui.click('[data-slot="1"]');ui.clickDetached(stale)
+    }
+    const before=structuredClone(farm)
+    if(mode==='price-before-click')ui.click(livePin)
+    else if(mode!=='reselected')ui.submit()
+    assert.deepEqual(farm,before,mode);assert.equal(ui.transfers,0,mode);assert.equal(ui.writes,0,mode)
+    assert.doesNotMatch(ui.host.innerHTML,/data-stock-quantity/,mode)
+    if(mode==='remaining-stock'||mode==='reselected')assert.doesNotMatch(ui.host.innerHTML,/data-stock-live-shelf=/)
+    if(mode==='reselected'){
+      ui.click('[data-stock-group="harvest"]')
+      assert.ok(listing(ui.host.innerHTML).includes(rainbowApple))
+      ui.click(`[data-stock="${rainbowApple}"]`);assert.match(ui.host.innerHTML,/Место 2 · в припасах/)
+      ui.click('[data-stock-cancel]');assert.equal(ui.transfers,0);assert.deepEqual(farm,before)
+    }
+    ui.destroy()
+  }
 })

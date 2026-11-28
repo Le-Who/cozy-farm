@@ -72,8 +72,10 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
   let savedShopState = JSON.stringify(state);
   function saveChanges() { options.onChange(); savedShopState = JSON.stringify(state); }
   let selected = state.slots.findIndex(slot => slot === null); if (selected < 0) selected = 0;
-  type SoldListing = { slot: NonNullable<BayShopState['slots'][number]>; product: BayShopProduct; price: number };
-  let pending: { id: string; identity: string; quantity: string; listScroll: number; soldShelf?: number; replacing?: SoldListing; refill?: ShopRecipeRefill } | undefined;
+  type ShelfListing = { slot: NonNullable<BayShopState['slots'][number]>; product: BayShopProduct; price: number };
+  type LiveRefill = ShelfListing & { index: number; day: number };
+  let mountedLiveRefill: LiveRefill | undefined;
+  let pending: { id: string; identity: string; quantity: string; listScroll: number; soldShelf?: number; liveRefill?: LiveRefill; replacing?: ShelfListing; refill?: ShopRecipeRefill } | undefined;
   let stockGroup: StockGroup = 'all';
   let tab: 'stock' | 'journal' = 'stock', notice = '', noticeTimer = 0, destroyed = false, frame = 0, lastTime = performance.now();
   let lastPhase = !state.open && !state.visitor ? 'idle' : '', lastVisitor = '', lastSpeech = '', savedAt = 0, rendering = false;
@@ -101,20 +103,30 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     }
     return `${person.name}: ${visitor.outcome ? visitorMessages[visitor.outcome.kind] : 'До встречи!'}`;
   }
-  function soldShelfStock(products: readonly GroupedStock[]) {
+  function selectedShelfStock(products: readonly GroupedStock[]) {
     const shelf = state.slots[selected];
-    if (shelf?.quantity !== 0) return;
+    if (!shelf) return;
     return products.find(product => product.quantity > 0 && product.id === shelf.product.id &&
       product.identity === shelf.product.identity && shopQuantityPreview(state,selected,product,1).valid);
+  }
+  function soldShelfStock(products: readonly GroupedStock[]) {
+    if (state.slots[selected]?.quantity === 0) return selectedShelfStock(products);
+  }
+  function currentLiveRefill(quote: LiveRefill): boolean {
+    return quote.index === selected && quote.day === state.businessDay && state.slots[selected] === quote.slot
+      && quote.slot.product === quote.product && quote.slot.price === quote.price;
   }
   function stockForPending(products: readonly GroupedStock[]) {
     const quote = pending;
     if (!quote || quote.refill && !currentShopRecipeRefill(state, quote.refill)) return;
-    const product = quote.soldShelf === undefined ? products.find(p => p.id === quote.id && p.identity === quote.identity)
+    // A purchase may reduce this same listing to zero while a player is choosing quantity.
+    // Keep that live count, but never let a different/repriced listing inherit its quote.
+    const product = quote.liveRefill ? currentLiveRefill(quote.liveRefill) ? selectedShelfStock(products) : undefined
+      : quote.soldShelf === undefined ? products.find(p => p.id === quote.id && p.identity === quote.identity)
       : quote.soldShelf === selected ? soldShelfStock(products) : undefined;
     return product?.id === quote.id && product.identity === quote.identity ? product : undefined;
   }
-  function quotedShelf(index: number, replacing?: SoldListing): BayShopState | undefined {
+  function quotedShelf(index: number, replacing?: ShelfListing): BayShopState | undefined {
     if (!replacing) return state;
     const slot = state.slots[index];
     if (slot !== replacing.slot || slot.quantity !== 0 || slot.product !== replacing.product || slot.price !== replacing.price) return;
@@ -122,32 +134,35 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     const slots = [...state.slots]; slots[index] = null;
     return { ...state, slots };
   }
-  function previewStock(product: BayShopStock, preferred: number, soldShelf?: number, replacing?: SoldListing, refill?: ShopRecipeRefill): boolean {
-    const slot = replacing ? preferred : soldShelf ?? shopStockSlot(state, product, preferred);
+  function previewStock(product: BayShopStock, preferred: number, soldShelf?: number, replacing?: ShelfListing, refill?: ShopRecipeRefill, liveRefill?: LiveRefill): boolean {
+    const slot = replacing ? preferred : liveRefill?.index ?? soldShelf ?? shopStockSlot(state, product, preferred);
     const quote = quotedShelf(slot, replacing);
     if (!quote || !shopQuantityPreview(quote,slot,product,1).valid) return false;
     selected = slot;
-    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-products')?.scrollTop ?? 0, soldShelf, replacing, refill };
+    pending = { id: product.id, identity: product.identity, quantity: '1', listScroll: host.querySelector('.bay-shop-products')?.scrollTop ?? 0, soldShelf, liveRefill, replacing, refill };
     return true;
   }
-  function stockButton(product: GroupedStock, soldShelf?: number) {
-    const pin = soldShelf === undefined ? '' : ` data-stock-sold-shelf="${soldShelf}" data-stock-identity="${escape(product.identity)}"`;
-    return `<button type="button" class="bay-shop-product${pin ? ' bay-shop-refill' : ''}" data-user-text data-stock="${escape(product.id)}" data-action="shop-stock-select"${pin} aria-label="Выбрать товар: ${escape(product.name)}. В запасе: ${product.quantity}"><span class="bay-shop-product-art">${art(product)}</span><span data-user-text>${escape(product.name)}</span><small>×${product.quantity}</small>${product.signature ? '<em title="Мой рецепт" aria-label="Мой рецепт">♥</em>' : ''}</button>`;
+  function stockButton(product: GroupedStock, shelf?: number, live?: LiveRefill) {
+    const pin = shelf === undefined ? '' : ` data-stock-${live ? 'live' : 'sold'}-shelf="${shelf}" data-stock-identity="${escape(product.identity)}"`;
+    const balance = live ? `На полке ×${live.slot.quantity}` : '';
+    return `<button type="button" class="bay-shop-product${pin ? ' bay-shop-refill' : ''}" data-user-text data-stock="${escape(product.id)}" data-action="shop-stock-select"${pin} aria-label="Выбрать товар: ${escape(product.name)}. В запасе: ${product.quantity}${balance ? `. ${balance}` : ''}"><span class="bay-shop-product-art">${art(product)}</span><span data-user-text>${escape(product.name)}</span>${balance ? `<span class="bay-shop-live-count">${balance}</span>` : ''}<small>×${product.quantity}</small>${product.signature ? '<em title="Мой рецепт" aria-label="Мой рецепт">♥</em>' : ''}</button>`;
   }
   function stockControls(): string {
     const slot = state.slots[selected], products = options.products().filter(p => p.quantity > 0);
     if (pending) {
       const product = stockForPending(products), quote = quotedShelf(selected, pending.replacing);
-      if (!product || !quote) return `<p>${pending.soldShelf === undefined && !pending.replacing ? 'Этот товар уже закончился.' : 'Проверьте количество и свободное место на полке.'}</p><button type="button" data-stock-cancel>Вернуться к припасам</button>`;
+      if (!product || !quote) return `<p>${pending.soldShelf === undefined && !pending.liveRefill && !pending.replacing ? 'Этот товар уже закончился.' : 'Проверьте количество и свободное место на полке.'}</p><button type="button" data-stock-cancel>Вернуться к припасам</button>`;
       const preview = shopQuantityPreview(quote, selected, product, Number(pending.quantity));
       const replaces = pending.replacing ? ` · вместо «${escape(pending.replacing.product.name)}»` : '';
       return `<div class="bay-shop-quantity"><h3 data-user-text>${escape(product.name)}</h3><p>Место ${selected + 1}${replaces} · в припасах и на складе гавани: ${product.quantity}</p>
         <form data-stock-form><label>Количество на полку<input data-stock-quantity type="number" inputmode="numeric" min="1" max="${preview.maximum}" step="1" value="${escape(pending.quantity)}" aria-label="Количество на полку"></label>
         <p data-stock-preview role="status"></p><div class="bay-shop-quantity-actions"><button type="submit" data-stock-confirm data-action="shop-stock-confirm">Выставить</button><button type="button" data-stock-cancel>Отмена</button></div></form></div>`;
     }
-    const refill = soldShelfStock(products);
+    const refill = selectedShelfStock(products);
+    if (refill && slot && slot.quantity > 0)
+      mountedLiveRefill = { index: selected, slot, product: slot.product, price: slot.price, day: state.businessDay };
     const selectedPanel = slot ? `<div class="bay-shop-selected">
-      ${refill ? stockButton(refill,selected) : `<span class="bay-shop-selected-art">${art(slot.product)}</span><div><strong data-user-text>${escape(slot.product.name)}</strong><span>На полке ×${slot.quantity}</span></div>`}
+      ${refill ? stockButton(refill,selected,mountedLiveRefill) : `<span class="bay-shop-selected-art">${art(slot.product)}</span><div><strong data-user-text>${escape(slot.product.name)}</strong><span>На полке ×${slot.quantity}</span></div>`}
       <label class="bay-shop-price">За 1 шт. <span><input data-price type="number" inputmode="numeric" min="1" max="10000" step="1" value="${slot.price}" aria-label="Цена за одну штуку в монетах"><span aria-hidden="true">●</span></span></label>
       <div class="bay-shop-price-presets" aria-label="Быстрая цена">${[[.8, '−20%'], [1, 'Обычно'], [1.35, '+35%']].map(([factor, label]) => `<button type="button" data-price-factor="${factor}" aria-label="${label}: ${Math.max(1, Math.round(slot.product.basePrice * Number(factor)))} монет" aria-pressed="${slot.price === Math.max(1, Math.round(slot.product.basePrice * Number(factor)))}">${label}</button>`).join('')}</div>
       <button type="button" class="bay-shop-return" data-return aria-label="${shopReturnLabel(slot.quantity)}" title="${shopReturnLabel(slot.quantity)}">↶</button>
@@ -179,6 +194,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     // The catalog scrolls inside the desk; the desk itself is clipped in this view.
     const listScroll = returnStock?.listScroll ?? host.querySelector('.bay-shop-products')?.scrollTop;
     rendering = true;
+    mountedLiveRefill = undefined;
     host.innerHTML = `<section class="bay-shop" aria-label="Своя лавка у моря">
       <header class="bay-shop-header"><div><h2>Своя лавка</h2></div><div class="bay-shop-header-actions"><button type="button" class="bay-shop-open" data-open aria-pressed="${state.open}"${canToggleOpen() ? '' : ' disabled'}>${state.open ? 'Закрыть лавку' : 'Открыть лавку'}</button>${options.onReturnMarket ? '<button type="button" class="bay-shop-market-home" data-shop-market-home data-action="shop-market-home">Рынок дома</button>' : ''}<button type="button" class="bay-shop-close${options.returnToRecipe ? ' bay-shop-recipe-back' : ''}" data-close aria-label="${closeLabel}" title="${recipeReturn ? closeLabel : closeLabel + '; работа лавки не меняется'}">${options.returnToRecipe ? closeLabel : '×'}</button></div></header>
       <div class="bay-shop-scene"><div class="bay-shop-stage" style="background-image:url('${escape(options.background ?? '/art/lavender/bay/shop.webp')}')">
@@ -303,7 +319,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     }
     if (button.hasAttribute('data-stock-cancel')) {
       const origin = pending;
-      const exactShelf = origin?.soldShelf === undefined || stockForPending(options.products()) !== undefined;
+      const exactShelf = (!origin?.liveRefill && origin?.soldShelf === undefined) || stockForPending(options.products()) !== undefined;
       pending = undefined;
       const ownedCancel = (event as MouseEvent).detail === 0 && document.activeElement === button;
       const available = origin && exactShelf && options.products().some(p => p.id === origin.id && p.identity === origin.identity && p.quantity > 0);
@@ -330,13 +346,16 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
       return;
     }
     if (button.dataset.stock) {
-      const pin = button.getAttribute('data-stock-sold-shelf');
+      const sold = button.getAttribute('data-stock-sold-shelf'), live = button.getAttribute('data-stock-live-shelf');
+      const pin = sold ?? live, quote = live === null ? undefined : mountedLiveRefill;
+      if (live !== null && (!quote || !currentLiveRefill(quote) || quote.slot.quantity === 0)) { render(); return; }
       const products = options.products();
-      const product = pin === null ? products.find(p => p.id === button.dataset.stock) : soldShelfStock(products);
+      const product = quote ? selectedShelfStock(products)
+        : sold === null ? products.find(p => p.id === button.dataset.stock) : soldShelfStock(products);
       if (pin !== null && (tab !== 'stock' || pending || pin !== String(selected) ||
         product?.id !== button.dataset.stock || product.identity !== button.getAttribute('data-stock-identity'))) { render(); return; }
       if (!product || product.quantity < 1) return;
-      if (!previewStock(product, selected, pin === null ? undefined : selected)) { playBaySound('menu.blocked',.8); notice = 'Все места заняты. Уберите товар кнопкой ↶.'; render(); return; }
+      if (!previewStock(product, selected, sold === null ? undefined : selected, undefined, undefined, quote)) { playBaySound('menu.blocked',.8); notice = 'Все места заняты. Уберите товар кнопкой ↶.'; render(); return; }
       notice = ''; render();
       host.querySelector<HTMLInputElement>('[data-stock-quantity]')?.focus();
     }
@@ -361,7 +380,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     if (!pending) return;
     const product = stockForPending(options.products()), quantity = Number(pending.quantity), quote = quotedShelf(selected, pending.replacing);
     if (!product || !quote || !placeShopQuantity(quote, selected, product, quantity, options.takeStock)) {
-      const staleShelf = (!product || !quote) && (pending.soldShelf !== undefined || pending.replacing)
+      const staleShelf = (!product || !quote) && (pending.soldShelf !== undefined || pending.liveRefill || pending.replacing)
         ? {listScroll:pending.listScroll} : undefined;
       if (staleShelf) pending = undefined;
       playBaySound('menu.blocked',.8); notice = 'Проверьте количество и свободное место на полке.'; render(staleShelf); return;
@@ -386,6 +405,7 @@ export function mountBayShop(host: HTMLElement, options: BayShopOptions): { dest
     } else {
       notice = 'Цена сохранена'; saveChanges();
       const slot = state.slots[selected]!, shelf = host.querySelector<HTMLElement>(`[data-slot="${selected}"]`);
+      if (mountedLiveRefill?.slot === slot && mountedLiveRefill.price === previousPrice) mountedLiveRefill.price = slot.price;
       if (slot.price !== previousPrice) { lastRefusal = undefined; paintDayGuidance(); }
       shelf?.setAttribute('aria-label', `Место ${selected + 1}: ${slot.product.name}, остаток ${slot.quantity}, цена ${slot.price} монет`);
       const quote = host.querySelector<HTMLElement>('[data-shelf-quote]');
