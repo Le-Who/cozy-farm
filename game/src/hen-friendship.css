@@ -51,3 +51,15 @@
 }
 
 .hen-field-guide[hidden]{display:none!important}
+
+@media(min-width:900px) and (min-height:600px){
+ .farm-dialog[data-panel="hen-friendship"]{width:min(620px,calc(100% - 24px))}
+ .hen-friend-roster{gap:6px;margin-bottom:9px}
+ .hen-friend-select{grid-template-columns:28px minmax(0,1fr);grid-template-rows:auto auto;gap:0 5px;min-height:44px;padding:5px 6px;text-align:left}
+ .hen-friend-avatar{width:28px;height:28px;grid-row:1/3;align-self:center}
+ .hen-friend-select strong,.hen-friend-select small{justify-self:start}
+ .hen-friend-select strong{align-self:end}
+ .hen-friend-select small{align-self:start}
+ .hen-friend-card .hen-treats:has(button:not(:disabled)) button:disabled{align-self:center;justify-content:center}
+ .hen-friend-card .hen-treats:has(button:not(:disabled)) button:disabled .icon{display:none}
+}

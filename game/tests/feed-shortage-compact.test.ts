@@ -25,17 +25,21 @@ test('capacity warnings remain on both results even when ingredients are also mi
  }
 })
 
-test('when both recipes lack both ingredients each card states each shortage once in its cost list',()=>{
+test('when both recipes lack both ingredients the shared shortage is read once and both recipes name their extra',()=>{
  const f=ready();f.produce.wheat=0;f.fruit.apple=0
- const cards=renderChickenFeedMixes(f).match(/<article[^>]*>[\s\S]*?<\/article>/g) ?? []
+ const html=renderChickenFeedMixes(f)
+ const wheat=html.match(/Пшеница ×1<\/strong><small>Нет в запасе/g)
+ assert.equal(wheat?.length,1)
+ assert.match(html,/id="feed-common-wheat"[\s\S]*?Пшеница ×1[\s\S]*?<\/ul>/)
+ const cards=html.match(/<article[^>]*>[\s\S]*?<\/article>/g) ?? []
  assert.equal(cards.length,2)
  for(const [i,card] of cards.entries()){
   const extra=i===0?'Морковь':'Яблоко'
   assert.match(card,/<ul class="feed-choice-cost" aria-label="Расход обычных продуктов">/)
-  for(const name of ['Пшеница',extra]){
-   assert.match(card,new RegExp(name+' ×1</strong><small>Нет в запасе'))
-   assert.equal(card.toLowerCase().split(name.toLowerCase()).length-1,1)
-  }
+  assert.match(card,new RegExp(extra+' ×1</strong><small>Нет в запасе'))
+  assert.equal(card.toLowerCase().split(extra.toLowerCase()).length-1,1)
+  assert.doesNotMatch(card,/Пшеница ×1/)
+  assert.match(card,/aria-describedby="feed-common-wheat"/)
   assert.match(card,/data-action="mix-chicken-feed"[^>]* disabled/)
  }
 })

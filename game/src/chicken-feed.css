@@ -5,6 +5,8 @@
 .farm-dialog[data-panel="chicken-feed"] .dialog-title{font-size:clamp(21px,5.5vw,28px)}
 .feed-choice p{margin:0;font-size:13px;line-height:1.4}
 .feed-choice-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}
+.feed-common-cost{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--rule);border-radius:12px;background:var(--paper-light)}
+.feed-common-cost>small{display:block;margin:0 0 2px 2px;font-size:11px;color:var(--muted);font-weight:700}
 .feed-choice-summary>strong{flex-shrink:0;border:1px solid var(--rule);border-radius:12px;padding:5px 9px;font-size:13px;color:var(--plum);background:var(--paper-light)}
 .feed-choice-summary [data-feed-stock]:focus-visible{outline:3px solid var(--plum);outline-offset:2px}
 .feed-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -28,7 +30,7 @@
 .feed-choice-notes>summary{padding:10px 0;cursor:pointer;color:var(--muted);font-size:13px;min-height:44px;box-sizing:border-box}
 .feed-choice-notes>p{margin:0 0 8px;color:var(--muted)}
 @media(max-width:460px){
- .feed-choice-summary{gap:6px;margin-bottom:8px}.feed-choice-summary p{font-size:12px}
+ .feed-choice-summary{gap:6px;margin-bottom:8px}
  .feed-choice-grid{grid-template-columns:1fr;gap:8px}
  .feed-choice-card{grid-template-columns:minmax(0,1fr) 105px;gap:5px 8px;padding:9px}
  .feed-choice-card h2{grid-column:1/-1;font-size:16px}

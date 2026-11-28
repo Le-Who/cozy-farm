@@ -42,20 +42,20 @@ export function mixChickenFeed(farm: FarmState, recipe: unknown): ActionResult {
 export function renderChickenFeedMixes(farm: FarmState, icon: (name: string) => string = () => '', fromRest = false) {
   if (farm.island !== 'home') return ''
   if (farm.buildingLevels.coop < 2) return '<section class="feed-choice"><p>Смеси откроются после улучшения курятника. Покупной корм остаётся доступен.</p></section>'
-  // The compact cards stack in reading order: lead with a mix the harvest can supply.
+  const ingredient = (name: string, image: string, stock: number, remaining: number) => `<li data-missing="${stock < 1}">${icon(image)}<span><strong>${name} ×1</strong><small>${stock < 1 ? 'Нет в запасе' : `Есть ${stock} → ${remaining}`}</small></span></li>`
+  // Lead with a mix the harvest can supply. Both recipes use the same ordinary wheat.
   const mixes = (Object.keys(chickenFeedRecipes) as ChickenFeedRecipe[])
     .map(recipe => ({ recipe, mix: getChickenFeedMix(farm, recipe) }))
     .sort((a, b) => Number(b.mix.available) - Number(a.mix.available))
   return `<section class="feed-choice" aria-label="Домашние кормовые смеси">
-    <div class="feed-choice-summary"><p>1 порция — вся стая на 1 утро</p><strong data-feed-stock tabindex="-1">В запасе ${farm.feed}</strong></div>
+    <div class="feed-choice-summary"><div class="feed-common-cost" id="feed-common-wheat"><small>На любую смесь</small><ul class="feed-choice-cost">${ingredient('Пшеница', 'wheat', mixes[0].mix.wheat, mixes[0].mix.remainingWheat)}</ul></div><strong data-feed-stock tabindex="-1">В запасе ${farm.feed}</strong></div>
     <div class="feed-choice-grid">${mixes.map(({ recipe, mix }) => {
-      const ingredient = (name: string, image: string, stock: number, remaining: number) => `<li data-missing="${stock < 1}">${icon(image)}<span><strong>${name} ×1</strong><small>${stock < 1 ? 'Нет в запасе' : `Есть ${stock} → ${remaining}`}</small></span></li>`
       const result = !mix.room ? 'Нет места для новой смеси' : mix.available ? `Запас: ${farm.feed} → ${mix.total}` : ''
       return `<article class="feed-choice-card" aria-label="${mix.name}"><h2>${recipe === 'garden' ? 'Огородная' : 'Садовая'}</h2>
-        <ul class="feed-choice-cost" aria-label="Расход обычных продуктов">${ingredient('Пшеница', 'wheat', mix.wheat, mix.remainingWheat)}${ingredient(mix.extraName, mix.extra, mix.extraCount, mix.remainingExtra)}</ul>
+        <ul class="feed-choice-cost" aria-label="Расход обычных продуктов">${ingredient(mix.extraName, mix.extra, mix.extraCount, mix.remainingExtra)}</ul>
         <div class="feed-choice-result"><strong>${ruCount(mix.portions, 'порция', 'порции', 'порций')}</strong>${result ? `<span>${result}</span>` : ''}</div>
-        <button type="button" class="dialog-button" data-action="mix-chicken-feed" data-value="${recipe}" aria-label="${mix.name}: смешать ${ruCount(mix.portions, 'порцию', 'порции', 'порций')}"${mix.available ? '' : ' disabled'}>Смешать</button></article>`
+        <button type="button" class="dialog-button" data-action="mix-chicken-feed" data-value="${recipe}" aria-label="${mix.name}: смешать ${ruCount(mix.portions, 'порцию', 'порции', 'порций')}" aria-describedby="feed-common-wheat"${mix.available ? '' : ' disabled'}>Смешать</button></article>`
     }).join('')}</div>
     <div class="feed-choice-next"><p>${farm.chickensFed ? 'Стая уже накормлена. Новый корм останется на следующие дни.' : fromRest ? 'Смешивание не кормит стаю. Дома можно дать корм перед сном.' : 'Смешивание не кормит стаю. Дайте корм в курятнике.'}</p><button type="button" class="dialog-button secondary" data-action="back">${fromRest ? 'К отдыху' : 'К курятнику'}</button></div>
-    <details class="feed-choice-notes"><summary>О корме</summary><p>Используются только обычные продукты: необычный урожай сохранится. Количество яиц от вида смеси не меняется.</p><p>Покупной корм: ${feedBagSize} порции за ${feedBagPrice} монеты. Смешивание не требует ежедневного повтора.</p></details></section>`
+    <details class="feed-choice-notes"><summary>О корме</summary><p>1 порция — вся стая на 1 утро.</p><p>Используются только обычные продукты: необычный урожай сохранится. Количество яиц от вида смеси не меняется.</p><p>Покупной корм: ${feedBagSize} порции за ${feedBagPrice} монеты. Смешивание не требует ежедневного повтора.</p></details></section>`
 }
