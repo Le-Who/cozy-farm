@@ -39,7 +39,10 @@ export function getMarketOrderBoard(farm: FarmState, selected?: string) {
     ?? choices.find(order => order.group === 'warehouse') ?? choices.find(order => order.readyHarborRoute) ?? choices[0]
   const order = orders.find(order => order.lane === current?.id)
   const pickup = order && current?.group === 'warehouse' ? quoteMarketOrderPickup(farm, order, readSupply) : undefined
-  return { choices, selected: current?.id, order, pickup }
+  // Each local withdrawal is useful information even if another line still needs supplies.
+  const localWithdrawals = order?.status === 'waiting' && farm.island === 'home'
+    ? order.items.map(item => readSupply(farm,item)?.quantity) : []
+  return { choices, selected: current?.id, order, pickup, localWithdrawals }
 }
 
 const escape = (text: string) => text.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!))

@@ -1142,13 +1142,13 @@ function marketOrders() {
   const order = board.order
   const next = getNextMarketOrders(farm).find(order => order.lane === board.selected)
   const warehouse = board.choices.find(choice=>choice.id===board.selected)?.warehouseRequest
-  const pickup = board.pickup
+  const { pickup, localWithdrawals } = board
   const detail = board.selected === 'harbor' ? `<p class="market-order-location">Причал рощи · можно вносить частями</p>${harborCard(true)}` : order
     ? `<section class="market-order" data-status="${order.status}" aria-labelledby="order-${order.lane}">
       <header class="order-header"><h2 id="order-${order.lane}">${order.name}</h2>
         <span class="order-reward"><small>Награда</small><span>${icon('coin')} ${numberFormat.format(order.reward)}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></span></header>
       ${order.status === 'delivered' ? `<p class="order-done">✓ Сегодня доставлено</p>${next ? renderNextMarketOrder(next,marketOrderStockTile)+button('К отдыху дома', 'market-next-rest', true, {secondary:true,value:String(farm.day)}) : ''}`
-        : `<ul class="ingredients order-items">${order.items.map(item => marketOrderStockTile(item, pickup?.lines.find(line => line.item === item)?.supply.quantity)).join('')}</ul>
+        : `<ul class="ingredients order-items">${order.items.map((item, index) => marketOrderStockTile(item, localWithdrawals[index])).join('')}</ul>
           ${order.status === 'upgrade' ? button('Улучшить дом', 'upgrades', true, { secondary: true })
             : pickup ? button('Забрать со склада', 'market-order-pickup', true, {value:pickup.token,context:order.name})
             : warehouse ? button('К домашнему складу', 'warehouse-supply', true, {value:warehouse,context:order.name})

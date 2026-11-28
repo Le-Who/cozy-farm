@@ -81,7 +81,7 @@ test('all unlocked lanes, actual adjusted rewards and current requirement/source
  }
  assert.deepEqual(f,before)
  const realStock=source.slice(source.indexOf('function stockTile('),source.indexOf('function recipeDestination'))
- assert.match(realStock,/ingredientCount\(farm, item\)/);assert.match(fn,/order.items.map\(item => marketOrderStockTile\(item,/);assert.match(fn,/renderNextMarketOrder\(next,marketOrderStockTile\)/)
+ assert.match(realStock,/ingredientCount\(farm, item\)/);assert.match(fn,/order\.items\.map\(\(item, index\) => marketOrderStockTile\(item, localWithdrawals\[index\]\)\)/);assert.match(fn,/renderNextMarketOrder\(next,marketOrderStockTile\)/)
  const harbor=source.slice(source.indexOf('function harborCard('),source.indexOf('function groveDockActions'))
  for(const original of ['deliveryItems(order.items)','getHarborWithdrawal(farm)',"'withdraw-harbor'","'sail'","'deliver-harbor'",'renderNextHarborOrder'])assert.ok(harbor.includes(original))
 })
