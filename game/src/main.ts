@@ -3774,7 +3774,7 @@ function useHotbar(tool: Tool, keyboard = false) {
       island.visit({ kind: 'coop' })
       if (canMixBedtimeFeed(farm)) {
         openPanel('coop')
-        highlightControl(dialogContent.querySelector('[data-action="chicken-feed-open"]') ?? dialogContent.querySelector('[data-coop-feed-compare]'))
+        highlightControl(dialogContent.querySelector('[data-coop-feed-compare], [data-action="chicken-feed-open"]'))
         break
       }
       if(perform(() => feedChickens(farm)))playBaySound('flock.feed', 1, 0)
@@ -5363,11 +5363,11 @@ app.addEventListener('click', async (event) => {
       break
     }
     case 'buy-feed': {
-      const compare=panel==='coop' && control.closest('[data-coop-feed-compare]')
-      if (compare && (!dialog.open || !dialogContent.contains(control) || !getCoopFeedComparison(farm))) break
+      const tray=panel==='coop' && control.closest<HTMLElement>('[data-coop-feed-compare]')
+      if (tray && (!dialog.open || !dialogContent.contains(control) || getCoopFeedComparison(farm)?.choice !== tray.dataset.coopFeedCompare)) break
       if (perform(() => buyFeed(farm))) {
         playBaySound('trade.pay')
-        if (compare) focusCoopFeedResult()
+        if (tray) focusCoopFeedResult()
       }
       break
     }
@@ -5563,8 +5563,11 @@ app.addEventListener('click', async (event) => {
       break
     case 'mix-chicken-feed': {
       if (panel === 'coop') {
-        if (dialog.open && dialogContent.contains(control) && control.closest('[data-coop-feed-compare]')
-          && getCoopFeedComparison(farm) && perform(() => mixChickenFeed(farm,value))) focusCoopFeedResult()
+        const tray=control.closest<HTMLElement>('[data-coop-feed-compare]')
+        const quote=tray && getCoopFeedComparison(farm)
+        if (dialog.open && dialogContent.contains(control) && tray && quote && quote.choice===tray.dataset.coopFeedCompare
+          && (value==='garden'||value==='orchard') && quote[value].available
+          && perform(() => mixChickenFeed(farm,value))) focusCoopFeedResult()
         break
       }
       const keyboardMix = event.detail === 0 && document.activeElement === control

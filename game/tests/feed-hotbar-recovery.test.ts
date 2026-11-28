@@ -23,7 +23,7 @@ test('empty feed shortcut reveals the existing coop choice only when a hungry fl
   if(situation==='locked-coop')farm.buildingLevels.coop=1
   const expected=structuredClone(farm),recover=situation==='harvest'||situation==='only-apple',calls:string[]=[]
   const choice={};runInNewContext(branch,{farm,canMixBedtimeFeed,feedChickens,island:{visit:({kind})=>calls.push('visit:'+kind)},
-   openPanel:(panel:string)=>calls.push(panel),dialogContent:{querySelector:(sel:string)=>{assert.equal(sel,'[data-action="chicken-feed-open"]');assert.equal(calls.at(-1),'coop');return choice}},
+   openPanel:(panel:string)=>calls.push(panel),dialogContent:{querySelector:(sel:string)=>{assert.equal(sel,'[data-coop-feed-compare], [data-action="chicken-feed-open"]');assert.equal(calls.at(-1),'coop');return choice}},
    highlightControl:(el:object)=>{assert.equal(el,choice);calls.push('show choice')},
    perform:(fn:Function)=>{calls.push('try feed');return fn().ok},playBaySound:(id:string)=>calls.push(id),
   })
