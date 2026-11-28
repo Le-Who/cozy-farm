@@ -53,7 +53,7 @@ import { canReturnToDailyIntent, renderIntentDeadline, renderSelectedIntentRest,
 import { renderFacilityChoiceDetails } from './facility-choice'
 import './facility-choice.css'
 import { getWindHoneySource } from './wind-honey-guidance'
-import { canVisitHarborRest, getNextHarborOrder, readyHarborOrderRoute, renderNextHarborOrder } from './harbor-return'
+import { canVisitHarborRest, getHarborOrderArrival, getNextHarborOrder, readyHarborOrderRoute, renderNextHarborOrder } from './harbor-return'
 import './harbor-return.css'
 import { renderVillageBudget } from './village-budget'
 import { getStoredSignature, storedSignatureValue, withdrawStoredSignature } from './stored-signature'
@@ -1159,9 +1159,11 @@ function marketOrders() {
 }
 
 function deliveryItems(items: ReturnType<typeof getProject>['items'], explicit = false,
-  contributions?: ReadonlyMap<string, { token: string; available: number }>) {
+  contributions?: ReadonlyMap<string, { token: string; available: number }>, storedDish?: { item: StockItem; quantity: number }) {
   return items.map(({ item, delivered, available }) => {
     const { name, image } = stockLabel(item)
+    if (storedDish?.item === item) return `<li class="requirement-slot"><div class="ingredient" data-harbor-stored-dish>${icon(image)}<span>${name}</span>
+      <strong><span class="sr-only">Доставлено </span>${delivered}/${item.quantity} <span>· Со склада +${storedDish.quantity}</span></strong></div></li>`
     const contribution = contributions?.get(marketKey(item))
     if (contribution) return `<li class="requirement-slot"><button type="button" class="ingredient requirement-link" data-action="village-supply-pledge" data-value="${contribution.token}" aria-label="Внести: ${name} ×${contribution.available}">${icon(image)}<span>${name}</span>
       <strong><span class="sr-only">Доставлено </span>${delivered}/${item.quantity}</strong><span class="project-available">Внести ×${contribution.available}</span></button></li>`
@@ -1184,13 +1186,14 @@ function harborCard(fromMarket = false) {
   if (!order) return ''
   const withdrawal=getHarborWithdrawal(farm)
   const next=getNextHarborOrder(farm)
-  const route=fromMarket ? readyHarborOrderRoute(farm,order) : undefined
+  const arrival=fromMarket ? getHarborOrderArrival(farm,order) : undefined
+  const storedDish=arrival?.storedDish
   return `<section class="market-order project-card" aria-labelledby="harbor-order">
     <header class="order-header"><h2 id="harbor-order">${order.name}</h2>
       <span class="order-reward">${icon('coin')} ${order.reward}<span class="sr-only"> ${ruPlural(order.reward, ['монета','монеты','монет'])}</span></span></header>
-    <ul class="ingredients project-items">${deliveryItems(order.items)}</ul>
+    <ul class="ingredients project-items">${storedDish ? deliveryItems(order.items,false,undefined,storedDish) : deliveryItems(order.items)}</ul>
     ${order.status === 'completed' ? `<p class="order-done">✓ Доставлено</p>${next ? renderNextHarborOrder(next,stockTile)+button('К отдыху дома','harbor-next-rest',true,{secondary:true,value:String(farm.day)}) : ''}`
-      : route ? button('К заказу в роще','harbor-order-route',true,{value:route})
+      : arrival ? button('К заказу в роще','harbor-order-route',true,{value:arrival.token})
       : farm.island !== 'grove' ? button('В рощу', 'sail',canSailTo(farm,'grove'), {value:'grove',secondary:true})
       : button('Доставить', 'deliver-harbor', order.status === 'ready', { context: order.name })}
     ${order.status!=='completed'&&withdrawal.items.length?`<p class="dialog-status">Неполную посылку можно забрать у причала. Припасы вернутся в запас, заказ и дневной лимит не изменятся.</p>${button('Вернуть припасы','withdraw-harbor',withdrawal.available,{secondary:true})}`:''}
