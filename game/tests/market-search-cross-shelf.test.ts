@@ -24,7 +24,19 @@ const appSrc=stripTypeScriptTypes([
 ].join('\n'))
 const confirm=stripTypeScriptTypes(section('function inlineSaleContext(', 'function updateMarketSaleSearch()')+';confirmInlineSale(control)')
 const clear=stripTypeScriptTypes(`switch('market-sale-clear'){${section("    case 'market-sale-clear':","    case 'market-sell-group':")}}`)
-const earned=earned416Mixed(false).state
+const closeSell=stripTypeScriptTypes(section('function closeDialog()','  salePresentation.reset()')+'}')
+const openSell=stripTypeScriptTypes(`
+ function open(next='market',remember=true) {
+  ${section('  if (entry?.readyOrder || !dialog.open && remember)','  if(remember&&next!==panel)').split('\n').slice(1).join('\n')}
+  panel=next
+  mountPanel()
+  dialogContent.scrollTop=0
+  dialog.open=true
+  ${section('  if (reopenScroll !== undefined) {','  if (next === \'bay-freight\' && ferryArrival.take')}
+ }
+`)
+
+const earnedPlayer=earned416Mixed(false),earned=earnedPlayer.state
 function screen(group:MarketSaleGroup,family?:string){
  const farm=structuredClone(earned), before=structuredClone(farm), icons=new Proxy({},{get:()=>''})
  const memory=new MarketSaleBrowseMemory(), document={activeElement:null as Search|null}
@@ -46,7 +58,12 @@ function screen(group:MarketSaleGroup,family?:string){
   HTMLInputElement:Search,app:{addEventListener:(key:string,cb:(ev:unknown)=>void)=>listeners.set(key,cb)},closeContextualSale(){},
   fishImage:()=>'',pastryIcons:icons,dishIcons:icons,shellDefinitions,shoalDefinitions,marketSaleFamilies,searchMarketSales,searchMarketSaleView,
   marketInlineCard:(item:{key:string;count:number})=>`<li data-inline-key="${item.key}">${item.count}</li>`,applyIngredientFinishes(){},salePresentation:{},
-  marketBulkSaleControls(){return runInNewContext('wholeInventorySaleView()',ctx)?'bulk':''},drawPanel(){runInNewContext('updateMarketSaleSearch()',ctx)}}
+  marketBulkSaleControls(){return runInNewContext('wholeInventorySaleView()',ctx)?'bulk':''},drawPanel(){runInNewContext('updateMarketSaleSearch()',ctx)},
+  mountPanel(){
+   // Fresh drawPanel renders the whole sale card before showModal, unlike its in-place input refresh.
+   grid.innerHTML=ctx.panel==='market'?runInNewContext('marketSaleResults()',ctx):''
+   status.textContent=ctx.panel==='market'?runInNewContext('marketSaleSearchStatus()',ctx):''
+  }}
  runInNewContext(appSrc,ctx);ctx.drawPanel()
  search.focus({preventScroll:true})
  const pulse=(event:string,text:string,composing=false)=>{
@@ -55,6 +72,8 @@ function screen(group:MarketSaleGroup,family?:string){
  return {farm,before,ctx,memory,document,search,grid,status,
    type(text:string,composing=false){pulse('input',text,composing)},
    comp(text:string){pulse('compositionend',text)},clear(){runInNewContext(clear,ctx)},
+   close(){runInNewContext(closeSell+';closeDialog()',ctx);ctx.panel='';ctx.dialog.open=false;grid.scrollTop=0},
+   reopen(next='market'){runInNewContext(openSell+';open('+JSON.stringify(next)+')',ctx)},
    select(scope:MarketSaleGroup){runInNewContext(`selectMarketSaleGroup('${scope}')`,ctx)},
    keys(){return grid.querySelectorAll().map(row=>row.dataset.inlineKey)},
    bulk(){return Boolean(ctx.marketBulkSaleControls())}}
@@ -139,6 +158,74 @@ test('an explicit sale on a cross-shelf hit uses the exact rare product once; se
  assert.equal(s.bulk(),false)
  runInNewContext(confirm,c)
  assert.equal(writes,1);assert.deepEqual(f,after)
+})
+
+test('normal close and same Sell reopen keep the genuine cross-category results and compatible Clear origin',t=>{
+ for(const [group,family,query,count] of [
+   ['kitchen',undefined,'яблоки',5],
+   ['harvest','fruit:pear','радужное яйцо',1],
+ ] as const){
+   const s=screen(group,family)
+   s.grid.scrollTop=87
+   s.type(query)
+   const expected=s.keys()
+   assert.equal(expected.length,count)
+   const visits:number[]=[]
+   s.grid.scrollTop=23
+   for(let visit=0;visit<2;visit++){
+     s.close();s.reopen()
+     visits.push(s.keys().length)
+     assert.equal(s.grid.scrollTop,23,'matched result pane retains existing scroll')
+     assert.deepEqual(s.keys(),expected,'stock active query must not go empty solely because the panel was closed')
+     assert.deepEqual([s.ctx.marketSellGroup,s.ctx.marketSaleFamily,s.ctx.marketSaleQuery],[group,family,query])
+     assert.equal(s.memory.crossCategorySearch,true)
+     assert.match(s.status.textContent,/^Поиск · Всё: /)
+     assert.equal(s.bulk(),false)
+   }
+   s.clear()
+   assert.equal(s.grid.scrollTop,87)
+   assert.deepEqual([s.ctx.marketSellGroup,s.ctx.marketSaleFamily,s.ctx.marketSaleQuery],[group,family,''])
+   assert.deepEqual(s.farm,s.before)
+   t.diagnostic(JSON.stringify({day:s.farm.day,ordinaryActions:earnedPlayer.actions,units:F.getSale(s.farm).items,group,family,query,visits,clearScroll:s.grid.scrollTop}))
+ }
+})
+
+test('a deliberate category refinement survives the exact reopen and future typing until Clear',()=>{
+ const s=screen('kitchen')
+ s.type('яблоки');assert.equal(s.keys().length,5)
+ s.select('shore');assert.deepEqual(s.keys(),[])
+ s.close();s.reopen()
+ assert.equal(s.memory.crossCategorySearch,false)
+ s.type('радужное яйцо')
+ assert.deepEqual(s.keys(),[],'future edits cannot unexpectedly widen the player’s chosen category')
+ assert.equal(s.bulk(),false)
+ s.clear();s.type('радужное яйцо')
+ assert.deepEqual(s.keys(),['variants:egg:rainbow'],'Clear starts a new unrefined search')
+ assert.deepEqual(s.farm,s.before)
+})
+
+test('a closed snapshot never keeps stale rows, an invalid Clear origin, or another visit scope',()=>{
+ const s=screen('harvest','fruit:pear'),egg='variants:egg:rainbow'
+ s.grid.scrollTop=117;s.type('радужное яйцо');assert.deepEqual(s.keys(),[egg]);s.close()
+ assert.ok(F.sellMarketItem(s.farm,egg,1).ok)
+ assert.ok(F.sellMarketItem(s.farm,'fruit:pear',1).ok)
+ const after=structuredClone(s.farm)
+ s.reopen();assert.deepEqual(s.keys(),[]);assert.equal(s.bulk(),false)
+ s.clear();assert.equal(s.grid.scrollTop,0,'pre-search grid lost its pear, so it cannot restore the prior scroll')
+ assert.deepEqual(s.farm,after)
+ for(const mismatch of ['island','group','family','query','other-panel'] as const) {
+   const x=screen('harvest','fruit:pear')
+   x.type('радужное яйцо');x.close()
+   if(mismatch==='island')assert.ok(F.sail(x.farm,'grove').ok)
+   if(mismatch==='group')x.ctx.marketSellGroup='kitchen'
+   if(mismatch==='family')x.ctx.marketSaleFamily='fruit:apple'
+   if(mismatch==='query')x.ctx.marketSaleQuery='яблоки'
+   if(mismatch==='other-panel'){x.reopen('inventory');x.close()}
+   x.reopen()
+   assert.equal(x.memory.crossCategorySearch,false,mismatch)
+   assert.deepEqual(x.keys(),[],mismatch)
+   assert.equal(x.bulk(),false)
+ }
 })
 
 test('the earned Sell search keeps a native search field and one named game clear button, without a second cancel adornment',()=>{

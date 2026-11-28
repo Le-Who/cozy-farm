@@ -3223,9 +3223,11 @@ function openPanel(next: Panel, remember = true, destinationIsland = farm.island
   hiveFlower = next === 'hive' ? entry?.hiveFlower : undefined
   // An automatic order belongs to this visit. A manual pick also survives an ordinary reopen.
   if (entry?.readyOrder || !dialog.open && remember) selectedMarketOrder = entry?.readyOrder ? undefined : pickedMarketOrder
-  const reopenScroll = !dialog.open && remember && next === 'market' && marketTab === 'sell'
-    ? marketSaleBrowse.takeClosed(marketSellView()) : undefined
+  const reopenSale = !dialog.open && remember && next === 'market' && marketTab === 'sell'
+    ? marketSaleBrowse.takeClosedVisit(marketSellView()) : undefined
+  const reopenScroll = reopenSale?.scroll
   if (!dialog.open) marketSaleBrowse.reset()
+  if (reopenSale) marketSaleBrowse.restoreClosedSearch(reopenSale)
   if(remember&&next!==panel){if(dialog.open&&panel)panelHistory.push(rememberPanel());else panelHistory.length=0}
   if (remember && next === 'village-meal' && panel === 'village' && !getVillageMeal(farm, pastryShape).available) {
     // Snapshot the cottage's choice first; the table can start with stock that is ready.

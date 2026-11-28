@@ -5,27 +5,38 @@ import type { MarketSaleGroup } from './market-sale-search.ts'
 type GridPosition = { key: string; scroll: number }
 type BrowseView = { family: string | undefined; scroll: number }
 type SellView = { island: string; group: MarketSaleGroup; family: string | undefined; query: string }
+type SearchBrowse = { original?: GridPosition; refined: boolean }
 
 /** Ephemeral view memory only. Semantic families may be empty after a sale. */
 export class MarketSaleBrowseMemory {
   private views = new Map<MarketSaleGroup, BrowseView>()
 
-  private closed?: SellView & { scroll: number }
+  private closed?: SellView & { scroll: number; search?: SearchBrowse }
   private pausedTab?: GridPosition
   private pausedBuySeeds?: GridPosition
   readonly seedPacks = new MarketSeedPacks()
   readonly feedBags = new MarketFeedBags()
-  private search?: { original?: GridPosition; refined: boolean }
+  private search?: SearchBrowse
 
   rememberClosed(view: SellView, scroll: number) {
-    this.closed = { ...view, scroll }
+    const search = view.query.trim() && this.search ? { ...this.search } : undefined
+    this.closed = { ...view, scroll, search }
   }
 
-  takeClosed(view: SellView): number | undefined {
+  takeClosedVisit(view: SellView) {
     const previous = this.closed
     this.closed = undefined
     return previous && previous.island === view.island && previous.group === view.group &&
-      previous.family === view.family && previous.query === view.query ? previous.scroll : undefined
+      previous.family === view.family && previous.query === view.query ? previous : undefined
+  }
+
+  takeClosed(view: SellView): number | undefined {
+    return this.takeClosedVisit(view)?.scroll
+  }
+
+  /** The matched visit has already been taken. Nothing else survives the fresh-session reset. */
+  restoreClosedSearch(visit: { search?: SearchBrowse }) {
+    this.search = visit.search
   }
 
   /** Only resume the Sell shelf if the same visit still shows the exact result list. */
